@@ -17,6 +17,7 @@ import { getSchemaReport } from "../db/schemaCheck.js";
 import { deploymentCommit, deploymentId } from "../config/deployment.js";
 import { normalizeHostname, resolveHubForHostname } from "../middleware/hub.js";
 import { packageVerdicts, verifyPackages } from "../plugins/loader.js";
+import { deploymentKeys } from "../plugins/signature.js";
 
 export interface HealthParts {
   db: { ok: boolean };
@@ -55,6 +56,7 @@ export const healthHandler = route(async (req: Request, res: Response) => {
   // dashboard shows the gap, and the loader reported it.
   await verifyPackages();
   const packages = packageVerdicts();
+  const keys = deploymentKeys();
   // A monitor polls this every few minutes: never a cached answer.
   res.setHeader("Cache-Control", "no-store");
   res.status(verdict.code).json({
@@ -74,6 +76,14 @@ export const healthHandler = route(async (req: Request, res: Response) => {
     plugins: {
       mounted: packages.filter((p) => p.mounted).length,
       unmounted: packages.filter((p) => !p.mounted).map((p) => ({ package: p.package, version: p.version, reason: p.reason })),
+      // Signed approvals (ADR-015): the mode, this deployment's key id (null
+      // without one), and how many mounted packages run on an approval whose
+      // signature this deployment has not verified. The release waits for 0.
+      signatures: {
+        mode: keys.mode,
+        key: keys.signing?.id ?? null,
+        unsigned: packages.filter((p) => p.mounted && !p.signed).length,
+      },
     },
     commit: deploymentCommit(),
     deployed_at: deploymentId(),

@@ -164,6 +164,16 @@ health() {
     });'
 }
 
+# GET /api/health → "<mode>|<key id or empty>|<mounted packages on an approval not signed with it>" (ADR-015)
+signatures() {
+  curl -s -m 20 "$HUB_URL/api/health" | node -e '
+    let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+      let j = {}; try { j = JSON.parse(s); } catch {}
+      const g = (j.plugins && j.plugins.signatures) || {};
+      process.stdout.write([g.mode || "unknown", g.key || "", g.unsigned ?? "?"].join("|"));
+    });'
+}
+
 # Wait up to $1 seconds for status ok with no gaps (and, given $2, that commit).
 # The schema report is re-checked every 30 seconds, so a migration applied a
 # moment ago can take that long to show.
@@ -422,6 +432,33 @@ else
   step "$LABEL /api/health and the JSON 404 on the new code"
   require_healthy 90 "$HEAD_SHA"
   check_404
+
+  # Signed approvals (ADR-015): with a catalog key on this deployment, every
+  # mounted package must run on an approval signed with it. The rows approved
+  # before signatures are signed in the console; nothing here holds the key.
+  step "Signed approvals"
+  IFS='|' read -r SIG_MODE SIG_KEY SIG_UNSIGNED <<<"$(signatures)"
+  if [[ -z "$SIG_KEY" ]]; then
+    note "No catalog key on this deployment (CIVIC_CATALOG_SIGNING_KEY): approvals are checked by fingerprint only ($SIG_MODE)."
+    SIG_RESULT="no key ($SIG_MODE)"
+  else
+    if [[ "$SIG_UNSIGNED" != "0" ]]; then
+      note "$SIG_UNSIGNED mounted package(s) run on an approval not signed with $SIG_KEY."
+      note "Open the console → Plugins → Sign approved entries (a fresh code). Waiting up to 20 minutes…"
+      DEADLINE=$(( $(date +%s) + 1200 ))
+      while [[ "$SIG_UNSIGNED" != "0" ]]; do
+        (( $(date +%s) >= DEADLINE )) && stop "$SIG_UNSIGNED mounted package(s) still run on unsigned approvals." \
+          "Sign them in the console (Plugins → Sign approved entries), then run this command again:" \
+          "it finds nothing to apply or push and checks the signatures again."
+        printf '   … %s unsigned, waiting\r' "$SIG_UNSIGNED"
+        sleep 15
+        IFS='|' read -r SIG_MODE SIG_KEY SIG_UNSIGNED <<<"$(signatures)"
+      done
+      printf '\n'
+    fi
+    ok "every mounted package runs on an approval signed with $SIG_KEY ($SIG_MODE)"
+    SIG_RESULT="all signed, $SIG_KEY ($SIG_MODE)"
+  fi
 fi
 
 # --- 10. summary ----------------------------------------------------------------
@@ -436,6 +473,7 @@ printf '  Pushed:      %s\n' "$PUSHED"
 printf '  Live commit: %s (was %s)\n' "${LIVE_COMMIT:0:7}" "${BEFORE_COMMIT:0:7}"
 printf '  Health:      ok, no schema gaps\n'
 printf '  Unknown API: JSON 404\n'
+printf '  Signatures:  %s\n' "${SIG_RESULT:-not checked}"
 printf '  CLI link:    dev (%s)\n' "$(linked_ref)"
 if [[ "$TARGET" == "prod" && $DRY_RUN -eq 0 ]]; then
   printf '\n\033[1mNow:\033[0m search the production Vercel logs for  [civic-error:descriptor.\n'

@@ -90,7 +90,7 @@ import {
   withDerivedCode,
   type ControlHub,
 } from "./hubs.js";
-import { approveEntry, catalogView, CatalogStateError, withdrawEntry } from "./pluginCatalog.js";
+import { approveEntry, catalogView, CatalogStateError, signApprovedEntries, withdrawEntry } from "./pluginCatalog.js";
 
 const COOKIE = "civic_console";
 const CSRF_HEADER = "x-civic-console";
@@ -689,7 +689,22 @@ export function controlRouter(): Router {
       action: "plugin.approve",
       hubId: null,
       before: { id: before.id, status: before.status },
-      after: { id: after.id, package: after.package, version: after.version, hash: after.hash, status: after.status },
+      after: { id: after.id, package: after.package, version: after.version, hash: after.hash, status: after.status, signature_key: after.signature_key },
+    });
+    res.json(await catalogView());
+  }));
+
+  // Signing the entries approved before signatures (and every entry again
+  // after the key is rotated): a fresh code, and an audit row listing them.
+  r.post("/control/plugins/sign", route(async (req, res) => {
+    if (!(await stepUp(req, res))) return;
+    const { key, signed } = await catalogChange(() => signApprovedEntries());
+    await audited(res, {
+      actor: actor(res),
+      action: "plugin.sign",
+      hubId: null,
+      before: null,
+      after: { key, entries: signed },
     });
     res.json(await catalogView());
   }));

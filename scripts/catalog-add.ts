@@ -13,9 +13,10 @@
 //      one plugin_catalog row, status 'pending', with the hash, the grant the
 //      manifest declares and the conformance result. On red, writes nothing.
 //
-// The row reaches each environment with its migrations (before the code, as
-// every release does) and waits there for the operator to approve it in the
-// console. Until then the loader does not mount the package on that
+// The row is unsigned: the console signs it with that deployment's catalog key
+// when the operator approves it (ADR-015). It reaches each environment with
+// its migrations (before the code, as every release does) and waits there for
+// the operator to approve it in the console. Until then the loader does not mount the package on that
 // deployment. On the local stack and in CI, scripts/catalog-approve-local.ts
 // approves it.
 

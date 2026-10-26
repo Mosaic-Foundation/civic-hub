@@ -278,6 +278,7 @@ export const api = {
     request<PluginCatalog>("POST", `/plugins/${encodeURIComponent(id)}/approve`, extra),
   withdrawPlugin: (id: string, extra: Record<string, unknown>) =>
     request<PluginCatalog>("POST", `/plugins/${encodeURIComponent(id)}/withdraw`, extra),
+  signPlugins: (extra: Record<string, unknown>) => request<PluginCatalog>("POST", "/plugins/sign", extra),
   updateFeedback: (id: string, patch: { status?: FeedbackStatus; github_issue_url?: string | null }) =>
     request<{ item: FeedbackItem; sender_told?: { sent: boolean; reason?: string } }>(
       "PATCH",
@@ -349,6 +350,10 @@ export interface PluginCatalogEntry {
   /** This deployment loads exactly this version and these files. */
   matches_deployment: boolean;
   grant: { can: string[]; cannot: string[] };
+  /** The key that signed its approval, and whether that signature verifies here (ADR-015). */
+  signature_key: string | null;
+  signed_at: string | null;
+  signed: boolean;
 }
 
 export interface PluginVerdict {
@@ -359,9 +364,18 @@ export interface PluginVerdict {
   hash: string | null;
   mounted: boolean;
   reason?: string;
+  signed?: boolean;
 }
 
 export interface PluginCatalog {
   entries: PluginCatalogEntry[];
   deployment: PluginVerdict[];
+  /** Signed approvals on this deployment (ADR-015). */
+  signing: {
+    mode: "transition" | "required";
+    key: { id: string; public_key: string } | null;
+    problem: string | null;
+    /** Approved entries not signed by this deployment's key. */
+    unsigned: number;
+  };
 }

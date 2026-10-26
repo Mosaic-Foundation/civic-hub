@@ -25,6 +25,14 @@
 // Each unmounted package is reported once per server (`plugin.unmounted`),
 // listed by /health (which stays "ok") and shown on the console's dashboard.
 //
+// SIGNATURES (plugin session 2, ADR-015; src/plugins/signature.ts). The row
+// that matches must also carry the console's signature over (package,
+// version, hash, grant), made with this deployment's catalog key. While the
+// shipped rows are being signed (CIVIC_CATALOG_SIGNATURES=transition, the
+// default) a signed row must verify and an unsigned one still mounts on its
+// hash; once signatures are required, a row without a valid signature is
+// unapproved, and a deployment without a key mounts nothing.
+//
 // The files are hashed once per server; the approved rows are read again
 // after CATALOG_TTL_MS, so an approval in the console reaches every server
 // within a minute.
@@ -41,6 +49,7 @@ import { beyondGrant } from "../shared/pluginGrant.js";
 import { readApprovedCatalog, type CatalogRow } from "../db/pluginCatalog.js";
 import { reportError } from "../utils/reportError.js";
 import { pluginsUnverifiedEnabled } from "../config/devFlags.js";
+import { deploymentKeys, signatureVerifies, type CatalogKeys } from "./signature.js";
 
 /** Why a configured package was refused at startup. */
 export class PackageError extends Error {
@@ -148,6 +157,8 @@ export interface PackageVerdict {
   /** For a mounted package: when its catalog row was approved, and its conformance run. */
   approvedAt?: string;
   checkedAt?: string;
+  /** Its approval's signature verified against this deployment's catalog keys. */
+  signed?: boolean;
 }
 
 const CATALOG_TTL_MS = 60_000;
@@ -181,8 +192,13 @@ function hashesNow(): Map<string, string | Error> {
   return hashes;
 }
 
-/** The verdict for one package against the approved rows (pure; exported for tests). */
-export function judge(p: Pick<LoadedPackage, "pkg" | "type" | "plugin">, hash: string | Error, approved: readonly CatalogRow[]): PackageVerdict {
+/** The verdict for one package against the approved rows and the catalog keys (pure; exported for tests). */
+export function judge(
+  p: Pick<LoadedPackage, "pkg" | "type" | "plugin">,
+  hash: string | Error,
+  approved: readonly CatalogRow[],
+  keys: CatalogKeys = deploymentKeys(),
+): PackageVerdict {
   const base = { package: p.pkg.name, version: p.pkg.version, type: p.type, plugin: p.plugin };
   if (hash instanceof Error) {
     return { ...base, hash: null, mounted: false, reason: `its files could not be read to check them (${hash.message})` };
@@ -204,7 +220,18 @@ export function judge(p: Pick<LoadedPackage, "pkg" | "type" | "plugin">, hash: s
   if (beyond.length > 0) {
     return { ...base, hash, mounted: false, reason: `it asks for more than its approved grant: ${beyond.join(", ")}` };
   }
-  return { ...base, hash, mounted: true, approvedAt: row.approved_at ?? undefined, checkedAt: row.conformance.ran_at };
+  const signed = signatureVerifies(row, keys.trusted);
+  const unsigned = (reason: string): PackageVerdict => ({ ...base, hash, mounted: false, signed: false, reason });
+  if (keys.mode === "required") {
+    if (keys.trusted.size === 0) {
+      return unsigned(`signatures are required and this deployment has no catalog key (CIVIC_CATALOG_SIGNING_KEY${keys.problem ? `: ${keys.problem}` : " is not set"})`);
+    }
+    if (!row.signature) return unsigned("its approval is not signed; sign it in the console (Plugins: Sign approved entries)");
+    if (!signed) return unsigned("its approval's signature does not verify against this deployment's catalog keys");
+  } else if (row.signature && keys.trusted.size > 0 && !signed) {
+    return unsigned("its approval's signature does not verify against this deployment's catalog keys");
+  }
+  return { ...base, hash, mounted: true, signed, approvedAt: row.approved_at ?? undefined, checkedAt: row.conformance.ran_at };
 }
 
 async function refresh(): Promise<void> {

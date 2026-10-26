@@ -6,6 +6,12 @@
 // it would after the operator approved it in the console. The loader's rule is
 // not relaxed: only the approver differs, and only on a local database.
 //
+// It signs as the console does (ADR-015): every approved row not signed by the
+// key in CIVIC_CATALOG_SIGNING_KEY, or by the committed test key
+// (tests/fixtures/catalog/test-signing-key.pem) when that is unset. A server
+// started with the same key and CIVIC_CATALOG_SIGNATURES=required mounts the
+// packages on these signatures, as CI's do.
+//
 // Refuses any database that is not on 127.0.0.1 or localhost
 // (CIVIC_TEST_DATABASE_URL, default the Supabase CLI's local stack). Run by
 // scripts/local-stack.sh (start, reset) and by CI after the migrations.
@@ -15,6 +21,8 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { hashPackage } from "../src/plugins/hash.js";
+import { parseSigningKey, signRow } from "../src/plugins/signature.js";
+import type { PluginCapabilities } from "../src/shared/pluginGrant.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DB_URL = process.env.CIVIC_TEST_DATABASE_URL?.trim() || "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
@@ -51,6 +59,18 @@ async function main(): Promise<void> {
       );
       approved += r.rowCount ?? 0;
     }
+    const key = parseSigningKey(
+      process.env.CIVIC_CATALOG_SIGNING_KEY?.trim() || readFileSync(join(ROOT, "tests/fixtures/catalog/test-signing-key.pem"), "utf8"),
+      false,
+    );
+    const unsigned = await client.query<{ id: string; package: string; version: string; hash: string; capabilities: PluginCapabilities }>(
+      "SELECT id, package, version, hash, capabilities FROM plugin_catalog WHERE status = 'approved' AND signature_key IS DISTINCT FROM $1",
+      [key.id],
+    );
+    for (const row of unsigned.rows) {
+      const sig = signRow(row, key);
+      await client.query("UPDATE plugin_catalog SET signature = $2, signature_key = $3, signed_at = now() WHERE id = $1", [row.id, sig.signature, sig.signature_key]);
+    }
     const missing = [];
     for (const p of here) {
       const r = await client.query(
@@ -60,7 +80,7 @@ async function main(): Promise<void> {
       if (r.rowCount === 0) missing.push(`${p.package}@${p.version}`);
     }
     console.log(
-      `catalog-approve-local: ${approved} approved; ${here.length - missing.length} of ${here.length} packages have an approved entry` +
+      `catalog-approve-local: ${approved} approved, ${unsigned.rowCount ?? 0} signed (${key.id}); ${here.length - missing.length} of ${here.length} packages have an approved entry` +
         (missing.length ? `; not mounted until \`npm run catalog:add\` writes theirs: ${missing.join(", ")}` : ""),
     );
   } finally {

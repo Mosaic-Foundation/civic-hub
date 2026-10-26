@@ -9,7 +9,10 @@
 //     audited; a withdrawn package stops being mounted, and a hub never sees a
 //     package the catalog has not approved;
 //   - /health lists what is not mounted and stays ok; civic.json lists the
-//     installed packages with their versions.
+//     installed packages with their versions;
+//   - signed approvals (plugin session 2, ADR-015): a row whose signature is
+//     missing or does not verify is unapproved once signatures are required,
+//     and "Sign approved entries" signs it again, behind a fresh code, audited.
 // On a hub the console creates for this file (archived in afterAll). Local
 // stack only (pg for the install records). Needs a server (CIVIC_API_BASE)
 // with CIVIC_FAKE_ADAPTERS on.
@@ -190,9 +193,15 @@ describe("a hub's plugin packages", () => {
   it("civic.json lists the installed packages with their versions", async () => {
     const civic = await call("GET", "/.well-known/civic.json", HOST);
     expect(civic.status).toBe(200);
-    const listed = civic.body.plugins as Array<{ package: string; version: string; type: string }>;
+    const listed = civic.body.plugins as Array<{ package: string; version: string; type: string; signed: boolean }>;
     expect(listed.length).toBeGreaterThanOrEqual(9);
-    expect(listed).toContainEqual({ package: WORDCLOUD, version: "0.1.0", type: "civic.wordcloud" });
+    expect(listed).toContainEqual(expect.objectContaining({ package: WORDCLOUD, version: "0.1.0", type: "civic.wordcloud" }));
+    // Signed approvals (ADR-015): with a catalog key, every package listed runs on a verified signature.
+    const health = await call("GET", "/health", HOST);
+    if (health.body.plugins.signatures.key) {
+      expect(listed.every((p) => p.signed === true), JSON.stringify(listed)).toBe(true);
+      expect(health.body.plugins.signatures.unsigned).toBe(0);
+    }
   });
 });
 
@@ -252,3 +261,70 @@ describe("the console's catalog", () => {
     expect(actions).toEqual(expect.arrayContaining(["plugin.withdraw", "plugin.approve"]));
   });
 });
+// Signed approvals (plugin session 2, ADR-015). Needs a server with a catalog
+// key and CIVIC_CATALOG_SIGNATURES=required, as CI runs it; skipped otherwise.
+describe("signed approvals", () => {
+  async function signing() {
+    return (await call("GET", "/health", HOST)).body.plugins.signatures as { mode: string; key: string | null; unsigned: number };
+  }
+  async function wordcloudRow() {
+    return (
+      await db.query<{ id: string; signature: string | null; signature_key: string | null; signed_at: string | null }>(
+        "SELECT id, signature, signature_key, signed_at FROM plugin_catalog WHERE package = $1 AND status = 'approved' ORDER BY approved_at DESC LIMIT 1",
+        [WORDCLOUD],
+      )
+    ).rows[0];
+  }
+  async function wordcloudVerdict() {
+    const view = await consoleCall("GET", "/control/plugins", { cookie });
+    expect(view.status, JSON.stringify(view.body)).toBe(200);
+    return { view: view.body, verdict: view.body.deployment.find((v: { package: string }) => v.package === WORDCLOUD) };
+  }
+
+  it("a row whose signature is missing or does not verify is unapproved; Sign approved entries signs it again, with a fresh code, audited", async (ctx) => {
+    const sig = await signing();
+    if (sig.mode !== "required" || !sig.key) ctx.skip();
+    const row = await wordcloudRow();
+    expect(row.signature_key).toBe(sig.key);
+    try {
+      // A signature that is not the console's: the right key id, the wrong bytes.
+      const forged = Buffer.from(row.signature!, "base64");
+      forged[0] ^= 0xff;
+      await db.query("UPDATE plugin_catalog SET signature = $2 WHERE id = $1", [row.id, forged.toString("base64")]);
+      let { verdict, view } = await wordcloudVerdict();
+      expect(verdict.mounted).toBe(false);
+      expect(verdict.reason).toContain("does not verify");
+      expect(view.signing.unsigned).toBeGreaterThanOrEqual(1);
+      expect((await one("wordcloud")).state).toBe("unavailable");
+
+      // No signature at all, as a row a migration approved would have.
+      await db.query("UPDATE plugin_catalog SET signature = NULL, signature_key = NULL, signed_at = NULL WHERE id = $1", [row.id]);
+      ({ verdict } = await wordcloudVerdict());
+      expect(verdict.mounted).toBe(false);
+      expect(verdict.reason).toContain("not signed");
+
+      const noCode = await consoleCall("POST", "/control/plugins/sign", { cookie, body: {} });
+      expect(noCode.status).toBe(403);
+      const signed = await consoleCall("POST", "/control/plugins/sign", { cookie, body: { step_up_code: await stepCode() } });
+      expect(signed.status, JSON.stringify(signed.body)).toBe(200);
+      expect(signed.body.signing.unsigned).toBe(0);
+      expect(signed.body.deployment.find((v: { package: string }) => v.package === WORDCLOUD)).toMatchObject({ mounted: true, signed: true });
+      expect((await wordcloudRow()).signature_key).toBe(sig.key);
+      expect((await one("wordcloud")).state).toBe("installed");
+      const audit = await consoleCall("GET", "/control/audit", { cookie });
+      const entries = (audit.body.entries ?? audit.body.rows ?? audit.body) as Array<{ action: string; after: { entries?: Array<{ package: string }> } }>;
+      const signRow = entries.find((r) => r.action === "plugin.sign");
+      expect(signRow?.after.entries?.map((e) => e.package)).toContain(WORDCLOUD);
+    } finally {
+      // Whatever happened above, leave the row as it was, signed by the console.
+      await db.query("UPDATE plugin_catalog SET signature = $2, signature_key = $3, signed_at = $4 WHERE id = $1", [
+        row.id,
+        row.signature,
+        row.signature_key,
+        row.signed_at,
+      ]);
+      await consoleCall("GET", "/control/plugins", { cookie });
+    }
+  });
+});
+

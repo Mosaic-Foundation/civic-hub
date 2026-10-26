@@ -12,6 +12,9 @@ import { judge, loadPackages, loadedPackages } from "../../src/plugins/loader.js
 import { hashPackage } from "../../src/plugins/hash.js";
 import type { CatalogRow } from "../../src/db/pluginCatalog.js";
 import type { ConfiguredPackage, PluginPackage } from "../../src/plugins/package.js";
+import { readFileSync } from "node:fs";
+import { generateKeyPairSync } from "node:crypto";
+import { catalogKeys, parseSigningKey, signRow, TEST_KEY_PUBLIC } from "../../src/plugins/signature.js";
 
 const real = loadedPackages().find((p) => p.pkg.name === "@civic-social/plugin-wordcloud")!;
 
@@ -53,6 +56,8 @@ describe("package validation at startup", () => {
 });
 
 describe("what is mounted", () => {
+  // Hash and grant alone (signatures have their own cases below), whatever this process's settings say.
+  const hashOnly = catalogKeys({ mode: "transition", production: false });
   const hash = "sha256:" + "a".repeat(64);
   const row = (over: Partial<CatalogRow> = {}): CatalogRow => ({
     id: "c1",
@@ -70,21 +75,24 @@ describe("what is mounted", () => {
     withdrawn_at: null,
     notes: null,
     created_at: "2026-10-25T00:00:00Z",
+    signature: null,
+    signature_key: null,
+    signed_at: null,
     ...over,
   });
 
   it("mounts a package whose files match an approved row", () => {
-    expect(judge(real, hash, [row()])).toMatchObject({ mounted: true, hash });
+    expect(judge(real, hash, [row()], hashOnly)).toMatchObject({ mounted: true, hash });
   });
 
   it("does not mount a package with no approved row for its version", () => {
-    const v = judge(real, hash, [row({ version: "9.9.9" })]);
+    const v = judge(real, hash, [row({ version: "9.9.9" })], hashOnly);
     expect(v.mounted).toBe(false);
     expect(v.reason).toContain("no approved catalog entry for this version");
   });
 
   it("does not mount a package whose code changed after its approval", () => {
-    const v = judge(real, "sha256:" + "b".repeat(64), [row()]);
+    const v = judge(real, "sha256:" + "b".repeat(64), [row()], hashOnly);
     expect(v.mounted).toBe(false);
     expect(v.reason).toContain("its files changed since this version was approved");
   });
@@ -92,13 +100,107 @@ describe("what is mounted", () => {
   it("does not mount a package that asks for more than its approved grant", () => {
     const caps = real.pkg.manifest.capabilities;
     const narrower = { ...caps, state: { ...caps.state, tables: [] } };
-    const v = judge(real, hash, [row({ capabilities: narrower })]);
+    const v = judge(real, hash, [row({ capabilities: narrower })], hashOnly);
     expect(v.mounted).toBe(false);
     expect(v.reason).toBe("it asks for more than its approved grant: table wordcloud_submissions");
   });
 
   it("does not mount a package whose files could not be read", () => {
-    expect(judge(real, new Error("ENOENT"), [row()])).toMatchObject({ mounted: false });
+    expect(judge(real, new Error("ENOENT"), [row()], hashOnly)).toMatchObject({ mounted: false });
+  });
+});
+
+describe("signed approvals (plugin session 2, ADR-015)", () => {
+  const hash = "sha256:" + "c".repeat(64);
+  const TEST_PEM = readFileSync("tests/fixtures/catalog/test-signing-key.pem", "utf8");
+  const otherPem = generateKeyPairSync("ed25519").privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+  const base: CatalogRow = {
+    id: "c1",
+    package: real.pkg.name,
+    version: real.pkg.version,
+    hash,
+    display_name: real.pkg.displayName,
+    plugin: real.plugin,
+    process_type: real.type,
+    capabilities: real.pkg.manifest.capabilities,
+    conformance: { result: "passed", ran_at: "2026-10-25T00:00:00Z" },
+    status: "approved",
+    approved_by: "operator@example.test",
+    approved_at: "2026-10-25T00:00:00Z",
+    withdrawn_at: null,
+    notes: null,
+    created_at: "2026-10-25T00:00:00Z",
+    signature: null,
+    signature_key: null,
+    signed_at: null,
+  };
+  const signedBy = (pem: string, over: Partial<CatalogRow> = {}): CatalogRow => {
+    const row = { ...base, ...over };
+    return { ...row, ...signRow(row, parseSigningKey(pem, false)), signed_at: "2026-10-26T00:00:00Z" };
+  };
+  const keys = (mode: string, key?: string, trusted?: string) => catalogKeys({ mode, key, trusted, production: false });
+
+  it("transition, no key on this deployment: hash-only, signed or not", () => {
+    expect(judge(real, hash, [base], keys("transition"))).toMatchObject({ mounted: true, signed: false });
+    expect(judge(real, hash, [signedBy(TEST_PEM)], keys("transition"))).toMatchObject({ mounted: true, signed: false });
+  });
+
+  it("transition, with the key: a signed row must verify; an unsigned one still mounts on its hash", () => {
+    const k = keys("transition", TEST_PEM);
+    expect(judge(real, hash, [signedBy(TEST_PEM)], k)).toMatchObject({ mounted: true, signed: true });
+    expect(judge(real, hash, [base], k)).toMatchObject({ mounted: true, signed: false });
+    const forged = { ...signedBy(otherPem), signature_key: signedBy(TEST_PEM).signature_key };
+    expect(judge(real, hash, [forged], k)).toMatchObject({ mounted: false, reason: expect.stringContaining("does not verify") });
+  });
+
+  it("required: a row without a valid signature is unapproved", () => {
+    const k = keys("required", TEST_PEM);
+    expect(judge(real, hash, [signedBy(TEST_PEM)], k)).toMatchObject({ mounted: true, signed: true });
+    expect(judge(real, hash, [base], k)).toMatchObject({ mounted: false, reason: expect.stringContaining("not signed") });
+    // Anything signed changed afterwards: the grant widened, the hash swapped.
+    const widened = { ...signedBy(TEST_PEM), capabilities: { ...base.capabilities, adapters: ["ai" as const] } };
+    expect(judge(real, hash, [widened], k).mounted).toBe(false);
+    const otherHash = "sha256:" + "d".repeat(64);
+    const swapped = { ...signedBy(TEST_PEM), hash: otherHash };
+    expect(judge(real, otherHash, [swapped], k)).toMatchObject({ mounted: false, reason: expect.stringContaining("does not verify") });
+    // Signed by a key this deployment does not trust.
+    expect(judge(real, hash, [signedBy(otherPem)], k).mounted).toBe(false);
+  });
+
+  it("required, no key on this deployment: nothing mounts, and it says which setting", () => {
+    const v = judge(real, hash, [signedBy(TEST_PEM)], keys("required"));
+    expect(v.mounted).toBe(false);
+    expect(v.reason).toContain("CIVIC_CATALOG_SIGNING_KEY");
+    // An unknown mode is read as required.
+    expect(catalogKeys({ mode: "sometimes", production: false }).mode).toBe("required");
+  });
+
+  it("a tampered package is not mounted, whatever its row's signature", () => {
+    const v = judge(real, "sha256:" + "e".repeat(64), [signedBy(TEST_PEM)], keys("required", TEST_PEM));
+    expect(v.mounted).toBe(false);
+    expect(v.reason).toContain("its files changed since this version was approved");
+  });
+
+  it("rotation: a retired key's signatures verify while it is trusted, and not after", () => {
+    const retired = parseSigningKey(TEST_PEM, false);
+    const row = signedBy(TEST_PEM);
+    expect(judge(real, hash, [row], keys("required", otherPem, retired.publicKey)).mounted).toBe(true);
+    expect(judge(real, hash, [row], keys("required", otherPem)).mounted).toBe(false);
+  });
+
+  it("the committed test key is refused on a deployment", () => {
+    expect(parseSigningKey(TEST_PEM, false).publicKey).toBe(TEST_KEY_PUBLIC);
+    expect(() => parseSigningKey(TEST_PEM, true)).toThrow("the committed test key");
+    const onDeployment = catalogKeys({ mode: "required", key: TEST_PEM, trusted: TEST_KEY_PUBLIC, production: true });
+    expect(onDeployment.signing).toBeNull();
+    expect(onDeployment.trusted.size).toBe(0);
+    expect(onDeployment.problem).toContain("the committed test key");
+  });
+
+  it("a key id names the key; a base64 PEM reads as the PEM", () => {
+    const k = parseSigningKey(TEST_PEM, false);
+    expect(k.id).toMatch(/^ed25519:[0-9a-f]{16}$/);
+    expect(parseSigningKey(Buffer.from(TEST_PEM).toString("base64"), false).id).toBe(k.id);
   });
 });
 

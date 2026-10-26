@@ -26,10 +26,14 @@ export interface CatalogRow {
   withdrawn_at: string | null;
   notes: string | null;
   created_at: string;
+  /** The console's signature over (package, version, hash, grant), and the key's id (ADR-015). */
+  signature: string | null;
+  signature_key: string | null;
+  signed_at: string | null;
 }
 
 const COLUMNS =
-  "id, package, version, hash, display_name, plugin, process_type, capabilities, conformance, status, approved_by, approved_at, withdrawn_at, notes, created_at";
+  "id, package, version, hash, display_name, plugin, process_type, capabilities, conformance, status, approved_by, approved_at, withdrawn_at, notes, created_at, signature, signature_key, signed_at";
 
 /** Every approved row. */
 export async function readApprovedCatalog(): Promise<CatalogRow[]> {
@@ -67,10 +71,19 @@ export async function setCatalogStatus(
   to: "approved" | "withdrawn",
   by: string,
   notes?: string | null,
+  /** An approval's signature (the console signs as it approves), or null for none. */
+  signed?: { signature: string; signature_key: string } | null,
 ): Promise<CatalogRow | null> {
   const now = new Date().toISOString();
   const patch: Record<string, unknown> =
-    to === "approved" ? { status: "approved", approved_by: by, approved_at: now } : { status: "withdrawn", withdrawn_at: now };
+    to === "approved"
+      ? {
+          status: "approved",
+          approved_by: by,
+          approved_at: now,
+          ...(signed ? { ...signed, signed_at: now } : { signature: null, signature_key: null, signed_at: null }),
+        }
+      : { status: "withdrawn", withdrawn_at: now };
   if (notes !== undefined) patch.notes = notes;
   const { data, error } = await getDb()
     .from("plugin_catalog")
@@ -81,4 +94,27 @@ export async function setCatalogStatus(
     .maybeSingle();
   if (error) throw new Error(`plugin_catalog: ${error.message}`);
   return (data as CatalogRow | null) ?? null;
+}
+
+/**
+ * Record a signature on an approved row ("Sign approved entries"): only while
+ * it is approved and still has the fields that were signed, so a row changed
+ * in between is not signed.
+ */
+export async function setCatalogSignature(
+  row: Pick<CatalogRow, "id" | "hash" | "version" | "package">,
+  signed: { signature: string; signature_key: string },
+): Promise<boolean> {
+  const { data, error } = await getDb()
+    .from("plugin_catalog")
+    .update({ ...signed, signed_at: new Date().toISOString() })
+    .eq("id", row.id)
+    .eq("status", "approved")
+    .eq("hash", row.hash)
+    .eq("version", row.version)
+    .eq("package", row.package)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(`plugin_catalog: ${error.message}`);
+  return Boolean(data);
 }

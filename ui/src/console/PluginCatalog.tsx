@@ -4,6 +4,10 @@
 // deployment run exactly those files (their hash); withdrawing stops it
 // within a minute. Both take a fresh code and are audited.
 //
+// Approving signs the entry with this deployment's catalog key (ADR-015).
+// "Sign approved entries" signs the ones approved before signatures, and all
+// of them again after the key is rotated.
+//
 // Below, what this deployment loads and whether each package is mounted:
 // a package whose files no approved entry records is not mounted, and its
 // hubs are without it until an entry is approved.
@@ -35,6 +39,19 @@ export default function PluginCatalogPage() {
   }, []);
   useEffect(load, [load]);
 
+  async function signAll() {
+    setBusy("sign");
+    setError(null);
+    try {
+      const next = await withStepUp("Signing the approved entries", (extra) => api.signPlugins(extra));
+      if (next) setData(next);
+    } catch (e) {
+      setError(e instanceof ApiError || e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function act(entry: PluginCatalogEntry, kind: "approve" | "withdraw") {
     setBusy(entry.id);
     setError(null);
@@ -63,6 +80,43 @@ export default function PluginCatalogPage() {
       {!data && !error && <p className="cx-muted">Loading…</p>}
       {data && (
         <>
+          <section className="cx-card" aria-label="Signatures">
+            <h2 className="cx-h2">Signatures</h2>
+            <p className="cx-small">
+              {data.signing.key ? (
+                <>
+                  Approvals are signed with this deployment&rsquo;s catalog key{" "}
+                  <span className="cx-mono">{data.signing.key.id}</span>.{" "}
+                </>
+              ) : (
+                <>This deployment has no catalog key, so approvals are not signed. </>
+              )}
+              {data.signing.mode === "required"
+                ? "A plugin runs only on a signed approval."
+                : "Until signatures are required, an approved entry without one still runs on its fingerprint."}
+            </p>
+            {data.signing.problem && <p className="cx-alert cx-alert-error" role="alert">{data.signing.problem}</p>}
+            {data.signing.key && (
+              <>
+                <p className="cx-small" data-testid="catalog-unsigned">
+                  {data.signing.unsigned === 0
+                    ? "Every approved entry is signed with this key."
+                    : `${data.signing.unsigned} approved ${data.signing.unsigned === 1 ? "entry is" : "entries are"} not signed with this key.`}
+                </p>
+                {data.signing.unsigned > 0 && (
+                  <div className="cx-actions">
+                    <button type="button" className="cx-btn cx-btn-primary" disabled={busy !== null} onClick={signAll}>
+                      Sign approved entries
+                    </button>
+                  </div>
+                )}
+                <details>
+                  <summary className="cx-small">Public key</summary>
+                  <p className="cx-small cx-muted cx-mono cx-break">{data.signing.key.public_key}</p>
+                </details>
+              </>
+            )}
+          </section>
           <section className="cx-card" aria-label="Catalog entries">
             <h2 className="cx-h2">Catalog</h2>
             {data.entries.length === 0 && <p className="cx-muted">No entries yet.</p>}
@@ -78,6 +132,7 @@ export default function PluginCatalogPage() {
                     Passed the conformance checks on {when(e.conformance.ran_at)}
                     {e.conformance.commit ? <> (<span className="cx-mono">{e.conformance.commit}</span>)</> : null}.
                     {e.approved_at && <> Approved by {e.approved_by} on {when(e.approved_at)}.</>}
+                    {e.status === "approved" && (e.signed ? <> Signed ({e.signature_key}).</> : <> Not signed with this deployment&rsquo;s key.</>)}
                     {e.withdrawn_at && <> Withdrawn on {when(e.withdrawn_at)}.</>}
                   </p>
                   <details>

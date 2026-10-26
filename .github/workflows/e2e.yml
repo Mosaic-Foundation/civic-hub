@@ -72,6 +72,15 @@ jobs:
       - name: Approve the checkout's catalog entries (local operator)
         run: npx tsx scripts/catalog-approve-local.ts
 
+      # Signed approvals (ADR-015): the committed test key (every deployment
+      # refuses it), with signatures required, so this run proves the servers
+      # mount the catalog on the local operator's signatures (made with the
+      # same key by the step above) and nothing unsigned.
+      - name: Catalog test key, signatures required
+        run: |
+          echo "CIVIC_CATALOG_SIGNING_KEY=$(base64 < tests/fixtures/catalog/test-signing-key.pem | tr -d '\n')" >> "$GITHUB_ENV"
+          echo "CIVIC_CATALOG_SIGNATURES=required" >> "$GITHUB_ENV"
+
       # The UI calls /api on its own origin, as on Vercel; `vite preview`
       # proxies it to the API with the Host kept (ui/vite.config.ts) and serves
       # the production security headers, so the pages run under the real CSP.

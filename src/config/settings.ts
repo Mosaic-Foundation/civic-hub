@@ -51,6 +51,11 @@ export const SETTINGS = s({
   CIVIC_HUB_MINTED_TOKEN: { purpose: "On: hub queries run as `authenticated` under a minted hub token, so forced RLS is live.", type: "boolean", layer: "engine", default: "false" },
   CIVIC_HUB_SIGNING_KEY: { purpose: "The key hub tokens are signed with (PostgREST's JWT secret or a private JWK).", type: "secret", layer: "engine", required: { when: "CIVIC_HUB_MINTED_TOKEN" } },
 
+  // --- The plugin catalog's signatures (plugin session 2, ADR-015) -----------
+  CIVIC_CATALOG_SIGNING_KEY: { purpose: "The catalog signing key (an Ed25519 private key, PEM, or that PEM in base64): the console signs an approval with it, the loader verifies with its public half. One per deployment.", type: "secret", layer: "engine" },
+  CIVIC_CATALOG_TRUSTED_KEYS: { purpose: "Retired catalog keys still trusted while the approvals are signed again: comma-separated public keys (base64 DER, as the console shows them).", type: "string", layer: "engine" },
+  CIVIC_CATALOG_SIGNATURES: { purpose: "transition: an approved row without a signature still mounts on its hash, a signed one must verify; required: a row without a valid signature is unapproved.", type: "string", layer: "engine", default: "transition" },
+
   // --- Addresses -------------------------------------------------------------
   BASE_URL: { purpose: "The API's own origin outside a hub (scripts, local).", type: "url", layer: "engine", default: "http://localhost:3000" },
   CIVIC_UI_BASE_URL: { purpose: "The UI's origin when it differs from the API's (local preview, the start page's handoff).", type: "url", layer: "engine", default: "BASE_URL" },

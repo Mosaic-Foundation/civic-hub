@@ -257,6 +257,9 @@ refused in production (`src/config/devFlags.ts`).
 | `SUPABASE_PUBLISHABLE_KEY` | engine | string | no |  | The gateway's publishable key, sent with minted hub tokens. A bare PostgREST needs none. |
 | `CIVIC_HUB_MINTED_TOKEN` | engine | boolean | no | `false` | On: hub queries run as `authenticated` under a minted hub token, so forced RLS is live. |
 | `CIVIC_HUB_SIGNING_KEY` | engine | secret | when CIVIC_HUB_MINTED_TOKEN is on |  | The key hub tokens are signed with (PostgREST's JWT secret or a private JWK). |
+| `CIVIC_CATALOG_SIGNING_KEY` | engine | secret | no |  | The catalog signing key (an Ed25519 private key, PEM, or that PEM in base64): the console signs an approval with it, the loader verifies with its public half. One per deployment. |
+| `CIVIC_CATALOG_TRUSTED_KEYS` | engine | string | no |  | Retired catalog keys still trusted while the approvals are signed again: comma-separated public keys (base64 DER, as the console shows them). |
+| `CIVIC_CATALOG_SIGNATURES` | engine | string | no | `transition` | transition: an approved row without a signature still mounts on its hash, a signed one must verify; required: a row without a valid signature is unapproved. |
 | `BASE_URL` | engine | url | no | `http://localhost:3000` | The API's own origin outside a hub (scripts, local). |
 | `CIVIC_UI_BASE_URL` | engine | url | no | `BASE_URL` | The UI's origin when it differs from the API's (local preview, the start page's handoff). |
 | `CIVIC_ALLOWED_ORIGINS` | engine | urls | **in production** |  | Extra CORS origins, comma-separated. Unset outside production allows any origin. |

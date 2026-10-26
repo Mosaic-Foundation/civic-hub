@@ -7,9 +7,16 @@
 // an audit row); from then on every server of this deployment mounts the
 // package version whose files have exactly that hash, within a minute. A
 // withdrawn row stops mounting it the same way. Nothing is deleted.
+//
+// Signatures (plugin session 2, ADR-015): approving signs the row with this
+// deployment's catalog key (CIVIC_CATALOG_SIGNING_KEY) over (package,
+// version, hash, grant). "Sign approved entries" signs every approved row
+// not yet signed by the current key: the rows approved before signatures,
+// and every row again after the key is rotated.
 
 import { getDb } from "../db/client.js";
-import { readCatalog, readCatalogRow, setCatalogStatus, type CatalogRow } from "../db/pluginCatalog.js";
+import { readApprovedCatalog, readCatalog, readCatalogRow, setCatalogSignature, setCatalogStatus, type CatalogRow } from "../db/pluginCatalog.js";
+import { deploymentKeys, signatureVerifies, signRow, type SignatureMode } from "../plugins/signature.js";
 import { packageVerdicts, refreshPackages, type PackageVerdict } from "../plugins/loader.js";
 import { grantInPlainWords } from "../shared/pluginGrant.js";
 import { loadedPackages } from "../plugins/loader.js";
@@ -19,12 +26,31 @@ export interface CatalogEntryView extends CatalogRow {
   matches_deployment: boolean;
   /** The grant, as a hub's Install confirmation words it. */
   grant: { can: string[]; cannot: string[] };
+  /** Its signature verifies against this deployment's catalog keys. */
+  signed: boolean;
+}
+
+export interface SigningView {
+  mode: SignatureMode;
+  /** This deployment's catalog key: its id and public half (what CIVIC_CATALOG_TRUSTED_KEYS takes after a rotation). */
+  key: { id: string; public_key: string } | null;
+  /** Why the key setting could not be used, when it was set. */
+  problem: string | null;
+  /** Approved entries not signed by this key. */
+  unsigned: number;
 }
 
 export interface CatalogView {
   entries: CatalogEntryView[];
   /** What this deployment loads, and whether each is mounted (and why not). */
   deployment: PackageVerdict[];
+  signing: SigningView;
+}
+
+/** Approved rows not signed by the current key: what "Sign approved entries" would sign. */
+function needsSigning(row: CatalogRow): boolean {
+  const keys = deploymentKeys();
+  return row.status === "approved" && (!keys.signing || row.signature_key !== keys.signing.id || !signatureVerifies(row, keys.trusted));
 }
 
 function holdsOf(pkg: string): Record<string, string> {
@@ -44,12 +70,21 @@ function grantWords(row: CatalogRow): { can: string[]; cannot: string[] } {
 export async function catalogView(): Promise<CatalogView> {
   await refreshPackages();
   const deployment = packageVerdicts();
-  const entries = (await readCatalog()).map((row) => ({
+  const keys = deploymentKeys();
+  const rows = await readCatalog();
+  const entries = rows.map((row) => ({
     ...row,
     matches_deployment: deployment.some((v) => v.package === row.package && v.version === row.version && v.hash === row.hash),
     grant: grantWords(row),
+    signed: signatureVerifies(row, keys.trusted),
   }));
-  return { entries, deployment };
+  const signing: SigningView = {
+    mode: keys.mode,
+    key: keys.signing ? { id: keys.signing.id, public_key: keys.signing.publicKey } : null,
+    problem: keys.problem ?? null,
+    unsigned: rows.filter(needsSigning).length,
+  };
+  return { entries, deployment, signing };
 }
 
 export class CatalogStateError extends Error {}
@@ -59,10 +94,37 @@ export async function approveEntry(id: string, by: string, notes: string | null)
   const before = await readCatalogRow(id);
   if (!before) throw new CatalogStateError("No such catalog entry.");
   if (before.status === "approved") throw new CatalogStateError("This entry is already approved.");
-  const after = await setCatalogStatus(id, ["pending", "withdrawn"], "approved", by, notes);
+  const keys = deploymentKeys();
+  if (!keys.signing && keys.mode === "required") {
+    throw new CatalogStateError(
+      "This deployment has no catalog key (CIVIC_CATALOG_SIGNING_KEY) and signatures are required: an approval it cannot sign would mount nothing.",
+    );
+  }
+  const signed = keys.signing ? signRow(before, keys.signing) : null;
+  const after = await setCatalogStatus(id, ["pending", "withdrawn"], "approved", by, notes, signed);
   if (!after) throw new CatalogStateError("This entry changed while you were looking at it. Reload and try again.");
   await refreshPackages();
   return { before, after };
+}
+
+/**
+ * Sign every approved entry not yet signed by this deployment's key (the
+ * caller has checked the fresh code). Returns what it signed; an entry that
+ * changed while it was being signed is left for the next run.
+ */
+export async function signApprovedEntries(): Promise<{ key: string; signed: Array<Pick<CatalogRow, "id" | "package" | "version" | "hash">> }> {
+  const keys = deploymentKeys();
+  if (!keys.signing) {
+    throw new CatalogStateError(`This deployment has no catalog key to sign with (CIVIC_CATALOG_SIGNING_KEY${keys.problem ? `: ${keys.problem}` : " is not set"}).`);
+  }
+  const signed: Array<Pick<CatalogRow, "id" | "package" | "version" | "hash">> = [];
+  for (const row of (await readApprovedCatalog()).filter(needsSigning)) {
+    if (await setCatalogSignature(row, signRow(row, keys.signing))) {
+      signed.push({ id: row.id, package: row.package, version: row.version, hash: row.hash });
+    }
+  }
+  await refreshPackages();
+  return { key: keys.signing.id, signed };
 }
 
 /** Withdraw an approved entry: the deployment stops mounting that version. */
