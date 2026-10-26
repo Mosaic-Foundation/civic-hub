@@ -53,10 +53,17 @@ Adam to push), the contract `docs/PLUGIN-PACKAGE.md`. Reports:
 unchanged (diffs below). The shipped entries record this commit's package hashes: **a change to any package after it
 is a new catalog entry** (RUNBOOK-release.md). The Vercel function ships `packages/**` (`includeFiles`) so it can hash.
 
-**Verified (local, `b2fa4a0`):** unit 1,857; API 911 + 911 (service role, minted tokens); conformance 109 (Polis's
+**Verified (local, `b2fa4a0`):** unit 1,858; API 911 + 911 (service role, minted tokens); conformance 109 (Polis's
 Tier 3 walk included), three runs in a row; Playwright 184 as `e2e.yml` runs it; the wire 904 events identical (the
 same rows through `e92804c`'s serializer and this one); HTTP side by side 12,049 pairs, all identical but `/health`
-and `civic.json`'s new `plugins` fields. Details in TESTING.md. DEV_RESULTS
+and `civic.json`'s new `plugins` fields. Details in TESTING.md.
+
+**Dev:** released with `release.sh dev --yes`: `77e32ec` (the three migrations) and `3fa6f12`. CI (unit, API in both
+modes, run-anywhere), E2E and Smoke green on `3fa6f12`. Dev wire: 2,419 events identical before and after (9 written
+since). **Dev was without its process types from 03:10 to 03:14 UTC on 2026-10-26:** on `77e32ec` the loader hashed
+every file in a package's directory, and Vercel puts compiled `.js` and `.js.map` beside the sources, so no package
+matched its entry; `3fa6f12` hashes the files `plugins:sync` lists (the shipped entries still match) and logs any file
+beside them. The Smoke run on `77e32ec` failed for that reason.
 
 **Left / for the plan:** see ADR-014 "What is deliberately left"; session 2's first item is the summary move.
 

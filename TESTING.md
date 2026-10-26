@@ -143,7 +143,7 @@ the hash of its files; a reach past a package's grant is refused and reported (A
   version (vote, word cloud and conversation among them), and `/health`'s `plugins.unmounted` is empty.
 - **CI:** `Plugin lists current` (`plugins:sync --check`) in the unit job; the local operator's approval before the
   servers start in the API, E2E and run-anywhere jobs.
-- **Results, local (the Supabase stack, `b2fa4a0`):** unit **1,857 passed**; UI component 35; API service role
+- **Results, local (the Supabase stack, `b2fa4a0`):** unit **1,858 passed**; UI component 35; API service role
   **911 passed** and minted tokens **911 passed** (14 skipped each); on a freshly reset stack 910 and one
   `auditConcurrency` ballot test failing on "an invalid response was received from the upstream server" (the known
   gateway reset on a schema reload; it passes alone 2 times in 3, the ballot path is unchanged); Playwright as
