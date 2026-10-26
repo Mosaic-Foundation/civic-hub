@@ -2,7 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
+import { defineDescriptor, defineManifest } from "../../src/processes/manifest.js";
 
 /**
  * What a vote-results record is (src/processes/descriptor.ts). A legacy
@@ -84,3 +84,5 @@ export const VOTE_RESULTS_MANIFEST = defineManifest({
     ui: { surfaces: ["process-page", "feed-card"] },
   },
 });
+
+export default VOTE_RESULTS_MANIFEST;

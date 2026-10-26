@@ -2,13 +2,13 @@ import { describe, it, expect } from "vitest";
 import type {
   VoteResultsProcessState,
   VoteResultsPublicationStatus,
-} from "../../src/modules/civic.vote_results/models.js";
+} from "../../packages/civic.vote_results/models.js";
 import {
   canEdit,
   canApprove,
   isPublished,
   assertPublicationTransition,
-} from "../../src/modules/civic.vote_results/lifecycle.js";
+} from "../../packages/civic.vote_results/lifecycle.js";
 
 // The lifecycle predicates only read publication_status.
 function st(status: VoteResultsPublicationStatus): VoteResultsProcessState {

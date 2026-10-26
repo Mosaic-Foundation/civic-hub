@@ -1,13 +1,13 @@
 // civic.vote_results: the legacy published results of a vote
-// (manifest: src/modules/civic.vote_results/manifest.ts). Belongs to the vote plugin.
+// (manifest: ./manifest.ts). Belongs to the vote plugin.
 
-import { AdminVoteResults, VoteResults } from "../lazyPages";
-import hub from "../config/hub";
-import { getPublicVoteResults } from "../services/api";
-import { formatCount } from "./feedText";
-import type { ProcessUi } from "./types";
+import { AdminVoteResults, VoteResults } from "../../ui/src/lazyPages";
+import hub from "../../ui/src/config/hub";
+import { getPublicVoteResults } from "../../ui/src/services/api";
+import { formatCount } from "../../ui/src/processes/feedText";
+import type { ProcessUi } from "../../ui/src/processes/types";
 
-export const voteResultsUi: ProcessUi = {
+const voteResultsUi: ProcessUi = {
   type: "civic.vote_results",
   routes: [
     // Legacy vote-results admin (existing published vote briefs keep their
@@ -59,3 +59,5 @@ export const voteResultsUi: ProcessUi = {
     },
   },
 };
+
+export default voteResultsUi;

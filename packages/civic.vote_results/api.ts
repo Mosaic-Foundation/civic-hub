@@ -39,4 +39,4 @@ export {
 
 export { formatVoteResultsEmail, headlineFor } from "./email.js";
 
-// What this type is: its manifest, src/modules/civic.vote_results/manifest.ts.
+// What this type is: its manifest, ./manifest.ts.

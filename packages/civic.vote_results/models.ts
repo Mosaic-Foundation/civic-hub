@@ -18,7 +18,7 @@
 // the linked vote. The module itself has no knowledge of Express, the
 // process registry, Supabase, or nodemailer.
 
-import type { DeliveryReport, HeldBackRecipient } from "../../shared/delivery.js";
+import type { DeliveryReport, HeldBackRecipient } from "../../src/shared/delivery.js";
 
 export type VoteResultsPublicationStatus = "pending" | "approved" | "published";
 

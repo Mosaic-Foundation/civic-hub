@@ -22,10 +22,26 @@
 // (events are the source of truth) and is an accepted pilot-phase
 // limitation for the same reason as the executeAction race condition.
 
-import { ConflictError, NotFoundError, UnavailableError } from "../errors/index.js";
-import { route } from "../http/route.js";
-import { emitEvent } from "../events/eventEmitter.js";
-import { enrichCreator } from "../services/creatorDisplay.js";
+import {
+  ConflictError,
+  NotFoundError,
+  UnavailableError,
+  route,
+  emitEvent,
+  enrichCreator,
+  getBallotChoicesForProcess,
+  getAllProcesses,
+  getProcess,
+  saveProcessState,
+  getAuthUser,
+  sampleDeliverySuppressed,
+  getVoteResultsRecipients,
+  hubDisplayNameSync,
+  currentHubId,
+  uiBaseUrl,
+  extractUrls,
+  warmPreviewsInBackground,
+} from "../../src/sdk/index.js";
 import {
   approveVoteResults,
   editVoteResults,
@@ -34,28 +50,15 @@ import {
   type VoteResultsContentPatch,
   type VoteResultsProcessState,
   type VoteResultsPublicationStatus,
-} from "../modules/civic.vote_results/index.js";
+} from "./api.js";
 import {
   finalizeVote,
   getVotingMethod,
   DEFAULT_METHOD,
   type VoteProcessState,
-} from "../../packages/civic.vote/service.js";
-import { getBallotChoicesForProcess } from "../modules/civic.receipts/index.js";
-import {
-  getAllProcesses,
-  getProcess,
-  saveProcessState,
-} from "../services/processService.js";
-import { getAuthUser } from "../middleware/auth.js";
-import { sendEmail } from "../services/mailer.js";
-import { publishedMessage } from "../shared/delivery.js";
-import { sampleDeliverySuppressed } from "../services/sampleContent.js";
-import { getVoteResultsRecipients, hubDisplayNameSync } from "../services/hubSettings.js";
-import { currentHubId } from "../config/hubContext.js";
-import { uiBaseUrl } from "../utils/baseUrl.js";
-import { extractUrls } from "../modules/civic.link_preview/index.js";
-import { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
+} from "../civic.vote/service.js";
+import { voteResultsHost } from "./host.js";
+import { publishedMessage } from "../../src/shared/delivery.js";
 
 function voteResultsState(record: {
   state: Record<string, unknown>;
@@ -271,7 +274,7 @@ export const handleApproveVoteResults = route(async (req, res) => {
     hubLabel: hubDisplayNameSync(),
     publicVoteResultsUrl: publicVoteResultsUrl(record.id),
     // Sample results are never delivered (Phase 7).
-    sendEmail: record.isSample ? sampleDeliverySuppressed : sendEmail,
+    sendEmail: record.isSample ? sampleDeliverySuppressed : voteResultsHost.get().adapter("mail").deliver,
     finalizeLinkedVote,
   });
 

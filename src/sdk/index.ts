@@ -46,7 +46,12 @@ export { KEYS } from "../models/hubSettings.js";
 export { emitEvent, buildEvent } from "../events/eventEmitter.js";
 
 // --- The hub's services a package calls ----------------------------------------------
-export { getProcess, getSampleProcessIds } from "../services/processService.js";
+export {
+  getProcess,
+  getSampleProcessIds,
+  getAllProcesses,
+  saveProcessState,
+} from "../services/processService.js";
 export { readProcessState, writeProcessState } from "../services/processRows.js";
 
 // --- Storage helpers (over host.db()) ---------------------------------------------------
@@ -100,6 +105,8 @@ export {
   getSupportThreshold,
   defaultCheckModeSync,
   getSettingSync,
+  getVoteResultsRecipients,
+  hubDisplayNameSync,
 } from "../services/hubSettings.js";
 
 // --- The hub in scope (src/config/hubContext.ts) ---------------------------------------
@@ -134,3 +141,15 @@ export { validateLinkSet } from "../modules/civic.process_links/index.js";
 // draft kinds while the registry loads, and processEdits imports the process service.
 import type { applyEdit as applyEditNow } from "../services/processEdits.js";
 export const applyEdit: typeof applyEditNow = async (...args) => (await import("../services/processEdits.js")).applyEdit(...args);
+
+// --- src/services/sampleContent.ts -------------------------------------------------------
+export { sampleDeliverySuppressed } from "../services/sampleContent.js";
+
+// --- src/utils/baseUrl.ts ----------------------------------------------------------------
+export { uiBaseUrl } from "../utils/baseUrl.js";
+
+// --- src/modules/civic.link_preview/ -----------------------------------------------------
+export { extractUrls } from "../modules/civic.link_preview/index.js";
+
+// --- src/services/linkPreviewCache.ts ----------------------------------------------------
+export { warmPreviewsInBackground } from "../services/linkPreviewCache.js";

@@ -5,9 +5,8 @@
 // SendEmailFn in models.ts).
 
 import type { VoteResultsContent, VoteResultsProcessState } from "./models.js";
-import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
-import { getSettingSync } from "../../services/hubSettings.js";
-import { KEYS } from "../../models/hubSettings.js";
+import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
+import { getSettingSync, KEYS } from "../../src/sdk/index.js";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
 const hubNoun = (n: number): string =>

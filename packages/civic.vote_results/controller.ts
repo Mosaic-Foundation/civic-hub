@@ -5,13 +5,11 @@
 // Pending and approved (delivered-but-not-yet-public) records return
 // 404 so they stay invisible to the public until admin publishes.
 
-import { NotFoundError } from "../errors/index.js";
-import { route } from "../http/route.js";
-import { getProcess } from "../services/processService.js";
+import { NotFoundError, route, getProcess } from "../../src/sdk/index.js";
 import {
   getPublicReadModel,
   type VoteResultsProcessState,
-} from "../modules/civic.vote_results/index.js";
+} from "./api.js";
 
 export const handleGetVoteResults = route(async (req, res) => {
   const id = req.params.id as string;

@@ -1,0 +1,10 @@
+{
+  "name": "@civic-social/plugin-vote-results",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Vote results: the admin-reviewed results page a closed vote leaves. A Civic Hub plugin package (docs/PLUGIN-PACKAGE.md).",
+  "peerDependencies": {
+    "express": "^4.22.3"
+  }
+}

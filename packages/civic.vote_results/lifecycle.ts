@@ -15,7 +15,7 @@
 // Publication sub-state (pending | approved | published) mirrors the
 // admin workflow more finely than process status alone can.
 
-import { ConflictError } from "../../errors/index.js";
+import { ConflictError } from "../../src/sdk/index.js";
 import type { VoteResultsProcessState, VoteResultsPublicationStatus } from "./models.js";
 
 export function canEdit(state: VoteResultsProcessState): boolean {

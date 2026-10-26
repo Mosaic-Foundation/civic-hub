@@ -8,12 +8,6 @@ import { Router } from "express";
 import { handleAdminQueueCounts, handleMarkAdminQueueSeen } from "../controllers/adminQueueController.js";
 import { handleAdminListEdits } from "../controllers/editNotificationController.js";
 import {
-  handleAdminListVoteResults,
-  handleAdminGetVoteResults,
-  handlePatchVoteResults,
-  handleApproveVoteResults,
-} from "../controllers/adminVoteResultsController.js";
-import {
   handleAdminListBriefs,
   handleAdminGetBrief,
   handlePatchBrief,
@@ -95,7 +89,6 @@ router.use(requireAdmin);
 // Plugin-specific admin surfaces answer 404 on a hub with the plugin off
 // (src/middleware/pluginGate.ts). The shared queues — reviews, archived,
 // edits, moderation of comments — belong to no one plugin and stay.
-router.use("/vote-results", requirePlugin("vote"));
 router.use("/briefs", requirePlugin("brief"));
 router.use("/meeting-summaries", requirePlugin("meeting_summary"));
 router.use("/feedback", requirePlugin("feedback"));
@@ -105,13 +98,6 @@ router.use("/moderation/announcements", requirePlugin("announcement"));
 // switch and the loader's verdict, after the admin check above.
 mountPackageRoutes(router, "adminRoutes");
 
-
-// Vote results (renamed from /admin/briefs in Slice 8.5; the underlying
-// process type is civic.vote_results, formerly civic.brief).
-router.get("/vote-results", handleAdminListVoteResults);
-router.get("/vote-results/:id", handleAdminGetVoteResults);
-router.patch("/vote-results/:id", handlePatchVoteResults);
-router.post("/vote-results/:id/approve", handleApproveVoteResults);
 
 // Briefs — the universal, admin-reviewed results for any closed process
 // (civic.brief). New closures (conversation/proposal/project, and votes

@@ -4,7 +4,7 @@
 // lives here beyond what the injected callbacks perform. The host hub is
 // responsible for persisting state changes after these functions return.
 
-import { ConflictError, ValidationError } from "../../errors/index.js";
+import { ConflictError, ValidationError } from "../../src/sdk/index.js";
 import type {
   CreateVoteResultsFromVoteInput,
   FinalizeLinkedVoteFn,
