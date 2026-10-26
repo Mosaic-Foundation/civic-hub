@@ -223,6 +223,20 @@ test("the smoke hub's manifest lists its installed plugin packages with their ve
   expect(health.plugins.unmounted).toEqual([]);
 });
 
+test("the smoke hub's manifest says which plugin versions run on a signed approval; with a catalog key, every one does, read-only (ADR-015)", async ({ request }) => {
+  const plugins = (await (await request.get(`${baseUrl()}/.well-known/civic.json`)).json()).plugins as Array<{ package: string; version: string; signed: boolean }>;
+  for (const p of plugins) expect(typeof p.signed, p.package).toBe("boolean");
+  const signatures = (await (await request.get(`${apiBase()}/health`)).json()).plugins.signatures as { mode: string; key: string | null; unsigned: number };
+  expect(["transition", "required"]).toContain(signatures.mode);
+  // Before the deployment has its key, approvals are checked by fingerprint (transition); once it has one, the
+  // release signs every approval (RUNBOOK-release.md), so every version listed runs signed.
+  if (signatures.key) {
+    expect(signatures.key).toMatch(/^ed25519:[0-9a-f]{16}$/);
+    expect(signatures.unsigned).toBe(0);
+    expect(plugins.filter((p) => !p.signed).map((p) => `${p.package}@${p.version}`)).toEqual([]);
+  }
+});
+
 test("the hub's DID document answers at its address, read-only (ADR-008)", async ({ request }) => {
   // Through the public path (vercel.json's rewrite), as a did:web resolver
   // fetches it. The smoke hub's DID names its own hostname.
