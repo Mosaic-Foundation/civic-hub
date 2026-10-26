@@ -10,13 +10,11 @@ import type { ActivityKind } from "../../../src/shared/feedActivity";
 import { MANIFEST_LIST } from "../../../src/shared/processManifests";
 import type { FormApi } from "../pages/settings/pluginFields";
 import type { FeedKindUi, ProcessUi } from "./types";
-import { announcementUi } from "./announcement";
 import { meetingSummaryUi } from "./meetingSummary";
 import { conversationUi } from "./conversation";
 import { PACKAGE_UI } from "../../../config/plugins/ui";
 
 const MODULES: readonly ProcessUi[] = [
-  announcementUi,
   meetingSummaryUi,
   conversationUi,
   ...PACKAGE_UI,

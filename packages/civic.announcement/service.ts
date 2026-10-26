@@ -3,7 +3,7 @@
 // No I/O beyond the injected emit callback. Persistence of state changes
 // is the host hub's responsibility (via processService.saveProcessState).
 
-import { ForbiddenError, ValidationError } from "../../errors/index.js";
+import { ForbiddenError, ValidationError } from "../../src/sdk/index.js";
 import type {
   AnnouncementActionOutcome,
   AnnouncementContent,

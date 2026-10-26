@@ -6,8 +6,27 @@
 // GET /announcement/:id         — public read
 // GET /announcements            — public list
 
-import { NotFoundError, ValidationError } from "../errors/index.js";
-import { route } from "../http/route.js";
+import {
+  NotFoundError,
+  ValidationError,
+  route,
+  emitEvent,
+  uiBaseUrl,
+  hubDisplayNameSync,
+  createProcess,
+  getAllProcesses,
+  getProcess,
+  saveProcessState,
+  getAuthUser,
+  resolveCallerId,
+  resolveCallerIsAdmin,
+  resolveCallerUser,
+  enrichCreator,
+  PUBLIC_ADMIN_NAME,
+  getUser,
+  extractUrls,
+  warmPreviewsInBackground,
+} from "../../src/sdk/index.js";
 import { Request } from "express";
 import {
   emitPublicationEvents,
@@ -19,30 +38,8 @@ import {
   type AnnouncementContentPatch,
   type AnnouncementLink,
   type AnnouncementProcessState,
-} from "../modules/civic.announcement/index.js";
-import { sendAnnouncementReceipt } from "../modules/civic.announcement/receipt.js";
-import { emitEvent } from "../events/eventEmitter.js";
-import { uiBaseUrl } from "../utils/baseUrl.js";
-import { hubDisplayNameSync } from "../services/hubSettings.js";
-import {
-  createProcess,
-  getAllProcesses,
-  getProcess,
-  saveProcessState,
-} from "../services/processService.js";
-import {
-  getAuthUser,
-  resolveCallerId,
-  resolveCallerIsAdmin,
-  resolveCallerUser,
-} from "../middleware/auth.js";
-import {
-  enrichCreator,
-  PUBLIC_ADMIN_NAME,
-} from "../services/creatorDisplay.js";
-import { getUser } from "../modules/civic.auth/index.js";
-import { extractUrls } from "../modules/civic.link_preview/index.js";
-import { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
+} from "./api.js";
+import { sendAnnouncementReceipt } from "./receipt.js";
 
 function getState(record: { state: Record<string, unknown> }): AnnouncementProcessState {
   return record.state as unknown as AnnouncementProcessState;
@@ -156,7 +153,7 @@ export const handleCreateAnnouncement = route(async (req, res) => {
   // created to be filtered client-side. Simpler: just fire result_published
   // here. The generic created from processService already carries type +
   // title, which is enough for consumers that only look at core fields.
-  const events = await import("../modules/civic.announcement/events.js");
+  const events = await import("./events.js");
   await events.emitAnnouncementResultPublished(ctx, user.id, state);
 
   // Auto-finalize the process status — announcements are instant-publish.

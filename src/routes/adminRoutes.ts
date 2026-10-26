@@ -38,8 +38,6 @@ import {
 import {
   handleGetModerationLog,
   handleHideComment,
-  handleRemoveAnnouncement,
-  handleRestoreAnnouncement,
   handleRestoreComment,
 } from "../controllers/moderationController.js";
 import { handleGetHubAdminLog } from "../controllers/hubAdminLogController.js";
@@ -82,7 +80,6 @@ router.use(requireAdmin);
 // edits, moderation of comments — belong to no one plugin and stay.
 router.use("/meeting-summaries", requirePlugin("meeting_summary"));
 router.use("/feedback", requirePlugin("feedback"));
-router.use("/moderation/announcements", requirePlugin("announcement"));
 
 // The plugin packages' admin routes (ADR-014), each behind its plugin's
 // switch and the loader's verdict, after the admin check above.
@@ -192,14 +189,6 @@ router.patch("/settings", handlePatchSettings);
 // they act on so admins can navigate between them in muscle memory.
 router.post("/moderation/comments/:commentId/hide", handleHideComment);
 router.post("/moderation/comments/:commentId/restore", handleRestoreComment);
-router.post(
-  "/moderation/announcements/:id/remove",
-  handleRemoveAnnouncement,
-);
-router.post(
-  "/moderation/announcements/:id/restore",
-  handleRestoreAnnouncement,
-);
 router.get("/moderation/log", handleGetModerationLog);
 
 export default router;

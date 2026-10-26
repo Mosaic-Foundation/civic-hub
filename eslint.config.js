@@ -322,7 +322,6 @@ const PEOPLE_LIST_READERS = {
   "src/services/mailGuard.ts": "mail: who may receive the hub's mail",
   "src/jobs/adminDigest.ts": "mail: the admin digest's recipients",
   "src/services/cronAlerts.ts": "mail: meeting-summary notices to admins",
-  "src/modules/civic.announcement/receipt.ts": "mail: publication receipts to admins",
   "src/modules/civic.feedback/service.ts": "mail: feedback to admins",
   "src/services/waitlistNotify.ts": "mail: waitlist notices to admins",
   "src/modules/civic.review/service.ts": "mail: new-submission notices to admins",
@@ -413,6 +412,8 @@ export const PACKAGE_REACH_NOT_YET = {
   "src/processes/spawnBrief.ts": "makes the pending brief when a process closes: its state type (BriefProcessState) and its aggregation event (emitBriefAggregationCompleted)",
   "src/services/briefRegenerate.ts": "regenerates a brief: builds its state (createBriefState), emits its updated event and types its content",
   "src/services/briefResponses.ts": "stores the brief's responses and types them (BriefResponseRecord)",
+  "src/debug/autoSeed.ts": "seeds an announcement's published state and events (emitPublicationEvents, AnnouncementProcessState) for the development scenarios",
+  "src/jobs/newsSync.ts": "posts each news item as an announcement: its result-published event (emitAnnouncementResultPublished) and its state types",
   "src/controllers/debugController.ts": "the development reset empties the proposals (clearProposals) along with the other modules' records",
   "src/controllers/inputController.ts": "checks that the proposal an input names exists (proposalExists) before it is accepted",
 };

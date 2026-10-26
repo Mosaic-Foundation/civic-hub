@@ -6,9 +6,15 @@
 // This adapter exists so announcements live in the same process store
 // and register as a known process type for discovery / feed rendering.
 
-import { ValidationError } from "../../errors/index.js";
-import { Process, ProcessAction } from "../../models/process.js";
-import { ProcessHandler } from "../../processes/types.js";
+import {
+  ValidationError,
+  type Process,
+  type ProcessAction,
+  type ProcessHandler,
+  str,
+  num,
+  type FeedProcessMeta,
+} from "../../src/sdk/index.js";
 import {
   createAnnouncementState,
   getPublicReadModel,
@@ -18,10 +24,8 @@ import {
   type AnnouncementProcessState,
   type AnnouncementSource,
   type CreateAnnouncementInput,
-} from "./index.js";
+} from "./api.js";
 import { ANNOUNCEMENT_MANIFEST } from "./manifest.js";
-import { str, num } from "../../utils/readField.js";
-import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 
 function getState(process: Process): AnnouncementProcessState {
   return process.state as unknown as AnnouncementProcessState;

@@ -3,7 +3,7 @@
 // dropped it, so no announcement recorded one and no card showed one.
 
 import { describe, expect, it } from "vitest";
-import handler from "../../src/modules/civic.announcement/handler.js";
+import handler from "../../packages/civic.announcement/handler.js";
 
 const base = { title: "Budget hearing", body: "Tuesday at seven.", author_id: "user_1", author_role: "Board member" };
 

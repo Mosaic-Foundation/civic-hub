@@ -27,7 +27,6 @@ import { draftRouter } from "./routes/draftRoutes.js";
 import { deliberationDraftKind } from "./processes/draftKinds.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import announcementRoutes from "./routes/announcementRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import linkPreviewRoutes from "./routes/linkPreviewRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
@@ -45,7 +44,6 @@ import {
   userSettingsRouter,
 } from "./routes/digestRoutes.js";
 import { cronKillSwitch } from "./config/cron.js";
-import { handleListAnnouncements } from "./controllers/announcementController.js";
 import { assertSpaceIdentityConfigured } from "./config/hub.js";
 import { ensureSeeded } from "./debug/autoSeed.js";
 import { normalizeHostname, resolveHub, resolveHubForHostname } from "./middleware/hub.js";
@@ -203,11 +201,6 @@ app.use("/notifications", notificationRoutes);
 
 // Admin endpoints — proposal review and conversion to votes
 app.use("/admin", adminRoutes);
-
-// Board / Admin announcements — post, edit, read one
-app.use("/announcement", requirePlugin("announcement"), announcementRoutes);
-// Public list — separate path so it doesn't collide with /announcement/:id
-app.get("/announcements", requirePlugin("announcement"), handleListAnnouncements);
 
 // Slice 9 — image upload + link previews. The upload endpoint is
 // authenticated (requireAnnouncementPoster) and accepts multipart bodies;

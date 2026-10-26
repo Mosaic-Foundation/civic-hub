@@ -41,7 +41,7 @@ import {
   type AnnouncementProcessContext,
   type AnnouncementProcessState,
   type AnnouncementSource,
-} from "../modules/civic.announcement/index.js";
+} from "../../packages/civic.announcement/api.js";
 import { getSettingSync, isPluginEnabledSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { civicPlaceShortName, processJurisdiction } from "../config/hub.js";

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   formatAnnouncementReceipt,
   receiptRecipients,
-} from "../../src/modules/civic.announcement/receipt.js";
+} from "../../packages/civic.announcement/receipt.js";
 
 const BASE = {
   title: "Water main work on Locust St",

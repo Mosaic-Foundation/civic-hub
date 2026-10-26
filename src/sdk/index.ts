@@ -45,6 +45,8 @@ export {
   requireResident,
   resolveCallerUser,
   requireOfficial,
+  resolveCallerIsAdmin,
+  requireBoardOrAdmin,
 } from "../middleware/auth.js";
 export { KEYS } from "../models/hubSettings.js";
 
@@ -57,6 +59,7 @@ export {
   getSampleProcessIds,
   getAllProcesses,
   saveProcessState,
+  createProcess,
 } from "../services/processService.js";
 export { readProcessState, writeProcessState, publishedBriefRows } from "../services/processRows.js";
 
@@ -113,6 +116,7 @@ export {
   getSettingSync,
   getVoteResultsRecipients,
   hubDisplayNameSync,
+  getAdminEmailsSync,
 } from "../services/hubSettings.js";
 
 // --- The hub in scope (src/config/hubContext.ts) ---------------------------------------
@@ -131,7 +135,7 @@ export type { BriefContent, BriefSection } from "../processes/contracts/briefCon
 export { reportError } from "../utils/reportError.js";
 
 // --- src/services/creatorDisplay.ts ------------------------------------------------------
-export { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
+export { enrichCreator, enrichCreators, PUBLIC_ADMIN_NAME } from "../services/creatorDisplay.js";
 
 // --- src/controllers/processController.ts ------------------------------------------------
 export { actOnProcess, readAsPage, viewFor } from "../controllers/processController.js";
@@ -184,3 +188,6 @@ export {
   listResponsesForBrief,
   responderNames,
 } from "../services/briefResponses.js";
+
+// --- src/modules/civic.auth/ -------------------------------------------------------------
+export { getUser } from "../modules/civic.auth/index.js";

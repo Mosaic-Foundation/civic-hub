@@ -19,8 +19,8 @@
 // Fire-and-forget by design: a receipt that fails must never fail the
 // publish. See handleCreateAnnouncement.
 
-import { sendEmail } from "../../utils/email.js";
-import { getAdminEmailsSync } from "../../services/hubSettings.js";
+import { getAdminEmailsSync } from "../../src/sdk/index.js";
+import { announcementHost } from "./host.js";
 
 function esc(s: string): string {
   return String(s)
@@ -154,7 +154,7 @@ export async function sendAnnouncementReceipt(
   const { subject, html, text } = formatAnnouncementReceipt(input);
   for (const to of recipients) {
     try {
-      await sendEmail({ to, subject, html, text });
+      await announcementHost.get().adapter("mail").send({ to, subject, html, text });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`[announcement] receipt to ${to} failed: ${message}`);

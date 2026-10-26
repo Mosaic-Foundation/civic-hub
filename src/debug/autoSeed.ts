@@ -24,7 +24,7 @@ import {
   emitPublicationEvents as emitAnnouncementPublicationEvents,
   type AnnouncementProcessContext,
   type AnnouncementProcessState,
-} from "../modules/civic.announcement/index.js";
+} from "../../packages/civic.announcement/api.js";
 import {
   approveMeetingSummary,
   emitCreationEvents as emitMeetingSummaryCreationEvents,

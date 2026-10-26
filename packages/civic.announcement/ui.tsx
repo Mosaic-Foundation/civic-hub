@@ -1,11 +1,11 @@
 // civic.announcement: a post from an official or admin on the feed
-// (manifest: src/modules/civic.announcement/manifest.ts).
+// (manifest: ./manifest.ts).
 
 import { Link } from "react-router-dom";
-import { AnnouncementPage, PostAnnouncement } from "../lazyPages";
-import { getAnnouncement } from "../services/api";
-import { relativeTime } from "../utils/dates";
-import type { FeedKindUi, ProcessUi } from "./types";
+import { AnnouncementPage, PostAnnouncement } from "../../ui/src/lazyPages";
+import { getAnnouncement } from "../../ui/src/services/api";
+import { relativeTime } from "../../ui/src/utils/dates";
+import type { FeedKindUi, ProcessUi } from "../../ui/src/processes/types";
 
 const announcementKind: FeedKindUi = {
   card: ({ id, data, getTitle, descSummary }) => {
@@ -46,7 +46,7 @@ const announcementKind: FeedKindUi = {
   },
 };
 
-export const announcementUi: ProcessUi = {
+const announcementUi: ProcessUi = {
   type: "civic.announcement",
   routes: [
     { path: "/announcement/new", element: <PostAnnouncement /> },
@@ -64,3 +64,5 @@ export const announcementUi: ProcessUi = {
     </p>
   ),
 };
+
+export default announcementUi;

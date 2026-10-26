@@ -70,8 +70,8 @@ import { emitProjectUpdated } from "../../packages/civic.projects/events.js";
 import { submitInput } from "../modules/civic.input/index.js";
 import { approveBrief, setRecipients, type BriefProcessState } from "../../packages/civic.brief/api.js";
 import { emitBriefAggregationCompleted } from "../../packages/civic.brief/events.js";
-import { emitAnnouncementResultPublished } from "../modules/civic.announcement/events.js";
-import type { AnnouncementProcessState } from "../modules/civic.announcement/models.js";
+import { emitAnnouncementResultPublished } from "../../packages/civic.announcement/events.js";
+import type { AnnouncementProcessState } from "../../packages/civic.announcement/models.js";
 import {
   approveMeetingSummary,
   buildProcessDescription,
