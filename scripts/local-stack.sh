@@ -100,6 +100,9 @@ load_fixtures() {
     sql -c "delete from hub_settings where hub_id = 'smoke' and key in ('nav.layout', 'plugin.members.min_count')"
     say "Created the smoke hub."
   fi
+  # The plugin catalog's pending entries for this checkout's packages, approved
+  # as the local operator would in the console (ADR-014).
+  env -i PATH="$PATH" HOME="$HOME" CIVIC_TEST_DATABASE_URL="$DB_URL" node --import tsx scripts/catalog-approve-local.ts
 }
 
 cmd_start() {

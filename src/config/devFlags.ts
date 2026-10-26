@@ -25,9 +25,16 @@
 //                             the hub's real address, and a hub whose slug
 //                             contains "slow" never answers, so tests reach
 //                             the timeout (src/control/dashboard/hubHealth.ts)
+//   CIVIC_PLUGINS_UNVERIFIED=on — every configured plugin package is mounted
+//                             without an approved catalog row (ADR-014): for
+//                             `npm run catalog:add`'s conformance run, which
+//                             must walk a package before anyone can approve
+//                             it, and for local work on a package. Every
+//                             deployment, dev and production, keeps the
+//                             catalog rule.
 //
 // With NODE_ENV=production (every Vercel deployment, dev and production) all
-// seven are refused: the flag reads as unset, and the boot check reports it, once,
+// eight are refused: the flag reads as unset, and the boot check reports it, once,
 // as an error operators see. Refused rather than fatal on purpose: a stray env
 // var should not take every hub on the deployment offline, and ignoring it is
 // already the safe outcome.
@@ -76,6 +83,11 @@ export function dashboardFakeEnabled(): boolean {
   return env.CIVIC_DASHBOARD_FAKE === "on" && !isProduction();
 }
 
+/** Are plugin packages mounted without a catalog check? Never in production. */
+export function pluginsUnverifiedEnabled(): boolean {
+  return ON.has((env.CIVIC_PLUGINS_UNVERIFIED ?? "").toLowerCase()) && !isProduction();
+}
+
 let checked = false;
 
 /** Report, once per process, a development flag set where it is refused. */
@@ -100,6 +112,9 @@ export function checkDevFlags(): void {
   }
   if (env.CIVIC_DASHBOARD_FAKE === "on") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_DASHBOARD_FAKE=on is set in production and is ignored. Remove it from this deployment.", {});
+  }
+  if (env.CIVIC_PLUGINS_UNVERIFIED) {
+    reportError("CIVIC_DEV_FLAG", "CIVIC_PLUGINS_UNVERIFIED is set in production and is ignored. Remove it from this deployment.", {});
   }
   if (env.CIVIC_RATE_LIMITS === "off") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_RATE_LIMITS=off is set in production and is ignored. Remove it from this deployment.", {});

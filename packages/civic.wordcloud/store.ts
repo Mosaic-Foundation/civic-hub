@@ -1,8 +1,9 @@
-// What civic.wordcloud keeps, as the host supplies it (ADR-012, the database
-// convention): the module never imports src/db/. The implementation is
-// src/stores/wordcloud.ts, bound at startup by installStores().
+// What civic.wordcloud keeps (ADR-012, the database convention): the package
+// never imports src/db/. The implementation is ./storeImpl.ts, on the
+// database its host hands it (its granted tables only), bound when the hub
+// loads the package (./index.ts).
 
-import { storeSlot } from "../../processes/storeSlot.js";
+import { storeSlot } from "../../src/sdk/index.js";
 
 /** A stored submission, as the table has it. */
 export interface SubmissionRow {

@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "description": "Reference implementation of a Civic Hub backend",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc -p tsconfig.check.json",
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
     "dev": "node --env-file=.env --import tsx --watch src/index.ts",
     "lint": "eslint",
     "test": "eslint && vitest run",
@@ -20,6 +20,8 @@
     "heartbeats:sync": "node --env-file=$HOME/civic-keys/healthchecks.env --import tsx scripts/heartbeats-sync.ts",
     "jobs:crontab": "tsx scripts/jobs-crontab.ts",
     "settings:doc": "tsx scripts/settings-doc.ts",
+    "plugins:sync": "tsx scripts/plugins-sync.ts",
+    "catalog:add": "tsx scripts/catalog-add.ts",
     "check:tenancy": "tsx scripts/check-tenancy.ts",
     "seed": "curl -s http://localhost:3000/debug/seed | node -e \"process.stdin.on('data',d=>{const j=JSON.parse(d);console.log(j.message);j.processes.forEach(p=>console.log('  '+p.status.padEnd(6)+' '+p.title));console.log(j.event_count+' events emitted')})\""
   },

@@ -78,7 +78,7 @@ import {
   emitCreationEvents as emitMeetingSummaryCreationEvents,
   type MeetingSummaryProcessState,
 } from "../modules/civic.meeting_summary/index.js";
-import { activateWordcloud, type WordcloudProcessState } from "../modules/civic.wordcloud/index.js";
+import { activateWordcloud, type WordcloudProcessState } from "../../packages/civic.wordcloud/service.js";
 import { generateId } from "../utils/id.js";
 import { DEFAULT_POLIS_URL } from "../shared/polisUrl.js";
 import { setSetting } from "./hubSettings.js";

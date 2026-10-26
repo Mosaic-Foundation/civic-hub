@@ -4,6 +4,16 @@
 // Each process type (e.g. civic.vote, civic.proposal) implements a handler.
 // Future work may allow dynamic loading, but for now this is static.
 
+// First, so processService can set the slots during a package's load.
+export {
+  setProcessFactory,
+  getProcessFactory,
+  setActionDispatcher,
+  getActionDispatcher,
+  setDeadlineCloser,
+  closeThroughDispatcher,
+} from "./serviceSlots.js";
+
 import { ValidationError } from "../errors/index.js";
 import { ProcessHandler, ProcessFactory, ActionDispatcher } from "./types.js";
 import type { ApprovalActivation } from "./types.js";
@@ -32,7 +42,6 @@ import {
   type SubmissionField,
   type SubmissionSource,
 } from "../shared/submissionPreview.js";
-import wordcloudProcess from "../modules/civic.wordcloud/handler.js";
 import { PROCESS_MANIFESTS } from "../shared/processManifests.js";
 import { THEME_TYPE_KEYS } from "../shared/theme.js";
 import {
@@ -45,6 +54,8 @@ import {
 import { HOST_TABLES } from "../db/forHub.js";
 import { HUB_FEATURE_IDS } from "../shared/hubFeatures.js";
 import { hostMappedEventTypes } from "../events/activitySerializer.js";
+import { loadedPackages } from "../plugins/loader.js";
+import { configuredPackageOfType } from "../plugins/mountedState.js";
 
 // civic.vote_results + civic.announcement + civic.meeting_summary are
 // registered here but can be omitted by hubs that don't want those
@@ -64,8 +75,12 @@ import { hostMappedEventTypes } from "../events/activitySerializer.js";
 //
 // Since Architecture 2 (ADR-009) the types are their manifests
 // (src/shared/processManifests.ts), checked at startup; each is paired here
-// with the handler that runs its actions.
-const HANDLERS: readonly ProcessHandler[] = [
+// with the handler that runs its actions. The plugin packages' handlers come
+// from the loader (ADR-014); the pairing is made on first use, because a
+// package's own imports reach this module while the loader is still loading
+// it. src/app.ts asks for it at startup, so a bad pairing still stops the start.
+const deliberationHandler = bootDeliberation();
+const handlers = (): readonly ProcessHandler[] => [
   voteProcess,
   proposalAdapter,
   projectAdapter,
@@ -73,16 +88,30 @@ const HANDLERS: readonly ProcessHandler[] = [
   briefProcess,
   announcementProcess,
   meetingSummaryProcess,
-  bootDeliberation(),
-  wordcloudProcess,
+  deliberationHandler,
+  ...loadedPackages().map((p) => p.server.handler),
 ];
 
-const MANIFESTS = checkManifests(PROCESS_MANIFESTS, {
-  colors: THEME_TYPE_KEYS,
-  hostActivityTypes: hostMappedEventTypes(),
-  hostTables: HOST_TABLES,
-  featureIds: HUB_FEATURE_IDS,
-});
+const MANIFESTS = withPackageNames(() =>
+  checkManifests(PROCESS_MANIFESTS, {
+    colors: THEME_TYPE_KEYS,
+    hostActivityTypes: hostMappedEventTypes(),
+    hostTables: HOST_TABLES,
+    featureIds: HUB_FEATURE_IDS,
+  }),
+);
+
+/** A refused manifest's message, naming the package that carries the type (ADR-014). */
+function withPackageNames<T>(check: () => T): T {
+  try {
+    return check();
+  } catch (err) {
+    const type = err instanceof ManifestError ? /^process manifest ([a-z]+\.[a-z_]+)/.exec(err.message)?.[1] : undefined;
+    const pkg = type ? configuredPackageOfType(type) : undefined;
+    if (pkg) throw new ManifestError(`plugin package ${pkg.name} (${pkg.dir}): ${err instanceof Error ? err.message : String(err)}`);
+    throw err;
+  }
+}
 
 /** Each manifest with its handler, in the manifests' order; a manifest without one, or a stray handler, stops startup. */
 function pair(manifests: readonly ProcessManifest[], handlers: readonly ProcessHandler[]): Record<string, ProcessHandler> {
@@ -101,7 +130,12 @@ function pair(manifests: readonly ProcessManifest[], handlers: readonly ProcessH
   return out;
 }
 
-const processRegistry: Record<string, ProcessHandler> = pair(MANIFESTS, HANDLERS);
+let paired: Record<string, ProcessHandler> | null = null;
+
+/** Every type's handler, paired with its manifest on first use. */
+function processRegistryNow(): Record<string, ProcessHandler> {
+  return (paired ??= pair(MANIFESTS, handlers()));
+}
 
 /** Every loaded manifest, in registry order. */
 export function getManifests(): readonly ProcessManifest[] {
@@ -143,7 +177,7 @@ export function summarizedProcessIdOf(type: string, state: Record<string, unknow
 // Each handler's descriptor is the one declaration of what its type is
 // (src/processes/descriptor.ts). Registered here for the emission path's
 // Stage 1 check, and read below for everything that used to be listed by hand.
-for (const handler of Object.values(processRegistry)) registerDescriptor(handler.descriptor);
+for (const m of MANIFESTS) registerDescriptor(m.descriptor);
 
 /**
  * The plugin each process type belongs to (BUILD-PLAN-multi-tenant.md,
@@ -161,12 +195,12 @@ export const PROCESS_TYPE_PLUGINS: Readonly<Record<string, PluginId>> = Object.f
 
 /** A registered type's descriptor. */
 export function getDescriptor(type: string): ProcessTypeDescriptor | undefined {
-  return processRegistry[type]?.descriptor;
+  return processRegistryNow()[type]?.descriptor;
 }
 
 /** One action of a registered type, as its descriptor declares it. */
 export function declaredAction(type: string, action: string): ActionDescriptor | undefined {
-  return processRegistry[type]?.descriptor.actions.find((a) => a.name === action);
+  return processRegistryNow()[type]?.descriptor.actions.find((a) => a.name === action);
 }
 
 /**
@@ -191,7 +225,7 @@ export function retrySafeActionsOf(type: string): string[] {
  * /.well-known/civic.json), narrowed by the caller to the types a hub has on.
  */
 export function publicProcessTypes(include: (type: string) => boolean): PublicProcessType[] {
-  return Object.values(processRegistry)
+  return Object.values(processRegistryNow())
     .filter((h) => include(h.type))
     .map((h) => publicDescriptor(h.descriptor));
 }
@@ -202,7 +236,7 @@ export function publicProcessTypes(include: (type: string) => boolean): PublicPr
  * the registry's; sections carry their own default order.
  */
 export function processTypeDisplays(): ProcessTypeDisplay[] {
-  return Object.values(processRegistry).map((h) => ({
+  return Object.values(processRegistryNow()).map((h) => ({
     type: h.type,
     plugin: h.descriptor.plugin,
     ...h.descriptor.display,
@@ -211,66 +245,7 @@ export function processTypeDisplays(): ProcessTypeDisplay[] {
 
 /** Every registered process type, for checks that must cover all of them. */
 export function registeredProcessTypes(): string[] {
-  return Object.keys(processRegistry);
-}
-
-/**
- * Process factory — set by the service layer at startup.
- * Allows handlers to create new processes without importing processService directly.
- */
-let processFactory: ProcessFactory | null = null;
-
-export function setProcessFactory(factory: ProcessFactory): void {
-  processFactory = factory;
-}
-
-export function getProcessFactory(): ProcessFactory {
-  if (!processFactory) {
-    throw new Error("Process factory not initialized — service layer must call setProcessFactory()");
-  }
-  return processFactory;
-}
-
-/**
- * Action dispatcher — set by the service layer at startup (mirrors the process
- * factory). Lets handlers dispatch a persisted action (e.g. their close action
- * for lazy deadline-close) through executeAction without importing
- * processService directly.
- */
-let actionDispatcher: ActionDispatcher | null = null;
-
-export function setActionDispatcher(dispatcher: ActionDispatcher): void {
-  actionDispatcher = dispatcher;
-}
-
-export function getActionDispatcher(): ActionDispatcher {
-  if (!actionDispatcher) {
-    throw new Error("Action dispatcher not initialized — service layer must call setActionDispatcher()");
-  }
-  return actionDispatcher;
-}
-
-/**
- * A deadline close, dispatched by a handler's closeIfExpired (vote,
- * conversation). Set by the service layer (processService.closeAtDeadline),
- * as the dispatcher is: one reader claims the close, the others return the
- * process as it is, and the claimed close runs through executeAction.
- */
-type DeadlineCloser = (process: Process, action: Parameters<ActionDispatcher>[1]) => Promise<Process>;
-let deadlineCloser: DeadlineCloser | null = null;
-
-export function setDeadlineCloser(closer: DeadlineCloser): void {
-  deadlineCloser = closer;
-}
-
-export function closeThroughDispatcher(
-  process: Process,
-  action: Parameters<ActionDispatcher>[1],
-): Promise<Process> {
-  if (!deadlineCloser) {
-    throw new Error("Deadline closer not initialized — service layer must call setDeadlineCloser()");
-  }
-  return deadlineCloser(process, action);
+  return Object.keys(processRegistryNow());
 }
 
 /**
@@ -278,12 +253,12 @@ export function closeThroughDispatcher(
  * Returns undefined if no handler is registered.
  */
 export function getProcessHandler(type: string): ProcessHandler | undefined {
-  return processRegistry[type];
+  return processRegistryNow()[type];
 }
 
 /** List all registered process types */
 export function getRegisteredTypes(): string[] {
-  return Object.keys(processRegistry);
+  return Object.keys(processRegistryNow());
 }
 
 /**
@@ -292,7 +267,7 @@ export function getRegisteredTypes(): string[] {
  * drops that module's expectations along with it.
  */
 export function getAllHandlers(): ProcessHandler[] {
-  return Object.values(processRegistry);
+  return Object.values(processRegistryNow());
 }
 
 /**
@@ -305,7 +280,7 @@ export function getAllHandlers(): ProcessHandler[] {
  * know which process types exist.
  */
 export function processDetailPath(type: string, id: string): string {
-  const handler = processRegistry[type];
+  const handler = processRegistryNow()[type];
   return handler?.detailPath?.(id) ?? `/process/${id}`;
 }
 
@@ -319,12 +294,12 @@ export function processDetailPath(type: string, id: string): string {
 /** Where a creator revises one of this type's drafts, or null when the type
  *  declares no drafting page. */
 export function draftPathFor(type: string, draftId: string): string | null {
-  return processRegistry[type]?.draftPath?.(draftId) ?? null;
+  return processRegistryNow()[type]?.draftPath?.(draftId) ?? null;
 }
 
 /** Put a submitted draft back into "drafting" through its type's handler. */
 export async function reopenDraftForRevision(type: string, draftId: string): Promise<void> {
-  const handler = processRegistry[type];
+  const handler = processRegistryNow()[type];
   if (!handler?.reopenDraft) {
     throw new ValidationError("This kind of process can't be revised after it is submitted.", "revision_not_supported");
   }
@@ -340,11 +315,11 @@ export async function reopenDraftForRevision(type: string, draftId: string): Pro
  * The review service is the only caller. It never asks what type it holds.
  */
 export function activationOnApproval(process: Process): ApprovalActivation {
-  const handler = processRegistry[process.definition.type];
+  const handler = processRegistryNow()[process.definition.type];
   return handler?.activationOnApproval?.(process) ?? { status: "active" };
 }
 
 export function describeSubmission(source: SubmissionSource): SubmissionField[] {
-  const handler = processRegistry[source.type];
+  const handler = processRegistryNow()[source.type];
   return handler?.describeSubmission?.(source) ?? describeSubmissionFields(source);
 }

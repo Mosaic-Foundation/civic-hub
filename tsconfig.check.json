@@ -10,6 +10,6 @@
     "declarationMap": false,
     "sourceMap": false
   },
-  "include": ["src/**/*", "tests/**/*", "scripts/**/*", "api/**/*", "*.ts"],
+  "include": ["src/**/*", "packages/**/*.ts", "config/plugins/manifests.ts", "config/plugins/server.ts", "tests/**/*", "scripts/**/*", "api/**/*", "*.ts"],
   "exclude": ["node_modules", "dist", "ui/node_modules", "ui/dist", "scripts/**/*.js", "scripts/**/*.d.ts"]
 }

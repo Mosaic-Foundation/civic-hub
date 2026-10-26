@@ -1,4 +1,4 @@
-// civic.wordcloud module — service interface
+// civic.wordcloud — the package's service
 //
 // A lightweight civic process: residents submit short free-text answers
 // to prompts, and the answers aggregate live into a word cloud. Non-
@@ -8,10 +8,9 @@
 // Lifecycle: draft → active → closed (subset per ADR-003).
 // Evergreen mode stays in active indefinitely; admin can snapshot or close.
 
-import { ConflictError, ValidationError } from "../../errors/index.js";
+import { ConflictError, ValidationError, generateId } from "../../src/sdk/index.js";
 import { wordcloudStore, type ResponseRow, type SubmissionRow } from "./store.js";
-import { generateId } from "../../utils/id.js";
-import { assertPassesWordlist } from "../../shared/wordlist/index.js";
+import { assertPassesWordlist } from "../../src/shared/wordlist/index.js";
 import { aggregateSubmissions } from "./aggregation.js";
 import type {
   WordcloudProcessState,

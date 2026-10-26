@@ -15,6 +15,13 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    /* A plugin package's UI module (../packages/<name>/ui.tsx, ADR-014) sits
+       outside ui/, so its react imports resolve to ui's own copy. */
+    "paths": {
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "react-router-dom": ["./node_modules/react-router-dom"]
+    },
 
     /* Linting */
     "strict": true,

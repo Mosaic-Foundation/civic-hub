@@ -10,8 +10,6 @@
 // Adding a module's store: its interface and slot in the module's store.ts,
 // the implementation here as src/stores/<module>.ts, one bind line below.
 
-import { wordcloudStore } from "../modules/civic.wordcloud/store.js";
-import { wordcloudStoreImpl } from "./wordcloud.js";
 import { draftsStore } from "../modules/civic.drafts/store.js";
 import { draftsStoreImpl } from "./drafts.js";
 import { feedbackStore } from "../modules/civic.feedback/store.js";
@@ -32,7 +30,6 @@ import { authStore } from "../modules/civic.auth/store.js";
 import { authStoreImpl } from "./auth.js";
 
 export function installStores(): void {
-  wordcloudStore.bind(wordcloudStoreImpl);
   draftsStore.bind(draftsStoreImpl);
   feedbackStore.bind(feedbackStoreImpl);
   adminDigestStore.bind(adminDigestStoreImpl);

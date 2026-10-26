@@ -3,7 +3,7 @@ import {
   handleGetWordcloud,
   handleGetWordcloudCloud,
   handleGetWordcloudResponses,
-} from "../controllers/wordcloudController.js";
+} from "./controller.js";
 
 const router = Router();
 

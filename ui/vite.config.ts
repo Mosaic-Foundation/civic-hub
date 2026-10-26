@@ -6,6 +6,12 @@ import { UI_SECURITY_HEADERS } from '../src/shared/securityHeaders.ts'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // A plugin package's UI module (../packages/<name>/ui.tsx, ADR-014) sits
+  // outside ui/: its imports of these resolve to ui's own copy, so there is
+  // one React.
+  resolve: {
+    dedupe: ['react', 'react-dom', 'react-router-dom', 'react-router'],
+  },
   // The commit this bundle was built from, for error reports
   // (src/services/errorReporter.ts). Vercel sets it at build time.
   define: {

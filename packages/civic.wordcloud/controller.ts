@@ -6,17 +6,14 @@
 //   - GET /wordcloud/:id/cloud — aggregated cloud data per prompt
 //   - GET /wordcloud/:id      — full read model with cloud data
 
-import { NotFoundError } from "../errors/index.js";
-import { route } from "../http/route.js";
-import { getProcess } from "../services/processService.js";
-import { resolveCallerId } from "../middleware/auth.js";
+import { NotFoundError, route, getProcess, resolveCallerId } from "../../src/sdk/index.js";
 import {
   buildClouds,
   getSubmissionCount,
   type WordcloudProcessState,
   listVisibleResponses,
   hasVisibleSubmission,
-} from "../modules/civic.wordcloud/index.js";
+} from "./service.js";
 
 
 function getState(process: { state: Record<string, unknown> }): WordcloudProcessState {

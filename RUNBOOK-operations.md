@@ -295,6 +295,7 @@ refused in production (`src/config/devFlags.ts`).
 | `CIVIC_POLIS_FAKE` | dev | boolean | no |  | Development, alias kept for one release: the deliberation adapter only is its fake. |
 | `CIVIC_COC_FAKE` | dev | boolean | no |  | Development, alias kept for one release: the Code of Conduct check only is answered by the fake AI. |
 | `CIVIC_DASHBOARD_FAKE` | dev | boolean | no |  | Development: the console's Dashboard reads hubs' /health from this server. |
+| `CIVIC_PLUGINS_UNVERIFIED` | dev | boolean | no |  | Development: mount every configured plugin package without an approved catalog row (catalog:add's conformance run). |
 | `CIVIC_ERROR_DSN` | hosting | secret | no |  | The errors adapter's Sentry DSN. Unset: errors go to the log only. |
 | `CIVIC_ERROR_ENVIRONMENT` | hosting | string | no |  | The environment tag on every error ("production" or "dev"). |
 | `CIVIC_HEARTBEAT_PING_KEY` | hosting | secret | no |  | The heartbeat adapter's Healthchecks.io ping key. Unset: jobs ping nothing. |

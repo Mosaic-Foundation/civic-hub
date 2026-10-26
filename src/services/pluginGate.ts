@@ -10,6 +10,10 @@
 //     read or acted on by id, listed, or shown in the feed or the digest;
 //   - its nav items and pages are gone (ui/src/config/plugins.ts).
 //
+// A type whose plugin package the loader did not mount (its hash has no
+// approved catalog row; src/plugins/loader.ts) reads as switched off on every
+// hub, in all the same ways.
+//
 // Nothing is deleted or rewritten. Every row stays as it was, so turning the
 // plugin back on restores everything. The protocol surface, GET /events, is
 // deliberately NOT filtered: it is the hub's published record, and what a hub
@@ -19,6 +23,7 @@ import { NotFoundError } from "../errors/index.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
 import { PROCESS_TYPE_PLUGINS, registeredProcessTypes } from "../processes/registry.js";
 import type { PluginId } from "../models/hubSettings.js";
+import { isTypeMounted } from "../plugins/mountedState.js";
 
 /** Thrown when code asks to create a process whose plugin is off. */
 export class PluginDisabledError extends NotFoundError {
@@ -38,6 +43,7 @@ export function processTypePlugin(type: string): PluginId | null {
 
 /** Is this process type available on the hub in scope? Unknown types are. */
 export function isProcessTypeEnabled(type: string): boolean {
+  if (!isTypeMounted(type)) return false;
   const plugin = processTypePlugin(type);
   return plugin === null || isPluginEnabledSync(plugin);
 }
@@ -65,7 +71,7 @@ export function enabledProcessTypesAmong(requested: readonly string[] | null): s
  */
 export function assertProcessTypeEnabled(type: string, verb = "Creating"): void {
   const plugin = processTypePlugin(type);
-  if (plugin && !isPluginEnabledSync(plugin)) {
+  if (plugin && (!isPluginEnabledSync(plugin) || !isTypeMounted(type))) {
     throw new PluginDisabledError(plugin, `${verb} ${type}`);
   }
 }

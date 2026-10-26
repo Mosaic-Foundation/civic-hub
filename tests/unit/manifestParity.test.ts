@@ -22,6 +22,11 @@
  * settings and accounts the export carries), and its schema requirement; the
  * schema contract gains events.wire_actor_did and users.identity_did /
  * identity_did_source (the DID projection; all additive).
+ * And (2026-10-25, plugin session 1, ADR-014): the host gains hub_plugins (a
+ * hub table, omitted from the export: the new-hub trigger records the host's
+ * approved packages) and the schema contract gains hub_plugins and
+ * plugin_catalog (all additive). Nothing else moved: the word cloud became a
+ * package with every list it appears in unchanged.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

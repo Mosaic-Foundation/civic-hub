@@ -1,8 +1,9 @@
 // Every process type's UI module, in the manifests' order
 // (src/shared/processManifests.ts). App mounts their routes, the feed renders
 // their kinds, the Plugins page shows their panels and the link picker reads
-// their default relation. Adding a type's UI is adding its module and one line
-// here.
+// their default relation. A plugin package's UI module is its ui.tsx, listed
+// by `npm run plugins:sync` in config/plugins/ui.ts (ADR-014); the types not
+// yet moved into packages have theirs here.
 
 import type { ReactNode } from "react";
 import type { ActivityKind } from "../../../src/shared/feedActivity";
@@ -17,7 +18,7 @@ import { briefUi } from "./brief";
 import { announcementUi } from "./announcement";
 import { meetingSummaryUi } from "./meetingSummary";
 import { conversationUi } from "./conversation";
-import { wordcloudUi } from "./wordcloud";
+import { PACKAGE_UI } from "../../../config/plugins/ui";
 
 const MODULES: readonly ProcessUi[] = [
   voteUi,
@@ -28,7 +29,7 @@ const MODULES: readonly ProcessUi[] = [
   announcementUi,
   meetingSummaryUi,
   conversationUi,
-  wordcloudUi,
+  ...PACKAGE_UI,
 ];
 
 /** The modules in MANIFEST_LIST order; a manifest without a module, or the reverse, is a bug caught at load. */

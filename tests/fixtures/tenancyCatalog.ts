@@ -63,6 +63,11 @@ export const NOT_HUB_SCOPED: Readonly<Record<string, string>> = {
   // late job. No hub owns a run of every hub.
   job_last_run:
     "the last scheduled run of each job across every hub (time, result, duration); platform data; service role (src/db/jobLastRun.ts, src/control/dashboard/) only",
+  // Plugin packages (20261025000000, plugin session 1, ADR-014): the
+  // console's catalog of vetted packages, across hubs. Every hub's loader
+  // reads the approved rows; only the console writes.
+  plugin_catalog:
+    "the console's catalog of vetted plugin packages (version, content hash, grant, conformance, approval), across hubs; service role (src/db/pluginCatalog.ts, src/control/) only; never deleted",
   // Reference data (20260927000000, Adam 2026-09-27): the same list of US
   // jurisdictions for every hub. Deny-all RLS, no policy; the service role
   // (the console) may only SELECT; the loader writes as the owner.

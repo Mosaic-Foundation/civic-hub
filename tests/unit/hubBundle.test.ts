@@ -33,6 +33,7 @@ describe("what leaves", () => {
       "ai_usage",
       // Derived by trigger from the settings and accounts the bundle carries;
       // the import re-derives it (20261023000000, ADR-011).
+      "hub_plugins",
       "hub_roles",
       "job_runs",
       "link_previews",

@@ -16,7 +16,8 @@ import { generateId } from "../utils/id.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 import { protocolHubId } from "../config/hub.js";
 import { holdForAction } from "../services/actionScope.js";
-import { descriptorViolation, isDeclaredEventType } from "../processes/descriptor.js";
+import { descriptorViolation, isDeclaredEventType, HOST_EVENT_TYPES } from "../processes/descriptor.js";
+import { checkEmissionGrant } from "../plugins/grant.js";
 
 /**
  * Create and durably store a spec-compliant civic event.
@@ -110,6 +111,9 @@ export function buildEvent(input: CreateEventInput): CivicEvent {
     );
   }
 
+  // The grant first: it refuses everywhere, where the descriptor check only
+  // reports in production.
+  checkGrantedEventType(event);
   checkDeclaredEventType(event);
 
   return event;
@@ -132,6 +136,17 @@ function checkDeclaredEventType(event: CivicEvent): void {
     `${type} emitted ${event.event_type}, which its descriptor does not declare`,
     { process_type: type, event_type: event.event_type },
   );
+}
+
+/**
+ * The capability grant (ADR-014): an event about a process of a plugin
+ * package's type must be one its grant names, or one of the hub's own
+ * lifecycle events. Refused and reported everywhere, production included: a
+ * grant is a boundary (src/plugins/grant.ts).
+ */
+function checkGrantedEventType(event: CivicEvent): void {
+  const proc = event.data.process as { type?: unknown } | undefined;
+  if (typeof proc?.type === "string") checkEmissionGrant(proc.type, event.event_type, HOST_EVENT_TYPES);
 }
 
 /**

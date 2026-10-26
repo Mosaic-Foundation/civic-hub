@@ -23,7 +23,7 @@
 // module cannot tag its way out. Contract: BUILD-PLAN-multi-tenant.md →
 // "3. Data layer" and "Phase 2b adds" item 7.
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import tsParser from "@typescript-eslint/parser";
@@ -251,7 +251,7 @@ const dbConventionRule = {
     const isPlugin = rel.startsWith("src/modules/") || rel.startsWith("src/shared/polis_deliberation/");
     const pluginChecked = isPlugin;
     const isController = rel.startsWith("src/controllers/");
-    const tableChecked = rel.startsWith("src/") && !PROCESS_TABLE_OWNERS.some((p) => rel.startsWith(p));
+    const tableChecked = (rel.startsWith("src/") || rel.startsWith("packages/")) && !PROCESS_TABLE_OWNERS.some((p) => rel.startsWith(p));
     return {
       ImportDeclaration(n) {
         const spec = n.source.value;
@@ -397,23 +397,125 @@ const authzSeamRule = {
   },
 };
 
+// civic/package-boundary (plugin session 1, ADR-014). A plugin package
+// (packages/<dir>/) reaches the hub only through the plugin SDK
+// (src/sdk/index.ts), plain shared data (src/shared/), its own files, the
+// packages its index.ts `requires`, Node's built-ins and express. Its
+// manifest.ts reaches only src/shared/ and src/processes/manifest.ts, because
+// the UI reads it. In the other direction, engine code (src/) never imports a
+// package: the hub loads them from the configured list (config/plugins/).
+// The engine files that still reach into one are listed below with why; the
+// list only shrinks (tests/unit/packageBoundary.test.ts fails on an entry
+// that no longer reaches a package).
+export const PACKAGE_REACH_NOT_YET = {
+  "src/services/sampleSeed.ts": "seeds every type's sample content by calling its service; each package should contribute its own samples",
+};
+
+const PACKAGES_DIR = "packages/";
+const ENGINE_LIST_READERS = {
+  "src/plugins/loader.ts": "config/plugins/server.ts",
+  "src/shared/processManifests.ts": "config/plugins/manifests.ts",
+  "src/plugins/mountedState.ts": "config/plugins/manifests.ts",
+  "src/plugins/grant.ts": "config/plugins/manifests.ts",
+};
+
+const packageNamesCache = new Map();
+/** The directories (packages/<dir>) of the packages a package's index.ts requires, by name. */
+function requiredDirs(pkgDir) {
+  if (packageNamesCache.has(pkgDir)) return packageNamesCache.get(pkgDir);
+  const byName = new Map();
+  const base = resolve(ROOT, PACKAGES_DIR);
+  if (existsSync(base)) {
+    for (const d of readdirSync(base)) {
+      const pj = resolve(base, d, "package.json");
+      if (existsSync(pj)) byName.set(JSON.parse(readFileSync(pj, "utf8")).name, `${PACKAGES_DIR}${d}`);
+    }
+  }
+  const index = resolve(ROOT, pkgDir, "index.ts");
+  const text = existsSync(index) ? readFileSync(index, "utf8") : "";
+  const m = /requires:\s*\[([^\]]*)\]/.exec(text);
+  const names = m ? [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]) : [];
+  const dirs = names.map((n) => byName.get(n)).filter(Boolean);
+  packageNamesCache.set(pkgDir, dirs);
+  return dirs;
+}
+
+const packageBoundaryRule = {
+  meta: {
+    type: "problem",
+    docs: { description: "A plugin package reaches the hub only through the SDK; the engine never imports a package (ADR-014)." },
+    schema: [],
+  },
+  create(context) {
+    const file = context.filename;
+    const rel = relative(ROOT, file).split("\\").join("/");
+    const inPackage = rel.startsWith(PACKAGES_DIR);
+    const inEngine = rel.startsWith("src/");
+    if (!inPackage && !inEngine) return {};
+    const pkgDir = inPackage ? rel.split("/").slice(0, 2).join("/") : null;
+    const isManifest = inPackage && rel === `${pkgDir}/manifest.ts`;
+
+    function check(node, spec) {
+      if (typeof spec !== "string") return;
+      if (inPackage) {
+        if (!spec.startsWith(".")) {
+          if (isManifest || !(spec.startsWith("node:") || spec === "express")) {
+            context.report({ node, message: `"${spec}": a plugin package imports the hub through src/sdk/index.ts, and of other packages only node: built-ins and express (ADR-014).` });
+          }
+          return;
+        }
+        const target = relative(ROOT, resolve(dirname(file), spec)).split("\\").join("/").replace(/\.js$/, "");
+        if (target.startsWith(`${pkgDir}/`)) return;
+        if (target.startsWith("src/shared/")) return;
+        if (isManifest) {
+          if (target === "src/processes/manifest") return;
+          context.report({ node, message: `"${spec}": a manifest is plain data the UI reads; it imports only src/shared/ and src/processes/manifest.ts.` });
+          return;
+        }
+        if (target === "src/sdk/index" || target === "src/sdk") return;
+        if (requiredDirs(pkgDir).some((d) => target.startsWith(`${d}/`))) return;
+        context.report({
+          node,
+          message: `"${spec}": a plugin package reaches the hub only through src/sdk/index.ts (add the name there), src/shared/, its own files and the packages it requires (ADR-014).`,
+        });
+        return;
+      }
+      if (!spec.startsWith(".")) return;
+      const target = relative(ROOT, resolve(dirname(file), spec)).split("\\").join("/").replace(/\.js$/, ".ts");
+      if (target.startsWith(PACKAGES_DIR) && !(rel in PACKAGE_REACH_NOT_YET)) {
+        context.report({ node, message: `"${spec}": the engine never imports a plugin package; the hub loads them from config/plugins.json (ADR-014).` });
+      }
+      if (target.startsWith("config/plugins/") && ENGINE_LIST_READERS[rel] !== target) {
+        context.report({ node, message: `"${spec}": only the loader and the manifest list read the configured packages (ADR-014).` });
+      }
+    }
+
+    return {
+      ImportDeclaration: (n) => check(n, n.source.value),
+      ExportNamedDeclaration: (n) => n.source && check(n, n.source.value),
+      ExportAllDeclaration: (n) => check(n, n.source.value),
+      ImportExpression: (n) => n.source.type === "Literal" && check(n, n.source.value),
+    };
+  },
+};
+
 export default [
   {
     ignores: ["node_modules/**", "dist/**", "ui/**", "test-results/**", "backups/**", "supabase/**"],
   },
   {
-    files: ["src/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
+    files: ["src/**/*.ts", "packages/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
     languageOptions: { parser: tsParser, sourceType: "module", ecmaVersion: "latest" },
     // Other plugins' disable comments may exist in the tree; they are not errors here.
     linterOptions: { reportUnusedDisableDirectives: "off" },
-    plugins: { civic: { rules: { "raw-client": rawClientRule, "control-boundary": controlBoundaryRule, "authz-seam": authzSeamRule, "hosting-boundary": hostingBoundaryRule, "db-convention": dbConventionRule } } },
-    rules: { "civic/raw-client": "error", "civic/control-boundary": "error", "civic/authz-seam": "error", "civic/hosting-boundary": "error", "civic/db-convention": "error" },
+    plugins: { civic: { rules: { "raw-client": rawClientRule, "control-boundary": controlBoundaryRule, "authz-seam": authzSeamRule, "hosting-boundary": hostingBoundaryRule, "db-convention": dbConventionRule, "package-boundary": packageBoundaryRule } } },
+    rules: { "civic/raw-client": "error", "civic/control-boundary": "error", "civic/authz-seam": "error", "civic/hosting-boundary": "error", "civic/db-convention": "error", "civic/package-boundary": "error" },
   },
   // One typed config module (Audit 4, F7): the server and api/ read their
   // environment only through src/config/env.ts. Scripts and tests read their
   // own.
   {
-    files: ["src/**/*.ts", "api/**/*.ts"],
+    files: ["src/**/*.ts", "packages/**/*.ts", "api/**/*.ts"],
     ignores: ["src/config/env.ts"],
     rules: {
       "no-restricted-properties": [
@@ -494,9 +596,9 @@ export default [
     rules: {
       "no-restricted-imports": ["error", {
         patterns: [{
-          regex: "^(?!.*/manifest\\.js$)",
+          regex: "^(?!.*/manifest\\.js$|\\.\\./\\.\\./config/plugins/manifests\\.js$)",
           allowTypeImports: true,
-          message: "The manifest list imports manifests and nothing else.",
+          message: "The manifest list imports manifests (and the configured packages' list of them) and nothing else.",
         }],
       }],
     },

@@ -16,3 +16,11 @@ installAdapters({ ...fakeAdapters(), deliberation: fakePolisService });
 // The modules' stores, as the app binds them (they still reach the database
 // through forHub(), which a unit test mocks as before).
 installStores();
+
+// Every loaded plugin package counts as mounted in-process: the catalog check
+// (src/plugins/loader.ts) needs the database, and the loader's own tests
+// exercise it (tests/unit/pluginLoader.test.ts). The API suite's server runs
+// the real check against the local stack. mountedState imports nothing, so
+// this loads no hub module ahead of a test file's mocks.
+import { mountEverythingForTests } from "../../src/plugins/mountedState.js";
+mountEverythingForTests(true);

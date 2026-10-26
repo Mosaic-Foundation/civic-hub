@@ -38,6 +38,9 @@ psql_in() { docker exec -i civic-ra-pg psql -U postgres -v ON_ERROR_STOP=1 -q "$
 psql_in -v authenticator_password=postgres < scripts/run-anywhere/roles.sql
 for f in supabase/migrations/*.sql; do psql_in < "$f" || { echo "migration failed: $f"; exit 1; }; done
 psql_in < supabase/seed.sql
+# The catalog's pending entries for this checkout's plugin packages, approved as
+# the local operator (ADR-014): the loader mounts only approved hashes.
+CIVIC_TEST_DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:$PG_PORT/postgres" npx tsx scripts/catalog-approve-local.ts
 echo "[run-anywhere] $(ls supabase/migrations/*.sql | wc -l | tr -d ' ') migrations and the seed applied"
 
 docker run -d --name civic-ra-rest --network "$NET" -p "$REST_PORT:3000" \

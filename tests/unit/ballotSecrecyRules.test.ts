@@ -106,8 +106,9 @@ const read = (p: string) => readFileSync(p, "utf8");
 const rel = (p: string) => p.slice(ROOT.length + 1);
 
 describe("ballot secrecy in the code", () => {
-  const server = files(join(ROOT, "src"));
-  const ui = files(join(ROOT, "ui/src"));
+  // The hub and its plugin packages (ADR-014).
+  const server = [...files(join(ROOT, "src")), ...files(join(ROOT, "packages")).filter((p) => !p.endsWith(".tsx"))];
+  const ui = [...files(join(ROOT, "ui/src")), ...files(join(ROOT, "packages")).filter((p) => p.endsWith(".tsx"))];
 
   it("no server code filters a table by receipt in a URL (receipts travel in an RPC body)", () => {
     const hits = server.filter((p) => /\.eq\(\s*["']receipt_id["']|receipt_id=eq\./.test(read(p))).map(rel);

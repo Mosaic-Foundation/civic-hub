@@ -2,7 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
+import { defineDescriptor, defineManifest } from "../../src/processes/manifest.js";
 
 /**
  * What a word cloud is (src/processes/descriptor.ts). Residents submit one
@@ -151,3 +151,5 @@ export const WORDCLOUD_MANIFEST = defineManifest({
     ui: { surfaces: ["process-page", "create-page", "feed-card", "settings-panel"] },
   },
 });
+
+export default WORDCLOUD_MANIFEST;

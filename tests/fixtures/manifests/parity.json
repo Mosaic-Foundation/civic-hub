@@ -40,6 +40,7 @@
     "feedback_submissions",
     "hub_admin_audit_log",
     "hub_invites",
+    "hub_plugins",
     "hub_roles",
     "hub_settings",
     "job_runs",
@@ -115,6 +116,11 @@
     {
       "table": "hub_invites",
       "rows": "export"
+    },
+    {
+      "table": "hub_plugins",
+      "rows": "omit",
+      "reason": "which packages this host's catalog let the hub install; a new hub row records every approved package of the host it lands on, and the plugin switches travel in hub_settings (ADR-014)"
     },
     {
       "table": "hub_roles",
@@ -750,6 +756,23 @@
       "owner": "services/hubInvites"
     },
     {
+      "table": "hub_plugins",
+      "columns": [
+        "hub_id",
+        "package",
+        "version",
+        "plugin",
+        "capabilities",
+        "installed_at",
+        "installed_by",
+        "removed_at",
+        "removed_by",
+        "winding_down_since",
+        "winding_down_by"
+      ],
+      "owner": "plugins"
+    },
+    {
       "table": "hub_roles",
       "columns": [
         "hub_id",
@@ -862,6 +885,23 @@
         "expires_at"
       ],
       "owner": "control"
+    },
+    {
+      "table": "plugin_catalog",
+      "columns": [
+        "package",
+        "version",
+        "hash",
+        "display_name",
+        "plugin",
+        "process_type",
+        "capabilities",
+        "conformance",
+        "status",
+        "approved_by",
+        "approved_at"
+      ],
+      "owner": "plugins"
     },
     {
       "table": "process_links",

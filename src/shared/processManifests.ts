@@ -4,9 +4,11 @@
 // reads the same list for labels, colours and the feed. Order is the
 // registry's (it decides nothing a resident sees; sections carry their own).
 //
-// Adding a type: its folder (manifest.ts + handler.ts), and one line here and
-// one in src/processes/registry.ts's handler list. Loading types from packages
-// is the plugin program's (ADR-009, "left for later").
+// The types are plugin packages (ADR-014): the configured list
+// (config/plugins.json, written out by `npm run plugins:sync` as
+// config/plugins/manifests.ts) supplies their manifests, after the types not
+// yet moved into packages. Adding a type is adding a package and a line in
+// config/plugins.json.
 
 import { VOTE_MANIFEST } from "../modules/civic.vote/manifest.js";
 import { PROPOSAL_MANIFEST } from "../modules/civic.proposals/manifest.js";
@@ -16,7 +18,7 @@ import { BRIEF_MANIFEST } from "../modules/civic.brief/manifest.js";
 import { ANNOUNCEMENT_MANIFEST } from "../modules/civic.announcement/manifest.js";
 import { MEETING_SUMMARY_MANIFEST } from "../modules/civic.meeting_summary/manifest.js";
 import { POLIS_DELIBERATION_MANIFEST } from "./polis_deliberation/manifest.js";
-import { WORDCLOUD_MANIFEST } from "../modules/civic.wordcloud/manifest.js";
+import { PACKAGE_MANIFESTS } from "../../config/plugins/manifests.js";
 import type { ProcessManifest } from "../processes/manifest.js";
 
 export const PROCESS_MANIFESTS = [
@@ -28,7 +30,7 @@ export const PROCESS_MANIFESTS = [
   ANNOUNCEMENT_MANIFEST,
   MEETING_SUMMARY_MANIFEST,
   POLIS_DELIBERATION_MANIFEST,
-  WORDCLOUD_MANIFEST,
+  ...PACKAGE_MANIFESTS,
 ] as const;
 
 /** The same list, each as a plain ProcessManifest (for reading fields every manifest has). */

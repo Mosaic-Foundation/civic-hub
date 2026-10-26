@@ -16,6 +16,7 @@ import { pingDb, pingHubDb } from "../db/health.js";
 import { getSchemaReport } from "../db/schemaCheck.js";
 import { deploymentCommit, deploymentId } from "../config/deployment.js";
 import { normalizeHostname, resolveHubForHostname } from "../middleware/hub.js";
+import { packageVerdicts, verifyPackages } from "../plugins/loader.js";
 
 export interface HealthParts {
   db: { ok: boolean };
@@ -49,6 +50,11 @@ export const healthHandler = route(async (req: Request, res: Response) => {
     duration_ms: 0,
   }));
   const verdict = healthVerdict({ db, hubDb, schema });
+  // Plugin packages the loader did not mount (ADR-014): listed, never a 503.
+  // Prevention already happened (the package is not running); the console's
+  // dashboard shows the gap, and the loader reported it.
+  await verifyPackages();
+  const packages = packageVerdicts();
   // A monitor polls this every few minutes: never a cached answer.
   res.setHeader("Cache-Control", "no-store");
   res.status(verdict.code).json({
@@ -65,6 +71,10 @@ export const healthHandler = route(async (req: Request, res: Response) => {
     // The deployed commit, so "is the latest code actually live?" is answered
     // in one request: compare it to `git rev-parse HEAD` locally. Vercel's
     // variable or a generic one (src/config/deployment.ts).
+    plugins: {
+      mounted: packages.filter((p) => p.mounted).length,
+      unmounted: packages.filter((p) => !p.mounted).map((p) => ({ package: p.package, version: p.version, reason: p.reason })),
+    },
     commit: deploymentCommit(),
     deployed_at: deploymentId(),
     timestamp: new Date().toISOString(),

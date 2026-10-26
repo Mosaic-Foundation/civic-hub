@@ -521,9 +521,10 @@ function sourceFiles(dir: string): string[] {
  * the public feed (or, worse, as a silently generic activity).
  */
 function emittedEventTypes(): Set<string> {
-  const srcDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "src");
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
   const found = new Set<string>();
-  for (const file of sourceFiles(srcDir)) {
+  // The hub and its plugin packages (ADR-014).
+  for (const file of [...sourceFiles(join(root, "src")), ...sourceFiles(join(root, "packages"))]) {
     const text = readFileSync(file, "utf8");
     for (const match of text.matchAll(/event_type:\s*"([^"]+)"/g)) {
       found.add(match[1]);

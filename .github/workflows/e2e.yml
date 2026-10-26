@@ -65,6 +65,13 @@ jobs:
         env:
           CIVIC_TARGET_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
 
+      # The plugin catalog's pending entries for this checkout's packages,
+      # approved as the operator approves them in the console (ADR-014). The
+      # loader's rule is the deployments': a package is mounted only when an
+      # approved row records the hash of its files. Local database only.
+      - name: Approve the checkout's catalog entries (local operator)
+        run: npx tsx scripts/catalog-approve-local.ts
+
       # The UI calls /api on its own origin, as on Vercel; `vite preview`
       # proxies it to the API with the Host kept (ui/vite.config.ts) and serves
       # the production security headers, so the pages run under the real CSP.

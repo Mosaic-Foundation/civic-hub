@@ -1,13 +1,20 @@
-// civic.wordcloud process handler — thin wrapper around the civic.wordcloud module.
+// civic.wordcloud process handler — thin wrapper around the package's service (./service.ts).
 //
 // Adapts the module's service interface to the hub's ProcessHandler contract.
 // Lifecycle: draft → active → closed (per ADR-003, flexible lifecycle profiles).
 
-import { ValidationError } from "../../errors/index.js";
-import { Process, ProcessAction } from "../../models/process.js";
-import { emitEvent } from "../../events/eventEmitter.js";
-import { ProcessHandler } from "../../processes/types.js";
-import { readProcessState, writeProcessState } from "../../services/processRows.js";
+import {
+  ValidationError,
+  emitEvent,
+  readProcessState,
+  writeProcessState,
+  str,
+  num,
+  type Process,
+  type ProcessAction,
+  type ProcessHandler,
+  type FeedProcessMeta,
+} from "../../src/sdk/index.js";
 import {
   createWordcloudState,
   activateWordcloud,
@@ -17,10 +24,8 @@ import {
   buildClouds,
   getSubmissionCount,
   type WordcloudProcessState,
-} from "./index.js";
+} from "./service.js";
 import { WORDCLOUD_MANIFEST } from "./manifest.js";
-import { str, num } from "../../utils/readField.js";
-import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 
 function getState(process: Process): WordcloudProcessState {
   return process.state as unknown as WordcloudProcessState;

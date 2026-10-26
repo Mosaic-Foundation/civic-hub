@@ -54,6 +54,7 @@ import {
   PUBLIC_KEY_LIST,
   PLUGIN_IDS,
 } from "../models/hubSettings.js";
+import { pluginPackageMounted } from "../plugins/mountedState.js";
 
 export { KEYS, publicSubset, invalidateHubSettings };
 export type { SettingsMap };
@@ -703,16 +704,19 @@ export function hubDisplayNameSync(): string {
 
 // --- plugin settings ------------------------------------------------------
 
-/** Everything is on unless a hub explicitly switches it off. */
+/**
+ * Everything is on unless a hub explicitly switches it off, or its plugin
+ * package is not mounted on this deployment (src/plugins/mountedState.ts).
+ */
 export function isPluginEnabledSync(pluginId: string): boolean {
-  return asBoolean(getSettingSync(`plugin.${pluginId}.enabled`), true);
+  return pluginPackageMounted(pluginId) && asBoolean(getSettingSync(`plugin.${pluginId}.enabled`), true);
 }
 
 export async function isPluginEnabled(
   hubId: string | null,
   pluginId: string,
 ): Promise<boolean> {
-  return asBoolean(await getSetting(hubId, `plugin.${pluginId}.enabled`), true);
+  return pluginPackageMounted(pluginId) && asBoolean(await getSetting(hubId, `plugin.${pluginId}.enabled`), true);
 }
 
 /**

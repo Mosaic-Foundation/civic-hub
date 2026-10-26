@@ -64,6 +64,8 @@ import { checkDevFlags } from "./config/devFlags.js";
 import { assertSettings } from "./config/checkSettings.js";
 import { installHosting } from "./hosting/index.js";
 import { installStores } from "./stores/index.js";
+import { getAllHandlers } from "./processes/registry.js";
+import { awaitPackages, mountPackageRoutes } from "./plugins/mount.js";
 import { API_SECURITY_HEADERS } from "./shared/securityHeaders.js";
 
 // Every declared setting, checked once (src/config/settings.ts, ADR-012): a
@@ -75,6 +77,9 @@ assertSettings();
 installHosting();
 // The modules' stores (src/stores/, the database convention, ADR-012).
 installStores();
+// Every type paired with its handler now, so a plugin package without one, or
+// a handler without a manifest, stops the start (ADR-009, ADR-014).
+getAllHandlers();
 
 const app = express();
 
@@ -141,6 +146,8 @@ app.use((req, res, next) => {
 // Exempt: /health and /internal/* (the deployment's own surfaces, not any
 // hub's). See src/middleware/hub.ts.
 app.use(resolveHub as express.RequestHandler);
+// Which plugin packages are mounted, decided before anything reads it (ADR-014).
+app.use(awaitPackages);
 
 app.use(express.json());
 
@@ -216,9 +223,9 @@ app.use("/deliberations/drafts", requirePlugin("conversation"), draftRouter(deli
 
 app.use("/deliberations", requirePlugin("conversation"), deliberationRoutes);
 
-// Word cloud endpoints — lightweight free-text aggregation process
-import wordcloudRoutes from "./routes/wordcloudRoutes.js";
-app.use("/wordcloud", requirePlugin("wordcloud"), wordcloudRoutes);
+// The plugin packages' routes (ADR-014), in configured order, each behind
+// its plugin's switch and the loader's verdict.
+mountPackageRoutes(app, "routes");
 
 // Proposal endpoints — user-facing proposal submission and endorsement
 app.use("/proposals", requirePlugin("proposal"), proposalRoutes);

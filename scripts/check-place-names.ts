@@ -46,7 +46,7 @@ const ROOT = resolve(import.meta.dirname, "..");
 // ui/.env, ui/index.html and api/ are compiled or served for every hub just
 // like src/ — ui/.env held Floyd's whole branding until 2026-09-24, which is
 // how Utopia came to greet visitors as Floyd County residents.
-const SCAN_DIRS = ["src", "ui/src", "api"];
+const SCAN_DIRS = ["src", "ui/src", "api", "packages", "config/plugins"];
 // The shared legal documents and their defaults (2026-10-07, review R53):
 // every hub renders them, so a place written into one is a place on every
 // hub's terms page. Markdown and JSON have no comments to exempt.

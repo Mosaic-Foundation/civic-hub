@@ -76,7 +76,7 @@ export function findRpcCalls(file: string, text: string): RpcCall[] {
   return calls;
 }
 
-const calls = ["src", "api"].flatMap((dir) =>
+const calls = ["src", "packages", "api"].flatMap((dir) =>
   tsFiles(join(ROOT, dir)).flatMap((path) => findRpcCalls(relative(ROOT, path), readFileSync(path, "utf8"))),
 );
 

@@ -98,6 +98,7 @@ export const SETTINGS = s({
   CIVIC_POLIS_FAKE: { purpose: "Development, alias kept for one release: the deliberation adapter only is its fake.", type: "boolean", layer: "dev" },
   CIVIC_COC_FAKE: { purpose: "Development, alias kept for one release: the Code of Conduct check only is answered by the fake AI.", type: "boolean", layer: "dev" },
   CIVIC_DASHBOARD_FAKE: { purpose: "Development: the console's Dashboard reads hubs' /health from this server.", type: "boolean", layer: "dev" },
+  CIVIC_PLUGINS_UNVERIFIED: { purpose: "Development: mount every configured plugin package without an approved catalog row (catalog:add's conformance run).", type: "boolean", layer: "dev" },
 
   // --- Operations (ADR-006, ADR-007) -----------------------------------------
   CIVIC_ERROR_DSN: { purpose: "The errors adapter's Sentry DSN. Unset: errors go to the log only.", type: "secret", layer: "hosting" },

@@ -1,13 +1,13 @@
-// civic.wordcloud: one-word answers gathered into a cloud
-// (manifest: src/modules/civic.wordcloud/manifest.ts).
+// civic.wordcloud's UI module: one-word answers gathered into a cloud
+// (manifest: ./manifest.ts). Its pages are the hub's (ui/src/pages/), for now.
 
-import { CreateWordCloud, WordCloud } from "../lazyPages";
-import { getWordcloud } from "../services/api";
-import { ProcessField } from "../pages/settings/pluginFields";
-import { formatCount } from "./feedText";
-import type { ProcessUi } from "./types";
+import { CreateWordCloud, WordCloud } from "../../ui/src/lazyPages";
+import { getWordcloud } from "../../ui/src/services/api";
+import { ProcessField } from "../../ui/src/pages/settings/pluginFields";
+import { formatCount } from "../../ui/src/processes/feedText";
+import type { ProcessUi } from "../../ui/src/processes/types";
 
-export const wordcloudUi: ProcessUi = {
+const wordcloudUi: ProcessUi = {
   type: "civic.wordcloud",
   routes: [
     { path: "/wordcloud/new", element: <CreateWordCloud /> },
@@ -45,3 +45,5 @@ export const wordcloudUi: ProcessUi = {
     />
   ),
 };
+
+export default wordcloudUi;

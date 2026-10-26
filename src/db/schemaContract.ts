@@ -91,6 +91,9 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "waitlist", columns: ["invited_by"], owner: "services/hubInvites" },
   { table: "hub_invites", columns: ["hub_id", "email", "invited_by", "outcome", "link_hash", "created_at", "expires_at", "used_at"], owner: "services/hubInvites" },
   { table: "hub_roles", columns: ["hub_id", "role", "user_id", "source", "granted_email", "attrs"], owner: "authz" },
+  // Plugin packages (20261025000000, ADR-014).
+  { table: "hub_plugins", columns: ["hub_id", "package", "version", "plugin", "capabilities", "installed_at", "installed_by", "removed_at", "removed_by", "winding_down_since", "winding_down_by"], owner: "plugins" },
+  { table: "plugin_catalog", columns: ["package", "version", "hash", "display_name", "plugin", "process_type", "capabilities", "conformance", "status", "approved_by", "approved_at"], owner: "plugins" },
   { table: "feedback_submissions", columns: ["screenshot_url"], owner: "civic.feedback" },
   // Feedback routing (20261015000000): what the form captures, and the copy's status for the badge.
   { table: "feedback_submissions", columns: ["page_path", "software_version", "contact_ok", "mosaic_item_id", "mosaic_stream", "mosaic_status", "mosaic_sent_at", "mosaic_sent_by"], owner: "civic.feedback" },
@@ -145,6 +148,7 @@ const HOST_EXPORTS: readonly ExportManifestEntry[] = [
   { table: "feedback_submissions", rows: "export" },
   { table: "hub_admin_audit_log", rows: "export" },
   { table: "hub_invites", rows: "export" },
+  { table: "hub_plugins", rows: "omit", reason: "which packages this host's catalog let the hub install; a new hub row records every approved package of the host it lands on, and the plugin switches travel in hub_settings (ADR-014)" },
   { table: "hub_roles", rows: "omit", reason: "derived by trigger from the people.* settings and the accounts, which the export carries; the import re-derives it (ADR-011)" },
   { table: "hub_settings", rows: "export" },
   { table: "job_runs", rows: "omit", reason: "an operational log of this host's scheduled runs; the next host writes its own" },
