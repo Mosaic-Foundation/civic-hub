@@ -14,5 +14,5 @@ hub's repository.
 Version 1 of the SDK is narrower than the hub's own (`src/sdk/index.ts`, version 0, which the hub's shipped packages
 still import). A name is added when an outside package needs it and Mosaic agrees.
 
-The engine is in `host/` (TypeScript, run through tsx), under the Business Source License 1.1 (`LICENSE`): use it to
-build and test plugins.
+The engine is in `host/` (TypeScript, run through tsx). Its licence is moving to the AGPL (pending; until it is
+official, the packed `LICENSE` applies): use it to build and test plugins.
