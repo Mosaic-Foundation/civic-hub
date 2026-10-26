@@ -14,7 +14,7 @@
 
 import { NotFoundError } from "../errors/index.js";
 import { isPlatformJob, type JobSpec } from "./registry.js";
-import { JOB_RUNNERS, PLATFORM_JOB_RUNNERS } from "./runners.js";
+import { jobRunners, PLATFORM_JOB_RUNNERS } from "./runners.js";
 import { runJobAcrossHubs } from "./runJob.js";
 import { adapters } from "../adapters/index.js";
 import { recordJobLastRun } from "../db/jobLastRun.js";
@@ -74,7 +74,7 @@ async function runOnce(job: JobSpec, force: boolean, onlyHub: string | null, now
     const outcome = await run({ now, force });
     return { status: outcome.status, body: { job: job.id, platform: outcome.body } };
   }
-  const runner = JOB_RUNNERS[job.id];
+  const runner = jobRunners()[job.id];
   if (!runner) throw new Error(`job "${job.id}" has no runner`);
   const report = await runJobAcrossHubs(job, runner, { now, force, onlyHub });
   if ("error" in report) throw new NotFoundError(report.error, "hub_not_found");

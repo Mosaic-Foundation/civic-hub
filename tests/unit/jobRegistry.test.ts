@@ -37,7 +37,7 @@ describe("job registry", () => {
   it("gives every job a runner of its scope, and every runner a job", () => {
     const hubJobs = JOBS.filter((j) => !isPlatformJob(j)).map((j) => j.id).sort();
     const platformJobs = JOBS.filter(isPlatformJob).map((j) => j.id).sort();
-    expect(Object.keys(runnersModule.JOB_RUNNERS).sort()).toEqual(hubJobs);
+    expect(Object.keys(runnersModule.jobRunners()).sort()).toEqual(hubJobs);
     expect(Object.keys(runnersModule.PLATFORM_JOB_RUNNERS).sort()).toEqual(platformJobs);
   });
 

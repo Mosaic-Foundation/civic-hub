@@ -91,6 +91,13 @@ export function loadPackages(list: readonly ConfiguredPackage[]): LoadedPackage[
       throw new PackageError(entry, `its handler is for ${server.handler.type}, its manifest for ${m.descriptor.type}`);
     }
     if (server.handler.descriptor !== m.descriptor) throw new PackageError(entry, "its handler declares another descriptor than its manifest's");
+    const draftsPath = m.descriptor.creation.resident?.drafts;
+    if (Boolean(server.drafts) !== Boolean(draftsPath)) {
+      throw new PackageError(entry, draftsPath ? `residents draft it (${draftsPath}) but server(host) gives no draft kind` : "it gives a draft kind but residents do not draft it");
+    }
+    if (server.drafts && server.drafts.kind.spec.processType !== m.descriptor.type) {
+      throw new PackageError(entry, `its draft kind makes ${server.drafts.kind.spec.processType}, not ${m.descriptor.type}`);
+    }
     const declared = m.jobs.map((j) => j.id).sort();
     const runners = Object.keys(server.jobs ?? {}).sort();
     if (JSON.stringify(declared) !== JSON.stringify(runners)) {

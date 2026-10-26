@@ -9,6 +9,7 @@ import { route } from "../http/route.js";
 import { requirePlugin } from "../middleware/pluginGate.js";
 import type { PluginId } from "../models/hubSettings.js";
 import { isPackageMounted, loadedPackages, verifyPackages } from "./loader.js";
+import { draftRouter } from "../routes/draftRoutes.js";
 
 /** 404 unless the package is mounted. */
 export function requireMounted(packageName: string): RequestHandler {
@@ -25,6 +26,11 @@ export function requireMounted(packageName: string): RequestHandler {
  */
 export function mountPackageRoutes(on: Pick<Router, "use">, which: "routes" | "adminRoutes"): void {
   for (const p of loadedPackages()) {
+    const drafts = p.server.drafts;
+    const draftsPath = p.pkg.manifest.descriptor.creation.resident?.drafts;
+    if (which === "routes" && drafts && draftsPath) {
+      on.use(draftsPath, requirePlugin(p.plugin as PluginId), requireMounted(p.pkg.name), draftRouter(drafts.kind, drafts.extend));
+    }
     for (const m of p.server[which] ?? []) {
       on.use(m.path, requirePlugin(p.plugin as PluginId), requireMounted(p.pkg.name), m.router);
     }

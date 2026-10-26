@@ -1,9 +1,11 @@
 // What each job in src/jobs/registry.ts does for one hub. Keyed on the same
 // ids; tests/unit/jobRegistry.test.ts fails if a job has no runner or a
-// runner has no job. Each runner is called inside the hub's scope, so every
+// runner has no job. A plugin package's jobs are its own (ADR-014): its
+// server(host) returns their runners, which jobRunners() adds to the hub's. Each runner is called inside the hub's scope, so every
 // settings read, forHub() call and mail guard answers for that hub.
 
 import type { JobOutcome, JobRunInput, JobRunner } from "./types.js";
+import { loadedPackages } from "../plugins/loader.js";
 import { digestJob } from "./digest.js";
 import { adminDigestJob } from "./adminDigest.js";
 import { newsSyncJob } from "./newsSync.js";
@@ -14,7 +16,7 @@ import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { refreshSamples } from "../services/sampleRefresh.js";
 import { clearEndedArchivedVoteKeys, reshuffleOpenBallots } from "../modules/civic.receipts/index.js";
 
-export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
+const HOST_JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
   meeting_summary: meetingSummaryJob,
   news_sync: newsSyncJob,
   digest: digestJob,
@@ -56,6 +58,14 @@ export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
     return { status: 200, body: r as unknown as Record<string, unknown> };
   },
 };
+
+/** Every hub job's runner: the hub's own and each loaded package's. */
+export function jobRunners(): Readonly<Record<string, JobRunner>> {
+  return {
+    ...HOST_JOB_RUNNERS,
+    ...Object.fromEntries(loadedPackages().flatMap((p) => Object.entries(p.server.jobs ?? {}))),
+  };
+}
 
 /**
  * Platform jobs (`scope: "platform"` in the registry): run once per call,

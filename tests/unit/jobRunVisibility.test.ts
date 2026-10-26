@@ -190,7 +190,8 @@ vi.mock("../../src/modules/civic.admin_digest/store.js", () => ({
 }));
 
 const { jobById } = await import("../../src/jobs/registry.js");
-const { JOB_RUNNERS } = await import("../../src/jobs/runners.js");
+const { jobRunners } = await import("../../src/jobs/runners.js");
+const JOB_RUNNERS = jobRunners();
 const { runJobAcrossHubs } = await import("../../src/jobs/runJob.js");
 
 async function runJob(id: string) {

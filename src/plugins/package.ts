@@ -33,6 +33,7 @@ import type { sendEmail as sendMessage } from "../utils/email.js";
 import type { sendEmail as deliverEmail } from "../services/mailer.js";
 import type { GrantableAdapter } from "../shared/pluginGrant.js";
 import type { HubQueryBuilder } from "../db/forHub.js";
+import type { DraftKind } from "../processes/draftKinds.js";
 
 /** A router a package mounts, at `path` on the hub (or under /admin, behind the admin check). */
 export interface PluginMount {
@@ -44,6 +45,12 @@ export interface PluginMount {
 export interface PluginServer {
   /** The handler that runs its type's actions (its descriptor is its manifest's). */
   handler: ProcessHandler;
+  /**
+   * A type residents draft: its draft kind, mounted by the hub at the
+   * descriptor's creation.resident.drafts path (before its other routes), and
+   * any routes of the kind's own (`extend`, added before "/:id").
+   */
+  drafts?: { kind: DraftKind<any>; extend?: (router: Router) => void };
   /** Its routes, in mount order. Each is mounted behind its plugin's switch. */
   routes?: readonly PluginMount[];
   /** Its admin routes, under /admin, behind the admin check and its plugin's switch. */

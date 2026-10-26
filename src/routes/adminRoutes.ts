@@ -3,6 +3,7 @@
 // the CIVIC_ADMIN_EMAILS env var.
 
 import { requirePlugin } from "../middleware/pluginGate.js";
+import { mountPackageRoutes } from "../plugins/mount.js";
 import { Router } from "express";
 import { handleAdminQueueCounts, handleMarkAdminQueueSeen } from "../controllers/adminQueueController.js";
 import { handleAdminListEdits } from "../controllers/editNotificationController.js";
@@ -103,6 +104,10 @@ router.use("/briefs", requirePlugin("brief"));
 router.use("/meeting-summaries", requirePlugin("meeting_summary"));
 router.use("/feedback", requirePlugin("feedback"));
 router.use("/moderation/announcements", requirePlugin("announcement"));
+
+// The plugin packages' admin routes (ADR-014), each behind its plugin's
+// switch and the loader's verdict, after the admin check above.
+mountPackageRoutes(router, "adminRoutes");
 
 
 // Proposals

@@ -122,7 +122,8 @@ vi.mock("../../src/services/jobRuns.js", () => ({
 }));
 
 const { jobById } = await import("../../src/jobs/registry.js");
-const { JOB_RUNNERS } = await import("../../src/jobs/runners.js");
+const { jobRunners } = await import("../../src/jobs/runners.js");
+const JOB_RUNNERS = jobRunners();
 const { runJobAcrossHubs } = await import("../../src/jobs/runJob.js");
 
 /** One pass of a registry job, as its route would run it. */
