@@ -20,6 +20,8 @@ import { getHubSettingsVersion } from "./hubs.js";
 import { currentHub } from "../config/hubContext.js";
 import { DOCUMENT_KEYS } from "../models/hubSettings.js";
 import { invalidateHubRoles } from "./hubRolesStore.js";
+import { clearHubGrants, setHubGrants } from "../plugins/hubGrants.js";
+import type { PluginCapabilities } from "../shared/pluginGrant.js";
 
 const CACHE_TTL_MS = 60_000;
 
@@ -124,10 +126,30 @@ export async function fetchHubSettings(hubId: string, knownVersion?: number): Pr
   for (const row of rows) {
     map[row.key] = row.value;
   }
+  // The grants its admin approved, at the same version (ADR-015).
+  await loadHubGrants(hubId);
   // Tagged with the version read BEFORE the rows: a write in between leaves
   // the copy tagged older than it is, so the next request reloads it.
   cache.set(hubId, { value: map, version, expiresAt: Date.now() + CACHE_TTL_MS });
   return map;
+}
+
+/**
+ * The grants the hub's admin approved, package by package (hub_plugins;
+ * ADR-015), read with the settings at the same version: a change to an
+ * install bumps the version. A read that fails leaves the hub held to its
+ * packages' manifests alone, as before versions; it is retried next time.
+ */
+async function loadHubGrants(hubId: string): Promise<void> {
+  try {
+    const rows = await forHub(hubId)
+      .from("hub_plugins")
+      .select<{ package: string; capabilities: PluginCapabilities }>("package, capabilities");
+    setHubGrants(hubId, new Map(rows.map((r) => [r.package, r.capabilities])));
+  } catch (err) {
+    clearHubGrants(hubId);
+    console.error(`[hub_plugins] grants for "${hubId}" could not be read: ${(err as Error).message}`);
+  }
 }
 
 /** Write one setting and drop the hub's cache. */

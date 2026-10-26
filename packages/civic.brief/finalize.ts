@@ -32,8 +32,11 @@ function hostLlm(): LlmClient {
 
 /** A deliberation result's summary: fake, written by the AI, or without a write-up and why. */
 export async function deliberationSummary(result: DeliberationResult, llm: LlmClient | null = hostLlm()): Promise<DeliberationSummary> {
-  if (result.fake) return fakeDeliberationSummary(result);
+  // The hub's admin approved the AI for briefs (a hub that has not updated to
+  // a version with it is held to what it approved): asked first, so the fake
+  // service's summary, which stands in for the model, follows the same rule.
   if (!llm || !briefHost.get().allows("ai")) return summaryWithoutNarrative(result, "not_allowed");
+  if (result.fake) return fakeDeliberationSummary(result);
   try {
     return await summarizeDeliberation(result, llm);
   } catch (err) {

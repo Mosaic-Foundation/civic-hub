@@ -33,6 +33,13 @@
 // hash; once signatures are required, a row without a valid signature is
 // unapproved, and a deployment without a key mounts nothing.
 //
+// REQUIRED VERSIONS (ADR-015). A deployment runs one version of each package
+// for every hub; each hub records the version whose grant its admin approved,
+// and updates on its Plugins page. When a server mounts a version the
+// operator marked required, every hub on an older version is moved to it
+// (apply_required_plugin_version), once per server, with a notice on the
+// hub's Plugins page.
+//
 // The files are hashed once per server; the approved rows are read again
 // after CATALOG_TTL_MS, so an approval in the console reaches every server
 // within a minute.
@@ -46,7 +53,7 @@ import { everythingMountedForTests, recordMounted } from "./mountedState.js";
 export { isPackageMounted, isTypeMounted } from "./mountedState.js";
 import { hashPackage, packageFiles } from "./hash.js";
 import { beyondGrant } from "../shared/pluginGrant.js";
-import { readApprovedCatalog, type CatalogRow } from "../db/pluginCatalog.js";
+import { applyRequiredVersion, readApprovedCatalog, type CatalogRow } from "../db/pluginCatalog.js";
 import { reportError } from "../utils/reportError.js";
 import { pluginsUnverifiedEnabled } from "../config/devFlags.js";
 import { deploymentKeys, signatureVerifies, type CatalogKeys } from "./signature.js";
@@ -268,6 +275,7 @@ async function refresh(): Promise<void> {
       approved = [];
     }
     for (const p of loaded()) byName.set(p.pkg.name, judge(p, h.get(p.pkg.name)!, approved));
+    await applyRequired([...byName.values()], approved);
   }
   for (const v of byName.values()) {
     const key = `${v.package}@${v.version}:${v.reason ?? ""}`;
@@ -278,6 +286,25 @@ async function refresh(): Promise<void> {
   }
   current = { at: Date.now(), byName };
   recordMounted([...byName.values()].filter((v) => v.mounted).map((v) => v.package));
+}
+
+const appliedRequired = new Set<string>();
+
+/** Move every hub to each mounted version marked required, once per server; a failure is reported and tried again next time. */
+async function applyRequired(verdicts: readonly PackageVerdict[], approved: readonly CatalogRow[]): Promise<void> {
+  for (const v of verdicts) {
+    if (!v.mounted) continue;
+    const row = approved.find((r) => r.package === v.package && r.version === v.version && r.hash === v.hash);
+    const key = `${v.package}@${v.version}`;
+    if (!row?.required || appliedRequired.has(key)) continue;
+    try {
+      const moved = await applyRequiredVersion(row);
+      appliedRequired.add(key);
+      if (moved > 0) console.log(`[plugins] ${key} is required: ${moved} hub record(s) updated to it`);
+    } catch (err) {
+      reportError("plugin.required", `${key} is required but the hubs could not be moved to it`, { package: v.package, version: v.version }, err);
+    }
+  }
 }
 
 /** Decide (or refresh) which packages are mounted. Awaited before requests, jobs and scripts use them. */
@@ -303,5 +330,6 @@ export function packageVerdicts(): PackageVerdict[] {
 export function resetPackageVerdicts(): void {
   current = null;
   hashes = null;
+  appliedRequired.clear();
   recordMounted([]);
 }

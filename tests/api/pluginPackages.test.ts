@@ -49,7 +49,14 @@ async function stepCode(): Promise<string> {
 const installs = async () => {
   const res = await call("GET", "/admin/hub/plugins/installs", HOST, undefined, admin);
   expect(res.status, JSON.stringify(res.body)).toBe(200);
-  return res.body.plugins as Array<{ plugin: string; state: string; open: number; wind_down_offered: boolean; packages: Array<{ package: string; version: string; grant: { can: string[]; cannot: string[] } }> }>;
+  return res.body.plugins as Array<{
+    plugin: string;
+    state: string;
+    open: number;
+    wind_down_offered: boolean;
+    update_available: boolean;
+    packages: Array<{ package: string; version: string; grant: { can: string[]; cannot: string[] } }>;
+  }>;
 };
 const one = async (plugin: string) => (await installs()).find((p) => p.plugin === plugin)!;
 
@@ -328,3 +335,115 @@ describe("signed approvals", () => {
   });
 });
 
+
+// Versions and updates (plugin session 2, ADR-015). A deployment runs one
+// version of each package for every hub; a hub records the version whose
+// grant its admin approved and is held to that grant until it updates. Briefs
+// 0.2.0 added the AI (the conversation summary moved to the brief): a hub
+// still on 0.1.0's grant gets its conversation briefs without a written
+// summary, and its Plugins page says why and offers the update.
+describe("versions and updates", () => {
+  const BRIEF = "@civic-social/plugin-brief";
+  const AI_LINE = "Use the hub's AI service. Each use counts against the hub's daily AI allowance.";
+
+  /** The hub as one that has not approved Briefs 0.2.0: 0.1.0, with 0.1.0's grant (no AI). */
+  async function briefsBehind(): Promise<void> {
+    await db.query(
+      `UPDATE hub_plugins SET version = '0.1.0', capabilities = jsonb_set(capabilities, '{adapters}', '["mail"]'::jsonb),
+              upgraded_from = NULL, upgraded_at = NULL, upgraded_by = NULL
+        WHERE hub_id = $1 AND package = $2`,
+      [SLUG, BRIEF],
+    );
+  }
+
+  async function closedConversationBrief(topic: string): Promise<{ id: string; content: Record<string, any> }> {
+    const made = await call("POST", "/deliberations", HOST, { title: topic, topic, framing: "What should the hub know?" }, admin);
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    const id = (made.body.id ?? made.body.process_id ?? made.body.process?.id) as string;
+    const closed = await call("POST", `/process/${id}/action`, HOST, { type: "close", payload: { note: "Closed by the versions test." } }, admin);
+    expect(closed.status, JSON.stringify(closed.body)).toBe(200);
+    const brief = (await db.query("SELECT state FROM processes WHERE hub_id = $1 AND type = 'civic.brief' AND state->>'source_process_id' = $2", [SLUG, id])).rows[0];
+    expect(brief, "the close made a brief").toBeTruthy();
+    return { id, content: brief.state.content };
+  }
+
+  it("a hub that has not approved the brief's AI still gets a brief, without a written summary, and its Plugins page says why", async () => {
+    await briefsBehind();
+    const { id, content } = await closedConversationBrief(`Not allowed ${run}`);
+    expect(content.summary).toBe("");
+    expect(content.deliberation.narrative).toBe("not_allowed");
+    expect(content.deliberation.participation_stats).toBeTruthy();
+    const page = await call("GET", `/deliberations/${id}`, HOST, undefined, admin);
+    expect(page.body.summary.narrative).toBe("not_allowed");
+
+    const briefs = await one("brief");
+    expect(briefs.update_available).toBe(true);
+    const pkg = (briefs.packages as Array<any>).find((p) => p.package === BRIEF);
+    expect(pkg.version).toBe("0.1.0");
+    expect(pkg.update).toEqual({ version: "0.2.0", adds: [AI_LINE], drops: [] });
+    expect(pkg.grant.cannot).toContain("Use AI.");
+  });
+
+  it("Update records the new version and grant, is in the admin log, and the next brief is written", async () => {
+    await briefsBehind();
+    expect((await call("POST", "/admin/hub/plugins/brief/update", HOST, {}, resident)).status).toBe(403);
+    const updated = await call("POST", "/admin/hub/plugins/brief/update", HOST, {}, admin);
+    expect(updated.status, JSON.stringify(updated.body)).toBe(200);
+    expect(updated.body.plugin.update_available).toBe(false);
+    const row = (await db.query("SELECT version, capabilities, upgraded_from, upgraded_by FROM hub_plugins WHERE hub_id = $1 AND package = $2", [SLUG, BRIEF])).rows[0];
+    expect(row).toMatchObject({ version: "0.2.0", upgraded_from: "0.1.0" });
+    expect(row.capabilities.adapters).toContain("ai");
+    expect(row.upgraded_by).not.toBe("system:required");
+    const log = (await db.query("SELECT after FROM hub_admin_audit_log WHERE hub_id = $1 AND action = 'plugin.update' ORDER BY at DESC LIMIT 1", [SLUG])).rows[0];
+    expect(log.after).toMatchObject({ version: "0.2.0", adds: [AI_LINE] });
+
+    const { content } = await closedConversationBrief(`Allowed ${run}`);
+    expect(content.deliberation.narrative).toBeUndefined();
+    expect(content.summary).toMatch(/^What participants said about Allowed /);
+  });
+
+  it("an open vote keeps working across an update: made before, it reads and closes after", async () => {
+    // As a hub on an older Votes record (the same code serves every version: option B).
+    await db.query("UPDATE hub_plugins SET version = '0.0.9' WHERE hub_id = $1 AND package = '@civic-social/plugin-vote'", [SLUG]);
+    const made = await createVote(`Across an update ${run}`);
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    const id = made.body.id as string;
+    expect((await call("POST", `/process/${id}/action`, HOST, { type: "process.activate", payload: {} }, admin)).status).toBe(200);
+    expect((await one("vote")).update_available).toBe(true);
+    expect((await call("POST", "/admin/hub/plugins/vote/update", HOST, {}, admin)).status).toBe(200);
+    expect((await record("@civic-social/plugin-vote")).version).toBe("0.1.0");
+    const read = await call("GET", `/process/${id}/state`, HOST, undefined, admin);
+    expect(read.status).toBe(200);
+    expect(read.body.status ?? read.body.lifecycle).toBe("active");
+    const closed = await call("POST", `/process/${id}/action`, HOST, { type: "process.close", payload: { note: "Closed after the update." } }, admin);
+    expect(closed.status, JSON.stringify(closed.body)).toBe(200);
+    // A closed vote is finalized at once (its brief waits for an admin).
+    expect(["closed", "finalized"]).toContain((await call("GET", `/process/${id}/state`, HOST, undefined, admin)).body.status);
+  });
+
+  it("a version marked required moves every hub on an older one, with a notice on its Plugins page", async () => {
+    await briefsBehind();
+    const view = await consoleCall("GET", "/control/plugins", { cookie });
+    const entry = view.body.entries.find((e: any) => e.package === BRIEF && e.version === "0.2.0" && e.status === "approved" && e.matches_deployment);
+    expect(entry, "Briefs 0.2.0 is approved and running").toBeTruthy();
+    const wasRequired = entry.required as boolean;
+    try {
+      if (wasRequired) {
+        expect((await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: false, step_up_code: await stepCode() } })).status).toBe(200);
+      }
+      expect((await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: true } })).status).toBe(403);
+      const marked = await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: true, step_up_code: await stepCode() } });
+      expect(marked.status, JSON.stringify(marked.body)).toBe(200);
+      const row = (await db.query("SELECT version, upgraded_from, upgraded_by FROM hub_plugins WHERE hub_id = $1 AND package = $2", [SLUG, BRIEF])).rows[0];
+      expect(row).toEqual({ version: "0.2.0", upgraded_from: "0.1.0", upgraded_by: "system:required" });
+      const briefs = await one("brief");
+      expect(briefs.update_available).toBe(false);
+      const pkg = (briefs.packages as Array<any>).find((p) => p.package === BRIEF);
+      expect(pkg.required_update).toMatchObject({ from: "0.1.0", to: "0.2.0" });
+    } finally {
+      if (!wasRequired) {
+        await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: false, step_up_code: await stepCode() } });
+      }
+    }
+  });
+});

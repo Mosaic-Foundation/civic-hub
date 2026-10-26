@@ -51,6 +51,7 @@ export const FUNCTION_CONTRACT: readonly FunctionRequirement[] = [
     args: "p_hub_id text, p_plugin text, p_change text, p_packages jsonb, p_settings jsonb, p_actor text",
     owner: "services/pluginInstall",
   },
+  { name: "apply_required_plugin_version", args: "p_package text, p_version text, p_capabilities jsonb", owner: "db/pluginCatalog" },
   { name: "claim_vote_key", args: "p_hub_id text, p_process_id text, p_user_id text, p_key_hash text", owner: "db/atomic" },
   { name: "ballot_by_receipt", args: "p_hub_id text, p_process_id text, p_receipt text", owner: "db/atomic" },
   { name: "rate_limit_take", args: "p_buckets text[], p_limits integer[], p_window_seconds integer[]", owner: "db/rateLimit" },

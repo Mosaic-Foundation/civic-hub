@@ -78,6 +78,8 @@ describe("what is mounted", () => {
     signature: null,
     signature_key: null,
     signed_at: null,
+    required: false,
+    auto_install: true,
     ...over,
   });
 
@@ -133,6 +135,8 @@ describe("signed approvals (plugin session 2, ADR-015)", () => {
     signature: null,
     signature_key: null,
     signed_at: null,
+    required: false,
+    auto_install: true,
   };
   const signedBy = (pem: string, over: Partial<CatalogRow> = {}): CatalogRow => {
     const row = { ...base, ...over };

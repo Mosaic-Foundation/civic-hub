@@ -155,3 +155,25 @@ function joinWords(xs: readonly string[]): string {
   if (xs.length <= 1) return xs.join("");
   return `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
 }
+
+/**
+ * What a newer version's grant changes, in the Install confirmation's words
+ * (ADR-015): the lines it adds ("It will also be able to") and the lines it
+ * drops ("It will no longer"). Both empty when the grant did not change.
+ */
+export function grantChangesInPlainWords(
+  approved: PlainGrantInput,
+  next: PlainGrantInput,
+): { adds: string[]; drops: string[] } {
+  const before = grantInPlainWords(approved).can;
+  const after = grantInPlainWords(next).can;
+  return { adds: after.filter((l) => !before.includes(l)), drops: before.filter((l) => !after.includes(l)) };
+}
+
+/** -1, 0 or 1: semver order ("0.10.0" after "0.9.0"). Anything not semver sorts first. */
+export function compareVersions(a: string, b: string): number {
+  const parse = (v: string) => (/^\d+\.\d+\.\d+$/.test(v) ? v.split(".").map(Number) : [-1, -1, -1]);
+  const [x, y] = [parse(a), parse(b)];
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;
+  return 0;
+}

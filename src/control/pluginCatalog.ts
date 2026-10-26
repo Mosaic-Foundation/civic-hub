@@ -15,7 +15,16 @@
 // and every row again after the key is rotated.
 
 import { getDb } from "../db/client.js";
-import { readApprovedCatalog, readCatalog, readCatalogRow, setCatalogSignature, setCatalogStatus, type CatalogRow } from "../db/pluginCatalog.js";
+import {
+  applyRequiredVersion,
+  readApprovedCatalog,
+  readCatalog,
+  readCatalogRow,
+  setCatalogRequired,
+  setCatalogSignature,
+  setCatalogStatus,
+  type CatalogRow,
+} from "../db/pluginCatalog.js";
 import { deploymentKeys, signatureVerifies, signRow, type SignatureMode } from "../plugins/signature.js";
 import { packageVerdicts, refreshPackages, type PackageVerdict } from "../plugins/loader.js";
 import { grantInPlainWords } from "../shared/pluginGrant.js";
@@ -125,6 +134,24 @@ export async function signApprovedEntries(): Promise<{ key: string; signed: Arra
   }
   await refreshPackages();
   return { key: keys.signing.id, signed };
+}
+
+/**
+ * Mark an approved entry required, or not (ADR-015): a required version is
+ * recorded on every hub on an older one, now when this deployment runs it,
+ * else when a server first mounts it, with a notice on the hub's Plugins
+ * page. No hub's admin is asked. Returns how many hubs moved now.
+ */
+export async function setEntryRequired(id: string, required: boolean): Promise<{ before: CatalogRow; after: CatalogRow; moved: number }> {
+  const before = await readCatalogRow(id);
+  if (!before) throw new CatalogStateError("No such catalog entry.");
+  if (before.status !== "approved") throw new CatalogStateError("Only an approved entry can be marked required.");
+  const after = await setCatalogRequired(id, required);
+  if (!after) throw new CatalogStateError("This entry changed while you were looking at it. Reload and try again.");
+  await refreshPackages();
+  const running = packageVerdicts().some((v) => v.mounted && v.package === after.package && v.version === after.version && v.hash === after.hash);
+  const moved = after.required && running ? await applyRequiredVersion(after) : 0;
+  return { before, after, moved };
 }
 
 /** Withdraw an approved entry: the deployment stops mounting that version. */

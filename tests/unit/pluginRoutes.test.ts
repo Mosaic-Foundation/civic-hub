@@ -23,6 +23,7 @@ const ADDED: Record<string, string> = {
   "GET /admin/hub/plugins/installs": "the Plugins page's installs (ADR-014)",
   "POST /admin/hub/plugins/:plugin/install": "Install (ADR-014)",
   "POST /admin/hub/plugins/:plugin/remove": "Remove: Stop now or Wind down (ADR-014)",
+  "POST /admin/hub/plugins/:plugin/update": "Update to the version this deployment runs (ADR-015)",
 };
 
 interface Layer {

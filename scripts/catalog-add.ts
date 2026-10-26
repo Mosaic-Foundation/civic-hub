@@ -1,9 +1,12 @@
-// npm run catalog:add -- packages/<dir> [--port 3300]
+// npm run catalog:add -- packages/<dir> [--port 3300] [--required] [--no-auto-install]
 //
 // The way a plugin package gets into the console's catalog (ADR-014):
 //   1. checks the package's shape (npm run plugins:sync -- --check) and that
 //      config/plugins.json lists it;
-//   2. hashes its files (src/plugins/hash.ts): what the approval will be of;
+//   2. hashes its files (src/plugins/hash.ts): what the approval will be of,
+//      and refuses a migration of its own that is not additive
+//      (src/plugins/additive.ts; ADR-015): a package's migrations run once for
+//      every hub, before the code;
 //   3. starts this checkout's API on --port against the LOCAL stack, with the
 //      outside services faked and CIVIC_PLUGINS_UNVERIFIED on (development
 //      only), so the package runs before anyone has approved it;
@@ -12,6 +15,9 @@
 //   5. on green, writes supabase/migrations/<now>_catalog_<id>_<version>.sql:
 //      one plugin_catalog row, status 'pending', with the hash, the grant the
 //      manifest declares and the conformance result. On red, writes nothing.
+//      --required writes it marked required (every hub is moved to it once it
+//      is approved and running; ADR-015); --no-auto-install writes it as one a
+//      new hub does not get (the developer guide's example).
 //
 // The row is unsigned: the console signs it with that deployment's catalog key
 // when the operator approves it (ADR-015). It reaches each environment with
@@ -21,10 +27,11 @@
 // approves it.
 
 import { spawn, execFileSync, type ChildProcess } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { hashPackage } from "../src/plugins/hash.js";
+import { notAdditive } from "../src/plugins/additive.js";
 import type { PluginPackage } from "../src/plugins/package.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -84,6 +91,20 @@ async function main(): Promise<void> {
   const hash = hashPackage(join(ROOT, dir));
   const m = pkg.manifest;
   console.log(`catalog:add: ${pkg.name}@${pkg.version} (${m.descriptor.type}), ${hash}`);
+  const migrationsDir = join(ROOT, dir, "migrations");
+  const refused = existsSync(migrationsDir)
+    ? readdirSync(migrationsDir)
+        .filter((f) => f.endsWith(".sql"))
+        .flatMap((f) => notAdditive(`${dir}/migrations/${f}`, readFileSync(join(migrationsDir, f), "utf8")))
+    : [];
+  if (refused.length > 0) {
+    fail(
+      `a migration is not additive, and every hub shares the database it changes (ADR-015):\n` +
+        refused.map((r) => `  ${r.file}: ${r.why}: ${r.statement}`).join("\n"),
+    );
+  }
+  const required = process.argv.includes("--required");
+  const autoInstall = !process.argv.includes("--no-auto-install");
 
   const st = localStack();
   const port = arg("--port") ?? "3300";
@@ -143,10 +164,13 @@ async function main(): Promise<void> {
     `-- A plugin catalog entry, written by \`npm run catalog:add\` (ADR-014). Additive.\n` +
       `-- ${pkg.name}@${pkg.version} passed the conformance suite (${commit}). The row waits,\n` +
       `-- 'pending', for the operator to approve it in the console; until then the\n` +
-      `-- loader does not mount this version on the deployment.\n\n` +
-      `INSERT INTO plugin_catalog (package, version, hash, display_name, plugin, process_type, capabilities, conformance, status)\n` +
+      `-- loader does not mount this version on the deployment. The console signs it as\n` +
+      `-- it approves it (ADR-015).\n` +
+      (required ? `-- Marked required: once approved and running, every hub on an older version is moved to it.\n` : "") +
+      (autoInstall ? "" : `-- Not installed on new hubs (auto_install false).\n`) +
+      `\nINSERT INTO plugin_catalog (package, version, hash, display_name, plugin, process_type, capabilities, conformance, status, required, auto_install)\n` +
       `VALUES (\n  ${lit(pkg.name)},\n  ${lit(pkg.version)},\n  ${lit(hash)},\n  ${lit(pkg.displayName)},\n  ${lit(m.descriptor.plugin)},\n  ${lit(m.descriptor.type)},\n` +
-      `  ${lit(JSON.stringify(m.capabilities))}::jsonb,\n  ${lit(JSON.stringify(conformance))}::jsonb,\n  'pending'\n)\n` +
+      `  ${lit(JSON.stringify(m.capabilities))}::jsonb,\n  ${lit(JSON.stringify(conformance))}::jsonb,\n  'pending',\n  ${required},\n  ${autoInstall}\n)\n` +
       `ON CONFLICT (package, version, hash) DO NOTHING;\n`,
   );
   console.log(`catalog:add: green. Wrote ${file}. Apply it (./scripts/local-stack.sh start), then approve the entry in the console on each deployment.`);

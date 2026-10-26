@@ -99,6 +99,8 @@ function describe(e: HubAdminLogEntry): string {
         : `Removed ${field(e.after, "plugin") ?? "a plugin"} (stopped now)`;
     case "plugin.wind_down":
       return `Started winding down ${field(e.after, "plugin") ?? "a plugin"}`;
+    case "plugin.update":
+      return `Updated ${field(e.after, "plugin") ?? "a plugin"} to version ${field(e.after, "version") ?? "?"}`;
     default:
       return e.action;
   }

@@ -279,6 +279,8 @@ export const api = {
   withdrawPlugin: (id: string, extra: Record<string, unknown>) =>
     request<PluginCatalog>("POST", `/plugins/${encodeURIComponent(id)}/withdraw`, extra),
   signPlugins: (extra: Record<string, unknown>) => request<PluginCatalog>("POST", "/plugins/sign", extra),
+  requirePlugin: (id: string, required: boolean, extra: Record<string, unknown>) =>
+    request<PluginCatalog>("POST", `/plugins/${encodeURIComponent(id)}/required`, { ...extra, required }),
   updateFeedback: (id: string, patch: { status?: FeedbackStatus; github_issue_url?: string | null }) =>
     request<{ item: FeedbackItem; sender_told?: { sent: boolean; reason?: string } }>(
       "PATCH",
@@ -354,6 +356,10 @@ export interface PluginCatalogEntry {
   signature_key: string | null;
   signed_at: string | null;
   signed: boolean;
+  /** Every hub is moved to this version when a server runs it (ADR-015). */
+  required: boolean;
+  /** false: a new hub does not get it. */
+  auto_install: boolean;
 }
 
 export interface PluginVerdict {

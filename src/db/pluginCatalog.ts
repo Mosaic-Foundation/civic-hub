@@ -30,10 +30,14 @@ export interface CatalogRow {
   signature: string | null;
   signature_key: string | null;
   signed_at: string | null;
+  /** The operator marked this version required: every hub is moved to it (ADR-015). */
+  required: boolean;
+  /** false: a new hub does not get it (the developer guide's example). */
+  auto_install: boolean;
 }
 
 const COLUMNS =
-  "id, package, version, hash, display_name, plugin, process_type, capabilities, conformance, status, approved_by, approved_at, withdrawn_at, notes, created_at, signature, signature_key, signed_at";
+  "id, package, version, hash, display_name, plugin, process_type, capabilities, conformance, status, approved_by, approved_at, withdrawn_at, notes, created_at, signature, signature_key, signed_at, required, auto_install";
 
 /** Every approved row. */
 export async function readApprovedCatalog(): Promise<CatalogRow[]> {
@@ -117,4 +121,32 @@ export async function setCatalogSignature(
     .maybeSingle();
   if (error) throw new Error(`plugin_catalog: ${error.message}`);
   return Boolean(data);
+}
+
+/**
+ * Move every hub on an older version of a package to a required one, as an
+ * update by system:required (apply_required_plugin_version; ADR-015). Returns
+ * how many hubs moved.
+ */
+export async function applyRequiredVersion(row: Pick<CatalogRow, "package" | "version" | "capabilities">): Promise<number> {
+  const { data, error } = await getDb().rpc("apply_required_plugin_version", {
+    p_package: row.package,
+    p_version: row.version,
+    p_capabilities: row.capabilities,
+  });
+  if (error) throw new Error(`apply_required_plugin_version: ${error.message}`);
+  return Number(data ?? 0);
+}
+
+/** Mark an approved version required, or not (the console). Returns the row, or null when it is not approved. */
+export async function setCatalogRequired(id: string, required: boolean): Promise<CatalogRow | null> {
+  const { data, error } = await getDb()
+    .from("plugin_catalog")
+    .update({ required })
+    .eq("id", id)
+    .eq("status", "approved")
+    .select(COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(`plugin_catalog: ${error.message}`);
+  return (data as CatalogRow | null) ?? null;
 }

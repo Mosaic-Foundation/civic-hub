@@ -240,6 +240,10 @@
   margin: 0 0 var(--space-md);
 }
 
+.plugins-intro p {
+  margin: 0 0 var(--space-sm, 8px);
+}
+
 .settings-field {
   display: flex;
   flex-direction: column;
@@ -971,6 +975,17 @@
 
 .plugin-install-actions .plugin-install-button {
   margin-left: 0;
+}
+
+/* Update available, and a required update made by Civic.Social (ADR-015). */
+.plugin-install-update p,
+.plugin-install-notice {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+
+.plugin-install-notice {
+  color: var(--color-text-secondary, inherit);
 }
 
 .plugin-grant-title {

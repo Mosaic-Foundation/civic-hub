@@ -1756,6 +1756,10 @@ export interface PluginInstall {
     grant: { can: string[]; cannot: string[] };
     approved_at: string | null;
     checked_at: string | null;
+    /** This deployment runs a newer version than the hub approved: what Update changes. */
+    update: { version: string; adds: string[]; drops: string[] } | null;
+    /** The last update, made by Civic.Social because the version is required. */
+    required_update: { from: string; to: string; at: string } | null;
   }>;
   open: number;
   wind_down_offered: boolean;
@@ -1763,6 +1767,7 @@ export interface PluginInstall {
   installed_by: string | null;
   removed_at: string | null;
   winding_down_since: string | null;
+  update_available: boolean;
 }
 
 export function adminListPluginInstalls(): Promise<{ plugins: PluginInstall[] }> {
@@ -1775,6 +1780,10 @@ export function adminInstallPlugin(plugin: string): Promise<{ plugin: PluginInst
 
 export function adminRemovePlugin(plugin: string, mode: "stop" | "wind_down"): Promise<{ plugin: PluginInstall }> {
   return request("POST", `/admin/hub/plugins/${encodeURIComponent(plugin)}/remove`, { mode });
+}
+
+export function adminUpdatePlugin(plugin: string): Promise<{ plugin: PluginInstall }> {
+  return request("POST", `/admin/hub/plugins/${encodeURIComponent(plugin)}/update`, {});
 }
 
 /** One recorded run of a scheduled job. Shape: src/services/jobRuns.ts. */

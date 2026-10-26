@@ -52,6 +52,20 @@ export default function PluginCatalogPage() {
     }
   }
 
+  async function setRequired(entry: PluginCatalogEntry, required: boolean) {
+    setBusy(entry.id);
+    setError(null);
+    try {
+      const what = required ? `Marking ${entry.display_name} ${entry.version} required` : `${entry.display_name} ${entry.version} no longer required`;
+      const next = await withStepUp(what, (extra) => api.requirePlugin(entry.id, required, extra));
+      if (next) setData(next);
+    } catch (e) {
+      setError(e instanceof ApiError || e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function act(entry: PluginCatalogEntry, kind: "approve" | "withdraw") {
     setBusy(entry.id);
     setError(null);
@@ -72,9 +86,10 @@ export default function PluginCatalogPage() {
     <div>
       <h1 className="cx-title">Plugins</h1>
       <p className="cx-muted cx-block-text">
-        Each entry is one version of a plugin, as it was when it passed the conformance checks. Approving an entry lets
-        every hub on this deployment install and run exactly that code; if its files change, it stops running until a
-        new entry is approved.
+        Each entry is one version of a plugin, as it was when it passed the conformance checks. Approving an entry signs
+        it and lets every hub on this deployment install and run exactly that code; if its files change, it stops running
+        until a new entry is approved. A hub on an older version is offered the update with what changes. A version
+        marked required is recorded on every hub without asking, and each hub&rsquo;s Plugins page says so.
       </p>
       {error && <p className="cx-alert cx-alert-error" role="alert">{error}</p>}
       {!data && !error && <p className="cx-muted">Loading…</p>}
@@ -126,6 +141,8 @@ export default function PluginCatalogPage() {
                   <div className="cx-plugin-head">
                     <strong>{e.display_name}</strong> <span className="cx-mono cx-small">{e.package}@{e.version}</span>{" "}
                     <span className={`cx-plugin-status cx-plugin-${e.status}`}>{STATUS_LABEL[e.status]}</span>
+                    {e.required && <span className="cx-plugin-status cx-plugin-required">Required</span>}
+                    {!e.auto_install && <span className="cx-muted cx-small"> · not installed on new hubs</span>}
                     {!e.matches_deployment && <span className="cx-muted cx-small"> · not the files this deployment runs</span>}
                   </div>
                   <p className="cx-small cx-muted">
@@ -160,6 +177,11 @@ export default function PluginCatalogPage() {
                     {e.status === "approved" && (
                       <button type="button" className="cx-btn cx-btn-quiet" disabled={busy !== null} onClick={() => act(e, "withdraw")}>
                         Withdraw
+                      </button>
+                    )}
+                    {e.status === "approved" && (
+                      <button type="button" className="cx-btn cx-btn-quiet" disabled={busy !== null} onClick={() => setRequired(e, !e.required)}>
+                        {e.required ? "Not required" : "Mark required"}
                       </button>
                     )}
                   </div>

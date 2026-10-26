@@ -41,7 +41,8 @@ export type HubAdminAuditAction =
   // wind-down) or set winding down from the Plugins page (ADR-014).
   | "plugin.install"
   | "plugin.remove"
-  | "plugin.wind_down";
+  | "plugin.wind_down"
+  | "plugin.update";
 
 export interface HubAdminAuditEntry {
   actor: string;

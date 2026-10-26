@@ -18,16 +18,20 @@ export interface HubPluginRow {
   removed_by: string | null;
   winding_down_since: string | null;
   winding_down_by: string | null;
+  /** The last update (ADR-015): from which version, when, and by whom (an admin, or system:required). */
+  upgraded_from: string | null;
+  upgraded_at: string | null;
+  upgraded_by: string | null;
 }
 
-export type PluginChange = "install" | "stop" | "wind_down" | "wound_down";
+export type PluginChange = "install" | "stop" | "wind_down" | "wound_down" | "upgrade";
 
 /** Every install row of the hub. */
 export async function readHubPlugins(hubId: string): Promise<HubPluginRow[]> {
   return forHub(hubId)
     .from("hub_plugins")
     .select<HubPluginRow>(
-      "package, version, plugin, capabilities, installed_at, installed_by, removed_at, removed_by, winding_down_since, winding_down_by",
+      "package, version, plugin, capabilities, installed_at, installed_by, removed_at, removed_by, winding_down_since, winding_down_by, upgraded_from, upgraded_at, upgraded_by",
     )
     .order("package", { ascending: true });
 }

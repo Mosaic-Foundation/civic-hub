@@ -20,6 +20,16 @@
 //               Offered for a plugin whose processes close at a deadline: one
 //               whose items never close by themselves can only be stopped.
 //
+//   update      (plugin session 2, ADR-015) a deployment runs one version of
+//               each package for every hub; the hub records the version whose
+//               grant its admin approved. When the deployment runs a newer
+//               version, the page offers Update with what changes in the grant,
+//               in the same words; Update records the new version and grant.
+//               Until then the hub's seams hold the package to the grant the
+//               hub approved, and it does without what the new version adds.
+//               A version Civic.Social marked required is recorded on every
+//               hub by the loader, and the page says so.
+//
 // A hub only ever sees plugins whose packages are approved in the catalog and
 // mounted on this deployment.
 
@@ -31,7 +41,7 @@ import { isPluginEnabled, isPluginEnabledSync, isPluginWindingDownSync, getSetti
 import { countLiveProcessesByPlugin } from "./processService.js";
 import { getManifests, processTypeDisplays } from "../processes/registry.js";
 import { loadedPackages, packageVerdicts, verifyPackages, type PackageVerdict } from "../plugins/loader.js";
-import { grantInPlainWords } from "../shared/pluginGrant.js";
+import { compareVersions, grantChangesInPlainWords, grantInPlainWords } from "../shared/pluginGrant.js";
 import { orderAfterSwitchingOff } from "../shared/navSections.js";
 import { KEYS } from "../models/hubSettings.js";
 import { recordHubAdminAudit } from "./hubAdminAudit.js";
@@ -41,14 +51,19 @@ export type InstallState = "installed" | "winding_down" | "removed" | "unavailab
 
 export interface PluginPackageView {
   package: string;
+  /** The version whose grant the hub approved; for a plugin not installed, the version Install would record. */
   version: string;
   display_name: string;
   type: string;
-  /** The grant, as the Install confirmation says it. */
+  /** That version's grant, as the Install confirmation says it. */
   grant: { can: string[]; cannot: string[] };
-  /** When Civic.Social checked and approved this version; null when it is not mounted here. */
+  /** When Civic.Social checked and approved the version this deployment runs; null when it is not mounted here. */
   approved_at: string | null;
   checked_at: string | null;
+  /** This deployment runs a newer version than the hub approved: what Update changes, in the same words. */
+  update: { version: string; adds: string[]; drops: string[] } | null;
+  /** The last update, when Civic.Social made it because the version is required. */
+  required_update: { from: string; to: string; at: string } | null;
 }
 
 export interface PluginInstallView {
@@ -64,6 +79,8 @@ export interface PluginInstallView {
   installed_by: string | null;
   removed_at: string | null;
   winding_down_since: string | null;
+  /** Some package has an update the hub has not approved (installed plugins only). */
+  update_available: boolean;
 }
 
 /** The process plugins packages provide, each with its packages, in the Plugins section's order. */
@@ -113,29 +130,42 @@ function view(
       : switches.winding
         ? "winding_down"
         : "installed";
+  const installed = state === "installed" || state === "winding_down";
+  const packages = entry.packages.map((p): PluginPackageView => {
+    const v = verdicts.find((x) => x.package === p.pkg.name);
+    const holds = Object.fromEntries(p.pkg.manifest.tables.map((t) => [t.name, t.holds]));
+    const record = mine.find((r) => r.package === p.pkg.name);
+    const deployed = { name: p.pkg.displayName, caps: p.pkg.manifest.capabilities, holds };
+    // What the hub approved, while it has the plugin; otherwise what Install would record.
+    const approved = installed && record ? { name: p.pkg.displayName, caps: record.capabilities, holds } : deployed;
+    const behind = installed && record && Boolean(v?.mounted) && compareVersions(record.version, p.pkg.version) < 0;
+    return {
+      package: p.pkg.name,
+      version: installed && record ? record.version : p.pkg.version,
+      display_name: p.pkg.displayName,
+      type: p.type,
+      grant: grantInPlainWords(approved),
+      approved_at: v?.approvedAt ?? null,
+      checked_at: v?.checkedAt ?? null,
+      update: behind ? { version: p.pkg.version, ...grantChangesInPlainWords(approved, deployed) } : null,
+      required_update:
+        record?.upgraded_by === "system:required" && record.upgraded_from && record.upgraded_at
+          ? { from: record.upgraded_from, to: record.version, at: record.upgraded_at }
+          : null,
+    };
+  });
   return {
     plugin: entry.plugin,
     name: entry.name,
     state,
-    packages: entry.packages.map((p) => {
-      const v = verdicts.find((x) => x.package === p.pkg.name);
-      const holds = Object.fromEntries(p.pkg.manifest.tables.map((t) => [t.name, t.holds]));
-      return {
-        package: p.pkg.name,
-        version: p.pkg.version,
-        display_name: p.pkg.displayName,
-        type: p.type,
-        grant: grantInPlainWords({ name: p.pkg.displayName, caps: p.pkg.manifest.capabilities, holds }),
-        approved_at: v?.approvedAt ?? null,
-        checked_at: v?.checkedAt ?? null,
-      };
-    }),
+    packages,
     open,
     wind_down_offered: hasDeadlines(entry.plugin),
     installed_at: owner?.installed_at ?? null,
     installed_by: owner?.installed_by ?? null,
     removed_at: owner?.removed_at ?? null,
     winding_down_since: owner?.winding_down_since ?? null,
+    update_available: packages.some((p) => p.update !== null),
   };
 }
 
@@ -207,6 +237,38 @@ export async function installPlugin(plugin: string, actor: { id: string; audit: 
     action: "plugin.install",
     before: { state: current.state },
     after: { plugin: current.name, state: "installed", packages: current.packages.map((p) => `${p.package}@${p.version}`) },
+  });
+  return one(plugin);
+}
+
+/**
+ * Update a plugin: record the version this deployment runs, and its grant,
+ * for each of its packages the hub is behind on (ADR-015). Its admin has read
+ * what changes; the hub's seams allow it from this request on.
+ */
+export async function updatePlugin(plugin: string, actor: { id: string; audit: string }): Promise<PluginInstallView> {
+  const current = await one(plugin);
+  if (current.state !== "installed" && current.state !== "winding_down") {
+    throw new ConflictError("Install this plugin first; it installs at the newest version.", "plugin_not_installed");
+  }
+  const behind = current.packages.filter((p) => p.update !== null);
+  if (behind.length === 0) return current;
+  const packages = loadedPackages()
+    .filter((p) => behind.some((b) => b.package === p.pkg.name))
+    .map((p) => ({ package: p.pkg.name, version: p.pkg.version, capabilities: p.pkg.manifest.capabilities }));
+  await applyPluginChange(currentHubId(), { plugin, change: "upgrade", packages, settings: [], actor: actor.id });
+  invalidateHubSettings(currentHubId());
+  await recordHubAdminAudit({
+    actor: actor.audit,
+    action: "plugin.update",
+    before: { versions: behind.map((b) => `${b.package}@${b.version}`) },
+    after: {
+      plugin: current.name,
+      version: packages[0]!.version,
+      versions: packages.map((p) => `${p.package}@${p.version}`),
+      adds: behind.flatMap((b) => b.update!.adds),
+      drops: behind.flatMap((b) => b.update!.drops),
+    },
   });
   return one(plugin);
 }

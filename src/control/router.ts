@@ -90,7 +90,7 @@ import {
   withDerivedCode,
   type ControlHub,
 } from "./hubs.js";
-import { approveEntry, catalogView, CatalogStateError, signApprovedEntries, withdrawEntry } from "./pluginCatalog.js";
+import { approveEntry, catalogView, CatalogStateError, setEntryRequired, signApprovedEntries, withdrawEntry } from "./pluginCatalog.js";
 
 const COOKIE = "civic_console";
 const CSRF_HEADER = "x-civic-console";
@@ -705,6 +705,23 @@ export function controlRouter(): Router {
       hubId: null,
       before: null,
       after: { key, entries: signed },
+    });
+    res.json(await catalogView());
+  }));
+
+  // Marking a version required moves every hub on an older one to it, without
+  // asking their admins: a fresh code, audited.
+  r.post("/control/plugins/:id/required", route(async (req, res) => {
+    if (!(await stepUp(req, res))) return;
+    const required = (req.body as { required?: unknown } | undefined)?.required;
+    if (typeof required !== "boolean") throw new ControlInputError('Send { "required": true } or { "required": false }.', 400);
+    const { before, after, moved } = await catalogChange(() => setEntryRequired(String(req.params.id), required));
+    await audited(res, {
+      actor: actor(res),
+      action: "plugin.required",
+      hubId: null,
+      before: { id: before.id, required: before.required },
+      after: { id: after.id, package: after.package, version: after.version, required: after.required, hubs_moved: moved },
     });
     res.json(await catalogView());
   }));

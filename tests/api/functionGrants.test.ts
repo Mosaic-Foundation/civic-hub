@@ -55,6 +55,9 @@ const AUTHENTICATED = [
 /** The same, plus the operator and catalog functions. */
 const SERVICE_ROLE = [
   ...AUTHENTICATED,
+  // A version the operator marked required, applied to every hub by the loader (ADR-015), and the ordering it uses.
+  "_civic_semver",
+  "apply_required_plugin_version",
   "cast_vote",
   "function_catalog",
   "move_hub_hostname",

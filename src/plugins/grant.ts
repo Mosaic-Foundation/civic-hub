@@ -19,8 +19,10 @@
 //
 // The grant enforced is the one in the package's manifest. The loader mounts
 // a package only when that grant is no more than its approved catalog row
-// records, and a hub's install records the catalog's grant unchanged (no
-// narrowing at install yet), so the three are the same.
+// records. Since plugin session 2 (ADR-015) a deployment runs one version of
+// each package for every hub, and each hub records the grant its admin
+// approved (src/plugins/hubGrants.ts): a hub that has not approved a newer
+// version's grant is held to the one it approved, at every seam.
 //
 // Imports only the error types, the reporter and the configured packages'
 // manifests (plain data), so the emission path can ask without a cycle. Every
@@ -31,6 +33,7 @@ import { CivicError } from "../errors/index.js";
 import { reportError } from "../utils/reportError.js";
 import type { PluginCapabilities } from "../shared/pluginGrant.js";
 import { PACKAGE_ENTRIES } from "../../config/plugins/manifests.js";
+import { hubGrantOf } from "./hubGrants.js";
 
 export type GrantReach = "table" | "adapter" | "event";
 
@@ -81,6 +84,10 @@ export function refuseReach(packageName: string, reach: GrantReach, what: string
  */
 export function checkEmissionGrant(processType: string, eventType: string, hostEventTypes: readonly string[]): void {
   const g = BY_TYPE.get(processType);
-  if (!g || hostEventTypes.includes(eventType) || g.caps.activities.emit.includes(eventType)) return;
-  refuseReach(g.packageName, "event", eventType);
+  if (!g || hostEventTypes.includes(eventType)) return;
+  if (!g.caps.activities.emit.includes(eventType)) refuseReach(g.packageName, "event", eventType);
+  const approved = hubGrantOf(g.packageName);
+  if (approved && !approved.activities.emit.includes(eventType)) {
+    refuseReach(g.packageName, "event", `${eventType} (not in the grant this hub approved)`);
+  }
 }
