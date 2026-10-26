@@ -166,11 +166,16 @@ function describeVoteClose(b: Body): JobRunDescription | null {
   const closed = arr(b.closed).length;
   const failedRows = arr<{ id?: string; error?: string }>(b.failed);
   const reshuffleError = typeof b.reshuffle_error === "string" ? b.reshuffle_error : null;
+  // A plugin that finished winding down and was switched off (ADR-014).
+  const woundDown = arr<string>(b.wound_down);
   // The hourly ballot reshuffle is routine: recorded only when it fails.
-  if (closed === 0 && failedRows.length === 0 && !reshuffleError) return null;
+  if (closed === 0 && failedRows.length === 0 && !reshuffleError && woundDown.length === 0) return null;
   const failed = failedRows.map((f) => `Could not close ${f.id ?? "a process"}: ${f.error ?? "unknown error"}`);
   if (reshuffleError) failed.push(`Could not reshuffle open votes' ballots: ${reshuffleError}`);
-  return { status: status(failed, []), summary: `${plural(closed, "process", "processes")} closed at the deadline`, problems: failed };
+  const summary =
+    `${plural(closed, "process", "processes")} closed at the deadline` +
+    (woundDown.length > 0 ? `; switched off after winding down: ${woundDown.join(", ")}` : "");
+  return { status: status(failed, []), summary, problems: failed };
 }
 
 /**

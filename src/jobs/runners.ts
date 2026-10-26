@@ -14,6 +14,7 @@ import { sweepHubExports } from "../services/hubExportsStore.js";
 import { closeAllExpired } from "../services/processService.js";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { refreshSamples } from "../services/sampleRefresh.js";
+import { finishWindDowns } from "../services/pluginInstall.js";
 import { clearEndedArchivedVoteKeys, reshuffleOpenBallots } from "../modules/civic.receipts/index.js";
 
 const HOST_JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
@@ -47,10 +48,20 @@ const HOST_JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
     } catch (err) {
       archivedError = (err as Error).message;
     }
+    // Last: a plugin winding down whose last open item has now closed is
+    // switched off (ADR-014). Its own failures are reported, not the job's.
+    const woundDown = await finishWindDowns();
     const failed = r.failed.length > 0 || reshuffleError !== null || archivedError !== null;
     return {
       status: failed ? 500 : 200,
-      body: { ...r, reshuffled, reshuffle_error: reshuffleError, archived_finished: archivedFinished, archived_error: archivedError },
+      body: {
+        ...r,
+        reshuffled,
+        reshuffle_error: reshuffleError,
+        archived_finished: archivedFinished,
+        archived_error: archivedError,
+        ...(woundDown.length > 0 ? { wound_down: woundDown } : {}),
+      },
     };
   },
   sample_refresh: async ({ now }) => {
