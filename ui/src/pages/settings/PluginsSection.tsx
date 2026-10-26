@@ -107,12 +107,28 @@ export default function PluginsSection() {
       section="plugins"
       title="Plugins"
       intro={
-        <p className="form-hint">
-          Switch off anything this hub does not use. A plugin that is off
-          disappears from this hub's pages and menus, its scheduled job stops,
-          and nothing new of its kind can be created. Nothing is deleted:
-          switching it back on brings everything back as it was.
-        </p>
+        <div className="form-hint plugins-intro" data-testid="plugins-intro">
+          <p>
+            Install the plugins this hub uses. Before you install one, it shows
+            what it will be able to do on this hub and what it will not.
+          </p>
+          <p>
+            To remove one, choose Stop now or Wind down. Stop now takes it off
+            this hub's pages and menus at once. Wind down lets what is already
+            open run to its close, and nothing new can be started; it switches
+            off by itself when the last item closes. Either way nothing is
+            deleted: installing it again brings everything back as it was.
+          </p>
+          <p>
+            When Civic.Social checks a new version of a plugin, its card says
+            an update is available. Update shows what will change in what it
+            can do before you take it. Until then it keeps to what you approved.
+          </p>
+          <p>
+            A few of the hub's own features have a plain on and off switch
+            instead. Switching one off deletes nothing either.
+          </p>
+        </div>
       }
     >
       {(f) => (
