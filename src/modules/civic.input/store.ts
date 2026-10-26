@@ -31,11 +31,23 @@ export interface NewInput {
   phase?: string;
 }
 
+/** A comment as the phase reads list it: the columns a list shows. */
+export interface PhaseInputRow {
+  id: string;
+  process_id: string;
+  body: string;
+  submitted_at: string;
+}
+
 export interface InputStore {
   /** Store one comment and return the row. */
   insertInput(row: NewInput): Promise<InputRow>;
   /** Every comment on a process, oldest first (paged past 1,000). */
   inputsForProcess(processId: string): Promise<InputRow[]>;
+  /** The visible comments of one phase on a process, newest first. */
+  visibleInPhase(processId: string, phase: string): Promise<PhaseInputRow[]>;
+  /** The visible comments on a process whose phase is set and is not this one. */
+  countVisibleOutsidePhase(processId: string, phase: string): Promise<number>;
   /** One comment by id, or null. */
   findInput(id: string): Promise<InputRow | null>;
   /** Record a hide on a comment and return the row. */

@@ -2,6 +2,7 @@
   "packages": [
     "packages/civic.vote",
     "packages/civic.proposals",
+    "packages/civic.projects",
     "packages/civic.wordcloud"
   ]
 }

@@ -24,7 +24,7 @@ import debugRoutes from "./routes/debugRoutes.js";
 import inputRoutes from "./routes/inputRoutes.js";
 import assistantRoutes from "./routes/assistantRoutes.js";
 import { draftRouter } from "./routes/draftRoutes.js";
-import { projectDraftKind, deliberationDraftKind } from "./processes/draftKinds.js";
+import { deliberationDraftKind } from "./processes/draftKinds.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import voteResultsRoutes from "./routes/voteResultsRoutes.js";
@@ -36,7 +36,6 @@ import searchRoutes from "./routes/searchRoutes.js";
 import meetingSummaryRoutes from "./routes/meetingSummaryRoutes.js";
 import { jobRouter } from "./routes/jobRoutes.js";
 import { JOBS, internalPath } from "./jobs/registry.js";
-import projectRoutes from "./routes/projectRoutes.js";
 import deliberationRoutes from "./routes/deliberationRoutes.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
@@ -186,13 +185,6 @@ app.use("/process", inputRoutes);
 // Gated route by route, not here: the Code of Conduct check under /assistant
 // runs with the Writing assistant off (src/routes/assistantRoutes.ts).
 app.use("/assistant", assistantRoutes);
-
-// Project draft endpoints — AI-augmented project drafting (mounted before
-// /projects so /projects/drafts doesn't get caught by /projects/:id).
-app.use("/projects/drafts", requirePlugin("project"), draftRouter(projectDraftKind));
-
-// Project endpoints — community project pages with sentiment + comments
-app.use("/projects", requirePlugin("project"), projectRoutes);
 
 // Deliberation endpoints — Polis-backed community deliberation
 // Conversation draft endpoints — mounted before /deliberations so

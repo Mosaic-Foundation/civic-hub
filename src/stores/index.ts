@@ -16,8 +16,6 @@ import { feedbackStore } from "../modules/civic.feedback/store.js";
 import { feedbackStoreImpl } from "./feedback.js";
 import { adminDigestStore } from "../modules/civic.admin_digest/store.js";
 import { adminDigestStoreImpl } from "./adminDigest.js";
-import { projectsStore } from "../modules/civic.projects/store.js";
-import { projectsStoreImpl } from "./projects.js";
 import { inputStore } from "../modules/civic.input/store.js";
 import { inputStoreImpl } from "./input.js";
 import { reviewStore } from "../modules/civic.review/store.js";
@@ -31,7 +29,6 @@ export function installStores(): void {
   draftsStore.bind(draftsStoreImpl);
   feedbackStore.bind(feedbackStoreImpl);
   adminDigestStore.bind(adminDigestStoreImpl);
-  projectsStore.bind(projectsStoreImpl);
   inputStore.bind(inputStoreImpl);
   reviewStore.bind(reviewStoreImpl);
   receiptsStore.bind(receiptsStoreImpl);

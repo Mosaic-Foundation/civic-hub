@@ -10,13 +10,27 @@
 // /projects routes are thin wrappers over executeAction. The `projects` row
 // keeps its own copy of the status, written after the process row commits.
 
-import { ValidationError } from "../../errors/index.js";
-import { Process, ProcessAction } from "../../models/process.js";
-import { ProcessHandler } from "../../processes/types.js";
-import { afterActionCommits } from "../../services/actionScope.js";
-import { readProcessState, writeProcessState } from "../../services/processRows.js";
+import {
+  ValidationError,
+  type Process,
+  type ProcessAction,
+  type ProcessHandler,
+  afterActionCommits,
+  readProcessState,
+  writeProcessState,
+  validateLinkSet,
+  emitEvent,
+  type BriefContent,
+  createDraft,
+  setDraftStatus,
+  updateDraft,
+  getSettingSync,
+  KEYS,
+  str,
+  num,
+  type FeedProcessMeta,
+} from "../../src/sdk/index.js";
 import { projectsStore } from "./store.js";
-import { validateLinkSet } from "../civic.process_links/index.js";
 import {
   createProject,
   getProject,
@@ -25,19 +39,12 @@ import {
   markProjectCompleted,
   getProjectReadModel,
   type SentimentValue,
-} from "./index.js";
+} from "./service.js";
 import { emitProjectCompleted, emitProjectUpdated } from "./events.js";
-import { emitEvent } from "../../events/eventEmitter.js";
-import type { BriefContent } from "../civic.brief/index.js";
 import { projectAssistantConfig } from "./assistantConfig.js";
-import { createDraft, setDraftStatus, updateDraft } from "../civic.drafts/index.js";
-import { projectDraftKind } from "../../processes/draftKinds.js";
-import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
-import { getSettingSync } from "../../services/hubSettings.js";
-import { KEYS } from "../../models/hubSettings.js";
+import { projectDraftKind } from "./draftKind.js";
+import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
 import { PROJECT_MANIFEST, SENTIMENTS } from "./manifest.js";
-import { str, num } from "../../utils/readField.js";
-import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
 const hubNoun = (n: number): string =>

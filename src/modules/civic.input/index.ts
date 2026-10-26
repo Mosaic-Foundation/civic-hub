@@ -15,7 +15,7 @@ import { NotFoundError, ValidationError } from "../../errors/index.js";
 import { generateId } from "../../utils/id.js";
 import { assertPassesWordlist } from "../../shared/wordlist/index.js";
 import type { CommunityInput, CommentModeration, CommentPhase, InputContext } from "./models.js";
-import { inputStore, type InputRow } from "./store.js";
+import { inputStore, type InputRow, type PhaseInputRow } from "./store.js";
 import { BODY_PREVIEW_LEN, MODERATION_REASON_MAX } from "./models.js";
 
 export type {
@@ -142,6 +142,19 @@ export async function getInputsByProcess(
   return rows.map(rowToInput);
 }
 
+
+/**
+ * The visible comments of one phase on a process (a project's updates), newest
+ * first, as the lists show them.
+ */
+export async function listVisibleInPhase(processId: string, phase: CommentPhase): Promise<PhaseInputRow[]> {
+  return inputStore.get().visibleInPhase(processId, phase);
+}
+
+/** How many visible comments on a process have a phase that is not this one. */
+export async function countVisibleOutsidePhase(processId: string, phase: CommentPhase): Promise<number> {
+  return inputStore.get().countVisibleOutsidePhase(processId, phase);
+}
 
 /**
  * Get a single community input by ID, including moderation state.

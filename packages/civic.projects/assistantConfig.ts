@@ -2,9 +2,14 @@
 // handler via ProcessHandler.getAssistantConfig. See
 // proposalAssistantConfig.ts for the pattern.
 
-import type { AssistantTypeConfig } from "../civic.assistant/index.js";
-import { getDraft, appendConversation, saveReviewResult, applyGeneratedDraft } from "../civic.drafts/index.js";
-import { projectDraftKind } from "../../processes/draftKinds.js";
+import {
+  type AssistantTypeConfig,
+  getDraft,
+  appendConversation,
+  saveReviewResult,
+  applyGeneratedDraft,
+} from "../../src/sdk/index.js";
+import { projectDraftKind } from "./draftKind.js";
 
 const PROJECT_BEST_PRACTICES = `# Project Best Practices — Civic Hub
 

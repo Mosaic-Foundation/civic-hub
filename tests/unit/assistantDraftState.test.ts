@@ -3,7 +3,7 @@ import { buildSystemPrompt } from "../../src/modules/civic.assistant/systemPromp
 import { proposalAssistantConfig } from "../../packages/civic.proposals/assistantConfig";
 import { deliberationAssistantConfig } from "../../src/processes/deliberationAssistantConfig";
 import { voteAssistantConfig } from "../../packages/civic.vote/assistantConfig";
-import { projectAssistantConfig } from "../../src/modules/civic.projects/assistantConfig";
+import { projectAssistantConfig } from "../../packages/civic.projects/assistantConfig";
 
 const hub = { hub_name: "Test Hub", community_description: "a test community", code_of_conduct: "" };
 

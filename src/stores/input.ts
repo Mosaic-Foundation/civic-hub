@@ -4,7 +4,7 @@
 import { forHub, type HubDb } from "../db/forHub.js";
 import { readAll } from "../db/readAll.js";
 import { currentHubId } from "../config/hubContext.js";
-import type { InputRow, InputStore } from "../modules/civic.input/store.js";
+import type { InputRow, InputStore, PhaseInputRow } from "../modules/civic.input/store.js";
 
 function db(): HubDb {
   return forHub(currentHubId());
@@ -26,6 +26,25 @@ export const inputStoreImpl: InputStore = {
         .order("id", { ascending: true })
         .range(from, to),
     );
+  },
+
+  async visibleInPhase(processId, phase) {
+    return await db()
+      .from("community_inputs")
+      .select<PhaseInputRow>("id, process_id, body, submitted_at")
+      .eq("process_id", processId)
+      .eq("phase", phase)
+      .is("hidden_at", null)
+      .order("submitted_at", { ascending: false });
+  },
+
+  async countVisibleOutsidePhase(processId, phase) {
+    return await db()
+      .from("community_inputs")
+      .count()
+      .eq("process_id", processId)
+      .neq("phase", phase)
+      .is("hidden_at", null);
   },
 
   async findInput(id) {

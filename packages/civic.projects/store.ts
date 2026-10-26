@@ -1,10 +1,11 @@
-// What civic.projects keeps, as the host supplies it (ADR-012, the database
-// convention): the module never imports src/db/. The implementation is
-// src/stores/projects.ts, bound at startup by installStores(). The tables are
-// `projects`, `project_sentiments` and `project_drafts`; a project's updates
-// and comments are read from `community_inputs` (civic.input's rows).
+// What civic.projects keeps (ADR-012, the database convention): the package
+// never imports src/db/. The implementation is ./storeImpl.ts, on the database
+// its host hands it (its granted tables only), bound when the hub loads the
+// package (./index.ts). The tables are `projects`, `project_sentiments` and
+// `project_drafts`; a project's updates and comments are civic.input's rows,
+// read through that module.
 
-import { storeSlot } from "../../processes/storeSlot.js";
+import { storeSlot } from "../../src/sdk/index.js";
 import type { ProjectStatus, SentimentValue } from "./models.js";
 
 /** A stored project, as the `projects` table has it. */
@@ -24,14 +25,6 @@ export interface ProjectRow {
   updated_at: string;
 }
 
-/** An update post, as the project's update list reads it from `community_inputs`. */
-export interface UpdateInputRow {
-  id: string;
-  process_id: string;
-  body: string;
-  submitted_at: string;
-}
-
 export interface ProjectsStore {
   /** Store one project (the columns the caller sets) and return the row. */
   insertProject(row: Record<string, unknown>): Promise<ProjectRow>;
@@ -49,11 +42,6 @@ export interface ProjectsStore {
   statusOf(id: string): Promise<string | undefined>;
   /** Set a project's status (and the update time). */
   setStatus(id: string, status: string): Promise<void>;
-
-  /** The visible update posts on a project, newest first. */
-  updateInputs(projectId: string): Promise<UpdateInputRow[]>;
-  /** The visible comments on a project (everything but its updates). */
-  countComments(projectId: string): Promise<number>;
 
   /** Remove one person's sentiment. */
   deleteSentiment(projectId: string, userId: string): Promise<void>;

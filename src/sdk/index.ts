@@ -82,13 +82,14 @@ export {
   applyGeneratedDraft,
   updateDraft,
   setDraftStatus,
+  createDraft,
 } from "../modules/civic.drafts/index.js";
-export type { Draft } from "../modules/civic.drafts/index.js";
+export type { Draft, ProposedLink } from "../modules/civic.drafts/index.js";
 export { DAY_MS, lines } from "../processes/draftKinds.js";
 export type { DraftKind } from "../processes/draftKinds.js";
 
 // --- Resident input on a process (src/modules/civic.input/) -----------------------------
-export { getInputsByProcess } from "../modules/civic.input/index.js";
+export { getInputsByProcess, listVisibleInPhase, countVisibleOutsidePhase } from "../modules/civic.input/index.js";
 
 // --- Events (src/models/event.ts) ------------------------------------------------------
 export type { CivicEvent, CreateEventInput } from "../models/event.js";
@@ -124,3 +125,12 @@ export { actOnProcess, readAsPage, viewFor } from "../controllers/processControl
 
 // --- src/config/hub.ts -------------------------------------------------------------------
 export { defaultJurisdiction } from "../config/hub.js";
+
+// --- src/modules/civic.process_links/ ----------------------------------------------------
+export { validateLinkSet } from "../modules/civic.process_links/index.js";
+
+// --- Edits of a live process (src/services/processEdits.ts) ------------------------------
+// Loaded on the first call, not with the SDK: the process handlers import their
+// draft kinds while the registry loads, and processEdits imports the process service.
+import type { applyEdit as applyEditNow } from "../services/processEdits.js";
+export const applyEdit: typeof applyEditNow = async (...args) => (await import("../services/processEdits.js")).applyEdit(...args);

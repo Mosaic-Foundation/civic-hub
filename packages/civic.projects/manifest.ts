@@ -2,7 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
+import { defineDescriptor, defineManifest } from "../../src/processes/manifest.js";
 
 /**
  * What a project is (src/processes/descriptor.ts). Residents say whether they
@@ -121,3 +121,5 @@ export const PROJECT_MANIFEST = defineManifest({
     ui: { surfaces: ["process-page", "create-page", "feed-card", "nav-section"] },
   },
 });
+
+export default PROJECT_MANIFEST;

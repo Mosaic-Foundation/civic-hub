@@ -1,13 +1,17 @@
-import { ValidationError } from "../errors/index.js";
-import { route } from "../http/route.js";
-import { resolveCallerUser } from "../middleware/auth.js";
+import {
+  ValidationError,
+  route,
+  resolveCallerUser,
+  enrichCreators,
+  getSampleProcessIds,
+  actOnProcess,
+  readAsPage,
+  viewFor,
+} from "../../src/sdk/index.js";
 import {
   listProjects,
   getProjectSummary,
-} from "../modules/civic.projects/index.js";
-import { enrichCreators } from "../services/creatorDisplay.js";
-import { getSampleProcessIds } from "../services/processService.js";
-import { actOnProcess, readAsPage, viewFor } from "./processController.js";
+} from "./service.js";
 
 /**
  * POST /projects/:id/complete — mark a project complete (its creator or an

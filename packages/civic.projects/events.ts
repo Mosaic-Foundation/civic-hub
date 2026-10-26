@@ -1,5 +1,4 @@
-import { defaultJurisdiction } from "../../config/hub.js";
-import type { CreateEventInput } from "../../models/event.js";
+import { defaultJurisdiction, type CreateEventInput } from "../../src/sdk/index.js";
 
 export type EmitEventFn = (input: CreateEventInput) => Promise<unknown>;
 

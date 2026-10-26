@@ -1,9 +1,9 @@
 // civic.project: a community project with updates, comments and sentiment
-// (manifest: src/modules/civic.projects/manifest.ts).
+// (manifest: packages/civic.projects/manifest.ts).
 
-import { NewProject, ProjectDetail, Projects } from "../lazyPages";
-import { getProjectDetail } from "../services/api";
-import type { FeedKindUi, ProcessUi } from "./types";
+import { NewProject, ProjectDetail, Projects } from "../../ui/src/lazyPages";
+import { getProjectDetail } from "../../ui/src/services/api";
+import type { FeedKindUi, ProcessUi } from "../../ui/src/processes/types";
 
 // Phase 3 fix — projects previously fell through to getAnnouncement(id)
 // and 404'd; fetch the real project detail (title + banner image).
@@ -15,7 +15,7 @@ const projectMeta: FeedKindUi["meta"] = (id) =>
     imageAlt: p.banner_image_alt ?? null,
   }));
 
-export const projectUi: ProcessUi = {
+const projectUi: ProcessUi = {
   type: "civic.project",
   routes: [
     { path: "/projects", element: <Projects /> },
@@ -41,3 +41,5 @@ export const projectUi: ProcessUi = {
   },
   linkRelation: "implements",
 };
+
+export default projectUi;
