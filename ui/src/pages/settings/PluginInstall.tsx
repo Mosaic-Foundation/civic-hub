@@ -166,7 +166,7 @@ function RemoveDialog({ install, onClose, onDone }: { install: PluginInstall; on
               <strong>Wind down</strong>
               <span className="plugin-remove-detail">
                 {!install.wind_down_offered
-                  ? `${name}'s items don't close by themselves, so it can only be stopped.`
+                  ? "What it holds doesn't close by itself, so it can only be stopped."
                   : install.open === 0
                     ? "Nothing is open, so there is nothing to wait for: it stops now."
                     : `Nothing new can be started from now on. The ${openItems(install.open)} run to their close and publish their results as usual. When the last one closes, ${name} switches off by itself.`}

@@ -209,7 +209,7 @@ export async function removePlugin(
   if (current.state === "removed" || current.state === "unavailable") return current;
   if (mode === "wind_down") {
     if (!current.wind_down_offered) {
-      throw new ValidationError("This plugin's items don't close by themselves, so it can only be stopped.", "wind_down_not_offered");
+      throw new ValidationError("What this plugin holds doesn't close by itself, so it can only be stopped.", "wind_down_not_offered");
     }
     // Nothing open: there is nothing to wait for, so it stops now.
     if (current.open === 0) mode = "stop";

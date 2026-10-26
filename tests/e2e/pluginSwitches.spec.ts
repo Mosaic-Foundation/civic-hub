@@ -1,9 +1,11 @@
 /**
  * Plugin switches, end to end (2026-10-07).
  *
- * 1. An admin who switches a plugin off in Settings → Plugins sees it leave
- *    the nav at once, by in-app navigation, without reloading the page (the
- *    UI re-fetches the hub config after a save: refreshHubConfig()).
+ * 1. An admin who removes a plugin in Settings → Plugins (Stop now; a
+ *    package-provided plugin has Install and Remove in place of its switch,
+ *    ADR-014) sees it leave the nav at once, by in-app navigation, without
+ *    reloading the page (the UI re-fetches the hub config after the change:
+ *    refreshHubConfig()).
  * 2. A new sign-up on a hub whose Word clouds are off stays on the home page
  *    instead of being sent to a word cloud that answers "Page not found".
  * 3. With the Writing assistant off, a draft offers no AI help ("Get
@@ -93,7 +95,7 @@ test.describe("Plugin switches", () => {
     restore = null;
   });
 
-  test("switching Projects off in Settings takes it out of the nav at once, without a reload", async ({ page, request }) => {
+  test("removing Projects in Settings takes it out of the nav at once, without a reload", async ({ page, request }) => {
     const { hub, settings } = await hubConfig(request);
     test.skip(settings["plugin.project.enabled"] === "false", "Projects is already off on this hub");
     const token = await adminSession(hub.id);
@@ -103,16 +105,17 @@ test.describe("Plugin switches", () => {
       await visitAs(page, token);
       await page.goto("/admin/settings/plugins#project");
       const card = page.getByRole("region", { name: "Projects", exact: true });
-      await expect(card.getByLabel("Projects on", { exact: true })).toBeChecked();
+      // A plugin a package provides has Install and Remove, not a switch (ADR-014).
+      await expect(card.getByText("Installed", { exact: true }).first()).toBeVisible();
 
       // Marks this document: a reload would lose it.
       await page.evaluate(() => ((window as unknown as { __sameDocument: boolean }).__sameDocument = true));
 
-      await card.getByLabel("Projects on", { exact: true }).uncheck();
-      await page.getByRole("button", { name: "Save", exact: true }).click();
-      await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
-      // The save message no longer tells the admin to reload.
-      await expect(page.getByRole("status").filter({ hasText: "It shows on this page now" })).toBeVisible();
+      await card.getByRole("button", { name: "Remove…" }).click();
+      const dialog = page.getByRole("dialog", { name: "Remove Projects?" });
+      await dialog.getByLabel(/Stop now/).check();
+      await dialog.getByRole("button", { name: "Stop now", exact: true }).click();
+      await expect(card.getByText("Not installed.", { exact: true })).toBeVisible();
 
       const tabs = page.getByRole("navigation", { name: "Primary content" });
       await tabs.getByRole("link", { name: "Feed", exact: true }).click();
@@ -120,12 +123,12 @@ test.describe("Plugin switches", () => {
       await expect(tabs.getByRole("link", { name: "Projects", exact: true })).toHaveCount(0);
       expect(await page.evaluate(() => (window as unknown as { __sameDocument?: boolean }).__sameDocument)).toBe(true);
 
-      // Switched back on, it returns the same way.
+      // Installed again, it returns the same way.
       await page.goto("/admin/settings/plugins#project");
       await page.evaluate(() => ((window as unknown as { __sameDocument: boolean }).__sameDocument = true));
-      await card.getByLabel("Projects on", { exact: true }).check();
-      await page.getByRole("button", { name: "Save", exact: true }).click();
-      await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+      await card.getByRole("button", { name: "Install…" }).click();
+      await page.getByRole("dialog", { name: "Install Projects?" }).getByRole("button", { name: "Install", exact: true }).click();
+      await expect(card.getByText("Installed", { exact: true }).first()).toBeVisible();
       await tabs.getByRole("link", { name: "Feed", exact: true }).click();
       await expect(tabs.getByRole("link", { name: "Projects", exact: true })).toHaveCount(1);
       expect(await page.evaluate(() => (window as unknown as { __sameDocument?: boolean }).__sameDocument)).toBe(true);

@@ -208,6 +208,21 @@ test("health is ok with no schema gaps on the hub and the console, never cached,
   expect((await missingRoute.json()).code).toBe("not_found");
 });
 
+test("the smoke hub's manifest lists its installed plugin packages with their versions, and every one is running, read-only (ADR-014)", async ({ request }) => {
+  const res = await request.get(`${baseUrl()}/.well-known/civic.json`);
+  expect(res.status()).toBe(200);
+  const plugins = (await res.json()).plugins as Array<{ package: string; version: string; type: string }>;
+  expect(plugins.length).toBeGreaterThanOrEqual(9);
+  for (const p of plugins) {
+    expect(p.package).toMatch(/^@[a-z0-9-]+\/[a-z0-9._-]+$/);
+    expect(p.version).toMatch(/^\d+\.\d+\.\d+$/);
+  }
+  expect(plugins.map((p) => p.type)).toEqual(expect.arrayContaining(["civic.vote", "civic.wordcloud", "civic.polis_deliberation"]));
+  // Nothing the deployment loads is left unmounted (the hash rule, ADR-014).
+  const health = await (await request.get(`${apiBase()}/health`)).json();
+  expect(health.plugins.unmounted).toEqual([]);
+});
+
 test("the hub's DID document answers at its address, read-only (ADR-008)", async ({ request }) => {
   // Through the public path (vercel.json's rewrite), as a did:web resolver
   // fetches it. The smoke hub's DID names its own hostname.
