@@ -1,0 +1,10 @@
+{
+  "name": "@civic-social-examples/plugin-not-additive",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Not-additive polls: one question, one answer each, closing on a date. The worked example of a Civic Hub plugin package (docs/BUILD-A-PLUGIN.md).",
+  "peerDependencies": {
+    "@civic-social/plugin-sdk": "^0.1.0"
+  }
+}

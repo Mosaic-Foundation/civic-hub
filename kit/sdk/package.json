@@ -1,0 +1,16 @@
+{
+  "name": "@civic-social/plugin-sdk",
+  "version": "0.1.0",
+  "description": "The Civic Hub plugin SDK: what a plugin package imports from the hub, and the hub's engine as a local test host (docs/BUILD-A-PLUGIN.md).",
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE",
+  "exports": {
+    ".": "./index.ts",
+    "./manifest": "./manifest.ts",
+    "./ui": "./ui.ts",
+    "./host": "./host.ts",
+    "./testing": "./testing.ts",
+    "./package.json": "./package.json"
+  },
+  "engines": { "node": ">=22.12" }
+}

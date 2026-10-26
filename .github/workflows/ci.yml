@@ -283,6 +283,16 @@ jobs:
           CIVIC_HUB_SIGNING_KEY: ${{ env.LOCAL_JWT_SECRET }}
           SUPABASE_PUBLISHABLE_KEY: ${{ env.LOCAL_PUBLISHABLE_KEY }}
 
+      # The developer path (plugin session 2, ADR-015): the SDK and the
+      # conformance suite packed as npm packages, installed into an empty folder
+      # outside the checkout, and `civic-conformance` run there: the straw poll
+      # example passes, its broken copy does not, a non-additive migration is
+      # refused. After the API suite: it adds tables and hubs while it runs and
+      # takes them away after.
+      - name: The suite as a package, from an empty folder
+        if: success() || failure()
+        run: npx tsx kit/scripts/prove.ts
+
       - name: Hub logs on failure
         if: failure()
         run: |

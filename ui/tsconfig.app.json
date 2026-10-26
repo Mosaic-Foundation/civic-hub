@@ -20,7 +20,9 @@
     "paths": {
       "react": ["./node_modules/@types/react"],
       "react/*": ["./node_modules/@types/react/*"],
-      "react-router-dom": ["./node_modules/react-router-dom"]
+      "react-router-dom": ["./node_modules/react-router-dom"],
+      /* The plugin SDK's UI types, as the example package's ui.tsx imports them (../kit/sdk/ui.ts). */
+      "@civic-social/plugin-sdk/ui": ["../kit/sdk/ui.ts"]
     },
 
     /* Linting */
@@ -31,6 +33,6 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"],
+  "include": ["src", "../examples/*/ui.tsx"],
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test"]
 }

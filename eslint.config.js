@@ -426,6 +426,11 @@ export const PACKAGE_REACH_NOT_YET = {
 };
 
 const PACKAGES_DIR = "packages/";
+// A package written outside this repository, as examples/ holds one (plugin
+// session 2, ADR-015): it reaches the hub only through the SDK by its npm
+// name. kit/conformance checks the same rule for a submitted package.
+const OUTSIDE_DIR = "examples/";
+const OUTSIDE_SDK = ["@civic-social/plugin-sdk", "@civic-social/plugin-sdk/manifest"];
 const ENGINE_LIST_READERS = {
   "src/plugins/loader.ts": "config/plugins/server.ts",
   "src/shared/processManifests.ts": "config/plugins/manifests.ts",
@@ -475,6 +480,36 @@ const packageBoundaryRule = {
     const rel = relative(ROOT, file).split("\\").join("/");
     const inPackage = rel.startsWith(PACKAGES_DIR);
     const inEngine = rel.startsWith("src/");
+    const inOutside = rel.startsWith(OUTSIDE_DIR);
+    if (inOutside) {
+      const dir = rel.split("/").slice(0, 2).join("/");
+      const manifest = rel === `${dir}/manifest.ts`;
+      const checkOutside = (node, spec) => {
+        if (typeof spec !== "string") return;
+        if (spec.startsWith(".")) {
+          const target = relative(ROOT, resolve(dirname(file), spec)).split("\\").join("/");
+          if (!target.startsWith(`${dir}/`)) context.report({ node, message: `"${spec}": a package imports only its own files and the SDK by name (ADR-015).` });
+          return;
+        }
+        const allowed = manifest
+          ? spec === "@civic-social/plugin-sdk/manifest"
+          : OUTSIDE_SDK.includes(spec) || spec.startsWith("node:") || peerDependencies(dir).includes(spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0]);
+        if (!allowed) {
+          context.report({
+            node,
+            message: manifest
+              ? `"${spec}": a manifest is plain data; it imports only @civic-social/plugin-sdk/manifest (ADR-015).`
+              : `"${spec}": a package written outside the hub imports @civic-social/plugin-sdk (and /manifest), node: built-ins and its peerDependencies (ADR-015).`,
+          });
+        }
+      };
+      return {
+        ImportDeclaration: (n) => checkOutside(n, n.source.value),
+        ExportNamedDeclaration: (n) => n.source && checkOutside(n, n.source.value),
+        ExportAllDeclaration: (n) => checkOutside(n, n.source.value),
+        ImportExpression: (n) => n.source.type === "Literal" && checkOutside(n, n.source.value),
+      };
+    }
     if (!inPackage && !inEngine) return {};
     const pkgDir = inPackage ? rel.split("/").slice(0, 2).join("/") : null;
     const isManifest = inPackage && rel === `${pkgDir}/manifest.ts`;
@@ -529,7 +564,7 @@ export default [
     ignores: ["node_modules/**", "dist/**", "ui/**", "test-results/**", "backups/**", "supabase/**"],
   },
   {
-    files: ["src/**/*.ts", "packages/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
+    files: ["src/**/*.ts", "packages/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "kit/**/*.ts", "examples/**/*.ts"],
     languageOptions: { parser: tsParser, sourceType: "module", ecmaVersion: "latest" },
     // Other plugins' disable comments may exist in the tree; they are not errors here.
     linterOptions: { reportUnusedDisableDirectives: "off" },

@@ -1,0 +1,16 @@
+{
+  "name": "@civic-social/plugin-conformance",
+  "version": "0.1.0",
+  "description": "The Civic Hub plugin conformance suite: proves a plugin package behaves as its descriptor says, on a local test host (docs/BUILD-A-PLUGIN.md).",
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE",
+  "bin": { "civic-conformance": "./bin/civic-conformance.mjs" },
+  "files": ["bin", "cli.ts", "src", "vitest.config.ts", "README.md"],
+  "engines": { "node": ">=22.12" },
+  "dependencies": {
+    "@civic-social/plugin-sdk": "0.1.0",
+    "pg": "^8.23.0",
+    "tsx": "^4.19.0",
+    "vitest": "^4.1.6"
+  }
+}

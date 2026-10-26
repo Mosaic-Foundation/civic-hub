@@ -19,7 +19,9 @@
 // its index.ts's, and the files the contract names are there.
 //
 // --check changes nothing and exits 1 when any written file would differ or a
-// copied migration is missing or stale (CI runs it).
+// copied migration is missing or stale (CI runs it). --no-migrations leaves
+// supabase/migrations/ alone: the conformance test host applies a submitted
+// package's migrations to the local stack itself (kit/conformance; ADR-015).
 
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
@@ -28,6 +30,7 @@ import { packageFiles } from "../src/plugins/hash.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CHECK = process.argv.includes("--check");
+const NO_MIGRATIONS = process.argv.includes("--no-migrations");
 const HEADER = "// Written by `npm run plugins:sync` from config/plugins.json. Do not edit.\n";
 
 interface PackageJson {
@@ -128,7 +131,7 @@ function main(): void {
       writeFileSync(abs, body);
     }
   }
-  for (const dir of dirs) {
+  for (const dir of NO_MIGRATIONS ? [] : dirs) {
     for (const f of packageMigrations(dir)) {
       const src = readFileSync(join(ROOT, dir, "migrations", f));
       const rel = `supabase/migrations/${copiedName(dir, f)}`;
