@@ -652,6 +652,7 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   // the change is to the caller's own hub (tests/api/pluginPackages.test.ts).
   "POST /admin/hub/plugins/:plugin/install": { skip: "the parameter names a plugin, not a row; acts on the caller's hub only (pluginPackages)" },
   "POST /admin/hub/plugins/:plugin/remove": { skip: "the parameter names a plugin, not a row; acts on the caller's hub only (pluginPackages)" },
+  "POST /admin/hub/plugins/:plugin/update": { skip: "the parameter names a plugin, not a row; acts on the caller's hub only (pluginPackages, ADR-015)" },
   // Send to Civic.Social (feedback routing): Floyd's feedback is never Athens's to forward.
   "POST /admin/feedback/:id/forward": { body: { stream: "bug" } },
   "POST /reviews/:reviewId/revise": { body: { title: X.title, description: X.description } },
