@@ -3,8 +3,8 @@
  * (plugin session 1, ADR-014): every route the hub had before packages, from
  * commit e92804c (tests/fixtures/plugins/routes-before.json, written with the
  * same walk of the Express stack), is still mounted, nothing else was lost,
- * and routes that share a first path segment keep their relative order (a
- * drafts router before the "/:id" it would otherwise be taken for).
+ * and two routes that could answer the same request keep their relative order
+ * (a drafts router before the "/:id" it would otherwise be taken for).
  *
  * Kept as a fixture test until the first package outside the nine lands: it is
  * the cheapest guard against a mount-order slip. A route added on purpose
@@ -46,7 +46,15 @@ function walk(stack: Layer[], prefix: string, out: string[]): string[] {
 
 /** "/announcements/" (a router's "/") and "/announcements" (app.get) are one route. */
 const norm = (r: string) => r.replace(/(.)\/$/, "$1");
-const segment = (r: string) => r.split(" ")[1].split("/")[1] ?? "";
+/** Whether one request could reach both: same method, and each path's pattern matches the other's literal path. */
+function overlap(a: string, b: string): boolean {
+  const [ma, pa] = a.split(" ");
+  const [mb, pb] = b.split(" ");
+  if (ma !== mb) return false;
+  const re = (p: string) => new RegExp(`^${p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/:\w+/g, "[^/]+")}$`);
+  const literal = (p: string) => p.replace(/:\w+/g, "x");
+  return re(pa).test(literal(pb)) || re(pb).test(literal(pa));
+}
 
 let now: string[] = [];
 
@@ -65,12 +73,17 @@ describe("the packages' routes are today's routes", () => {
     expect(now.filter((r) => !before.has(r) && !(r in ADDED)), "unexplained").toEqual([]);
   });
 
-  it("keeps the relative order of routes that share a first path segment", () => {
+  it("keeps the relative order of any two routes that could answer the same request", () => {
     const before = BEFORE.map(norm);
-    for (const seg of new Set(before.map(segment))) {
-      const was = before.filter((r) => segment(r) === seg);
-      const is = now.filter((r) => segment(r) === seg && was.includes(r));
-      expect(is, `/${seg}`).toEqual(was);
+    const problems: string[] = [];
+    for (let i = 0; i < before.length; i++) {
+      for (let j = i + 1; j < before.length; j++) {
+        if (!overlap(before[i], before[j])) continue;
+        const a = now.indexOf(before[i]);
+        const b = now.indexOf(before[j]);
+        if (a >= 0 && b >= 0 && a > b) problems.push(`${before[i]} is now after ${before[j]}`);
+      }
     }
+    expect(problems).toEqual([]);
   });
 });
