@@ -43,9 +43,42 @@ deployment before its code goes out:
    console (Plugins: Approve, with a fresh code)**, then answer y to push the code. With `--yes` on dev it does not wait:
    approve it on dev's console right after; until then that package is not mounted on dev.
 3. After the push, `/api/health`'s `plugins.unmounted` must be empty, and the console's dashboard shows no Plugins gap.
+4. **Signatures** (ADR-015). On a deployment with a catalog key, Approve signs the entry, but only when the console
+   already runs code that signs; an entry approved while the old code was live is unsigned. After the push the release
+   checks `/api/health`'s `plugins.signatures`: when any mounted package runs on an unsigned approval, it says so and
+   waits (up to 20 minutes) while you **sign them in the console (Plugins: Sign approved entries, with a fresh code)**.
+   With `CIVIC_CATALOG_SIGNATURES=required`, an unsigned approval mounts nothing, so sign before switching to it.
+5. **A version marked required** (`catalog:add --required`, or the console's Mark required) is recorded on every hub
+   when the new code first runs; each hub's Plugins page says Civic.Social made the update.
 
 If a package is not mounted after a release, its hubs see it as switched off and its admins see "Not available right
-now". Approve the waiting entry; if the change should not have shipped, roll the code back instead.
+now". Approve the waiting entry (and sign it); if the change should not have shipped, roll the code back instead.
+
+**The catalog key** (ADR-015). Each deployment has its own, `CIVIC_CATALOG_SIGNING_KEY`, made by a command that writes
+it only into Vercel's settings. First, in the folder linked to the deployment's project, print that project's name:
+
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && node -p 'require("./.vercel/project.json").projectName'
+```
+
+It must say `civic-hub-dev` (for production, `~/civic-prod-link` and `civic-hub`). Then:
+
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && npx tsx scripts/catalog-key.ts new | vercel env add CIVIC_CATALOG_SIGNING_KEY production --sensitive --force
+```
+
+For production, the key is made by the same script and handed to the production link:
+
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && npx tsx scripts/catalog-key.ts new | (cd ~/civic-prod-link && vercel env add CIVIC_CATALOG_SIGNING_KEY production --sensitive --force)
+```
+
+A setting reaches a deployment with its next build. The console's Plugins page then shows the key's id and public half.
+**Switching to required**, once `/api/health` shows `"unsigned": 0` with the key in place: set
+`CIVIC_CATALOG_SIGNATURES` to `required` the same way (`printf required | vercel env add CIVIC_CATALOG_SIGNATURES
+production --force`) and redeploy; every package must still be mounted. **Rotating:** a new key as above, the old
+key's public half (the console shows it) in `CIVIC_CATALOG_TRUSTED_KEYS`, deploy, Sign approved entries, then take
+the old key out of the trusted list.
 
 ## Dev
 

@@ -4,6 +4,51 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Plugin session 2: signed approvals, versions with a grant per hub, the summary move, the developer path — 2026-10-26
+
+`multi-tenant`, `2f4d9ee`..(this commit), from `6fe304b`. Decision record ADR-015 (mono repo, committed locally for
+Adam to push); guides `docs/BUILD-A-PLUGIN.md` (new) and `docs/PLUGIN-PACKAGE.md`. Reports:
+`~/Documents/Mosaic/0 Management/Civic Social/Plugin-2-Session-Report-2026-10-26.md` and
+`Plugin-2-Handoff-to-Management-2026-10-26.md`.
+
+**Adam's calls (2026-10-26):** all seven recommendations as written (ADR-015's status line), and three notes: he makes
+the catalog keys when told, after a command shows which Vercel project each is for; the degrade path is tested; every
+new setting is named before the dev release.
+
+**What changed:**
+- **The summary move.** A conversation's close records its Polis result as data (`record_result`); its brief's
+  finalize writes the summary with the AI (`packages/civic.brief/finalize.ts`, the prompt moved unchanged); the page
+  reads the summary from the brief. Conversations 0.2.0 has `deliberation` only; Briefs 0.2.0 has `ai`. The
+  conversation's Code of Conduct admission is the hub's (`admitCodeOfConductCheck`). Without the AI the brief is still
+  made, with the figures and why there is no text.
+- **Signed approvals.** `20261026000000`; `src/plugins/signature.ts`; the console's Approve signs, "Sign approved
+  entries" signs the rest; the loader verifies by `CIVIC_CATALOG_SIGNATURES` (transition by default, then required);
+  `/health` and `civic.json` say what runs signed; `release.sh` waits for none unsigned; `scripts/catalog-key.ts`
+  makes a key into a pipe; a committed test key for local and CI, refused on deployments.
+- **Versions (option B).** `20261026000100`; each hub's approved grants load with its settings and are enforced at the
+  seams; `host.allows()`; the Plugins page's Update with what changes; required versions (console, and the loader at
+  first mount); catalog:add's additive-only check, `--required`, `--no-auto-install`; the Plugins page intro rewritten.
+- **The developer path.** `kit/sdk` (`@civic-social/plugin-sdk`, SDK v1, the engine as test host when packed),
+  `kit/conformance` (`@civic-social/plugin-conformance`, the suite moved from `tests/conformance`, the
+  `civic-conformance` command), `examples/straw-poll`, `kit/scripts/{pack,prove}.ts` (in CI), catalog:add for a
+  submitted package. Not published to npm.
+- **Catalog entries:** Briefs 0.2.0 and Conversations 0.2.0 (required), the straw poll 0.1.0 (`auto_install` false).
+
+**Release notes:** five additive migrations (`20261026000000`, `…0100`, three catalog entries); nobody is signed out;
+the wire is unchanged. New settings: `CIVIC_CATALOG_SIGNING_KEY` (each deployment's own, made with the command in
+RUNBOOK-release.md, "The catalog key"); `CIVIC_CATALOG_SIGNATURES` (unset is `transition`; set `required` once every
+approval is signed); `CIVIC_CATALOG_TRUSTED_KEYS` (only for a rotation). In each console: approve the three entries,
+then "Sign approved entries" once the new code is live; Briefs and Conversations 0.2.0, being required, move every hub
+when the new code mounts them.
+
+**Verified (local):** see TESTING.md, "Plugin session 2": unit, UI, API both modes, Playwright 186, the proof, the wire
+identical over 7,583 events, the HTTP side by side with every difference explained.
+
+**Left:** see the session report: the dev release and its signing, production, Adam's mono-repo push, the docs
+session's mirror of BUILD-A-PLUGIN, publishing the packages (Adam's call, with the license question).
+
+---
+
 ## Plugin session 1: a process type is a package; the console's catalog; the grant enforced; Install and Remove — 2026-10-25
 
 `multi-tenant`, `e659f02`..(this commit), from `e92804c`. Decision record ADR-014 (mono repo, committed locally for

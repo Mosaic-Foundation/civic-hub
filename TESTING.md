@@ -87,6 +87,60 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Plugin session 2: signed approvals, versions with a grant per hub, the summary move, the developer path (2026-10-26)
+
+**An approval is signed by the console and verified by the loader; each hub is held to the grant its admin approved;
+a conversation's summary is its brief's; the conformance suite runs as a package from an empty folder (ADR-015).**
+- **What the test servers need now:** an approved, **signed** catalog row per package. CI's API, E2E and run-anywhere
+  servers run with the committed test key (`tests/fixtures/catalog/test-signing-key.pem`, base64 in
+  `CIVIC_CATALOG_SIGNING_KEY`) and `CIVIC_CATALOG_SIGNATURES=required`; `scripts/catalog-approve-local.ts` approves and
+  signs with the same key. A local server without the key runs `transition` (hash only), as before.
+- **Signatures** (`tests/unit/pluginLoader.test.ts`, "signed approvals"): transition without a key mounts on the hash,
+  signed or not; transition with a key mounts an unsigned row and refuses a forged one; required refuses an unsigned
+  row, a widened grant or swapped hash under a valid signature, a row signed by an untrusted key, and everything when
+  the deployment has no key (the reason names the setting); an unknown mode reads as required; a tampered package is
+  not mounted whatever its signature; rotation through `CIVIC_CATALOG_TRUSTED_KEYS`; the test key refused on a
+  deployment. **Through the API** (`pluginPackages.test.ts`, "signed approvals", needs a key and required): a forged and
+  then a missing signature unmount the word cloud; "Sign approved entries" (fresh code) signs it again, audited
+  `plugin.sign`; `civic.json` marks every package signed and `/health` reports none unsigned.
+- **Versions and updates** (`pluginPackages.test.ts`, "versions and updates"): a hub held to Briefs 0.1.0's grant gets a
+  conversation's brief without a written summary (`narrative: "not_allowed"`) and its page says why; the Plugins list
+  offers the update with the AI line as what it adds; Update records 0.2.0 and the grant, in the admin log; the next
+  brief is written; a vote made before an update reads and closes after; Mark required (fresh code) moves the hub to
+  0.2.0 as `system:required`, and its card says so. **Additive only:** `additiveMigrations.test.ts` (what is and is not
+  additive, past comments, strings and function bodies); `catalogAddRefusal.test.ts` (catalog:add refuses
+  `kit/conformance/fixtures/not-additive` and writes nothing).
+- **The summary move:** `briefFinalize.test.ts` (the AI under the brief's purpose and layout; not allowed; the model
+  failing or answering without JSON; the fake Polis's summary; content with nothing to finish passes through; the
+  grants: Conversations `deliberation` only, Briefs with `ai`). `briefRegenerate.test.ts`: closing makes the brief with
+  the summary and the conversation keeps only the result; the page reads the brief; Regenerate through the
+  conversation's link stages, and the page follows the published version; an older conversation shows its own summary
+  until its brief is made again. Polis unit tests: `record_result` in place of `regenerate_summary`, the close records
+  the result after its write has won. The conformance suite walks Conversations 0.2.0 (26 steps, Tier 3 included).
+- **The developer path** (`kit/scripts/prove.ts`, CI after the API suite): both packages packed, installed into an
+  empty folder outside the repository; `civic-conformance` there passes the straw poll (14 steps), fails the broken copy
+  at 4b (a resident answered twice) and refuses the non-additive copy before anything runs; the local stack is left as
+  found (no tables, hubs, processes or events of the run). It needs npm's registry for the packages' dependencies.
+- **Playwright:** `conversationSummary.spec.ts` (a conversation that closes still shows its summary, now from its
+  brief); `pluginUpdate.spec.ts` (the degrade path on the conversation page, the new intro, Update with what changes).
+- **The leak harness and route parity** know the Update route (it names a plugin, not a row).
+- **Results, local:** unit **1,877** (6 skipped); UI component 35; API service role **921 passed**, minted tokens all
+  passed (906 in the full pass; `leavingDemo` and `leakHarness` again after a concurrent run of mine deleted a hub one
+  was using, 22 of 22); Playwright as `e2e.yml` runs it **186 passed, 6 skipped**; the proof green.
+- **Wire:** the same 7,583 local events serialized by `6fe304b` and by this slice: identical in all three views
+  (including the conversations this slice closed). Before and after the session: no event changed; 214 Athens events
+  are gone, removed by the demo hub's reseed during the test runs.
+- **HTTP side by side** (`6fe304b` on :3200, the slice on :3000, one local database, both started fresh with the same
+  environment): **13,785 pairs**: 13,607 byte-identical, 34 identical as JSON, 144 different, all explained: `/health`
+  (`plugins.signatures`; the schema check counts one more function, `apply_required_plugin_version`); `civic.json`
+  (each package's `signed`); the Plugins installs list (the update fields, Briefs and Conversations at 0.2.0); and six
+  conversations this slice's tests closed under the new model, whose summary is on their brief, which the old code
+  does not read. Made by the old code and closed by the new: a vote (read, closed, finalized); a conversation stored in
+  0.1.0's shape closes, its brief writes the summary and its page reads it (a conversation made on the old server could
+  not be closed on the new one locally only because each server's fake Polis keeps its own conversations in memory).
+
+---
+
 ## Plugin packages: the loader, the catalog's hash rule, the grant at the seams, Install and Remove (2026-10-25)
 
 **Every process type is a package under `packages/`; a server mounts one only when an approved catalog row records

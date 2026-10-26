@@ -4,9 +4,10 @@ This is the contract a process type meets to run on a Civic Hub (plugin session 
 **package**: a directory with a fixed shape that the hub loads from a list, checks at startup, and runs only once the
 platform operator has approved exactly that code.
 
-Today every package lives in this repository under `packages/`, and every one is first-party (Tier 1, plugin
-architecture spec §2). The shape is the one an outside package will have. What is missing before outside developers can
-ship one (the SDK as its own npm package, a developer guide, a signed approval) is listed at the end.
+The packages this hub ships live in this repository under `packages/`, and every one is first-party (Tier 1, plugin
+architecture spec §2). A package written outside the repository has the same shape and imports the SDK by its npm
+name; **`docs/BUILD-A-PLUGIN.md`** walks an outside developer through it, with the worked example
+(`examples/straw-poll/`) and the suite as a package (`kit/`; plugin session 2, ADR-015).
 
 The word cloud (`packages/civic.wordcloud/`) is the smallest complete example. Read it beside this page.
 
@@ -124,8 +125,15 @@ hub's seams refusing what the grant does not name, plus a lint rule that keeps a
 
 `src/sdk/index.ts` is everything a package may import from the hub's engine, by name: errors, the process contract,
 the one emission path, the hub's services a package calls, the request helpers, storage helpers over `host.db()`.
-Version 0 is what the hub's own packages use, so it is wide; plugin session 2 narrows it and publishes it as a package
-of its own.
+Version 0 is what the hub's own packages use, so it is wide.
+
+Version 1, narrower, is the npm package `@civic-social/plugin-sdk` (`kit/sdk`; ADR-015): what a package written
+outside this repository imports. The shipped packages stay on version 0 for now (moving them changes all nine
+fingerprints).
+
+`host.allows(adapter)` says whether the hub in scope lets the package use an adapter: in its grant, and in the grant
+that hub's admin approved (versions, below). A package asks before using what a newer version added, and does
+without it on a hub that has not updated.
 
 ### `ui.tsx`
 
@@ -153,24 +161,36 @@ suite drives the type with them and nothing type-specific (`tests/conformance/RE
    layer's file: the engine never names a package. `npm run plugins:sync` writes it out as three static import lists
    (`config/plugins/manifests.ts`, `server.ts`, `ui.ts`), because the server's and the UI's bundlers follow only
    static imports. CI fails when they are stale.
-2. **The catalog entry.** `npm run catalog:add -- packages/<dir>` checks the package's shape, hashes its files, starts
-   a throwaway hub on the local stack with the package mounted unverified (`CIVIC_PLUGINS_UNVERIFIED`, development
-   only), runs the conformance suite against its type alone, and on green writes a catalog entry as a migration:
-   `supabase/migrations/<now>_catalog_<dir>_<version>.sql`, status `pending`, with the hash, the grant and the run.
+2. **The catalog entry.** `npm run catalog:add -- packages/<dir>` checks the package's shape, hashes its files, refuses
+   a migration that is not additive, starts a throwaway hub on the local stack with the package mounted unverified
+   (`CIVIC_PLUGINS_UNVERIFIED`, development only), runs the conformance suite against its type alone, and on green
+   writes a catalog entry as a migration: `supabase/migrations/<now>_catalog_<dir>_<version>.sql`, status `pending`,
+   unsigned, with the hash, the grant and the run. `--required` writes it marked required; `--no-auto-install`, as one
+   a new hub does not get. A submitted package outside `packages/` is proven through the packed suite, as its
+   developer proved it.
 3. **Approval.** The entry reaches each deployment with its migrations. The operator approves it in the console
-   (Plugins: a fresh code, an audit row). On the local stack and in CI, `scripts/catalog-approve-local.ts` approves it
-   as the local operator.
+   (Plugins: a fresh code, an audit row), which **signs** it with the deployment's catalog key
+   (`CIVIC_CATALOG_SIGNING_KEY`; ADR-015) over (package, version, hash, grant). "Sign approved entries" signs the rows
+   approved before signatures, and every row again after a key rotation. On the local stack and in CI,
+   `scripts/catalog-approve-local.ts` approves and signs as the local operator (the committed test key, which every
+   deployment refuses).
 4. **Mounting.** At startup each server hashes each package's files (`src/plugins/hash.ts`) and mounts a package only
-   when an approved catalog row records its name, version and that exact hash, and its manifest asks for nothing
-   beyond the grant that row recorded. The same rule on every deployment. Anything else, a package whose code
-   changed after its approval included, is not mounted: its types read as switched off on every hub, it is reported
-   (`plugin.unmounted`), `/health` lists it (and stays "ok"), and the console's dashboard shows the hubs left without
-   it. Approvals are read again every minute.
+   when an approved catalog row records its name, version and that exact hash, its manifest asks for nothing beyond
+   the grant that row recorded, and the row's signature verifies (`CIVIC_CATALOG_SIGNATURES=required`; while it is
+   `transition`, a row without a signature still mounts on its hash, and a signed one must verify). The same rule on
+   every deployment. Anything else, a package whose code changed after its approval included, is not mounted: its
+   types read as switched off on every hub, it is reported (`plugin.unmounted`), `/health` lists it (and stays "ok"),
+   and the console's dashboard shows the hubs left without it. Approvals are read again every minute.
 5. **Install.** A hub admin installs the plugin on the hub's Plugins page, which shows what it will be able to do in
    plain words; the hub records the version and the grant (`hub_plugins`). A new hub gets every approved package.
    Remove has two modes: **Stop now** (what switching a plugin off always did: nothing is deleted, installing again
    brings everything back) and **Wind down** (nothing new can be started, what is open runs to its close, and the
    close job switches it off when the last one closes; offered for types that close at a deadline).
+6. **Update** (ADR-015). A deployment runs one version of each package for every hub; its code changes reach every
+   hub at once. Each hub records the version whose grant its admin approved, and its seams hold the package to that
+   grant. When the deployment runs a newer version, the Plugins page says an update is available and what it changes
+   in the grant, in the same words; Update records the new version and grant. A version the operator marks
+   **required** in the console is recorded on every hub, with a notice on its Plugins page.
 
 ## Working on a package locally
 
@@ -183,7 +203,7 @@ deployment after its migrations are applied, before the code (`RUNBOOK-release.m
 
 - **Tier 2**, a sandboxed runtime for code the operator did not write. Until it exists, third-party code reaches
   production only as Tier 3 or after first-party vetting as Tier 1 (spec §5a).
-- **The SDK and the conformance suite as packages of their own**, and a developer guide (plugin session 2).
-- **A signature** with a Mosaic key in place of the bare hash, when outside packages arrive (plugin session 2).
-- **Loading from a registry** rather than a configured list.
-- **Narrowing a grant at install**, and per-hub re-approval of a new version.
+- **Publishing** `@civic-social/plugin-sdk` and `@civic-social/plugin-conformance` to npm, and **loading from a
+  registry** rather than a configured list.
+- **Narrowing a grant at install**, and an old version's behaviour pinned per hub.
+- **The shipped packages on SDK version 1.**
