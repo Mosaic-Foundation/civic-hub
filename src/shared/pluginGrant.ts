@@ -25,7 +25,7 @@
 import { ADAPTER_PLAIN, eventPlain } from "./pluginGrantWords.js";
 
 /** The adapters a package may be granted. `errors` and `heartbeat` are the hub's own and are never granted. */
-export const GRANTABLE_ADAPTERS = ["ai", "mail", "video", "deliberation", "objectStore"] as const;
+export const GRANTABLE_ADAPTERS = ["ai", "mail", "video", "deliberation", "objectStore", "web"] as const;
 export type GrantableAdapter = (typeof GRANTABLE_ADAPTERS)[number];
 
 /** The identity claims a package may be granted, least sensitive first (§4.1). */

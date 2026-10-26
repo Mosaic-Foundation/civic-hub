@@ -31,6 +31,8 @@ import type { Adapters } from "../adapters/index.js";
 import type { aiComplete, aiConfigured, aiDefaultModel } from "../adapters/ai.js";
 import type { sendEmail as sendMessage } from "../utils/email.js";
 import type { sendEmail as deliverEmail } from "../services/mailer.js";
+import type { notifyCronOutcome } from "../services/cronAlerts.js";
+import type { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../utils/http.js";
 import type { GrantableAdapter } from "../shared/pluginGrant.js";
 import type { HubQueryBuilder } from "../db/forHub.js";
 import type { DraftKind } from "../processes/draftKinds.js";
@@ -76,7 +78,13 @@ export interface PluginAdapters {
     send: typeof sendMessage;
     /** One message with a delivery report per recipient (src/services/mailer.ts). */
     deliver: typeof deliverEmail;
+    /** The hub's admins' addresses, for a notice to them (a list the hub keeps; ADR-011). */
+    adminAddresses: () => string[];
+    /** A scheduled job's outcome, mailed to the hub's admins when it needs them (src/services/cronAlerts.ts). */
+    notifyJobOutcome: typeof notifyCronOutcome;
   };
+  /** Public web pages, through the hub's fetchers (SSRF-guarded, every redirect checked; src/utils/http.ts). */
+  web: { fetchHtml: typeof fetchHtml; fetchJson: typeof fetchJson; fetchPdf: typeof fetchPdf; fetchXml: typeof fetchXml };
   video: Adapters["video"];
   deliberation: Adapters["deliberation"];
   objectStore: Adapters["objectStore"];

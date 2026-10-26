@@ -21,13 +21,8 @@ import {
   getAllProcesses,
   getArchivedProcesses,
   saveProcessState,
-  fetchHtml,
-  fetchJson,
-  fetchPdf,
-  fetchXml,
   findBrokenPublications,
   type BrokenPublication,
-  notifyCronOutcome,
   REVISION_NAG_DAYS,
   type CronOutcome,
   type FlaggedSummary,
@@ -38,6 +33,7 @@ import {
   type AiSingleTurnInput,
   type JobOutcome,
   type JobRunner,
+  type PluginAdapters,
 } from "../../src/sdk/index.js";
 import {
   approveMeetingSummary,
@@ -73,6 +69,15 @@ import { meetingSummaryHost } from "./host.js";
 const callClaude = (input: AiSingleTurnInput) => meetingSummaryHost.get().adapter("ai").complete("job.meeting_summary", input);
 /** A recording's transcript, through the video adapter. */
 const fetchYouTubeTranscript = (url: string) => meetingSummaryHost.get().adapter("video").transcript(url);
+// The meeting pages, through the hub's fetchers (the grant's `web`), and the
+// admins told, through its mail (the grant's `mail`).
+const web = () => meetingSummaryHost.get().adapter("web");
+const fetchHtml = (url: string) => web().fetchHtml(url);
+const fetchXml = (url: string) => web().fetchXml(url);
+const fetchJson: ReturnType<typeof web>["fetchJson"] = (...args) => web().fetchJson(...args);
+const fetchPdf: ReturnType<typeof web>["fetchPdf"] = (...args) => web().fetchPdf(...args);
+const notifyCronOutcome: PluginAdapters["mail"]["notifyJobOutcome"] = (...args) =>
+  meetingSummaryHost.get().adapter("mail").notifyJobOutcome(...args);
 
 const CRON_ACTOR = "system:meeting-summary-cron";
 const DEFAULT_MAX_PER_RUN = 3;

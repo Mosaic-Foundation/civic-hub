@@ -4,7 +4,7 @@
 
 /** Each grantable adapter: what having it lets a plugin do, and what lacking it means. */
 export const ADAPTER_PLAIN: Readonly<Record<
-  "ai" | "mail" | "video" | "deliberation" | "objectStore",
+  "ai" | "mail" | "video" | "deliberation" | "objectStore" | "web",
   { can: string; cannot?: string; outside?: true }
 >> = {
   ai: {
@@ -13,7 +13,7 @@ export const ADAPTER_PLAIN: Readonly<Record<
     outside: true,
   },
   mail: {
-    can: "Send email from the hub, to the people the hub's own rules allow.",
+    can: "Send email from the hub, to the people the hub's own rules allow, including notices to this hub's admins.",
     cannot: "Send email.",
   },
   video: {
@@ -26,6 +26,10 @@ export const ADAPTER_PLAIN: Readonly<Record<
   },
   objectStore: {
     can: "Store files on the hub.",
+  },
+  web: {
+    can: "Read the public web pages it is set up to follow, such as the government's meeting calendar and its agendas.",
+    outside: true,
   },
 };
 

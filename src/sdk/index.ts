@@ -30,7 +30,7 @@ export type { Process, ProcessAction, ProcessStatus } from "../models/process.js
 export type { ProcessHandler } from "../processes/types.js";
 export type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 export { storeSlot, type StoreSlot } from "../processes/storeSlot.js";
-export type { GrantedDb, PluginHost, PluginPackage, PluginServer, PluginMount } from "../plugins/package.js";
+export type { GrantedDb, PluginAdapters, PluginHost, PluginPackage, PluginServer, PluginMount } from "../plugins/package.js";
 
 // --- Requests and the names a package uses as it loads ----------------------------------
 // Listed ahead of the groups that reach the loader (the events and services
@@ -118,7 +118,6 @@ export {
   getSettingSync,
   getVoteResultsRecipients,
   hubDisplayNameSync,
-  getAdminEmailsSync,
   isPluginEnabledSync,
 } from "../services/hubSettings.js";
 
@@ -196,14 +195,13 @@ export {
 export { getUser } from "../modules/civic.auth/index.js";
 
 // --- src/utils/http.ts -------------------------------------------------------------------
-export { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../utils/http.js";
 
 // --- src/services/feedHealth.ts ----------------------------------------------------------
 export { findBrokenPublications } from "../services/feedHealth.js";
 export type { BrokenPublication } from "../services/feedHealth.js";
 
 // --- src/services/cronAlerts.ts ----------------------------------------------------------
-export { notifyCronOutcome, REVISION_NAG_DAYS } from "../services/cronAlerts.js";
+export { REVISION_NAG_DAYS } from "../services/cronAlerts.js";
 export type { CronOutcome, FlaggedSummary, WaitingMeeting } from "../services/cronAlerts.js";
 
 // --- src/jobs/types.ts -------------------------------------------------------------------

@@ -8,6 +8,9 @@ import { adapters } from "../adapters/index.js";
 import { aiComplete, aiConfigured, aiDefaultModel } from "../adapters/ai.js";
 import { sendEmail as sendMessage } from "../utils/email.js";
 import { sendEmail as deliverEmail } from "../services/mailer.js";
+import { notifyCronOutcome } from "../services/cronAlerts.js";
+import { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../utils/http.js";
+import { getAdminEmailsSync } from "../services/hubSettings.js";
 import type { GrantableAdapter, PluginCapabilities } from "../shared/pluginGrant.js";
 import type { GrantedDb, PluginAdapters, PluginHost } from "./package.js";
 import { refuseReach } from "./grant.js";
@@ -24,7 +27,8 @@ export function grantedDb(packageName: string, tables: readonly string[]): Grant
 
 const ADAPTER_FACADES: { [K in GrantableAdapter]: () => PluginAdapters[K] } = {
   ai: () => ({ complete: aiComplete, configured: aiConfigured, defaultModel: aiDefaultModel }),
-  mail: () => ({ send: sendMessage, deliver: deliverEmail }),
+  mail: () => ({ send: sendMessage, deliver: deliverEmail, adminAddresses: getAdminEmailsSync, notifyJobOutcome: notifyCronOutcome }),
+  web: () => ({ fetchHtml, fetchJson, fetchPdf, fetchXml }),
   // Read when asked, so a test or the hosting layer installing an adapter later is seen.
   video: () => adapters().video,
   deliberation: () => adapters().deliberation,

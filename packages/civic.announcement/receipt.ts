@@ -19,7 +19,6 @@
 // Fire-and-forget by design: a receipt that fails must never fail the
 // publish. See handleCreateAnnouncement.
 
-import { getAdminEmailsSync } from "../../src/sdk/index.js";
 import { announcementHost } from "./host.js";
 
 function esc(s: string): string {
@@ -144,7 +143,7 @@ export async function sendAnnouncementReceipt(
   input: AnnouncementReceiptInput,
   authorEmail: string | null | undefined,
 ): Promise<void> {
-  const recipients = receiptRecipients(authorEmail, getAdminEmailsSync());
+  const recipients = receiptRecipients(authorEmail, announcementHost.get().adapter("mail").adminAddresses());
   if (recipients.length === 0) {
     console.warn(
       "[announcement] no receipt recipients (no author email, and this hub has no admins configured) — receipt skipped",

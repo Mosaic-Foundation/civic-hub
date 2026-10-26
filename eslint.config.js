@@ -329,6 +329,7 @@ const PEOPLE_LIST_READERS = {
   "src/modules/civic.auth/index.ts": "sign-in admission: the beta allowlist's admins and board",
   "src/services/modeReadiness.ts": "the leaving-demo readiness report (have the listed people signed up?)",
   "src/services/officials.ts": "moving the legacy author list onto accounts",
+  "src/plugins/host.ts": "mail: a package's notices to admins, through its granted mail adapter (ADR-014)",
 };
 const PEOPLE_LIST_NAMES = new Set([
   "getAdminEmailsSync", "getAdminEmails", "getBoardEmailsSync", "getBoardEmails",
@@ -350,7 +351,7 @@ const authzSeamRule = {
   create(context) {
     const file = context.filename;
     const rel = relative(ROOT, file).split("\\").join("/");
-    if (rel.startsWith("src/authz/") || !(rel.startsWith("src/") || rel.startsWith("api/"))) return {};
+    if (rel.startsWith("src/authz/") || !(rel.startsWith("src/") || rel.startsWith("api/") || rel.startsWith("packages/"))) return {};
     const listReader = rel in PEOPLE_LIST_READERS;
     const SEAM = "Ask canActor (src/authz/canActor.ts) instead; the rule for adding a check is in its header and ADR-011.";
     return {

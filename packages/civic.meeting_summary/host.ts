@@ -1,5 +1,6 @@
 // The host the hub gave this package when it loaded it (./index.ts binds it):
-// the adapters its job summarizes and reads recordings through.
+// the adapters its job reads meeting pages and recordings, summarizes and tells
+// the admins through.
 
 import { storeSlot, type PluginHost } from "../../src/sdk/index.js";
 
