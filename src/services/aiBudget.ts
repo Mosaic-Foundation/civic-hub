@@ -82,6 +82,16 @@ export async function admitAiCall(kind: "chat" | "review", userId: string): Prom
   return limits;
 }
 
+/**
+ * Admit a Code of Conduct check a package runs on what a resident submits
+ * (the conversation's, which has no drafting flow): the hub's own moderation,
+ * counted as the drafts' check is. Through the SDK, so a package needs no AI
+ * grant for the hub's check (plugin session 2, ADR-015).
+ */
+export function admitCodeOfConductCheck(userId: string): Promise<AiLimits> {
+  return admitAiCall("review", userId);
+}
+
 async function tokensToday(hubId: string, purposes: readonly AiPurpose[] = BUDGET_PURPOSES): Promise<number> {
   const total = await forHub(hubId).rpc<number | string>("ai_tokens_since", {
     p_since: new Date(Date.now() - DAY_MS).toISOString(),

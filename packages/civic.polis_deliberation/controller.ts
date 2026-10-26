@@ -26,6 +26,7 @@ import {
   getProcessHandler,
   briefIdForSource,
   regenerateBrief,
+  admitCodeOfConductCheck,
 } from "../../src/sdk/index.js";
 import { getPolisAdapter } from "./boot.js";
 import { conversationHost } from "./host.js";
@@ -215,8 +216,10 @@ export const handleCreateDeliberation = route(async (req, res) => {
   let cocPassed = false;
   try {
     // Counted like the drafts' check (Audit 2): over the hourly count is a
-    // 429; a spent hub budget falls through to "unavailable" below.
-    await conversationHost.get().adapter("ai").admit("review", user.id);
+    // 429; a spent hub budget falls through to "unavailable" below. The check
+    // is the hub's own moderation, so it is counted as the hub's: the
+    // conversation's grant has no AI (plugin session 2).
+    await admitCodeOfConductCheck(user.id);
     const findings = await checkTextAgainstCoC(
       [
         { label: "Topic", text: String(topic) },

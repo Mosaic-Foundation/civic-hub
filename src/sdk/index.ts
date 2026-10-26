@@ -234,6 +234,9 @@ export { getActor } from "../middleware/auth.js";
 // The hub's own moderation of what residents write: the Code of Conduct check
 // (the hub's, run on a statement before it reaches Polis) and its refusal.
 export { checkTextAgainstCoC, getHubConfig } from "../modules/civic.assistant/index.js";
+// Counting that check against the hub's AI limits before it runs, as the hub's
+// own drafting flows do: the check is the hub's, not the package's (no AI grant needed).
+export { admitCodeOfConductCheck } from "../services/aiBudget.js";
 export { AiLimitError } from "../services/aiBudget.js";
 // A creator's submission into the hub's review flow, and its mailbox.
 export { submitAsCreator, reviewMailbox } from "../modules/civic.review/index.js";
