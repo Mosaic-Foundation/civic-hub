@@ -27,7 +27,7 @@ import { ConflictError, NotFoundError, ValidationError } from "../errors/index.j
 import { currentHubId } from "../config/hubContext.js";
 import { applyPluginChange, readHubPlugins, type HubPluginRow, type PluginChange } from "../db/hubPlugins.js";
 import { invalidateHubSettings } from "../db/hubSettingsStore.js";
-import { isPluginEnabledSync, isPluginWindingDownSync, getSetting } from "./hubSettings.js";
+import { isPluginEnabled, isPluginEnabledSync, isPluginWindingDownSync, getSetting } from "./hubSettings.js";
 import { countLiveProcessesByPlugin } from "./processService.js";
 import { getManifests, processTypeDisplays } from "../processes/registry.js";
 import { loadedPackages, packageVerdicts, verifyPackages, type PackageVerdict } from "../plugins/loader.js";
@@ -86,20 +86,31 @@ function hasDeadlines(plugin: string): boolean {
   return getManifests().some((m) => m.descriptor.plugin === plugin && m.descriptor.deadline !== null);
 }
 
+/** A plugin's switch and wind-down flag, read fresh (not the request's snapshot): an install changes them mid-request. */
+async function switchesNow(plugin: string): Promise<{ on: boolean; winding: boolean }> {
+  const hubId = currentHubId();
+  const [on, winding] = await Promise.all([
+    isPluginEnabled(hubId, plugin),
+    getSetting(hubId, `plugin.${plugin}.winding_down`).then((v) => v === "true"),
+  ]);
+  return { on, winding };
+}
+
 function view(
   entry: ReturnType<typeof pluginsWithPackages>[number],
   rows: readonly HubPluginRow[],
   verdicts: readonly PackageVerdict[],
   open: number,
+  switches: { on: boolean; winding: boolean },
 ): PluginInstallView {
   const mine = rows.filter((r) => r.plugin === entry.plugin);
   const owner = mine.find((r) => r.package === entry.packages.find((p) => p.pkg.manifest.pluginSection)?.pkg.name) ?? mine[0];
   const mounted = entry.packages.every((p) => verdicts.find((v) => v.package === p.pkg.name)?.mounted);
   const state: InstallState = !mounted
     ? "unavailable"
-    : !isPluginEnabledSync(entry.plugin)
+    : !switches.on
       ? "removed"
-      : isPluginWindingDownSync(entry.plugin)
+      : switches.winding
         ? "winding_down"
         : "installed";
   return {
@@ -138,8 +149,10 @@ export async function listPluginInstalls(): Promise<PluginInstallView[]> {
   await verifyPackages();
   const [rows, counts] = await Promise.all([readHubPlugins(currentHubId()), countLiveProcessesByPlugin()]);
   const verdicts = packageVerdicts();
-  return pluginsWithPackages()
-    .map((e) => view(e, rows, verdicts, (counts as Record<string, number>)[e.plugin] ?? 0))
+  const entries = pluginsWithPackages();
+  const switches = await Promise.all(entries.map((e) => switchesNow(e.plugin)));
+  return entries
+    .map((e, i) => view(e, rows, verdicts, (counts as Record<string, number>)[e.plugin] ?? 0, switches[i]))
     .filter((v) => v.state !== "unavailable" || (v.installed_at !== null && v.removed_at === null));
 }
 

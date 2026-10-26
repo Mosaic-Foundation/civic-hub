@@ -32,13 +32,22 @@ function holdsOf(pkg: string): Record<string, string> {
   return Object.fromEntries((p?.pkg.manifest.tables ?? []).map((t) => [t.name, t.holds]));
 }
 
+/** The entry's grant in plain words; a row whose grant cannot be read says so rather than failing the page. */
+function grantWords(row: CatalogRow): { can: string[]; cannot: string[] } {
+  try {
+    return grantInPlainWords({ name: row.display_name, caps: row.capabilities, holds: holdsOf(row.package) });
+  } catch {
+    return { can: ["This entry's grant could not be read. Do not approve it."], cannot: [] };
+  }
+}
+
 export async function catalogView(): Promise<CatalogView> {
   await refreshPackages();
   const deployment = packageVerdicts();
   const entries = (await readCatalog()).map((row) => ({
     ...row,
     matches_deployment: deployment.some((v) => v.package === row.package && v.version === row.version && v.hash === row.hash),
-    grant: grantInPlainWords({ name: row.display_name, caps: row.capabilities, holds: holdsOf(row.package) }),
+    grant: grantWords(row),
   }));
   return { entries, deployment };
 }

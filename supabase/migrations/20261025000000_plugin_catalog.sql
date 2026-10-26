@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS plugin_catalog (
   CONSTRAINT plugin_catalog_status_chk CHECK (status IN ('pending', 'approved', 'withdrawn')),
   CONSTRAINT plugin_catalog_approval_chk CHECK (status = 'pending' OR (approved_by IS NOT NULL AND approved_at IS NOT NULL)),
   CONSTRAINT plugin_catalog_conformance_chk CHECK (conformance->>'result' = 'passed'),
+  -- A grant names every §4.1 class (src/shared/pluginGrant.ts checks the rest).
+  CONSTRAINT plugin_catalog_capabilities_chk
+    CHECK (jsonb_typeof(capabilities) = 'object' AND capabilities ?& array['activities', 'state', 'adapters', 'network', 'identity', 'ui']),
   CONSTRAINT plugin_catalog_entry_unique UNIQUE (package, version, hash)
 );
 

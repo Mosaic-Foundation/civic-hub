@@ -164,7 +164,7 @@ describe("a hub's plugin packages", () => {
     await call("GET", `/internal/vote-close/run?hub=${SLUG}`, HOST, undefined, CRON);
     expect((await one("vote")).state).toBe("winding_down");
 
-    const close = await call("POST", `/process/${id}/action`, HOST, { type: "process.close", payload: {} }, admin);
+    const close = await call("POST", `/process/${id}/action`, HOST, { type: "process.close", payload: { note: "Closed early by the plugin packages test." } }, admin);
     expect(close.status, JSON.stringify(close.body)).toBe(200);
     const job = await call("GET", `/internal/vote-close/run?hub=${SLUG}`, HOST, undefined, CRON);
     expect(job.status, JSON.stringify(job.body)).toBe(200);
@@ -212,7 +212,8 @@ describe("the console's catalog", () => {
     const hash = `sha256:${"0".repeat(64)}`;
     await db.query(
       `INSERT INTO plugin_catalog (package, version, hash, display_name, plugin, process_type, capabilities, conformance, status)
-       VALUES ('@test/plugin-unapproved', '0.1.0', $1, 'Unapproved', 'unapproved', 'civic.unapproved', '{}'::jsonb, '{"result":"passed","ran_at":"2026-10-25T00:00:00Z"}'::jsonb, 'pending')
+       VALUES ('@test/plugin-unapproved', '0.1.0', $1, 'Unapproved', 'unapproved', 'civic.unapproved',
+               '{"activities":{"emit":[],"listen":[]},"state":{"read":["own-process"],"write":["own-process"],"tables":[]},"adapters":[],"network":{"egress":[]},"identity":{"claims":["participant-ref"]},"ui":{"surfaces":[]}}'::jsonb, '{"result":"passed","ran_at":"2026-10-25T00:00:00Z"}'::jsonb, 'pending')
        ON CONFLICT (package, version, hash) DO NOTHING`,
       [hash],
     );
