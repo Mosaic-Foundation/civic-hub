@@ -1,7 +1,7 @@
 # Plugin conformance suite
 
 Every process type proves it behaves as it says, by one shared set of steps.
-Registering a type is enough to have it tested: `tests/api/conformance.test.ts`
+Loading a type's package is enough to have it tested: `tests/api/conformance.test.ts`
 calls `runConformance({ handlers: getAllHandlers() })`, and CI runs that in
 both API passes (service role, minted hub tokens).
 
@@ -72,8 +72,9 @@ use by step 5 of every type that makes one.
 
 ## What a plugin author needs to make it pass
 
-A process type is a `ProcessHandler` (`src/processes/types.ts`) with a
-`descriptor` (`src/processes/descriptor.ts`). To pass:
+A process type is a package (`docs/PLUGIN-PACKAGE.md`) whose handler is a
+`ProcessHandler` (`src/processes/types.ts`) with a `descriptor`
+(`src/processes/descriptor.ts`). To pass:
 
 1. **Declare everything the handler does, and nothing it doesn't.**
    - **Actions:** every action `handleAction` accepts. For each, say:
@@ -97,14 +98,16 @@ A process type is a `ProcessHandler` (`src/processes/types.ts`) with a
      `archived` belong to the hub and stay out.
 2. **Say how one is made, and give an example.**
    - **Drafted by residents:** set `creation.resident.drafts` to the drafts
-     path, provide `examples.draft`, and register a draft kind
-     (`src/processes/draftKinds.ts`).
+     path, provide `examples.draft`, and return a draft kind from your
+     package's `server(host)` (`drafts`; the type is `DraftKind` in the SDK).
    - **Created by an admin:** set `creation.admin` and provide
      `examples.create` (the request body, and its path if it isn't
      `/process`).
 3. **Keep your storage under the hub's rules.** Every table you own goes in
-   `tables`, carries `hub_id` with forced row-level security (`HUB_TABLES`),
-   and appears in the export manifest.
+   `tables` (with what it `holds`, in plain words) and in your grant's
+   `state.tables`, carries `hub_id` with forced row-level security
+   (`HUB_TABLES`), and appears in the export manifest. Reach it only through
+   `host.db()`.
 4. **Deadlines are the hub's to drive** (§10a.3). If the type closes at a
    deadline:
    - declare `deadline.action` (callable by `system`) and `deadline.source`,
@@ -142,22 +145,26 @@ A process type is a `ProcessHandler` (`src/processes/types.ts`) with a
 
 ### Running it against your plugin
 
-Today a plugin runs inside a hub build:
-1. Register its handler in `src/processes/registry.ts`.
-2. Start the hub with `CIVIC_POLIS_FAKE=on` and `CIVIC_COC_FAKE=on` against
-   the local stack. The fake check flags text containing `[coc-flag]` and is
-   down on `[coc-down]`; the suite puts them in the example draft's
-   `description`, so a drafted type needs one.
-3. Run:
+A plugin is a package (`docs/PLUGIN-PACKAGE.md`, ADR-014). To run the suite against yours:
+1. Put it under `packages/<dir>/`, add the directory to `config/plugins.json` and run `npm run plugins:sync`.
+2. With the local stack up (`./scripts/local-stack.sh start`), run
+
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && npm run catalog:add -- packages/<dir>
+```
+
+   It starts a throwaway hub with your package mounted unverified (`CIVIC_PLUGINS_UNVERIFIED`, development only),
+   runs these steps against your type alone (`CIVIC_CONFORMANCE_TYPES`), and on green writes your catalog entry.
+
+To walk a running hub by hand, start it with `CIVIC_FAKE_ADAPTERS=on` against the local stack. The fake check flags
+text containing `[coc-flag]` and is down on `[coc-down]`; the suite puts them in the example draft's `description`, so
+a drafted type needs one. Then:
 
 ```bash
 cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && CIVIC_API_BASE=http://localhost:3000 npx vitest run tests/api/conformance.test.ts
 ```
 
-To prove only your type, call `runConformance({ handlers: [yourHandler] })`
-from a test file of your own. When plugins load from packages (audit C3), the
-same call takes the loaded plugin's handlers. Nothing in the steps names a
-type.
+`CIVIC_CONFORMANCE_TYPES=<type>` walks one type. Nothing in the steps names a type.
 
 ## Tier 2: what its slot will need
 
@@ -168,5 +175,6 @@ When a sandbox runtime exists (plugin architecture §2, §5a Stage 2), the
 - the plugin sees only its granted identity claims;
 - state access goes only through the host's store.
 
-The descriptor then needs the grant (the plugin architecture's §4.1
-capability block), and the hub needs to record it at install.
+The grant (the plugin architecture's §4.1 capability block) is in every
+manifest and recorded at install since plugin session 1 (ADR-014); the Tier 2
+runtime would enforce it as the host functions it exposes.

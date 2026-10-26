@@ -193,10 +193,11 @@ test("2. anchors open the right tab, section or plugin panel; panels start close
   const votes = page.getByRole("region", { name: "Votes", exact: true });
   const head = votes.getByRole("button", { name: /^Votes/ });
   await expect(head).toHaveAttribute("aria-expanded", "false");
-  await expect(votes.getByLabel("Votes on")).toHaveCount(0);
+  // A package's plugin shows Install / Remove in its panel (ADR-014).
+  await expect(votes.getByTestId("plugin-install-vote")).toHaveCount(0);
   await head.click();
   await expect(head).toHaveAttribute("aria-expanded", "true");
-  await expect(votes.getByLabel("Votes on")).toBeVisible();
+  await expect(votes.getByTestId("plugin-install-vote")).toBeVisible();
 
   await page.goto(`${HUB}/admin/settings#threshold`);
   await expect(page).toHaveURL(/\/admin\/settings\/participation#threshold$/);

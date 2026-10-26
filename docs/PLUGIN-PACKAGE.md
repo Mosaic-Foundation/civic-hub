@@ -86,7 +86,7 @@ capabilities: {
   activities: { emit: ["civic.process.started", "civic.process.submission_received",
                        "civic.process.result_published", "civic.process.ended"], listen: [] },
   state: { read: ["own-process"], write: ["own-process"], tables: ["wordcloud_submissions"] },
-  adapters: [],                         // any of: ai, mail, video, deliberation, objectStore
+  adapters: [],                         // any of: ai, mail, video, deliberation, objectStore, web
   network: { egress: [] },
   identity: { claims: ["participant-ref"] },
   ui: { surfaces: ["process-page", "create-page", "feed-card", "settings-panel"] },
@@ -117,7 +117,7 @@ hub's seams refusing what the grant does not name, plus a lint rule that keeps a
 - Each refusal throws `GrantRefusedError` (a 500 to the caller: the fault is the package's) and is reported through
   the errors adapter as `plugin.grant.table`, `plugin.grant.adapter` or `plugin.grant.event`.
 - **The import fence** (`civic/package-boundary`, eslint): a package imports `src/sdk/index.ts`, `src/shared/`, its
-  own files, the packages it `requires`, Node's built-ins and `express`. Nothing else of the hub: no database
+  own files, the packages it `requires`, Node's built-ins and the npm packages its `package.json` lists as peer dependencies (`express`; the meeting summary's `cheerio`). Nothing else of the hub: no database
   client, no adapter, no hosting layer, no console.
 
 ### The SDK

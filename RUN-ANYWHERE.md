@@ -10,7 +10,7 @@ serving `/health`, `/.well-known/civic.json` and `/events`.
 
 | Piece | What | Why |
 |---|---|---|
-| Node 24 | `node --import tsx src/index.ts` | The server. `npm run build` + `node dist/index.js` works too. |
+| Node 24 | `node --import tsx src/index.ts` | The server. `npm run build` + `node dist/src/index.js` (`npm start`) works too. |
 | Postgres 17 | any (the CI job uses the `postgres:17` image), created with the ICU `en-US` collation (`initdb --locale-provider=icu --icu-locale=en-US`) | Every table, function and policy is in `supabase/migrations/`; they are plain SQL. The collation is Supabase's: with glibc's `en_US` text sorts differently (punctuation is ignored). |
 | PostgREST 14 | the `postgrest/postgrest:v14.5` image, or the binary (12.x mishandles an update filtered with `or=` that returns rows) | The hub's database client (supabase-js) speaks PostgREST. It is open source and runs on its own; nothing else of Supabase is used. |
 | A path rewrite | `/rest/v1/*` → PostgREST's `/*` | supabase-js addresses PostgREST at `<SUPABASE_URL>/rest/v1`. `scripts/run-anywhere/rest-proxy.mjs` does it; nginx or Caddy can do the same. |
@@ -30,6 +30,9 @@ On a laptop with Docker, `./scripts/run-anywhere/up.sh` does steps 1 to 3 and pr
    The storage-bucket migrations skip themselves when there is no `storage` schema. For a trial with the two sample
    hubs, also `psql -f supabase/seed.sql`, then `npx tsx scripts/seed-hub-settings.ts --hub athens` (and `floyd`) and
    `node --import tsx scripts/load-jurisdictions.ts` with `CIVIC_TARGET_DATABASE_URL` set.
+   **The plugin packages** the hub runs are `config/plugins.json`'s, and a server mounts each only when an approved
+   catalog row records the hash of its files (ADR-014). The shipped packages' rows come with the migrations; for a
+   package you changed, run `npm run catalog:add -- packages/<dir>` and approve its entry in the console.
 3. **PostgREST**, with `PGRST_DB_URI=postgres://authenticator:<password>@<host>/<db>`, `PGRST_DB_SCHEMAS=public`,
    `PGRST_DB_ANON_ROLE=anon` and `PGRST_JWT_SECRET=<32 characters or more>`; then the `/rest/v1` rewrite in front of it.
 4. **The hub**, with at least:
