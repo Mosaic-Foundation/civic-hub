@@ -48,6 +48,10 @@ deployment before its code goes out:
    checks `/api/health`'s `plugins.signatures`: when any mounted package runs on an unsigned approval, it says so and
    waits (up to 20 minutes) while you **sign them in the console (Plugins: Sign approved entries, with a fresh code)**.
    With `CIVIC_CATALOG_SIGNATURES=required`, an unsigned approval mounts nothing, so sign before switching to it.
+   One fresh code confirms the console's catalog actions for ten minutes, so approve a release's entries and sign
+   them in one sitting. The console allows five code requests an hour from one address; a refused request no longer
+   counts, but if the hour is used up, the next code comes an hour after the first request. The step prints what is
+   mounted and what is not.
 5. **A version marked required** (`catalog:add --required`, or the console's Mark required) is recorded on every hub
    when the new code first runs; each hub's Plugins page says Civic.Social made the update.
 

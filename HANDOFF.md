@@ -33,8 +33,17 @@ new setting is named before the dev release.
   `civic-conformance` command), `examples/straw-poll`, `kit/scripts/{pack,prove}.ts` (in CI), catalog:add for a
   submitted package. Not published to npm.
 - **Catalog entries:** Briefs 0.2.0 and Conversations 0.2.0 (required), the straw poll 0.1.0 (`auto_install` false).
+- **The console's fresh codes, found approving on dev** (three commits): every catalog action's first code request
+  was refused (a code had been emailed under a minute before: the sign-in's or the last action's, already used), the
+  dialog hid it and said a code was coming, and each refused request still counted against the IP's five an hour,
+  until no code came at all (dev's `rate_limit_hits` and audit, 21:32 to 21:37 UTC). Now: the minute between emails
+  holds only while a code of that kind waits unused (`codeRules.ts`); the dialog shows a refusal; the operator's
+  request is counted with the code's own limits in one take, so a refused one counts nothing, and a code whose email
+  fails to send (a mailer configured) is withdrawn and its counts given back (`releaseRateLimit`); one fresh code
+  confirms catalog actions (Approve, Withdraw, Sign, Mark required) for ten minutes on that session
+  (`control_sessions.catalog_confirmed_until`, `20261026220000`), each still audited with how it was confirmed.
 
-**Release notes:** five additive migrations (`20261026000000`, `…0100`, three catalog entries); nobody is signed out;
+**Release notes:** six additive migrations (`20261026000000`, `…0100`, three catalog entries, `20261026220000`); nobody is signed out;
 the wire is unchanged. New settings: `CIVIC_CATALOG_SIGNING_KEY` (each deployment's own, made with the command in
 RUNBOOK-release.md, "The catalog key"); `CIVIC_CATALOG_SIGNATURES` (unset is `transition`; set `required` once every
 approval is signed); `CIVIC_CATALOG_TRUSTED_KEYS` (only for a rotation). In each console: approve the three entries,

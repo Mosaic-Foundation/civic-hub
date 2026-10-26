@@ -124,6 +124,13 @@ a conversation's summary is its brief's; the conformance suite runs as a package
 - **Playwright:** `conversationSummary.spec.ts` (a conversation that closes still shows its summary, now from its
   brief); `pluginUpdate.spec.ts` (the degrade path on the conversation page, the new intro, Update with what changes).
 - **The leak harness and route parity** know the Update route (it names a plugin, not a row).
+- **The console's fresh codes** (`tests/api/consoleCodes.test.ts`, local stack): right after a sign-in code, the
+  first step-up request sends one (on the old code: 429 "We just sent you a code", the bug Adam met on dev); a second
+  while it waits is refused and counts nothing against the IP; one code confirms catalog actions for ten minutes on
+  its session (audited code, window, window), not another session's, not a hub's archive, not after the ten minutes.
+  `tests/unit/consoleCodeSend.test.ts`: a code whose email fails (a mailer configured) is withdrawn and counts for
+  nothing; with no mailer it goes to the log as before. `codeRules.test.ts`: the next code after a used one is sent
+  at once. Playwright `consoleCatalogWindow.spec.ts`: the dialog once, then none, the page's note.
 - **Results, local:** unit **1,877** (6 skipped); UI component 35; API service role **921 passed**, minted tokens all
   passed (906 in the full pass; `leavingDemo` and `leakHarness` again after a concurrent run of mine deleted a hub one
   was using, 22 of 22); Playwright as `e2e.yml` runs it **186 passed, 6 skipped**; the proof green.
