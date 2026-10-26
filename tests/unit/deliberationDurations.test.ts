@@ -19,7 +19,7 @@ function makeHandler(created: Array<Record<string, unknown>> = []) {
         throw new Error("not used");
       },
     } as never,
-    summarize: async () => {
+    pullResult: async () => {
       throw new Error("not used");
     },
     host: {

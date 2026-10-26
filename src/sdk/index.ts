@@ -64,7 +64,7 @@ export {
   archiveProcess,
   getArchivedProcesses,
 } from "../services/processService.js";
-export { readProcessState, writeProcessState, publishedBriefRows } from "../services/processRows.js";
+export { readProcessState, writeProcessState, publishedBriefRows, briefIdForSource } from "../services/processRows.js";
 
 // --- Storage helpers (over host.db()) ---------------------------------------------------
 export { HubDbError } from "../db/forHub.js";
@@ -132,7 +132,13 @@ export { isPastDeadline } from "../utils/deadline.js";
 export { AlreadyVotedError } from "../db/atomic.js";
 
 // --- Brief content a process hands its brief (src/processes/contracts/briefContent.ts) ---
-export type { BriefContent, BriefSection } from "../processes/contracts/briefContent.js";
+export type {
+  BriefContent,
+  BriefSection,
+  BriefSourceResult,
+  DeliberationResult,
+  DeliberationSummary,
+} from "../processes/contracts/briefContent.js";
 
 // --- Reporting (src/utils/reportError.ts) ----------------------------------------------
 export { reportError } from "../utils/reportError.js";
@@ -232,8 +238,7 @@ export { AiLimitError } from "../services/aiBudget.js";
 // A creator's submission into the hub's review flow, and its mailbox.
 export { submitAsCreator, reviewMailbox } from "../modules/civic.review/index.js";
 export { personFallbackName } from "../services/creatorDisplay.js";
-// Development only: the seeded sample conversations' stand-in Polis answers,
-// and the fake deliberation adapter's summary (made without a model).
+// Development only: the seeded sample conversations' stand-in Polis answers.
 export {
   isSeedConversation,
   getMockClusters,
@@ -241,4 +246,3 @@ export {
   advanceMockStatement,
   addMockStatement,
 } from "../debug/seedDeliberationMocks.js";
-export { fakeSummarize } from "../debug/fakePolis.js";

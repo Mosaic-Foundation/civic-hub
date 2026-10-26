@@ -43,6 +43,9 @@ export {
 
 export { formatBriefEmail } from "./email.js";
 
+// What a source hands its brief to finish with the AI (./finalize.ts).
+export { finalizeBriefContent } from "./finalize.js";
+
 export type {
   BriefResponseRecord,
   BriefResponseStatus,

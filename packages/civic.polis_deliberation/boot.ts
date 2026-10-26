@@ -1,6 +1,5 @@
 import { createPolisDeliberationHandler } from "./handler.js";
 import { createPolisAdapter } from "./adapter/polisAdapter.js";
-import { createPolisSummarizer } from "./summarization/polisSummarizer.js";
 import { describeSubmissionFields } from "../../src/shared/submissionPreview.js";
 import { deliberationDraftKind } from "./draftKind.js";
 import {
@@ -16,13 +15,15 @@ import {
   str,
   getSettingSync,
   KEYS,
-  fakeSummarize,
+  getProcess,
+  briefIdForSource,
   type PluginHost,
   type Process,
   type ProcessHandler,
   type RegeneratedBrief,
   type BriefContent,
-  type BriefSection,
+  type DeliberationResult,
+  type DeliberationSummary,
   type FeedProcessMeta,
 } from "../../src/sdk/index.js";
 import type { PolisHostInterface } from "./hostInterface.js";
@@ -115,29 +116,32 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
   }
   _adapter = hubAdapter as unknown as PolisAdapter;
 
-  const llmClient = {
-    async complete(params: {
-      system: string;
-      user: string;
-      maxTokens: number;
-    }): Promise<string> {
-      const ai = pluginHost.adapter("ai");
-      const result = await ai.complete("job.deliberation_summary", {
-        model: ai.defaultModel(),
-        system: params.system,
-        userText: params.user,
-        maxTokens: params.maxTokens,
-      });
-      return result.text;
-    },
+  // The closed conversation's result, as data: no AI here. Its brief writes
+  // the summary from it under the brief's own grant (plugin session 2).
+  const pullResult = async (conversationId: string, adapter: PolisAdapter, topic: string): Promise<DeliberationResult> => {
+    const [cluster, statements] = await Promise.all([
+      adapter.pullClusterState(conversationId),
+      adapter.getStatements(conversationId),
+    ]);
+    return {
+      kind: "deliberation",
+      topic,
+      data_uri: `${polisBaseUrl()}/${conversationId}`,
+      ...(service().fake ? { fake: true } : {}),
+      participant_count: cluster.participant_count,
+      statement_count: cluster.statement_count,
+      groups: cluster.groups.map((g) => ({
+        id: g.id,
+        size: g.size,
+        representative_statements: g.representative_statements.map((r) => ({ text: r.text, repness: r.repness, direction: r.direction })),
+      })),
+      consensus: {
+        agree: cluster.consensus.agree.map(({ statement_id, text, agree_rate, vote_count }) => ({ statement_id, text, agree_rate, vote_count })),
+        disagree: cluster.consensus.disagree.map(({ statement_id, text, agree_rate, vote_count }) => ({ statement_id, text, agree_rate, vote_count })),
+      },
+      statements: statements.map((st) => ({ id: st.id, text: st.text })),
+    };
   };
-
-  const realSummarize = createPolisSummarizer({
-    llmClient,
-    polisBaseUrl,
-  });
-  const summarize: typeof realSummarize = (...args) =>
-    service().fake ? fakeSummarize(...args) : realSummarize(...args);
 
   const host: PolisHostInterface = {
     async emitEvent(input) {
@@ -184,19 +188,16 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
 
   const shared = createPolisDeliberationHandler({
     adapter: _adapter,
-    summarize,
+    pullResult,
     host,
     polisBaseUrl,
-    // A close commits first; only the close that won then closes the
-    // conversation in Polis and summarizes it, as regenerate_summary through
-    // the action path (the cleanup slice: a losing close made both calls).
     afterCommit: afterActionCommits,
-    async summarizeLater(processId: string) {
+    async recordResultLater(processId: string) {
       try {
-        await getActionDispatcher()(processId, { type: "regenerate_summary", actor: "system:conversation-close", payload: {} });
+        await getActionDispatcher()(processId, { type: "record_result", actor: "system:conversation-close", payload: {} });
       } catch (err) {
         console.error(
-          `[deliberation] summarizing ${processId} after its close failed; an admin can regenerate it:`,
+          `[deliberation] recording ${processId}'s result after its close failed; an admin can regenerate its brief:`,
           err instanceof Error ? err.message : err,
         );
       }
@@ -215,10 +216,18 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
   // the caller has put a statement in (that table is the hub's, so it is
   // read here, not in the portable shared handler).
   const sharedReadModel = shared.getReadModel.bind(shared);
-  handler.getReadModel = async (process: Process, actor?: string) => ({
-    ...(await sharedReadModel(process as never, actor)),
-    has_submitted: actor ? await hasSubmittedStatement(process.id, actor) : false,
-  });
+  handler.getReadModel = async (process: Process, actor?: string) => {
+    const model = await sharedReadModel(process as never, actor);
+    // Its brief's summary (as published, or as made while unpublished) since
+    // plugin session 2; a conversation closed before then shows its own until
+    // its brief is made again.
+    const fromBrief = await summaryFromBrief(process);
+    return {
+      ...model,
+      ...(fromBrief ? { summary: fromBrief, summary_status: "complete" } : {}),
+      has_submitted: actor ? await hasSubmittedStatement(process.id, actor) : false,
+    };
+  };
 
   // Drafting: where a creator revises a draft. Set here (not in the portable
   // shared handler) so the shared module stays free of hub-specific routing.
@@ -300,25 +309,25 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
   // from it. The conversation takes the new summary once that version of the
   // brief is published (src/services/briefRegenerate.ts), so the page and the
   // brief show one summary; the brief keeps the versions it replaces.
+  // Regenerate (the brief's admin action): the result pulled from Polis again,
+  // handed to the brief, which writes the summary again.
   handler.regenerateBrief = async (process: Process): Promise<RegeneratedBrief | null> => {
     const state = process.state as unknown as PolisDeliberationState;
     if (!state.polis_conversation_id || !_adapter) return null;
-    let summary: PolisDeliberationState["summary"];
+    let result: DeliberationResult;
     try {
-      summary = await summarize(state.polis_conversation_id, _adapter, state.topic);
+      result = await pullResult(state.polis_conversation_id, _adapter, state.topic);
     } catch (err) {
-      console.warn(`[deliberation] regenerating the summary for ${process.id} failed:`, err instanceof Error ? err.message : err);
+      console.warn(`[deliberation] reading ${process.id}'s result again failed:`, err instanceof Error ? err.message : err);
       return null;
     }
     const content = handler.generateBrief!({
       ...process,
-      state: { ...(process.state as Record<string, unknown>), summary, summary_status: "complete" },
+      state: { ...(process.state as Record<string, unknown>), result },
     }) as BriefContent | null;
-    return content ? { content, source_state: { summary, summary_status: "complete" } } : null;
+    return content ? { content } : null;
   };
 
-  // The feed card's fields. Conversations expose their subject as
-  // topic/framing.
   handler.feedMeta = (model: Record<string, unknown>): FeedProcessMeta => ({
     title: str(model.title) ?? str(model.topic),
     description: str(model.description) ?? str(model.framing),
@@ -329,67 +338,41 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
   // participation_stats; while the conversation runs there is none to serve.
   handler.participationCount = async (process: Process): Promise<number | null> => {
     const state = process.state as unknown as PolisDeliberationState;
-    const participants = state.summary?.participation_stats?.total_participants;
+    const participants = state.summary?.participation_stats?.total_participants ?? state.result?.participant_count;
     return typeof participants === "number" ? participants : null;
   };
 
+  // The brief is made from the result the close recorded; the brief writes
+  // the summary and lays it out (packages/civic.brief/finalize.ts). A
+  // conversation closed before plugin session 2 made its brief from its own
+  // summary when it closed, and has one.
   handler.generateBrief = (process: Process): BriefContent | null => {
     const state = process.state as unknown as PolisDeliberationState;
-    const summary = state.summary;
-    if (!summary || state.summary_status !== "complete") return null;
-
+    if (!state.result) return null;
     const topic = state.topic || process.title;
-    const sections: BriefSection[] = [];
-
-    if (summary.top_consensus_statements?.length) {
-      sections.push({
-        heading: "Where the community agreed",
-        body: summary.top_consensus_statements
-          .map(
-            (s) =>
-              `• ${s.statement_text} (${Math.round(s.agree_rate * 100)}% agreed, ${s.vote_count} votes)`,
-          )
-          .join("\n"),
-      });
-    }
-
-    if (summary.opinion_groups?.length) {
-      sections.push({
-        heading: "Where opinions differed",
-        body: summary.opinion_groups
-          .map((g) => {
-            const reps = (g.representative_statements ?? [])
-              .map((r) => `   – ${r.text}`)
-              .join("\n");
-            return `Group of ${g.size} participant(s):\n${reps}`;
-          })
-          .join("\n\n"),
-      });
-    }
-
-    if (summary.directed_questions?.length) {
-      sections.push({
-        heading: "Questions this raised",
-        body: summary.directed_questions.map((q) => `• ${q}`).join("\n"),
-      });
-    }
-
-    const stats = summary.participation_stats;
     return {
       title: topic,
       headline: `Where the community landed on "${topic}"`,
-      summary: summary.summary_text ?? "",
-      sections,
-      participation_label: stats
-        ? `${stats.total_participants} participant(s) · ${stats.total_statements} statement(s)`
-        : null,
-      participation_count: stats?.total_participants ?? null,
+      summary: "",
+      sections: [],
+      participation_label: null,
+      participation_count: state.result.participant_count,
       comments: [],
       admin_notes: "",
+      source_result: { ...state.result, topic },
     };
   };
 
   return handler;
+}
+
+/** The summary its brief wrote (a conversation closed since plugin session 2), or null. */
+async function summaryFromBrief(process: Process): Promise<DeliberationSummary | null> {
+  if (process.status !== "closed" && process.status !== "finalized") return null;
+  const briefId = await briefIdForSource(process.id);
+  const brief = briefId ? await getProcess(briefId) : null;
+  const content = (brief?.state as { content?: BriefContent } | undefined)?.content;
+  return content?.deliberation ?? null;
 }
 
 /** Whether this person has put a statement into this conversation. */

@@ -10,7 +10,7 @@ import { briefHost } from "./host.js";
 
 const briefPackage: PluginPackage = {
   name: "@civic-social/plugin-brief",
-  version: "0.1.0",
+  version: "0.2.0",
   displayName: "Briefs",
   manifest,
   server(host) {

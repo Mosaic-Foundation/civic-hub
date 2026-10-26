@@ -45,5 +45,6 @@ export function createHost(packageName: string, caps: PluginCapabilities): Plugi
       if (!caps.adapters.includes(name)) refuseReach(packageName, "adapter", name);
       return ADAPTER_FACADES[name]();
     },
+    allows: (name) => caps.adapters.includes(name),
   };
 }

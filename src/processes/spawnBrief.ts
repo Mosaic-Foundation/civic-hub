@@ -15,7 +15,7 @@ import { emitEvent } from "../events/eventEmitter.js";
 import { HubDbError } from "../db/forHub.js";
 import { briefIdForSource } from "../services/processRows.js";
 import { emitBriefAggregationCompleted } from "../../packages/civic.brief/events.js";
-import type { BriefProcessState } from "../../packages/civic.brief/api.js";
+import { finalizeBriefContent, type BriefProcessState } from "../../packages/civic.brief/api.js";
 
 /**
  * Spawn a pending civic.brief from a just-closed source process. Returns
@@ -39,8 +39,11 @@ export async function spawnBriefFromClosedProcess(
   // source's own close must not fail because a plugin is off.
   if (!isPluginEnabledSync("brief")) return null;
 
-  const content = await handler.generateBrief(source);
-  if (!content) return null;
+  const handed = await handler.generateBrief(source);
+  if (!handed) return null;
+  // What the source handed the brief to finish with the AI (a conversation's
+  // result), finished by the brief under its own grant, before it is written.
+  const content = await finalizeBriefContent(handed);
   // Closed early: every brief carries the line and the admin's note, whatever
   // its type (src/services/closeEarly.ts).
   const early = closedEarlyView(source.state);

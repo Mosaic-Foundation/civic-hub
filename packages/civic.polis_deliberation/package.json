@@ -1,6 +1,6 @@
 {
   "name": "@civic-social/plugin-conversation",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Conversations: structured group conversations on Polis that map where people agree. A Tier 3 Civic Hub plugin package (docs/PLUGIN-PACKAGE.md).",

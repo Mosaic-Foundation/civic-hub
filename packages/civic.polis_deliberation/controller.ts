@@ -24,6 +24,8 @@ import {
   readAsPage,
   viewFor,
   getProcessHandler,
+  briefIdForSource,
+  regenerateBrief,
 } from "../../src/sdk/index.js";
 import { getPolisAdapter } from "./boot.js";
 import { conversationHost } from "./host.js";
@@ -292,17 +294,17 @@ export const closeDeliberation = route(async (req, res) => {
   res.json({ result: result.result, view: await viewFor(res, processId) });
 });
 
+// The summary is its brief's since plugin session 2: making it again is the
+// brief's Regenerate (replaced while the brief is unpublished, staged once it
+// is published). Kept here so an admin's older link still works.
 export const regenerateSummary = route(async (req, res) => {
   const user = getAuthUser(res);
   const processId = req.params.processId as string;
+  const briefId = await briefIdForSource(processId);
+  if (!briefId) throw new ConflictError("This conversation has no brief yet; its summary is made with the brief.", "no_brief");
+  const { staged } = await regenerateBrief(briefId, { id: user.id, email: user.email ?? null });
 
-  const result = await executeAction(processId, {
-    type: "regenerate_summary",
-    actor: user.id,
-    payload: {},
-  }, "admin");
-
-  res.json({ result: result.result, view: await viewFor(res, processId) });
+  res.json({ result: { staged, brief_id: briefId }, view: await viewFor(res, processId) });
 });
 
 export const listDeliberations = route(async (_req, res) => {

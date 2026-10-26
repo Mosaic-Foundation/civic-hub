@@ -31,7 +31,15 @@ export default function CompletedDeliberation({ process: proc, showTopic }: Prop
 
       {summary && (
         <>
-          <p className="completed-summary-text">{summary.summary_text}</p>
+          {summary.summary_text ? (
+            <p className="completed-summary-text">{summary.summary_text}</p>
+          ) : (
+            <p className="completed-no-summary">
+              {summary.narrative === "not_allowed"
+                ? "No written summary: this hub has not allowed briefs to use AI."
+                : "The written summary could not be made. An admin can make it again from the brief."}
+            </p>
+          )}
 
           <div className="completed-stats">
             <span>{summary.participation_stats.total_participants} participants</span>

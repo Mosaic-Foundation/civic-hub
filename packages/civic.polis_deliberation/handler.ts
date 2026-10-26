@@ -3,7 +3,7 @@ import type { PolisAdapter } from "./adapter/types.js";
 import { POLIS_DELIBERATION_MANIFEST } from "./manifest.js";
 import type { PolisHostInterface } from "./hostInterface.js";
 import type {
-  DeliberationSummary,
+  DeliberationResult,
   PolisDeliberationInput,
   PolisDeliberationState,
 } from "./types.js";
@@ -12,8 +12,8 @@ export const PROCESS_TYPE = "civic.polis_deliberation";
 
 /** The status each action may run from: its manifest's (./manifest.ts, plain
  *  data, so this portable module still imports nothing of the hub). Approval
- *  leaves a conversation at "draft" until it starts; regenerating is for a
- *  closed one whose summary failed or needs another pass. */
+ *  leaves a conversation at "draft" until it starts; its result is recorded
+ *  once it is closed. */
 const ACTION_STATUSES: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
   POLIS_DELIBERATION_MANIFEST.descriptor.actions.map((a) => [a.name, a.from]),
 );
@@ -42,11 +42,12 @@ export interface ProcessHandlerShape {
 
 export interface PolisHandlerDeps {
   adapter: PolisAdapter;
-  summarize: (
+  /** The closed conversation's result from Polis, as data (its brief writes the summary). */
+  pullResult: (
     conversationId: string,
     adapter: PolisAdapter,
     topic: string,
-  ) => Promise<DeliberationSummary>;
+  ) => Promise<DeliberationResult>;
   host: PolisHostInterface;
   /** Polis's address, or how to read it for the hub in scope (a host serving several hubs). */
   polisBaseUrl: string | (() => string);
@@ -54,20 +55,31 @@ export interface PolisHandlerDeps {
    * A host that commits an action's writes after the handler returns passes
    * both of these (the cleanup slice, 2026-10-16). `close` then commits the
    * local close first, and only once that write has won does it close the
-   * conversation in Polis and summarize it (`summarizeLater` runs
-   * `regenerate_summary` through the host's own action path). A close that
-   * loses a race to another makes no Polis call and no paid summary. Without
-   * them, `close` does both inline, as before.
+   * conversation in Polis and record its result (`recordResultLater` runs
+   * `record_result` through the host's own action path). A close that loses a
+   * race to another makes no Polis call. Without them, `close` does both
+   * inline. The summary is the brief's (plugin session 2): it is written when
+   * the brief is made from the recorded result.
    */
   afterCommit?: (fn: () => Promise<void>) => Promise<void>;
-  summarizeLater?: (processId: string) => Promise<void>;
+  recordResultLater?: (processId: string) => Promise<void>;
 }
 
 export function createPolisDeliberationHandler(
   deps: PolisHandlerDeps,
 ): ProcessHandlerShape {
-  const { adapter, summarize, host } = deps;
+  const { adapter, pullResult, host } = deps;
   const polisBaseUrl = (): string => (typeof deps.polisBaseUrl === "function" ? deps.polisBaseUrl() : deps.polisBaseUrl);
+
+  /** Pull the result from Polis onto the state; a failure leaves the summary marked failed. */
+  async function recordResult(state: PolisDeliberationState): Promise<void> {
+    try {
+      state.result = await pullResult(state.polis_conversation_id, adapter, state.topic);
+    } catch (err) {
+      state.summary_status = "failed";
+      console.error("[polis-handler] the conversation's result could not be read from Polis:", err);
+    }
+  }
 
   const handler: ProcessHandlerShape = {
     type: PROCESS_TYPE,
@@ -88,6 +100,7 @@ export function createPolisDeliberationHandler(
         last_math_tick: 0,
         summary: null,
         summary_status: "pending",
+        result: null,
         continued_from_response_id: cfg.continued_from_response_id ?? null,
       };
       return state as unknown as Record<string, unknown>;
@@ -98,8 +111,8 @@ export function createPolisDeliberationHandler(
 
       // Each action runs from one status only. Without this, a second
       // `start` opens a new Polis conversation and orphans the first one's
-      // statements, and `close` or `regenerate_summary` on the wrong status
-      // runs a paid summary for nothing.
+      // statements, and `close` or `record_result` on the wrong status
+      // asks Polis for nothing.
       const allowedFrom = ACTION_STATUSES[action.type];
       if (allowedFrom && !allowedFrom.includes(process.status)) {
         throw new ConflictError(`Cannot ${action.type} a conversation that is ${process.status}`, "wrong_status");
@@ -165,27 +178,17 @@ export function createPolisDeliberationHandler(
           process.status = "closed";
           state.summary_status = "generating";
 
-          if (deps.afterCommit && deps.summarizeLater) {
+          if (deps.afterCommit && deps.recordResultLater) {
             // Only once the close has won: see PolisHandlerDeps.afterCommit.
             const processId = process.id;
-            const summarizeLater = deps.summarizeLater;
+            const recordResultLater = deps.recordResultLater;
             await deps.afterCommit(async () => {
               await closeInPolis();
-              await summarizeLater(processId);
+              await recordResultLater(processId);
             });
           } else {
             await closeInPolis();
-            try {
-              state.summary = await summarize(
-                state.polis_conversation_id,
-                adapter,
-                state.topic,
-              );
-              state.summary_status = "complete";
-            } catch (err) {
-              state.summary_status = "failed";
-              console.error("[polis-handler] Summarization failed:", err);
-            }
+            await recordResult(state);
           }
 
           await host.emitEvent({
@@ -198,15 +201,15 @@ export function createPolisDeliberationHandler(
               process_type: PROCESS_TYPE,
               summary_status: state.summary_status,
               participation_stats:
-                state.summary?.participation_stats ?? null,
+                state.summary?.participation_stats ?? (state.result ? participationStats(state.result) : null),
             },
           });
 
           // Review-first outcome: a closed conversation does NOT auto-post
-          // its outcome anymore. It stays `closed` with the summary on
-          // state; the hub's universal brief seam (executeAction) spawns a
-          // PENDING civic.brief from this summary, which an admin reviews and
-          // publishes. Publication is what finalizes the conversation and
+          // its outcome anymore. It stays `closed` with its result on state;
+          // the hub's universal brief seam (executeAction) spawns a PENDING
+          // civic.brief from that result, and the brief writes the summary
+          // (plugin session 2), which an admin reviews and publishes. Publication is what finalizes the conversation and
           // posts the feed card — see civic.brief. (Previously this block
           // wrote a Polis outcome-delivery record, emitted
           // civic.outcome_delivered, and set `finalized`; that auto-post is
@@ -255,21 +258,11 @@ export function createPolisDeliberationHandler(
           };
         }
 
-        case "regenerate_summary": {
-          state.summary_status = "generating";
-          try {
-            state.summary = await summarize(
-              state.polis_conversation_id,
-              adapter,
-              state.topic,
-            );
-            state.summary_status = "complete";
-          } catch {
-            state.summary_status = "failed";
-          }
+        case "record_result": {
+          await recordResult(state);
           return {
             summary_status: state.summary_status,
-            summary: state.summary,
+            participant_count: state.result?.participant_count ?? null,
           };
         }
 
@@ -314,11 +307,21 @@ export function createPolisDeliberationHandler(
         created_at: process.createdAt,
         deadline: state.deadline ?? null,
         participant_count:
-          state.summary?.participation_stats.total_participants ?? 0,
+          state.summary?.participation_stats?.total_participants ?? state.result?.participant_count ?? 0,
         summary_status: state.summary_status,
       };
     },
   };
 
   return handler;
+}
+
+/** The participation figures the ended event carries, from the result. */
+function participationStats(result: DeliberationResult) {
+  return {
+    total_participants: result.participant_count,
+    total_statements: result.statement_count,
+    total_votes: 0,
+    opinion_groups_formed: result.groups.length,
+  };
 }

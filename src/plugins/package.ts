@@ -109,6 +109,12 @@ export interface PluginHost {
   db(): GrantedDb;
   /** One of its granted adapters. */
   adapter<K extends GrantableAdapter>(name: K): PluginAdapters[K];
+  /**
+   * Whether the hub in scope lets it use this adapter: in its grant and in
+   * the grant that hub's admin approved. A package asks before reaching for
+   * something a hub may not have approved yet, and does without it.
+   */
+  allows(name: GrantableAdapter): boolean;
 }
 
 export interface PluginPackage {

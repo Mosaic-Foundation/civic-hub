@@ -1,4 +1,8 @@
-import type { ClusterState, Statement } from "../adapter/types.js";
+// The conversation summary's prompt (moved here from the conversation package
+// in plugin session 2: the brief owns the AI). The text is unchanged; it reads
+// the deliberation result the conversation handed its brief.
+
+import type { DeliberationResult } from "../../../src/sdk/index.js";
 
 export const PROMPT_VERSION = "polis-summarization-v1";
 
@@ -29,25 +33,21 @@ Respond with valid JSON matching this schema:
   ]
 }`;
 
-export function buildUserPrompt(
-  clusterState: ClusterState,
-  statements: Statement[],
-  topic: string,
-): string {
-  const statementTexts = new Map(statements.map((s) => [s.id, s.text]));
+export function buildUserPrompt(result: DeliberationResult): string {
+  const statementTexts = new Map(result.statements.map((s) => [s.id, s.text]));
   const sections: string[] = [];
 
   sections.push(
-    `## Topic\n${topic}`,
+    `## Topic\n${result.topic}`,
   );
 
   sections.push(
-    `## Participation\n- ${clusterState.participant_count} participants\n- ${clusterState.statement_count} statements\n- ${clusterState.groups.length} opinion groups identified`,
+    `## Participation\n- ${result.participant_count} participants\n- ${result.statement_count} statements\n- ${result.groups.length} opinion groups identified`,
   );
 
-  if (clusterState.consensus.agree.length > 0) {
+  if (result.consensus.agree.length > 0) {
     sections.push("## Consensus Statements (broad agreement)");
-    for (const item of clusterState.consensus.agree) {
+    for (const item of result.consensus.agree) {
       const text = statementTexts.get(item.statement_id) ?? item.text;
       sections.push(
         `- "${text}" — ${Math.round(item.agree_rate * 100)}% agreement (${item.vote_count} votes)`,
@@ -55,9 +55,9 @@ export function buildUserPrompt(
     }
   }
 
-  if (clusterState.consensus.disagree.length > 0) {
+  if (result.consensus.disagree.length > 0) {
     sections.push("## Consensus Statements (broad disagreement)");
-    for (const item of clusterState.consensus.disagree) {
+    for (const item of result.consensus.disagree) {
       const text = statementTexts.get(item.statement_id) ?? item.text;
       sections.push(
         `- "${text}" — ${Math.round(item.agree_rate * 100)}% disagreement (${item.vote_count} votes)`,
@@ -65,7 +65,7 @@ export function buildUserPrompt(
     }
   }
 
-  for (const group of clusterState.groups) {
+  for (const group of result.groups) {
     sections.push(
       `## Opinion Group ${group.id} (${group.size} participants)`,
     );

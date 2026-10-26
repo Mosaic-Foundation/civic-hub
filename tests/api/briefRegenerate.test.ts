@@ -110,11 +110,22 @@ describe("Regenerate a published brief", () => {
   });
 });
 
-// One summary per process (2026-10-13): a conversation's regenerated brief
-// brings its new summary, and the conversation takes it once that version is
-// published, keeping what it replaced. Runs on the fake Polis.
-describe("Regenerating a conversation's brief", () => {
-  const POOR = { summary_text: "A poor summary.", marker: "poor" };
+// The summary is the brief's (plugin session 2, ADR-015): a conversation's
+// close records its result from Polis as data, the brief writes the summary
+// (with the AI, under the brief's grant; the fake Polis's fake summary here),
+// and the conversation's page reads it from its brief. Regenerating the brief
+// makes the summary again; the page follows the brief as published.
+describe("A conversation's summary, made by its brief", () => {
+  const POOR = {
+    summary_text: "A poor summary.",
+    marker: "poor",
+    directed_questions: [],
+    top_consensus_statements: [],
+    opinion_groups: [],
+    participation_stats: { total_participants: 0, total_statements: 0, total_votes: 0, opinion_groups_formed: 0 },
+    linked_polis_data_uri: "",
+    methodology: { prompt_version: "old", model_used: "old", generated_at: "2026-10-01T00:00:00.000Z" },
+  };
 
   async function closedConversation(): Promise<{ id: string; briefId: string }> {
     const d = getDescriptor("civic.polis_deliberation")!;
@@ -123,51 +134,67 @@ describe("Regenerating a conversation's brief", () => {
     expect(closed.status, JSON.stringify(closed.body)).toBe(200);
     const [brief] = await briefsOf(id);
     expect(brief, "the close made a brief").toBeTruthy();
-    // Stand in for a poor summary on the conversation, so the new one differs.
-    await localRest(`processes?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ state: { ...(await stateOf(id)), summary: POOR } }) });
     return { id, briefId: brief.id };
   }
 
-  async function updatedEvents(id: string) {
-    return (await localRest(
-      `events?select=data&process_id=eq.${id}&event_type=eq.civic.process.updated&data->brief_revision=not.is.null`,
-    )) as Array<{ data: Record<string, unknown> }>;
+  async function pageSummary(id: string) {
+    return (await call("GET", `/process/${id}/state`, BETA.host)).body.summary;
   }
 
-  it("published: the conversation keeps its summary until the new version is published, then takes it", async () => {
+  it("closing one makes its brief with the summary; the conversation keeps only the result, and its page reads the brief", async () => {
     const { id, briefId: brief } = await closedConversation();
-    await call("PATCH", `/admin/briefs/${brief}`, BETA.host, { recipients: [] }, adminToken);
-    expect((await call("POST", `/admin/briefs/${brief}/approve`, BETA.host, {}, adminToken)).status).toBe(200);
-
-    const staged = await call("POST", `/admin/briefs/${brief}/regenerate`, BETA.host, {}, adminToken);
-    expect(staged.status, JSON.stringify(staged.body)).toBe(200);
-    expect(staged.body.staged).toBe(true);
-    expect((await stateOf(id)).summary).toEqual(POOR);
-
-    expect((await call("POST", `/admin/briefs/${brief}/revision/publish`, BETA.host, {}, adminToken)).status).toBe(200);
-    const after = await stateOf(id);
-    expect(after.summary).not.toEqual(POOR);
-    expect(after.summary).toEqual(staged.body.brief.pending_revision.source_state.summary);
-    expect(after.brief_revisions.at(-1)).toMatchObject({ brief_id: brief, previous: { summary: POOR } });
-    // The page reads it: the conversation's read model carries the new summary.
+    const conversation = await stateOf(id);
+    expect(conversation.summary).toBeNull();
+    expect(conversation.result).toMatchObject({ kind: "deliberation" });
+    const content = (await stateOf(brief)).content;
+    expect(content.source_result ?? null).toBeNull();
+    expect(content.deliberation.summary_text).toMatch(/^What participants said about /);
+    expect(content.summary).toBe(content.deliberation.summary_text);
     const page = await call("GET", `/process/${id}/state`, BETA.host);
-    expect(page.body.summary).toEqual(after.summary);
-    expect(await updatedEvents(id)).toHaveLength(1);
+    expect(page.body.summary).toEqual(content.deliberation);
+    expect(page.body.summary_status).toBe("complete");
+    // The conversation's own page (/deliberations/:id) too.
+    expect((await call("GET", `/deliberations/${id}`, BETA.host)).body.summary).toEqual(content.deliberation);
   }, 60_000);
 
-  it("not yet published: the conversation takes the new summary when the brief is approved", async () => {
+  it("published: regenerating stages a new summary; the page keeps the published one until it is published", async () => {
     const { id, briefId: brief } = await closedConversation();
-    const replaced = await call("POST", `/admin/briefs/${brief}/regenerate`, BETA.host, {}, adminToken);
-    expect(replaced.body.staged).toBe(false);
-    expect((await stateOf(id)).summary).toEqual(POOR);
-
+    // Stand in for a poor summary on the brief, so the new one differs.
+    const before = await stateOf(brief);
+    await localRest(`processes?id=eq.${brief}`, {
+      method: "PATCH",
+      body: JSON.stringify({ state: { ...before, content: { ...before.content, deliberation: { ...before.content.deliberation, ...POOR } } } }),
+    });
     await call("PATCH", `/admin/briefs/${brief}`, BETA.host, { recipients: [] }, adminToken);
     expect((await call("POST", `/admin/briefs/${brief}/approve`, BETA.host, {}, adminToken)).status).toBe(200);
-    const after = await stateOf(id);
-    expect(after.summary).not.toEqual(POOR);
-    expect(after.brief_revisions.at(-1).previous.summary).toEqual(POOR);
-    expect((await stateOf(brief)).source_state_on_publish ?? null).toBeNull();
-    expect(await updatedEvents(id)).toHaveLength(1);
+    expect((await pageSummary(id)).marker).toBe("poor");
+
+    // The conversation's own Regenerate link is the brief's.
+    const staged = await call("POST", `/deliberations/${id}/regenerate`, BETA.host, {}, adminToken);
+    expect(staged.status, JSON.stringify(staged.body)).toBe(200);
+    expect(staged.body.result).toEqual({ staged: true, brief_id: brief });
+    expect((await pageSummary(id)).marker).toBe("poor");
+
+    expect((await call("POST", `/admin/briefs/${brief}/revision/publish`, BETA.host, {}, adminToken)).status).toBe(200);
+    const after = await pageSummary(id);
+    expect(after.marker).toBeUndefined();
+    expect(after).toEqual((await stateOf(brief)).content.deliberation);
+    expect((await stateOf(id)).summary).toBeNull();
+  }, 60_000);
+
+  it("an older conversation (its summary on its own state) shows that until its brief is made again", async () => {
+    const { id, briefId: brief } = await closedConversation();
+    // As a conversation closed before the move is stored: its own summary, a brief without one.
+    await localRest(`processes?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ state: { ...(await stateOf(id)), summary: POOR, summary_status: "complete" } }) });
+    const old = await stateOf(brief);
+    const { deliberation: _gone, ...oldContent } = old.content;
+    await localRest(`processes?id=eq.${brief}`, { method: "PATCH", body: JSON.stringify({ state: { ...old, content: oldContent } }) });
+    expect(await pageSummary(id)).toEqual(POOR);
+
+    const replaced = await call("POST", `/admin/briefs/${brief}/regenerate`, BETA.host, {}, adminToken);
+    expect(replaced.status, JSON.stringify(replaced.body)).toBe(200);
+    expect(replaced.body.staged).toBe(false);
+    expect(await pageSummary(id)).toEqual((await stateOf(brief)).content.deliberation);
   }, 60_000);
 });
 

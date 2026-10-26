@@ -2298,6 +2298,8 @@ export interface DeliberationSummaryData {
     model_used: string;
     generated_at: string;
   };
+  /** Why there is no written summary: the AI failed, or this hub has not allowed briefs to use it. */
+  narrative?: "failed" | "not_allowed";
 }
 
 export function listDeliberations(): Promise<DeliberationSummary[]> {

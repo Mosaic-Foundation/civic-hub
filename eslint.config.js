@@ -411,7 +411,6 @@ const authzSeamRule = {
 // that no longer reaches a package).
 export const PACKAGE_REACH_NOT_YET = {
   "src/services/sampleSeed.ts": "seeds every type's sample content by calling its service; each package should contribute its own samples",
-  "src/debug/fakePolis.ts": "the deliberation adapter's development fake answers in the conversation package's Polis types (its state, its adapter's shapes)",
   "src/debug/seedData.ts": "the debug seed writes a sample conversation's state in the conversation package's type",
   "src/processes/spawnBrief.ts": "makes the pending brief when a process closes: its state type (BriefProcessState) and its aggregation event (emitBriefAggregationCompleted)",
   "src/services/briefRegenerate.ts": "regenerates a brief: builds its state (createBriefState), emits its updated event and types its content",

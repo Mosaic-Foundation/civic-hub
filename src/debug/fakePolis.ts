@@ -20,8 +20,6 @@
 // participants and statements and one consensus statement per voted one.
 
 import { createHash } from "node:crypto";
-import type { DeliberationSummary } from "../../packages/civic.polis_deliberation/types.js";
-import type { PolisAdapter } from "../../packages/civic.polis_deliberation/adapter/types.js";
 
 export const FAKE_POLIS_BASE_URL = "https://polis.fake.invalid";
 /** What the adapter is given in fake mode: short, so outages test quickly. */
@@ -204,35 +202,4 @@ function answer(method: string, url: URL, body: Record<string, unknown>): Respon
     return json(200, {});
   }
   return json(404, { error: "polis_err_fake_unknown_endpoint" });
-}
-
-/**
- * The summarizer in fake mode: no language model. Reads the conversation
- * through the adapter (so an outage reaches it as it would the real one) and
- * reports what it found, with a methodology that says it is the fake.
- */
-export async function fakeSummarize(
-  conversationId: string,
-  adapter: PolisAdapter,
-  topic: string,
-): Promise<DeliberationSummary> {
-  const cluster = await adapter.pullClusterState(conversationId);
-  return {
-    summary_text: `What participants said about ${topic}.`,
-    directed_questions: [],
-    top_consensus_statements: cluster.consensus.agree.map((c) => ({
-      statement_text: c.text,
-      agree_rate: c.agree_rate,
-      vote_count: c.vote_count,
-    })),
-    opinion_groups: [],
-    participation_stats: {
-      total_participants: cluster.participant_count,
-      total_statements: cluster.statement_count,
-      total_votes: cluster.consensus.agree.reduce((n, c) => n + c.vote_count, 0),
-      opinion_groups_formed: 0,
-    },
-    linked_polis_data_uri: `${FAKE_POLIS_BASE_URL}/${conversationId}`,
-    methodology: { prompt_version: "fake", model_used: "none (fake Polis)", generated_at: new Date().toISOString() },
-  };
 }

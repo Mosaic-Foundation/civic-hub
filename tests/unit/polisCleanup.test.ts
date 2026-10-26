@@ -1,5 +1,5 @@
 // The Polis findings (the cleanup slice, 2026-10-16):
-//   - a close that loses a race makes no Polis call and no paid summary;
+//   - a close that loses a race makes no Polis call (and, through its brief, no paid summary);
 //   - the Polis address is the hub's own setting, read per call;
 //   - a Polis outage answers 503, not the generic 500.
 
@@ -42,9 +42,9 @@ function closeHandler(calls: string[], queued: Array<() => Promise<void>>, withH
         calls.push("polis.close");
       },
     } as never,
-    summarize: async () => {
-      calls.push("summarize");
-      return { participation_stats: null } as never;
+    pullResult: async () => {
+      calls.push("pullResult");
+      return { kind: "deliberation", participant_count: 3, statement_count: 2, groups: [], consensus: { agree: [], disagree: [] }, statements: [] } as never;
     },
     host: {
       async emitEvent() {},
@@ -62,8 +62,8 @@ function closeHandler(calls: string[], queued: Array<() => Promise<void>>, withH
           afterCommit: async (fn: () => Promise<void>) => {
             queued.push(fn);
           },
-          summarizeLater: async () => {
-            calls.push("summarizeLater");
+          recordResultLater: async () => {
+            calls.push("recordResultLater");
           },
         }
       : {}),
@@ -79,7 +79,7 @@ function activeConversation() {
 }
 
 describe("a conversation's close", () => {
-  it("calls Polis and summarizes only after its write has won", async () => {
+  it("calls Polis and records its result only after its write has won", async () => {
     const calls: string[] = [];
     const queued: Array<() => Promise<void>> = [];
     const proc = activeConversation();
@@ -88,17 +88,21 @@ describe("a conversation's close", () => {
     expect((proc.state as unknown as PolisDeliberationState).summary_status).toBe("generating");
     // A close that lost its race never has its after-commit work run: nothing went out.
     expect(calls).toEqual([]);
-    // The winner's does: Polis first, then the summary through the action path.
+    // The winner's does: Polis first, then the result through the action path.
     for (const fn of queued) await fn();
-    expect(calls).toEqual(["polis.close", "summarizeLater"]);
+    expect(calls).toEqual(["polis.close", "recordResultLater"]);
   });
 
-  it("without the host's hooks, closes and summarizes inline as before", async () => {
+  it("without the host's hooks, closes and records its result inline, with no summary of its own", async () => {
     const calls: string[] = [];
     const proc = activeConversation();
     await closeHandler(calls, [], false).handleAction(proc as never, { type: "close", actor: "system", payload: {} } as never);
-    expect(calls).toEqual(["polis.close", "summarize"]);
-    expect((proc.state as unknown as PolisDeliberationState).summary_status).toBe("complete");
+    expect(calls).toEqual(["polis.close", "pullResult"]);
+    const state = proc.state as unknown as PolisDeliberationState;
+    expect(state.result?.participant_count).toBe(3);
+    // The summary is the brief's to write (plugin session 2).
+    expect(state.summary).toBeNull();
+    expect(state.summary_status).toBe("generating");
   });
 });
 

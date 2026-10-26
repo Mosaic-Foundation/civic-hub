@@ -3,7 +3,8 @@
 // it loads it: the handler (the portable Polis handler, ./handler.ts, wired to
 // the hub through PolisHostInterface in ./boot.ts), its routes and its draft
 // kind. It reaches Polis only through the deliberation adapter its grant
-// names, and the AI only for the conversation's summary (ADR-014, Decision 7).
+// names. Its summary is its brief's, which owns the AI (plugin session 2,
+// ADR-015; ADR-014 Decision 7).
 
 import type { PluginPackage } from "../../src/sdk/index.js";
 import manifest from "./manifest.js";
@@ -14,7 +15,7 @@ import { conversationHost } from "./host.js";
 
 const conversationPackage: PluginPackage = {
   name: "@civic-social/plugin-conversation",
-  version: "0.1.0",
+  version: "0.2.0",
   displayName: "Conversations",
   manifest,
   requires: ["@civic-social/plugin-brief"],

@@ -1,32 +1,8 @@
-export interface DeliberationSummary {
-  summary_text: string;
-  directed_questions: string[];
-  top_consensus_statements: {
-    statement_text: string;
-    agree_rate: number;
-    vote_count: number;
-  }[];
-  opinion_groups: {
-    group_id: number;
-    size: number;
-    representative_statements: {
-      text: string;
-      agreement_within_group: number;
-    }[];
-  }[];
-  participation_stats: {
-    total_participants: number;
-    total_statements: number;
-    total_votes: number;
-    opinion_groups_formed: number;
-  };
-  linked_polis_data_uri: string;
-  methodology: {
-    prompt_version: string;
-    model_used: string;
-    generated_at: string;
-  };
-}
+import type { DeliberationResult, DeliberationSummary } from "../../src/sdk/index.js";
+
+// The summary is the brief's since plugin session 2 (the brief owns the AI);
+// a conversation closed before then keeps its own on its state.
+export type { DeliberationResult, DeliberationSummary };
 
 export interface PolisDeliberationState {
   polis_conversation_id: string;
@@ -56,8 +32,15 @@ export interface PolisDeliberationState {
   /** "Learn more" links shown under the framing. */
   sources: string[] | null;
   last_math_tick: number;
+  /**
+   * The summary a conversation closed before plugin session 2 made itself.
+   * Since then its brief makes it (packages/civic.brief/finalize.ts) and the
+   * page reads it from there; this stays null.
+   */
   summary: DeliberationSummary | null;
   summary_status: "pending" | "generating" | "complete" | "failed";
+  /** What the close pulled from Polis, as data: what the brief is made from. */
+  result?: DeliberationResult | null;
   continued_from_response_id: string | null;
 }
 

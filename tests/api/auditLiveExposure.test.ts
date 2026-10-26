@@ -166,7 +166,7 @@ describe("A3: a resident can call only resident actions", () => {
   const REFUSED: Record<string, string[]> = {
     "civic.vote": ["process.close", "process.activate", "process.propose"],
     "civic.wordcloud": ["process.close", "process.snapshot", "process.activate"],
-    "civic.polis_deliberation": ["start", "close", "poll_state", "regenerate_summary"],
+    "civic.polis_deliberation": ["start", "close", "poll_state", "record_result"],
   };
 
   it("covers every registered type", () => {

@@ -3,7 +3,7 @@
 //
 // POST /process/:id/action is open to residents, and admin-only actions used
 // to be a four-item denylist in the controller: a resident could call the
-// Polis handler's start, close, poll_state and regenerate_summary (close a
+// Polis handler's start, close, poll_state and record_result (close a
 // live conversation, restart it, loop paid summaries). Now every handler
 // declares the actions residents may call, and executeAction refuses the
 // rest for a resident caller. These tests pin each type's list; the API test
@@ -38,7 +38,7 @@ const NEVER_RESIDENT = [
   "start",
   "close",
   "poll_state",
-  "regenerate_summary",
+  "record_result",
 ];
 
 describe("each handler declares its resident actions", () => {
@@ -76,9 +76,9 @@ describe("a conversation's actions each run from one status", () => {
         return { math_tick: 1, participant_count: 0, groups: [], consensus: { agree: [], disagree: [] } };
       },
     } as never,
-    summarize: async () => {
-      calls.push("summarize");
-      return { summary_text: "s" } as never;
+    pullResult: async () => {
+      calls.push("pullResult");
+      return { kind: "deliberation" } as never;
     },
     host: {
       async emitEvent() {},
@@ -116,11 +116,11 @@ describe("a conversation's actions each run from one status", () => {
     expect(calls).toEqual([]);
   });
 
-  it("regenerate_summary only once closed: no paid summary for a live conversation", async () => {
+  it("record_result only once closed: nothing asked of Polis for a live conversation", async () => {
     calls.length = 0;
-    await expect(run("regenerate_summary", "active")).rejects.toThrow(/Cannot regenerate_summary/);
+    await expect(run("record_result", "active")).rejects.toThrow(/Cannot record_result/);
     expect(calls).toEqual([]);
-    await expect(run("regenerate_summary", "closed")).resolves.toBeDefined();
-    expect(calls).toEqual(["summarize"]);
+    await expect(run("record_result", "closed")).resolves.toBeDefined();
+    expect(calls).toEqual(["pullResult"]);
   });
 });

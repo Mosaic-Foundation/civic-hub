@@ -68,6 +68,8 @@ function normalizeContent(content: BriefContent): BriefContent {
       content.closed_early && typeof content.closed_early.line === "string" && typeof content.closed_early.note === "string"
         ? { line: content.closed_early.line, note: content.closed_early.note }
         : null,
+    // A conversation's summary, written by the brief's finalize (./finalize.ts).
+    ...(content.deliberation ? { deliberation: content.deliberation } : {}),
   };
 }
 
