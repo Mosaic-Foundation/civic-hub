@@ -164,6 +164,16 @@ health() {
     });'
 }
 
+# GET /api/health → "<mounted count>; not mounted: <package@version (reason)>, …" (ADR-014)
+mounts() {
+  curl -s -m 20 "$HUB_URL/api/health" | node -e '
+    let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+      let j = {}; try { j = JSON.parse(s); } catch {}
+      const p = j.plugins || {}; const un = p.unmounted || [];
+      process.stdout.write(`${p.mounted ?? "?"} mounted; not mounted: ${un.length ? un.map(u => `${u.package}@${u.version} (${u.reason})`).join(", ") : "none"}`);
+    });'
+}
+
 # GET /api/health → "<mode>|<key id or empty>|<mounted packages on an approval not signed with it>" (ADR-015)
 signatures() {
   curl -s -m 20 "$HUB_URL/api/health" | node -e '
@@ -437,6 +447,8 @@ else
   # mounted package must run on an approval signed with it. The rows approved
   # before signatures are signed in the console; nothing here holds the key.
   step "Signed approvals"
+  MOUNTS="$(mounts)"
+  note "Plugin packages: $MOUNTS"
   IFS='|' read -r SIG_MODE SIG_KEY SIG_UNSIGNED <<<"$(signatures)"
   if [[ -z "$SIG_KEY" ]]; then
     note "No catalog key on this deployment (CIVIC_CATALOG_SIGNING_KEY): approvals are checked by fingerprint only ($SIG_MODE)."
@@ -474,6 +486,7 @@ printf '  Live commit: %s (was %s)\n' "${LIVE_COMMIT:0:7}" "${BEFORE_COMMIT:0:7}
 printf '  Health:      ok, no schema gaps\n'
 printf '  Unknown API: JSON 404\n'
 printf '  Signatures:  %s\n' "${SIG_RESULT:-not checked}"
+printf '  Plugins:     %s\n' "${MOUNTS:-not checked}"
 printf '  CLI link:    dev (%s)\n' "$(linked_ref)"
 if [[ "$TARGET" == "prod" && $DRY_RUN -eq 0 ]]; then
   printf '\n\033[1mNow:\033[0m search the production Vercel logs for  [civic-error:descriptor.\n'
