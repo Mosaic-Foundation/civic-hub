@@ -48,6 +48,18 @@ export function platformCodeStore(realm: PlatformRealm, purpose: CodePurpose): C
   };
 }
 
+/** Withdraw one code before it was ever delivered (its email could not be sent). */
+export async function withdrawPlatformCode(realm: PlatformRealm, purpose: CodePurpose, email: string, codeHash: string): Promise<void> {
+  const { error } = await getDb()
+    .from("platform_sign_in_codes")
+    .delete()
+    .eq("realm", realm)
+    .eq("purpose", purpose)
+    .eq("email", email)
+    .eq("code_hash", codeHash);
+  if (error) throw new Error(`platform_sign_in_codes delete failed: ${error.message}`);
+}
+
 /**
  * The realm for the console or the start page. There is no hub, so no hub
  * time zone: the page sends the browser's (`tz`), and a missing or unknown

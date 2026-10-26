@@ -66,4 +66,23 @@ export async function retryAt(check: RateLimitCheck): Promise<Date | null> {
 }
 
 /** Thrown by a limit; the HTTP layer answers 429 with its message (src/errors/). */
+/**
+ * Give back one attempt recorded against each check: the latest hit in each
+ * bucket. For an attempt that, after it was counted, did nothing for the
+ * person (a code whose email could not be sent): it should not count against
+ * them (plugin session 2).
+ */
+export async function releaseRateLimit(checks: readonly RateLimitCheck[]): Promise<void> {
+  if (checks.length === 0 || !rateLimitsEnabled()) return;
+  for (const c of checks) {
+    const bucket = rateLimitBucket(c.scope, c.by, c.value);
+    const { data, error } = await getDb().from("rate_limit_hits").select("id").eq("bucket", bucket).order("at", { ascending: false }).limit(1);
+    if (error) throw new Error(`rate_limit_hits read failed: ${error.message}`);
+    const id = (data as Array<{ id: number | string }> | null)?.[0]?.id;
+    if (id === undefined) continue;
+    const del = await getDb().from("rate_limit_hits").delete().eq("id", id);
+    if (del.error) throw new Error(`rate_limit_hits delete failed: ${del.error.message}`);
+  }
+}
+
 export { RateLimitedError } from "../errors/index.js";

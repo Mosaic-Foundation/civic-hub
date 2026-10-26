@@ -15,12 +15,12 @@
 import { env } from "../config/env.js";
 import { CivicError, RateLimitedError, codeForStatus } from "../errors/index.js";
 import { getDb } from "../db/client.js";
-import { HOUR_MS, retryAt, takeRateLimit } from "../db/rateLimit.js";
+import { HOUR_MS, releaseRateLimit, retryAt, takeRateLimit } from "../db/rateLimit.js";
 import { randomToken, sha256Hex } from "../utils/hash.js";
 import { sendEmail, mailConfigured } from "../utils/email.js";
 import { renderCodeEmail } from "../modules/civic.auth/otp.js";
 import { WRONG_CODE, checkCode, issueCode, tooManyMessage } from "../modules/civic.auth/codeRules.js";
-import { platformCodeStore, platformRealm } from "./platformCodes.js";
+import { platformCodeStore, platformRealm, withdrawPlatformCode } from "./platformCodes.js";
 import { consoleAdminEmail } from "./config.js";
 
 export type { CodePurpose } from "./platformCodes.js";
@@ -79,9 +79,6 @@ export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: s
   const email = normalizeEmail(rawEmail);
   if (!email.includes("@")) throw new ControlAuthError("Enter an email address.");
   const realm = consoleRealm(timeZone);
-  // Counted first, for any address, so the form can't be used to mail-bomb
-  // the operator or to learn who it is.
-  await limit("request_code", ip, realm.timeZone);
 
   const config = consoleAdminEmail();
   if (!config.ok) {
@@ -89,15 +86,22 @@ export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: s
     throw new ControlAuthError("The console has no operator configured.", 503);
   }
   if (email !== config.email) {
+    // Counted, so the form can't be used to learn who the operator is by
+    // which requests count; and nothing is sent.
+    await limit("request_code", ip, realm.timeZone);
     console.warn(`[control] code requested for a non-operator address (${purpose})`);
     return CODE_SENT;
   }
 
-  // The IP was counted above, so issueCode doesn't count it again.
-  const { code } = await issueCode(platformCodeStore("console", purpose), { ...realm, ipLimits: { ...realm.ipLimits, request: null } }, ip, email);
+  // The operator's request is counted against the IP together with the
+  // code's own limits, in one take: a request that is refused (a code of this
+  // kind still waiting from under a minute ago, three waiting, ten this hour)
+  // sends nothing and counts nothing (plugin session 2: refused requests had
+  // used up the operator's five an hour).
+  const issued = await issueCode(platformCodeStore("console", purpose), realm, ip, email);
 
   const action = purpose === "sign_in" ? "finish signing in" : "confirm this change";
-  const rendered = renderCodeEmail(code, "Civic Social console", action);
+  const rendered = renderCodeEmail(issued.code, "Civic Social console", action);
   const result = await sendEmail({
     to: email,
     subject: purpose === "sign_in" ? "Your Civic Social console code" : "Confirm a Civic Social console change",
@@ -106,11 +110,17 @@ export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: s
   });
   if (!result.sent) {
     console.warn(`[control] code email NOT sent (${result.error}).`);
-    // As a hub's sign-in: the code reaches the log only when there is no
-    // mailer at all, which is local development.
-    if (!mailConfigured()) {
-      console.log(`\n[control] ${purpose} code for ${email}: ${code}\n`);
+    if (mailConfigured()) {
+      // The mailer is there and failed: the code never reached anyone, so it
+      // is withdrawn and the request counts for nothing. Said, so the
+      // operator does not wait for an email that is not coming.
+      await withdrawPlatformCode("console", purpose, email, sha256Hex(issued.code));
+      await releaseRateLimit(issued.counted);
+      throw new ControlAuthError("The code email could not be sent just now, and nothing was counted. Try again in a moment.", 502);
     }
+    // As a hub's sign-in: with no mailer at all (local development) the code
+    // reaches the log.
+    console.log(`\n[control] ${purpose} code for ${email}: ${issued.code}\n`);
   }
   return CODE_SENT;
 }
