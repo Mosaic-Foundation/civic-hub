@@ -57,7 +57,7 @@ export const BRIEF_MANIFEST = defineManifest({
   detailPath: (id) => `/brief/${id}`,
   requiredSchema: [],
   tables: [
-    { name: "brief_responses", rows: "export", key: ["id"] },
+    { name: "brief_responses", rows: "export", key: ["id"], holds: "officials' responses to briefs" },
   ],
   jobs: [],
   pluginSection: {
@@ -98,5 +98,13 @@ export const BRIEF_MANIFEST = defineManifest({
         card: { surface: "activity", kind: "brief-response", color: "official-response", pill: "Official response", href: "detail" },
       },
     ],
+  },
+  capabilities: {
+    activities: { emit: ["civic.process.aggregation_completed", "civic.process.outcome_recorded", "civic.process.result_published", "civic.process.action_taken"], listen: [] },
+    state: { read: ["own-process"], write: ["own-process"], tables: ["brief_responses"] },
+    adapters: ["mail"],
+    network: { egress: [] },
+    identity: { claims: ["participant-ref"] },
+    ui: { surfaces: ["process-page", "feed-card", "nav-section", "settings-panel"] },
   },
 });

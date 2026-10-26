@@ -128,9 +128,9 @@ export const POLIS_DELIBERATION_MANIFEST = defineManifest({
     },
   ],
   tables: [
-    { name: "deliberation_submissions", rows: "export", key: ["process_id", "user_id"] },
-    { name: "deliberation_votes", rows: "export", key: ["process_id", "user_id", "statement_id"] },
-    { name: "deliberation_drafts", rows: "export", key: ["id"] },
+    { name: "deliberation_submissions", rows: "export", key: ["process_id", "user_id"], holds: "who has taken part in each conversation" },
+    { name: "deliberation_votes", rows: "export", key: ["process_id", "user_id", "statement_id"], holds: "residents' agree and disagree votes on statements" },
+    { name: "deliberation_drafts", rows: "export", key: ["id"], holds: "residents' unfinished conversation drafts" },
   ],
   jobs: [],
   pluginSection: { order: 40, name: "Conversations", what: "Structured group conversations that map where people agree.", fields: [{ key: "plugin.conversation.polis_url", kind: "url" }] },
@@ -162,5 +162,13 @@ export const POLIS_DELIBERATION_MANIFEST = defineManifest({
       },
     ],
     brief: { color: "conversation", noun: "conversation", pill: "Conversation results" },
+  },
+  capabilities: {
+    activities: { emit: ["civic.process.started", "civic.process.ended"], listen: [] },
+    state: { read: ["own-process"], write: ["own-process"], tables: ["deliberation_submissions", "deliberation_votes", "deliberation_drafts"] },
+    adapters: ["ai", "deliberation"],
+    network: { egress: [] },
+    identity: { claims: ["participant-ref"] },
+    ui: { surfaces: ["process-page", "create-page", "feed-card", "nav-section", "settings-panel"] },
   },
 });

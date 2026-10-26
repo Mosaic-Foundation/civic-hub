@@ -19,6 +19,7 @@ import type { SettingFieldSpec } from "../shared/hubSettingsSections.js";
 import type { ThemeTypeKey } from "../shared/theme.js";
 import type { ActivityRecipe } from "../shared/activityRecipe.js";
 import type { FeedDeclaration } from "../shared/feedActivity.js";
+import { grantProblem, type PluginCapabilities } from "../shared/pluginGrant.js";
 
 /**
  * One scheduled job of a type: src/jobs/registry.ts's HubJobSpec, with the
@@ -45,6 +46,11 @@ export interface TableDeclaration {
   key: readonly string[];
   /** A table nothing writes any more, kept because a hub's history holds rows in it. */
   legacy?: true;
+  /**
+   * What its rows are, in plain words, completing "Keep its own records on
+   * this hub: …" on the Install confirmation ("residents' one-word answers").
+   */
+  holds: string;
 }
 
 /** The admin queues a type's unpublished records can wait in (src/services/adminQueues.ts). */
@@ -182,6 +188,14 @@ export interface ProcessManifest {
    * nobody but admins until the identity layer can verify credentials.
    */
   eligibility?: { requirements: readonly (string | readonly string[])[] };
+  /**
+   * What its code may touch (plugin architecture §4.1; ADR-014): the event
+   * types it emits, its tables, the adapters it calls, the identity claims it
+   * is told and the UI surfaces it draws on (src/shared/pluginGrant.ts). The
+   * catalog records it when the operator approves the package, a hub records
+   * it at install, and the hub's seams refuse anything beyond it.
+   */
+  capabilities: PluginCapabilities;
 }
 
 /**
@@ -219,6 +233,7 @@ const REQUIRED: ReadonlyArray<keyof ProcessManifest> = [
   "activities",
   "publicPayload",
   "disclosure",
+  "capabilities",
 ];
 
 /** The disclosure policies a manifest (or a process override) may declare. */
@@ -288,6 +303,7 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       if (t.rows !== "export" && t.rows !== "omit") throw new ManifestError(`${where(m)}: table ${t.name}: rows must be "export" or "omit"`);
       if (t.rows === "omit" && !t.reason) throw new ManifestError(`${where(m)}: table ${t.name} is omitted from exports without a reason`);
       if (!Array.isArray(t.key) || t.key.length === 0) throw new ManifestError(`${where(m)}: table ${t.name} has no primary key`);
+      if (typeof t.holds !== "string" || t.holds.trim() === "") throw new ManifestError(`${where(m)}: table ${t.name} needs "holds", what its rows are in plain words`);
       seenTables.add(t.name);
       tableNames.add(t.name);
     }
@@ -334,6 +350,13 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
         );
       }
     }
+
+    const grant = grantProblem(m.capabilities, {
+      emits: d.emits,
+      tables: m.tables!.map((t) => t.name),
+      tier: d.tier,
+    });
+    if (grant) throw new ManifestError(`${where(m)}: ${grant}`);
 
     if (!DISCLOSURE_POLICIES.includes(m.disclosure as DisclosurePolicy)) {
       throw new ManifestError(

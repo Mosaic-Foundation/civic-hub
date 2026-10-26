@@ -180,10 +180,10 @@ export const VOTE_MANIFEST = defineManifest({
     },
   ],
   tables: [
-    { name: "vote_records", rows: "export", key: ["receipt_id"] },
-    { name: "vote_participation", rows: "export", key: ["user_id", "process_id"] },
-    { name: "active_vote_keys", rows: "export", key: ["user_id", "process_id"] },
-    { name: "vote_drafts", rows: "export", key: ["id"] },
+    { name: "vote_records", rows: "export", key: ["receipt_id"], holds: "ballots, each under a receipt code and never linked to the voter" },
+    { name: "vote_participation", rows: "export", key: ["user_id", "process_id"], holds: "who has voted in each vote (never how)" },
+    { name: "active_vote_keys", rows: "export", key: ["user_id", "process_id"], holds: "the short-lived link between a voter and their receipt while a vote is open" },
+    { name: "vote_drafts", rows: "export", key: ["id"], holds: "residents' unfinished vote drafts" },
   ],
   jobs: [],
   pluginSection: {
@@ -231,5 +231,13 @@ export const VOTE_MANIFEST = defineManifest({
     // The vote posts its own "Vote results" card when it closes; its brief is
     // a separate post (2026-10-07).
     brief: { color: "vote", noun: "vote", pill: "Vote brief" },
+  },
+  capabilities: {
+    activities: { emit: ["civic.process.proposed", "civic.process.threshold_met", "civic.process.started", "civic.process.vote_submitted", "civic.process.ended", "civic.process.aggregation_completed", "civic.process.result_published"], listen: [] },
+    state: { read: ["own-process"], write: ["own-process"], tables: ["vote_records", "vote_participation", "active_vote_keys", "vote_drafts"] },
+    adapters: [],
+    network: { egress: [] },
+    identity: { claims: ["participant-ref"] },
+    ui: { surfaces: ["process-page", "create-page", "feed-card", "nav-section", "settings-panel"] },
   },
 });

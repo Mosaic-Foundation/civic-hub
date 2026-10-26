@@ -43,20 +43,33 @@ function descriptor(over: Partial<ProcessTypeDescriptor> = {}): ProcessTypeDescr
   };
 }
 
-function manifest(over: Partial<ProcessManifest> = {}): ProcessManifest {
+/** The grant a manifest declares: what its descriptor emits and its tables, nothing more. */
+function capabilitiesFor(m: Pick<ProcessManifest, "descriptor" | "tables">): ProcessManifest["capabilities"] {
   return {
+    activities: { emit: [...m.descriptor.emits], listen: [] },
+    state: { read: ["own-process"], write: ["own-process"], tables: (m.tables ?? []).map((t) => t.name) },
+    adapters: [],
+    network: { egress: [] },
+    identity: { claims: ["participant-ref"] },
+    ui: { surfaces: ["process-page"] },
+  };
+}
+
+function manifest(over: Partial<ProcessManifest> = {}): ProcessManifest {
+  const m = {
     descriptor: descriptor(),
     color: "vote",
-    detailPath: (id) => `/sample/${id}`,
+    detailPath: (id: string) => `/sample/${id}`,
     requiredSchema: [],
-    tables: [{ name: "sample_rows", rows: "export", key: ["id"] }],
+    tables: [{ name: "sample_rows", rows: "export", key: ["id"], holds: "sample rows" }],
     jobs: [],
     pluginSection: { order: 10, name: "Samples", what: "Sample processes.", fields: [] },
     activities: { "civic.sample.taken": { type: "Create", object: { kind: "note" } } },
     publicPayload: { "civic.sample.taken": ["sample"] },
     disclosure: "members",
     ...over,
-  };
+  } as ProcessManifest;
+  return "capabilities" in over ? m : { ...m, capabilities: capabilitiesFor(m) };
 }
 
 const refused = (ms: unknown[]) => () => checkManifests(ms, HOST);
@@ -74,6 +87,37 @@ describe("process manifests", () => {
       expect(refused([m])).toThrow(`process manifest ${name}: missing "${field}"`);
     });
   }
+
+  it("refuses a manifest without its capability grant, naming the type", () => {
+    const m = manifest() as unknown as Record<string, unknown>;
+    delete m.capabilities;
+    expect(refused([m])).toThrow('process manifest civic.sample: missing "capabilities"');
+  });
+
+  it("refuses a grant that differs from what the manifest declares, or reaches past the rules", () => {
+    const base = manifest();
+    const caps = base.capabilities;
+    const bad: Array<[Partial<ProcessManifest["capabilities"]>, string]> = [
+      [{ activities: { emit: [], listen: [] } }, "activities.emit must equal its descriptor's emits"],
+      [{ activities: { emit: ["civic.sample.*"], listen: [] } }, "no wildcards"],
+      [{ activities: { emit: caps.activities.emit, listen: ["civic.vote.closed"] } }, "listen must be empty"],
+      [{ state: { read: ["own-process"], write: ["own-process"], tables: ["sample_rows", "users"] } }, "state.tables must equal its manifest's tables"],
+      [{ adapters: ["heartbeat"] as never }, "capabilities.adapters may name only"],
+      [{ network: { egress: ["polis.example.org"] } }, "network.egress must be empty"],
+      [{ identity: { claims: ["email"] as never } }, "identity.claims may name only"],
+      [{ ui: { surfaces: ["admin-console"] as never } }, "ui.surfaces may name only"],
+    ];
+    for (const [over, message] of bad) {
+      expect(refused([manifest({ capabilities: { ...caps, ...over } })])).toThrow(message);
+    }
+    const tier3 = manifest({ descriptor: descriptor({ tier: 3 }) });
+    expect(refused([tier3])).toThrow("a Tier 3 type reaches its outside service through an adapter");
+  });
+
+  it("refuses a table without its plain-words description", () => {
+    expect(refused([manifest({ tables: [{ name: "sample_rows", rows: "export", key: ["id"], holds: " " }] })]))
+      .toThrow('table sample_rows needs "holds"');
+  });
 
   it("refuses two manifests of one type", () => {
     expect(refused([manifest(), manifest({ pluginSection: undefined, tables: [], descriptor: descriptor({ tables: [] }) })]))
@@ -93,9 +137,9 @@ describe("process manifests", () => {
   });
 
   it("refuses a table another owner has, one without a key, and an omitted one without a reason", () => {
-    expect(refused([manifest({ tables: [{ name: "events", rows: "export", key: ["id"] }] })])).toThrow("table events is already owned");
-    expect(refused([manifest({ tables: [{ name: "sample_rows", rows: "export", key: [] }] })])).toThrow("has no primary key");
-    expect(refused([manifest({ tables: [{ name: "sample_rows", rows: "omit", key: ["id"] }] })])).toThrow("without a reason");
+    expect(refused([manifest({ tables: [{ name: "events", rows: "export", key: ["id"], holds: "rows" }] })])).toThrow("table events is already owned");
+    expect(refused([manifest({ tables: [{ name: "sample_rows", rows: "export", key: [], holds: "rows" }] })])).toThrow("has no primary key");
+    expect(refused([manifest({ tables: [{ name: "sample_rows", rows: "omit", key: ["id"], holds: "rows" }] })])).toThrow("without a reason");
   });
 
   it("refuses live tables that differ from the descriptor's", () => {

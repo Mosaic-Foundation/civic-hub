@@ -75,11 +75,11 @@ export const PROJECT_MANIFEST = defineManifest({
     { table: "project_sentiments", owner: "civic.projects" },
   ],
   tables: [
-    { name: "projects", rows: "export", key: ["id"] },
-    { name: "project_sentiments", rows: "export", key: ["project_id", "user_id"] },
-    { name: "project_drafts", rows: "export", key: ["id"] },
-    { name: "project_updates", rows: "export", key: ["id"], legacy: true },
-    { name: "project_comments", rows: "export", key: ["id"], legacy: true },
+    { name: "projects", rows: "export", key: ["id"], holds: "projects" },
+    { name: "project_sentiments", rows: "export", key: ["project_id", "user_id"], holds: "how residents feel about each project" },
+    { name: "project_drafts", rows: "export", key: ["id"], holds: "residents' unfinished project drafts" },
+    { name: "project_updates", rows: "export", key: ["id"], legacy: true, holds: "older project updates" },
+    { name: "project_comments", rows: "export", key: ["id"], legacy: true, holds: "older project comments" },
   ],
   jobs: [],
   pluginSection: {
@@ -111,5 +111,13 @@ export const PROJECT_MANIFEST = defineManifest({
       { event: "civic.project.updated", match: "event", card: { surface: "activity", kind: "project-updated", color: "project", pill: "Project update", href: "action_url" } },
     ],
     brief: { color: "project", noun: "project", pill: "Project completed" },
+  },
+  capabilities: {
+    activities: { emit: ["civic.project.created", "civic.project.updated", "civic.project.sentiment_changed"], listen: [] },
+    state: { read: ["own-process"], write: ["own-process"], tables: ["projects", "project_sentiments", "project_drafts", "project_updates", "project_comments"] },
+    adapters: [],
+    network: { egress: [] },
+    identity: { claims: ["participant-ref"] },
+    ui: { surfaces: ["process-page", "create-page", "feed-card", "nav-section"] },
   },
 });

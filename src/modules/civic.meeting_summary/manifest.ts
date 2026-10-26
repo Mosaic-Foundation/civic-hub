@@ -108,4 +108,12 @@ export const MEETING_SUMMARY_MANIFEST = defineManifest({
       },
     ],
   },
+  capabilities: {
+    activities: { emit: ["civic.process.aggregation_completed", "civic.process.outcome_recorded", "civic.process.result_published"], listen: [] },
+    state: { read: ["own-process"], write: ["own-process"], tables: [] },
+    adapters: ["ai", "video"],
+    network: { egress: [] },
+    identity: { claims: ["participant-ref"] },
+    ui: { surfaces: ["process-page", "feed-card", "settings-panel"] },
+  },
 });

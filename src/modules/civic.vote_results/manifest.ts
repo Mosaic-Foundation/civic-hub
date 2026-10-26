@@ -75,4 +75,12 @@ export const VOTE_RESULTS_MANIFEST = defineManifest({
       },
     ],
   },
+  capabilities: {
+    activities: { emit: ["civic.process.aggregation_completed", "civic.process.outcome_recorded", "civic.process.result_published"], listen: [] },
+    state: { read: ["own-process"], write: ["own-process"], tables: [] },
+    adapters: ["mail"],
+    network: { egress: [] },
+    identity: { claims: ["participant-ref"] },
+    ui: { surfaces: ["process-page", "feed-card"] },
+  },
 });

@@ -109,7 +109,7 @@ export const WORDCLOUD_MANIFEST = defineManifest({
     },
   ],
   tables: [
-    { name: "wordcloud_submissions", rows: "export", key: ["id"] },
+    { name: "wordcloud_submissions", rows: "export", key: ["id"], holds: "residents' one-word answers" },
   ],
   jobs: [],
   pluginSection: {
@@ -141,5 +141,13 @@ export const WORDCLOUD_MANIFEST = defineManifest({
       },
     ],
     brief: { color: "wordcloud" },
+  },
+  capabilities: {
+    activities: { emit: ["civic.process.started", "civic.process.submission_received", "civic.process.result_published", "civic.process.ended"], listen: [] },
+    state: { read: ["own-process"], write: ["own-process"], tables: ["wordcloud_submissions"] },
+    adapters: [],
+    network: { egress: [] },
+    identity: { claims: ["participant-ref"] },
+    ui: { surfaces: ["process-page", "create-page", "feed-card", "settings-panel"] },
   },
 });

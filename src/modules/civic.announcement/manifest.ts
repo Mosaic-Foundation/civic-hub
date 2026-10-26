@@ -55,4 +55,12 @@ export const ANNOUNCEMENT_MANIFEST = defineManifest({
   feed: {
     cards: [{ event: "civic.process.result_published", legacy: [{ field: "announcement", is: "present" }], card: "announcement" }],
   },
+  capabilities: {
+    activities: { emit: ["civic.process.result_published"], listen: [] },
+    state: { read: ["own-process"], write: ["own-process"], tables: [] },
+    adapters: ["mail"],
+    network: { egress: [] },
+    identity: { claims: ["participant-ref"] },
+    ui: { surfaces: ["process-page", "create-page", "feed-card", "settings-panel"] },
+  },
 });

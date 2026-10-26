@@ -84,9 +84,9 @@ export const PROPOSAL_MANIFEST = defineManifest({
     { table: "proposal_supports", owner: "civic.proposals" },
   ],
   tables: [
-    { name: "proposals", rows: "export", key: ["id"] },
-    { name: "proposal_supports", rows: "export", key: ["proposal_id", "user_id"] },
-    { name: "proposal_drafts", rows: "export", key: ["id"] },
+    { name: "proposals", rows: "export", key: ["id"], holds: "proposals" },
+    { name: "proposal_supports", rows: "export", key: ["proposal_id", "user_id"], holds: "who supports each proposal" },
+    { name: "proposal_drafts", rows: "export", key: ["id"], holds: "residents' unfinished proposal drafts" },
   ],
   jobs: [],
   pluginSection: {
@@ -126,5 +126,13 @@ export const PROPOSAL_MANIFEST = defineManifest({
       // and conversations. The event is still on the wire.
     ],
     brief: { color: "proposal", noun: "proposal", pill: "Proposal results" },
+  },
+  capabilities: {
+    activities: { emit: ["civic.proposal.submitted", "civic.proposal.supported", "civic.proposal.support_withdrawn", "civic.proposal.closed"], listen: [] },
+    state: { read: ["own-process"], write: ["own-process"], tables: ["proposals", "proposal_supports", "proposal_drafts"] },
+    adapters: [],
+    network: { egress: [] },
+    identity: { claims: ["participant-ref"] },
+    ui: { surfaces: ["process-page", "create-page", "feed-card", "nav-section", "settings-panel"] },
   },
 });
