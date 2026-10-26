@@ -36,6 +36,8 @@ const AUTHENTICATED = [
   "_civic_public_search_text",
   "_civic_search_publishable",
   "ai_tokens_since",
+  // An install, a removal or a wind-down with its settings (ADR-014).
+  "apply_plugin_change",
   "ballot_by_receipt",
   "cast_ballot",
   "claim_vote_key",

@@ -117,7 +117,7 @@ describe("GET /control/dashboard", () => {
   it("answers every section, in order, with when it was gathered", async () => {
     const res = await dashboard(false);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.sections.map((s) => s.id)).toEqual(["hubs", "jobs", "outside", "attention"]);
+    expect(res.body.sections.map((s) => s.id)).toEqual(["hubs", "jobs", "outside", "attention", "plugins"]);
     expect(Math.abs(Date.now() - Date.parse(res.body.gathered_at))).toBeLessThan(60_000);
   });
 

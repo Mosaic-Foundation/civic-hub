@@ -147,6 +147,10 @@ describe("reads: a hub token sees only its hub", () => {
   });
 
   it("every table a plugin package's grant names is a hub table, and the package's own database as Athens holds nothing of Floyd's", async () => {
+    // In-process, as the service role on the local stack, through forHub():
+    // the package's granted database adds its table check to the hub filter.
+    process.env.SUPABASE_URL ??= url;
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??= localStack().key;
     const athens = (await getHubBySlug("athens"))!;
     const problems: string[] = [];
     let walked = 0;

@@ -124,8 +124,8 @@ export function grantInPlainWords(input: PlainGrantInput): { can: string[]; cann
   const kept = caps.state.tables.map((t) => input.holds[t] ?? t);
   can.push(
     kept.length > 0
-      ? `Keep its own records on this hub: ${joinWords(kept)}. It cannot read or change anything else the hub keeps.`
-      : "Keep its records only in the hub's own list of processes. It cannot read or change anything else the hub keeps.",
+      ? `Keep its own records on this hub: ${kept.join("; ")}. It cannot read or change anything else the hub keeps.`
+      : "Store its items with the hub's own records, and nothing else of its own. It cannot read or change anything else the hub keeps.",
   );
   const events = caps.activities.emit.map(eventPlain);
   can.push(

@@ -13,7 +13,7 @@ export const ADAPTER_PLAIN: Readonly<Record<
     outside: true,
   },
   mail: {
-    can: "Send email from the hub, to the people the hub's own rules allow, including notices to this hub's admins.",
+    can: "Send email from the hub, following the hub's own rules on who may be emailed, including notices to this hub's admins.",
     cannot: "Send email.",
   },
   video: {
@@ -46,7 +46,7 @@ const EVENT_PLAIN: Readonly<Record<string, string>> = {
   "civic.process.vote_submitted": "a ballot is cast (never who voted for what)",
   "civic.process.submission_received": "an answer comes in",
   "civic.process.aggregation_completed": "results are counted",
-  "civic.process.result_published": "a result is published",
+  "civic.process.result_published": "it publishes a result or a post",
   "civic.process.outcome_recorded": "an outcome is recorded",
   "civic.process.action_taken": "someone responds to it",
   "civic.proposal.submitted": "a proposal is submitted",

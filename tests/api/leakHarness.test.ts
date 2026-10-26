@@ -541,10 +541,15 @@ function expand(route: string, plan: Plan): Array<{ path: string; echoed: string
 
 describe("the walk covers the app", () => {
   it("every GET route has a plan, and every plan is a real route", async () => {
+    // A router's root prints as "/x/" and Express answers it as "/x" too: a
+    // package's router mounted at a path (ADR-014) and app.get("/x") are one route.
+    const same = (r: string) => r.replace(/(.)\/$/, "$1");
     const gets = (await appRoutes()).filter((r) => r.startsWith("GET "));
-    const missing = gets.filter((r) => !(r in GET_PLAN));
+    const planned = new Set(Object.keys(GET_PLAN).map(same));
+    const missing = gets.filter((r) => !planned.has(same(r)));
     expect(missing, "GET routes the leak harness does not walk: add each to GET_PLAN").toEqual([]);
-    const stale = Object.keys(GET_PLAN).filter((r) => !gets.includes(r));
+    const mounted = new Set(gets.map(same));
+    const stale = Object.keys(GET_PLAN).filter((r) => !mounted.has(same(r)));
     expect(stale, "GET_PLAN entries for routes the app no longer mounts").toEqual([]);
   });
 

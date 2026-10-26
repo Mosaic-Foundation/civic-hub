@@ -304,6 +304,17 @@ else
       "Fix the database or the migration; don't push code that needs it."
     ok "migrations applied"
   fi
+  # A plugin package's new catalog entry (npm run catalog:add, ADR-014) has
+  # just arrived, pending. Until the operator approves it in this
+  # deployment's console the new code would not mount that package, so it is
+  # approved now, between the migrations and the code.
+  CATALOG_ENTRIES=$(printf '%s\n' "$MIGRATIONS" | grep -c '_catalog_' || true)
+  if (( CATALOG_ENTRIES > 0 )); then
+    note "$CATALOG_ENTRIES plugin catalog entr$( (( CATALOG_ENTRIES == 1 )) && echo y || echo ies) arrived, waiting for approval."
+    note "Approve each in the console (Plugins) before the code goes out; a package without an approved entry is not mounted."
+    ask "Approved in the console, push the code?" || stop "You said no. The migrations are in; the code is not pushed." \
+      "Approve the entries in the console (Plugins), then run this again: it finds no migrations and pushes."
+  fi
 fi
 
 if [[ "$TARGET" == "prod" ]]; then

@@ -33,6 +33,20 @@ the new code reads columns the old database lacks. **Run the pre-checks by hand*
 SQL editor (for example, the duplicate queries a new unique index needs). A pre-check that returns rows stops the
 release until those rows are dealt with. The script does not run pre-checks.
 
+**A release that changes a plugin package** (anything under `packages/`; ADR-014). A server runs a package only when
+an approved catalog row records the hash of its files, so a changed package needs a new entry, approved on each
+deployment before its code goes out:
+1. In the session that changed it: `npm run catalog:add -- packages/<dir>`. It runs the conformance suite against the
+   package on the local stack and, on green, writes `supabase/migrations/<now>_catalog_<dir>_<version>.sql` (status
+   pending). Commit it with the change.
+2. The release applies it with the other migrations, then stops and asks: **approve the entry in that deployment's
+   console (Plugins: Approve, with a fresh code)**, then answer y to push the code. With `--yes` on dev it does not wait:
+   approve it on dev's console right after; until then that package is not mounted on dev.
+3. After the push, `/api/health`'s `plugins.unmounted` must be empty, and the console's dashboard shows no Plugins gap.
+
+If a package is not mounted after a release, its hubs see it as switched off and its admins see "Not available right
+now". Approve the waiting entry; if the change should not have shipped, roll the code back instead.
+
 ## Dev
 
 ```bash
