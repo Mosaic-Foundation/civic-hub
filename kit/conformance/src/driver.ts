@@ -3,7 +3,7 @@
 // descriptor (src/processes/descriptor.ts): its draft path and example, its
 // create example, its actions with their example inputs, its deadline source.
 //
-// Talks to the hub over HTTP (tests/fixtures/hostCall.ts) as residents and
+// Talks to the hub over HTTP (./support/http.ts) as residents and
 // admins with minted sessions, and reads and writes the local stack directly
 // (PostgREST as the service role, and Postgres for a trigger) only where a
 // test must see or set what no route shows: the events a process wrote, a
@@ -11,13 +11,16 @@
 
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import { call, type HostResponse } from "../fixtures/hostCall.js";
-import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { COC_DOWN, COC_FLAG } from "../fixtures/codeOfConduct.js";
-import type { ProcessTypeDescriptor } from "../../src/processes/descriptor.js";
-import type { HostFacts } from "../../src/processes/descriptorCheck.js";
-import type { EventRow } from "../../src/events/eventStore.js";
-import type { Hub as HubModel } from "../../src/models/hub.js";
+import { call, type HostResponse } from "./support/http.js";
+import { localRest, mintSession } from "./support/localStack.js";
+import {
+  FAKE_COC_DOWN as COC_DOWN,
+  FAKE_COC_FLAG as COC_FLAG,
+  type EventRow,
+  type HostFacts,
+  type HubModel,
+  type ProcessTypeDescriptor,
+} from "@civic-social/plugin-sdk/testing";
 
 export const DB_URL =
   process.env.CIVIC_TEST_DATABASE_URL?.trim() || "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
@@ -33,9 +36,22 @@ export interface Hub {
   adminEmail: string;
 }
 
-/** The local seed's two hubs: Floyd is a beta hub (an admin reviews), Athens a demo (no review). */
-export const BETA: Hub = { slug: "floyd", host: "floyd.civic.social", adminEmail: "admin@example.test" };
-export const DEMO: Hub = { slug: "athens", host: "athens.localhost", adminEmail: "admin+athens@example.test" };
+/** A hub from CIVIC_CONFORMANCE_<name>="<slug> <hostname> <admin email>", or the default. */
+function hubFrom(name: string, fallback: Hub): Hub {
+  const given = process.env[`CIVIC_CONFORMANCE_${name}`]?.trim();
+  if (!given) return fallback;
+  const [slug, host, adminEmail] = given.split(/\s+/);
+  if (!slug || !host || !adminEmail) throw new Error(`CIVIC_CONFORMANCE_${name} must be "<slug> <hostname> <admin email>"`);
+  return { slug, host, adminEmail };
+}
+
+/**
+ * The two hubs the suite works on: a beta hub (an admin reviews) and a demo
+ * (no review). In this repository, the local seed's Floyd and Athens; the
+ * `civic-conformance` command makes two throwaway hubs and names them here.
+ */
+export const BETA: Hub = hubFrom("BETA", { slug: "floyd", host: "floyd.civic.social", adminEmail: "admin@example.test" });
+export const DEMO: Hub = hubFrom("DEMO", { slug: "athens", host: "athens.localhost", adminEmail: "admin+athens@example.test" });
 
 const run = Date.now().toString(36);
 let people = 0;

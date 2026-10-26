@@ -1,6 +1,7 @@
 {
-  // Type-checks what `npm run build` does not: tests/, scripts/, api/ and the
-  // root config files (Audit 4, F7). vitest runs tests without checking their
+  // Type-checks what `npm run build` does not: tests/, scripts/, api/, the
+  // root config files (Audit 4, F7), and kit/ and examples/ (plugin session 2;
+  // the SDK's npm name resolves through tsconfig.json's paths). vitest runs tests without checking their
   // types, and api/ is bundled by Vercel. `npm run typecheck`; CI runs it.
   "extends": "./tsconfig.json",
   "compilerOptions": {
@@ -10,6 +11,6 @@
     "declarationMap": false,
     "sourceMap": false
   },
-  "include": ["src/**/*", "packages/**/*.ts", "config/plugins/manifests.ts", "config/plugins/server.ts", "tests/**/*", "scripts/**/*", "api/**/*", "*.ts"],
-  "exclude": ["node_modules", "dist", "ui/node_modules", "ui/dist", "scripts/**/*.js", "scripts/**/*.d.ts"]
+  "include": ["src/**/*", "packages/**/*.ts", "config/plugins/manifests.ts", "config/plugins/server.ts", "tests/**/*", "scripts/**/*", "api/**/*", "*.ts", "kit/**/*.ts", "examples/**/*.ts"],
+  "exclude": ["node_modules", "dist", "ui/node_modules", "ui/dist", "scripts/**/*.js", "scripts/**/*.d.ts", "kit/sdk/ui.ts", "kit/**/node_modules"]
 }

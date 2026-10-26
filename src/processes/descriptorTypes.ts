@@ -133,7 +133,7 @@ export interface ProcessTypeDescriptor<P extends string = string> {
   /** Tier 3: the services it reaches. */
   outside_services: readonly OutsideService[];
   /**
-   * What the conformance suite sends to make one (tests/conformance/). A
+   * What the conformance suite sends to make one (kit/conformance/). A
    * plugin author supplies these so the suite can drive the type with no
    * type-specific test code:
    *   draft:  the fields of a submittable draft, for a type residents draft

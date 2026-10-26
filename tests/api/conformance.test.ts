@@ -1,6 +1,6 @@
 // The plugin conformance suite against this hub's own process types: every
 // registered type, walked through what its descriptor says applies
-// (tests/conformance/runConformance.ts). Registering a type is enough to have
+// (kit/conformance/src/runConformance.ts). Registering a type is enough to have
 // it tested here. Runs in both CI passes (service role, minted hub tokens).
 //
 // CIVIC_CONFORMANCE_TYPES (a comma list of process types) walks only those:
@@ -12,7 +12,7 @@
 // (CIVIC_API_BASE).
 
 import { getAllHandlers } from "../../src/processes/registry.js";
-import { runConformance } from "../conformance/runConformance.js";
+import { runConformance } from "../../kit/conformance/src/runConformance.js";
 
 const only = (process.env.CIVIC_CONFORMANCE_TYPES ?? "").split(",").map((t) => t.trim()).filter(Boolean);
 const handlers = getAllHandlers().filter((h) => only.length === 0 || only.includes(h.type));

@@ -3,7 +3,7 @@
 //
 // Pure (no database, no request): run by tests/unit/processDescriptors.test.ts
 // for every registered type, and by the conformance runner
-// (tests/conformance/runConformance.ts) before it walks a type, so a third
+// (kit/conformance/src/runConformance.ts) before it walks a type, so a third
 // party's plugin gets the same checks as ours. Each problem is one sentence
 // naming the type and what to declare or fix.
 

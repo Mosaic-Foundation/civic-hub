@@ -3,7 +3,7 @@
 // its plugin, its states and transitions, its events (each mapped by the
 // activity serializer), its tables (under row-level security and in the
 // export), its creation, deadline, brief and approval. The conformance suite
-// (tests/conformance/) proves the same things against a running hub; this is
+// (kit/conformance/) proves the same things against a running hub; this is
 // the part that needs no server, so it runs in CI on every push.
 
 import { describe, expect, it } from "vitest";
@@ -15,7 +15,7 @@ import {
   publicProcessTypes,
 } from "../../src/processes/registry.js";
 import { checkDescriptor } from "../../src/processes/descriptorCheck.js";
-import { hostFacts } from "../conformance/hostFacts.js";
+import { hostFacts } from "../../kit/conformance/src/hostFacts.js";
 
 const host = hostFacts();
 

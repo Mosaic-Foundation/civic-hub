@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
-import { admin, approve, BETA, resident } from "../conformance/driver.js";
+import { admin, approve, BETA, resident } from "../../kit/conformance/src/driver.js";
 import { VOTE_OPTION_MAX } from "../../src/shared/voteOptions.js";
 import { FAKE_COC_DOWN } from "../../src/debug/fakeCodeOfConduct.js";
 

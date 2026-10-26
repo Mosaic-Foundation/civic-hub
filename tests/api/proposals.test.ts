@@ -12,7 +12,7 @@ import {
   getBasicToken,
   authHeaders,
 } from "../fixtures/helpers.js";
-import { DEMO } from "../conformance/driver.js";
+import { DEMO } from "../../kit/conformance/src/driver.js";
 import { liveProposal } from "../fixtures/liveProcess.js";
 
 describe("Proposal endpoints", () => {

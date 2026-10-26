@@ -3,8 +3,8 @@
 // check unavailable), approved by the hub's admin. POST /proposals and
 // POST /projects are gone; they skipped review.
 
-import { admin, approve, BETA, DEMO, submitDraft, type Hub } from "../conformance/driver.js";
-import { hostFacts } from "../conformance/hostFacts.js";
+import { admin, approve, BETA, DEMO, submitDraft, type Hub } from "../../kit/conformance/src/driver.js";
+import { hostFacts } from "../../kit/conformance/src/hostFacts.js";
 import { getDescriptor } from "../../src/processes/registry.js";
 
 function hubFor(host: string): Hub {

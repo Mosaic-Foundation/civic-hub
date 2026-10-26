@@ -12,8 +12,8 @@
 
 import { beforeAll, describe, expect, it } from "vitest";
 import { call, type HostResponse } from "../fixtures/hostCall.js";
-import { act, admin, BETA, examplePayload, liveProcess, processRow, resident } from "../conformance/driver.js";
-import { hostFacts } from "../conformance/hostFacts.js";
+import { act, admin, BETA, examplePayload, liveProcess, processRow, resident } from "../../kit/conformance/src/driver.js";
+import { hostFacts } from "../../kit/conformance/src/hostFacts.js";
 import { localRest } from "../fixtures/adminSession.js";
 import { accountIdOf, foreignIds } from "../fixtures/accountIds.js";
 import { getAllHandlers } from "../../src/processes/registry.js";

@@ -29,30 +29,32 @@
 // Tier 2 (sandboxed) has a slot and no runtime yet.
 //
 // Needs the local stack and a hub server started with CIVIC_POLIS_FAKE=on and
-// CIVIC_COC_FAKE=on (CIVIC_API_BASE). tests/conformance/README.md says what a plugin author
+// CIVIC_COC_FAKE=on (CIVIC_API_BASE). kit/conformance/README.md says what a plugin author
 // needs to make it pass.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { call } from "../fixtures/hostCall.js";
-import { accountIdOf, foreignIds } from "../fixtures/accountIds.js";
-import { localRest } from "../fixtures/adminSession.js";
+import { call } from "./support/http.js";
+import { accountIdOf, foreignIds } from "./support/accountIds.js";
+import { localRest } from "./support/localStack.js";
 import {
   HOST_EVENT_TYPES,
+  JOBS,
+  JOBS_MOUNT,
   allowedTargets,
+  checkDescriptor,
+  getManifest,
+  publicPayloadKeys,
+  rowToEvent,
+  toActivity,
+  toRedactedActivity,
+  withHubScope,
   type ActionDescriptor,
+  type HostFacts,
+  type ProcessHandler,
+  type ProcessStatus,
   type ProcessTypeDescriptor,
-} from "../../src/processes/descriptor.js";
-import { checkDescriptor, type HostFacts } from "../../src/processes/descriptorCheck.js";
-import type { ProcessHandler } from "../../src/processes/types.js";
-import type { ProcessStatus } from "../../src/models/process.js";
+} from "@civic-social/plugin-sdk/testing";
 import { hostFacts } from "./hostFacts.js";
-import { JOBS, JOBS_MOUNT } from "../../src/jobs/registry.js";
-import { getManifest } from "../../src/processes/registry.js";
-import { rowToEvent } from "../../src/events/eventStore.js";
-import { toActivity } from "../../src/events/activitySerializer.js";
-import { toRedactedActivity } from "../../src/events/publicRedaction.js";
-import { publicPayloadKeys } from "../../src/events/publicPayload.js";
-import { withHubScope } from "../../src/config/hubContext.js";
 import {
   BETA,
   DEMO,
@@ -155,7 +157,7 @@ export function runConformance(options: ConformanceOptions): void {
     // every step above against the plugin inside the sandbox, plus: an
     // emission outside its grant is refused by the runtime, a call to a host
     // it did not declare (network.egress) fails, and it sees only the
-    // identity claims it was granted. See tests/conformance/README.md.
+    // identity claims it was granted. See kit/conformance/README.md.
     it.todo("runs steps 1–9 inside the sandbox runtime, and checks the grant is enforced by it");
   });
 }

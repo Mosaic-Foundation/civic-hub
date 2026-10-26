@@ -16,7 +16,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { mintSession } from "../fixtures/adminSession.js";
-import { BETA } from "../conformance/driver.js";
+import { BETA } from "../../kit/conformance/src/driver.js";
 import { liveProposal } from "../fixtures/liveProcess.js";
 
 // On the beta hub (2026-10-12): a proposal is now made through a draft and

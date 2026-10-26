@@ -12,7 +12,13 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    // The plugin SDK by its npm name, as a package written outside this
+    // repository imports it (kit/sdk; ADR-015). Nothing the build compiles uses it.
+    "paths": {
+      "@civic-social/plugin-sdk": ["./kit/sdk/index.ts"],
+      "@civic-social/plugin-sdk/*": ["./kit/sdk/*.ts"]
+    }
   },
   "include": ["src/**/*", "packages/**/*.ts", "config/plugins/manifests.ts", "config/plugins/server.ts"],
   "exclude": ["node_modules", "dist"]

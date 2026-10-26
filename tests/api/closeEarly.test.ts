@@ -5,8 +5,8 @@
 // note is needed, and a resident can't close at all.
 
 import { describe, expect, it } from "vitest";
-import { act, admin, BETA, expireDeadline, liveProcess, processRow, resident } from "../conformance/driver.js";
-import { hostFacts } from "../conformance/hostFacts.js";
+import { act, admin, BETA, expireDeadline, liveProcess, processRow, resident } from "../../kit/conformance/src/driver.js";
+import { hostFacts } from "../../kit/conformance/src/hostFacts.js";
 import { call } from "../fixtures/hostCall.js";
 import { getDescriptor } from "../../src/processes/registry.js";
 

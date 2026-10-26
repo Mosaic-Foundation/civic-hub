@@ -16,7 +16,7 @@
 //                   by `npm run plugins:sync` and applied with the hub's own.
 //
 // Its conformance inputs are its descriptor's `examples` (the suite drives
-// the type with them; tests/conformance/README.md).
+// the type with them; kit/conformance/README.md).
 //
 // The hub loads the packages named in config/plugins.json (the hosting
 // layer's list; the engine never names a package). The loader

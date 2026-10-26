@@ -1,14 +1,42 @@
-# Plugin conformance suite
+# @civic-social/plugin-conformance: the plugin conformance suite
 
 Every process type proves it behaves as it says, by one shared set of steps.
-Loading a type's package is enough to have it tested: `tests/api/conformance.test.ts`
-calls `runConformance({ handlers: getAllHandlers() })`, and CI runs that in
-both API passes (service role, minted hub tokens).
 
-- `runConformance.ts`: the steps, one `describe` per type.
-- `driver.ts`: how the steps reach a running hub (sessions, drafts, approvals,
-  actions, events, moving a deadline). It has no type-specific code.
-- `hostFacts.ts`: the hub's own lists that a descriptor is checked against.
+**For a plugin developer** (plugin session 2, ADR-015): install this package and `@civic-social/plugin-sdk` in any
+folder, start the local stack once, and run the suite against your package's directory. Nothing of the hub's source is
+needed: the SDK carries the hub's engine as a test host. The walkthrough is `docs/BUILD-A-PLUGIN.md`.
+
+```bash
+npm install @civic-social/plugin-sdk @civic-social/plugin-conformance
+```
+
+```bash
+npx civic-conformance stack
+```
+
+```bash
+npx civic-conformance ./my-plugin
+```
+
+`civic-conformance` checks the package's shape, its imports and its migrations; starts the test host with the package
+mounted (unverified, development only); makes two throwaway hubs (a beta and a demo); runs the steps below against the
+package's type on them; and puts everything back (`--keep` keeps its tables; `--port` moves the test host off 3400).
+
+**In the hub's repository**, loading a type's package is enough to have it tested: `tests/api/conformance.test.ts`
+calls `runConformance({ handlers: getAllHandlers() })` on the local seed's hubs, and CI runs that in both API passes
+(service role, minted hub tokens). `kit/scripts/prove.ts` packs both packages and runs `civic-conformance` from an empty
+folder against the straw poll example (it passes), a broken copy (it does not) and a copy with a migration that is not
+additive (refused); CI runs it too.
+
+- `src/runConformance.ts`: the steps, one `describe` per type.
+- `src/driver.ts`: how the steps reach a running hub (sessions, drafts, approvals,
+  actions, events, moving a deadline). It has no type-specific code. Its two hubs
+  are the local seed's, or the ones `CIVIC_CONFORMANCE_BETA` and `_DEMO` name.
+- `src/hostFacts.ts`: the hub's own lists that a descriptor is checked against.
+- `src/support/`: HTTP to the test host, the local stack's PostgREST and sessions,
+  the console, putting a run's hubs away. The repository's own tests share them.
+- `cli.ts`: the `civic-conformance` command; `src/fence.ts`, what a package may import.
+- `fixtures/`: the broken copy and the non-additive copy the proof needs.
 - The static checks themselves are in `src/processes/descriptorCheck.ts`,
   and are also run by `tests/unit/processDescriptors.test.ts` on every push.
 
@@ -145,16 +173,18 @@ A process type is a package (`docs/PLUGIN-PACKAGE.md`) whose handler is a
 
 ### Running it against your plugin
 
-A plugin is a package (`docs/PLUGIN-PACKAGE.md`, ADR-014). To run the suite against yours:
-1. Put it under `packages/<dir>/`, add the directory to `config/plugins.json` and run `npm run plugins:sync`.
-2. With the local stack up (`./scripts/local-stack.sh start`), run
+From any folder, as above: `npx civic-conformance ./your-plugin`. To submit it, see `docs/BUILD-A-PLUGIN.md`
+("Submit it"); Mosaic runs the same command through `npm run catalog:add -- <your package's directory>`.
+
+In the hub's repository, for one of its own packages (`packages/<dir>/`, listed in `config/plugins.json`), with the
+local stack up (`./scripts/local-stack.sh start`):
 
 ```bash
 cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && npm run catalog:add -- packages/<dir>
 ```
 
-   It starts a throwaway hub with your package mounted unverified (`CIVIC_PLUGINS_UNVERIFIED`, development only),
-   runs these steps against your type alone (`CIVIC_CONFORMANCE_TYPES`), and on green writes your catalog entry.
+It starts a throwaway hub with your package mounted unverified (`CIVIC_PLUGINS_UNVERIFIED`, development only),
+runs these steps against your type alone (`CIVIC_CONFORMANCE_TYPES`), and on green writes your catalog entry.
 
 To walk a running hub by hand, start it with `CIVIC_FAKE_ADAPTERS=on` against the local stack. The fake check flags
 text containing `[coc-flag]` and is down on `[coc-down]`; the suite puts them in the example draft's `description`, so

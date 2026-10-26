@@ -10,7 +10,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest } from "../fixtures/adminSession.js";
-import { act, admin, BETA, resident } from "../conformance/driver.js";
+import { act, admin, BETA, resident } from "../../kit/conformance/src/driver.js";
 import { FAKE_COC_DOWN } from "../../src/debug/fakeCodeOfConduct.js";
 
 // Option labels no title or code contains, so a hit can only be a choice.

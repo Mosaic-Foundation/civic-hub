@@ -8,8 +8,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest } from "../fixtures/adminSession.js";
-import { act, admin, BETA, briefsOf, liveProcess, resident } from "../conformance/driver.js";
-import { hostFacts } from "../conformance/hostFacts.js";
+import { act, admin, BETA, briefsOf, liveProcess, resident } from "../../kit/conformance/src/driver.js";
+import { hostFacts } from "../../kit/conformance/src/hostFacts.js";
 import { getDescriptor } from "../../src/processes/registry.js";
 
 let adminToken = "";

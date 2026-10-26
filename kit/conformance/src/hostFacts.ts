@@ -1,12 +1,14 @@
 // What this hub knows that a descriptor is checked against
 // (src/processes/descriptorCheck.ts HostFacts), read from the hub's own lists.
 
-import type { HostFacts } from "../../src/processes/descriptorCheck.js";
-import { PROCESS_PLUGIN_IDS } from "../../src/models/hubSettings.js";
-import { mappedEventTypes } from "../../src/events/activitySerializer.js";
-import { HUB_TABLES } from "../../src/db/forHub.js";
-import { EXPORT_MANIFEST } from "../../src/db/schemaContract.js";
-import { loadedPackages } from "../../src/plugins/loader.js";
+import {
+  EXPORT_MANIFEST,
+  HUB_TABLES,
+  PROCESS_PLUGIN_IDS,
+  loadedPackages,
+  mappedEventTypes,
+  type HostFacts,
+} from "@civic-social/plugin-sdk/testing";
 
 export function hostFacts(): HostFacts {
   return {

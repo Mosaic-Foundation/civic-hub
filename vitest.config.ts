@@ -1,6 +1,17 @@
 import { defineConfig } from "vitest/config";
+import { fileURLToPath } from "node:url";
+
+const SDK = fileURLToPath(new URL("./kit/sdk/", import.meta.url));
 
 export default defineConfig({
+  // The plugin SDK by its npm name, as an outside package and the conformance
+  // suite import it (kit/; plugin session 2, ADR-015).
+  resolve: {
+    alias: [
+      { find: /^@civic-social\/plugin-sdk$/, replacement: `${SDK}index.ts` },
+      { find: /^@civic-social\/plugin-sdk\/(.+)$/, replacement: `${SDK}$1.ts` },
+    ],
+  },
   test: {
     // API integration tests hit the running dev server via fetch.
     // They do NOT import backend modules directly (which would require

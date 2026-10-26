@@ -19,7 +19,7 @@
 //   - the emission path checks every event against the type's declared
 //     event types: plugin architecture §5a, Stage 1 (src/events/eventEmitter.ts);
 //   - tests/unit/processDescriptors.test.ts checks each descriptor against its
-//     handler, and the conformance suite (tests/conformance/) walks every
+//     handler, and the conformance suite (kit/conformance/) walks every
 //     registered type through what its descriptor says applies.
 //
 // A disagreement between a descriptor and what its handler did is refused
