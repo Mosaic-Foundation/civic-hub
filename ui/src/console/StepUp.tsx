@@ -11,6 +11,8 @@ type Send<T> = (extra: Record<string, unknown>) => Promise<T>;
 
 interface Pending {
   what: string;
+  /** Why no code was sent, in the server's words; null when one is on its way. */
+  notice: string | null;
   resolve: (code: string | null) => void;
 }
 
@@ -21,7 +23,7 @@ export function useStepUp(): {
   const [pending, setPending] = useState<Pending | null>(null);
 
   const ask = useCallback(
-    (what: string) => new Promise<string | null>((resolve) => setPending({ what, resolve })),
+    (what: string, notice: string | null) => new Promise<string | null>((resolve) => setPending({ what, notice, resolve })),
     [],
   );
 
@@ -32,10 +34,13 @@ export function useStepUp(): {
       } catch (err) {
         if (!(err instanceof ApiError) || err.code !== "step_up_required") throw err;
       }
-      // A throttled request (a code was sent under 30 s ago) is fine: that
-      // code is still the one to enter.
-      await api.requestStepUp().catch(() => undefined);
-      const code = await ask(what);
+      // A refused request is said, not hidden: a code waiting from under a
+      // minute ago is still the one to enter, and a limit says when to try.
+      const notice = await api.requestStepUp().then(
+        () => null,
+        (e: unknown) => (e instanceof Error ? e.message : String(e)),
+      );
+      const code = await ask(what, notice);
       if (code === null) return null;
       return send({ step_up_code: code });
     },
@@ -45,6 +50,7 @@ export function useStepUp(): {
   const dialog = pending ? (
     <StepUpDialog
       what={pending.what}
+      notice={pending.notice}
       onDone={(code) => {
         pending.resolve(code);
         setPending(null);

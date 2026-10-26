@@ -255,3 +255,13 @@ describe("the time in a message", () => {
     expect(clockTime(at, "")).toBe("8:10 PM UTC");
   });
 });
+
+describe("the owner, using one code after another (plugin session 2)", () => {
+  it("once the code is used, the next is sent at once, inside the minute; while one waits, the minute holds", async () => {
+    const first = await issueCode(store, realm, OWNER_IP, OWNER);
+    await checkCode(store, realm, OWNER_IP, { email: OWNER, code: first.code });
+    const next = await issueCode(store, realm, OWNER_IP, OWNER);
+    expect(next.code).toMatch(/^\d{6}$/);
+    expect((await failure(issueCode(store, realm, OWNER_IP, OWNER))).code).toBe("code_throttled");
+  });
+});

@@ -43,7 +43,14 @@ export const CODE_RULES = {
   /** Tries a code takes before it is burned. */
   maxTries: 5,
   liveCodesPerAddress: 3,
-  /** One email a minute per address. */
+  /**
+   * One email a minute per address, while a code it has not used is waiting:
+   * the gap stops a stranger filling someone's inbox. Once the address has
+   * used (or never had) a code of this kind, the next one is sent at once: a
+   * console operator confirming one change after another, or a sign-in right
+   * after the last (plugin session 2: the console's first code request after
+   * a used code was refused, and the dialog said a code was on its way).
+   */
   emailGapMs: 60 * 1000,
   newCodesPerHour: 10,
   /** Wrong tries one IP may make at one address in an hour. */
@@ -91,6 +98,8 @@ export interface IssuedCode {
   /** The link's token, when the realm has links. Never stored. */
   linkToken: string | null;
   expiresAt: string;
+  /** What the request was counted against: given back if the email cannot be sent (withdrawIssued). */
+  counted: RateLimitCheck[];
 }
 
 // --- Messages ------------------------------------------------------------------
@@ -147,16 +156,26 @@ export async function issueCode(store: CodeStore, realm: Realm, ip: string, emai
   }
 
   const address = realm.addressKey(email);
-  const minute: RateLimitCheck = { scope: `${realm.scope}.code_email`, by: "email", value: address, limit: 1, windowMs: CODE_RULES.emailGapMs };
+  // Every email is recorded in the minute's bucket; the minute is enforced
+  // only while one of its codes is waiting unused (no limit to speak of
+  // otherwise), so the next request after a used code sends at once.
+  const minute: RateLimitCheck = {
+    scope: `${realm.scope}.code_email`,
+    by: "email",
+    value: address,
+    limit: live.length > 0 ? 1 : 1_000_000,
+    windowMs: CODE_RULES.emailGapMs,
+  };
+  const counted: RateLimitCheck[] = [
+    ...(realm.ipLimits.request === null
+      ? []
+      : [{ scope: `${realm.scope}.request_code`, by: "ip", value: ip, limit: realm.ipLimits.request, windowMs: HOUR_MS }]),
+    minute,
+    { scope: `${realm.scope}.new_code`, by: "email", value: address, limit: CODE_RULES.newCodesPerHour, windowMs: HOUR_MS },
+  ];
   await take(
     realm,
-    [
-      ...(realm.ipLimits.request === null
-        ? []
-        : [{ scope: `${realm.scope}.request_code`, by: "ip", value: ip, limit: realm.ipLimits.request, windowMs: HOUR_MS }]),
-      minute,
-      { scope: `${realm.scope}.new_code`, by: "email", value: address, limit: CODE_RULES.newCodesPerHour, windowMs: HOUR_MS },
-    ],
+    counted,
     (c, at) =>
       c.scope === minute.scope
         ? [`We just sent you a code. You can ask for another after ${clockTime(at, realm.timeZone)}.`, "code_throttled"]
@@ -172,7 +191,7 @@ export async function issueCode(store: CodeStore, realm: Realm, ip: string, emai
     link_hash: linkToken ? sha256Hex(linkToken) : null,
     expires_at: expiresAt,
   });
-  return { code, linkToken, expiresAt };
+  return { code, linkToken, expiresAt, counted };
 }
 
 // --- Checking a code ---------------------------------------------------------------

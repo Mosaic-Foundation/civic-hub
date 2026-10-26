@@ -2,9 +2,19 @@ import { useRef, useState } from "react";
 import Modal from "../components/Modal";
 import { api } from "./api";
 
-export default function StepUpDialog({ what, onDone }: { what: string; onDone: (code: string | null) => void }) {
+export default function StepUpDialog({
+  what,
+  notice: firstNotice = null,
+  onDone,
+}: {
+  what: string;
+  /** Why no code was sent, in the server's words (a limit, a code still waiting); null when one is on its way. */
+  notice?: string | null;
+  onDone: (code: string | null) => void;
+}) {
   const [code, setCode] = useState("");
   const [resent, setResent] = useState(false);
+  const [notice, setNotice] = useState<string | null>(firstNotice);
   const input = useRef<HTMLInputElement>(null);
 
   // Escape closes it as Cancel does; the × is left out (Cancel is there) and
@@ -27,8 +37,13 @@ export default function StepUpDialog({ what, onDone }: { what: string; onDone: (
         }}
       >
         <p className="cx-muted">
-          {what} needs a second check. A six-digit code is on its way to your email.
+          {what} needs a second check.{notice ? "" : " A six-digit code is on its way to your email."}
         </p>
+        {notice && (
+          <p className="cx-alert cx-alert-error" role="alert" data-testid="step-up-notice">
+            {notice}
+          </p>
+        )}
         <label className="cx-field">
           <span>Code</span>
           <input
@@ -52,7 +67,12 @@ export default function StepUpDialog({ what, onDone }: { what: string; onDone: (
             disabled={resent}
             onClick={async () => {
               setResent(true);
-              await api.requestStepUp().catch(() => undefined);
+              setNotice(
+                await api.requestStepUp().then(
+                  () => null,
+                  (e: unknown) => (e instanceof Error ? e.message : String(e)),
+                ),
+              );
               input.current?.focus();
             }}
           >
