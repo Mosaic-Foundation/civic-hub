@@ -4,6 +4,64 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Plugin session 1: a process type is a package; the console's catalog; the grant enforced; Install and Remove — 2026-10-25
+
+`multi-tenant`, `e659f02`..(this commit), from `e92804c`. Decision record ADR-014 (mono repo, committed locally for
+Adam to push), the contract `docs/PLUGIN-PACKAGE.md`. Reports:
+`~/Documents/Mosaic/0 Management/Civic Social/Plugin-1-Session-Report-2026-10-25.md` and
+`Plugin-1-Handoff-to-Management-2026-10-25.md`.
+
+**Adam's calls (2026-10-25):** the recommendations on the package shape and the catalog as written, with three changes:
+- prevention, not alerting: a server mounts a package only when an approved catalog row records the content hash of
+  its files, on every deployment; anything else is not mounted, reported, shown on the dashboard, listed by `/health`
+  (which stays ok); a Mosaic-key signature replaces the bare hash in session 2;
+- the conversation summary is the brief's work: moved if contained, else `deliberation` + `ai` and recorded (it was
+  not contained: ADR-014 Decision 7);
+- Remove has two modes, Stop now and Wind down (both built).
+
+**What changed:**
+- **The packages.** The nine types are `packages/civic.{vote,proposals,projects,vote_results,brief,announcement,
+  meeting_summary,polis_deliberation,wordcloud}/` (`@civic-social/plugin-*`, 0.1.0), each with `package.json`,
+  `index.ts`, `manifest.ts`, `ui.tsx`. `config/plugins.json` lists them; `npm run plugins:sync` writes
+  `config/plugins/{manifests,server,ui}.ts` (CI: `--check`). The registry, the manifest list, `app.ts` and the UI list
+  name no type. Moved by a Sonnet subagent type by type, reviewed: every renamed file is identical apart from its
+  imports, comments, its manifest's grant and default export, and mail/AI/video/web through the host.
+- **The SDK** `src/sdk/index.ts`: every engine name a package may import, listed one by one (v0: what the nine use).
+  `civic/package-boundary` fences packages to it; the engine's remaining reaches into packages are
+  `PACKAGE_REACH_NOT_YET` (14 files, shrink-only).
+- **The loader** `src/plugins/loader.ts`: checks each package and refuses one by name; loads on first use (a package's
+  imports reach the registry); decides mounting by hash against approved catalog rows (`judge`), reread every minute;
+  an unmounted package reads as switched off everywhere (`src/plugins/mountedState.ts` → `isPluginEnabledSync`).
+  Routes mount in one loop behind the plugin switch and `requireMounted` (`src/plugins/mount.ts`); drafts routers at
+  the descriptor's path; admin routes under `/admin`; jobs through `jobRunners()`.
+- **The grant** (`capabilities` in each manifest, `src/shared/pluginGrant.ts`): enforced at three seams, refused and
+  reported in production too: `host.db()` (granted tables), `host.adapter()` (granted adapters: ai, mail, video,
+  deliberation, objectStore, web — `web` is new: the SSRF-guarded fetchers), the emission path. Three reaches the move
+  surfaced were closed: the meeting summary's page fetches and admin notice, the announcement receipt's admin list.
+- **The catalog** (`20261025000000`): `plugin_catalog` (platform), `hub_plugins` (per hub), `apply_plugin_change()`,
+  the new-hub trigger; `20261025000100` keeps `hub_plugins` equal to the plugin switch; `20261025000200` the nine
+  shipped entries, approved, installed on every hub. `npm run catalog:add`, `scripts/catalog-approve-local.ts`,
+  `scripts/catalog-shipped.ts`. Console: Plugins page (approve, withdraw, fresh code, audited), dashboard section.
+- **The Plugins page**: Install, Remove → Stop now / Wind down for package plugins, grant in plain words; hub features
+  keep their switches. Wind down: 409 `plugin_winding_down` on new submissions, creations and approvals; the close job
+  finishes it.
+- **Polis unforked**: one package; the mono-root fork deleted (meta repo, local commit).
+- **`/.well-known/civic.json`** gains `plugins` (installed packages with versions); `/health` gains `plugins`.
+- **`release.sh`** asks for the console approval when the migrations bring a catalog entry.
+
+**Release notes:** three additive migrations (`20261025000000`, `…0100`, `…0200`); nobody is signed out; the wire is
+unchanged (diffs below). The shipped entries record this commit's package hashes: **a change to any package after it
+is a new catalog entry** (RUNBOOK-release.md). The Vercel function ships `packages/**` (`includeFiles`) so it can hash.
+
+**Verified (local, `b2fa4a0`):** unit 1,857; API 911 + 911 (service role, minted tokens); conformance 109 (Polis's
+Tier 3 walk included), three runs in a row; Playwright 184 as `e2e.yml` runs it; the wire 904 events identical (the
+same rows through `e92804c`'s serializer and this one); HTTP side by side 12,049 pairs, all identical but `/health`
+and `civic.json`'s new `plugins` fields. Details in TESTING.md. DEV_RESULTS
+
+**Left / for the plan:** see ADR-014 "What is deliberately left"; session 2's first item is the summary move.
+
+---
+
 ## After the frontend pass: announcement author names; no web fonts — 2026-10-25
 
 Two commits on `multi-tenant` after the frontend pass, released to dev with `release.sh dev --yes` (no migration).

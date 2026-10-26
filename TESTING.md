@@ -87,6 +87,80 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Plugin packages: the loader, the catalog's hash rule, the grant at the seams, Install and Remove (2026-10-25)
+
+**Every process type is a package under `packages/`; a server mounts one only when an approved catalog row records
+the hash of its files; a reach past a package's grant is refused and reported (ADR-014, `docs/PLUGIN-PACKAGE.md`).**
+- **What the test servers need:** an approved catalog row for each package as the checkout has it. The shipped nine
+  come with `20261025000200`; a package changed since needs `npm run catalog:add -- packages/<dir>` (its entry is a
+  migration) and `scripts/catalog-approve-local.ts`, which `./scripts/local-stack.sh start` and `reset`, CI's API and
+  E2E jobs and run-anywhere's `up.sh` run as the local operator. Without it the package is not mounted: its types read
+  as switched off and its tests fail. Local work on a package: start the API with `CIVIC_PLUGINS_UNVERIFIED=on`
+  (development only).
+- **The unit suite** mounts every loaded package (`mountEverythingForTests`, `tests/setup/adapters.ts`): the catalog
+  check needs a database.
+- **Package validation** (`tests/unit/pluginLoader.test.ts`): a package without a display name, or whose manifest has
+  no grant, is refused at startup by name; a malformed name or version, a missing `requires`, a handler of another
+  type, a job without its runner, two packages of one name. **The verdict:** mounted only on an approved row with its
+  version and hash; not on a changed hash ("its files changed since this version was approved"), a missing row, a
+  grant narrower than the manifest asks, unreadable files. **The hash** changes with any file.
+- **Manifests** (`processManifest.test.ts`): a manifest without `capabilities` or a table without `holds` is refused,
+  naming the type; a grant that disagrees with the manifest (events, tables), a wildcard, a listen, an egress, an
+  unknown adapter, claim or surface, a Tier 3 type with no outside adapter.
+- **The grant, one test per reach** (`pluginGrant.test.ts`): a table outside the grant through the package's
+  `host.db()`; an adapter not granted through `host.adapter()`; an event type outside the grant at the emission path
+  (directly and through `buildEvent`, a word cloud emitting a ballot). Each throws `GrantRefusedError` (500,
+  `plugin_grant_refused`) and is reported (`plugin.grant.table|adapter|event`). `emissionCheck.test.ts`: for a
+  package the grant refuses first; the descriptor check still holds for a type no package provides.
+- **The import fence** (`packageBoundary.test.ts`, planted files): a package may import the SDK, `src/shared/`, itself,
+  `node:` built-ins and express (and what its `package.json` lists as a peer); not the database, an adapter, a mail
+  sender, the hosting layer, the console, another package it does not require; a manifest only `src/shared/` and the
+  manifest contract; the engine no package, except `PACKAGE_REACH_NOT_YET`, each entry of which must still reach one.
+- **Route parity, kept** (`pluginRoutes.test.ts`): every route of `e92804c` (`tests/fixtures/plugins/routes-before.json`)
+  is still mounted, the only new ones are the Plugins page's three, and any two routes that could answer the same
+  request keep their order. **Manifest parity**: `parity.json` changed only by hub_plugins and plugin_catalog.
+- **The leak harness walks the grants** (`leakHarnessDb.test.ts`): every table a grant names is a hub table, and read
+  through that package's own granted database as Athens it returns none of Floyd's rows (17 tables over
+  nine packages). The Plugins page's routes have plans in `leakHarness.test.ts`.
+- **Installs and the catalog through the API** (`tests/api/pluginPackages.test.ts`, on a hub the console creates):
+  a new hub has every approved package installed (`system:hub-created`), with its grant in plain words; a resident is
+  refused; Stop now is the switch-off (routes 404, the item kept, `hub_plugins.removed_at`, `civic.json` drops it) and
+  Install brings it back; Wind down with an open vote refuses a new one (409 `plugin_winding_down`), keeps the open one
+  served, survives a job run while it is open, and after the close the job switches Votes off (`system:wind-down`);
+  Wind down with nothing open stops at once and is refused for announcements (`wind_down_not_offered`); `civic.json`
+  lists the installed packages; the console lists every entry with its grant; a pending entry for a package the
+  deployment does not load is seen by no hub; withdrawing the word cloud's entry (fresh code) unmounts it at once (the
+  hub's admin sees "unavailable", creation 404s, `/health` stays ok and lists it), approving it again brings it back,
+  both audited.
+- **The conformance suite against the nine packages**, Polis's Tier 3 walk included (each participant as
+  themselves, the hub deciding who takes part, Polis down, slow or erroring): **109 passed, 3 skipped** (the
+  hub-created types' walks), three runs in a row on `b2fa4a0`.
+- **Playwright** (`tests/e2e/pluginInstall.spec.ts`): as an admin, Remove → Stop now and Install on Word clouds, with
+  the grant's plain words and the version checked; Wind down not offered for it; Remove → Wind down with an open vote,
+  the card's "Winding down" and its count, Keep it installed; a hub feature's switch untouched.
+  `pluginSwitches.spec.ts`'s Projects test is Remove and Install now.
+- **Smoke** (`dev.smoke.spec.ts`, read-only): the smoke hub's `civic.json` lists at least nine packages with name and
+  version (vote, word cloud and conversation among them), and `/health`'s `plugins.unmounted` is empty.
+- **CI:** `Plugin lists current` (`plugins:sync --check`) in the unit job; the local operator's approval before the
+  servers start in the API, E2E and run-anywhere jobs.
+- **Results, local (the Supabase stack, `b2fa4a0`):** unit **1,857 passed**; UI component 35; API service role
+  **911 passed** and minted tokens **911 passed** (14 skipped each); on a freshly reset stack 910 and one
+  `auditConcurrency` ballot test failing on "an invalid response was received from the upstream server" (the known
+  gateway reset on a schema reload; it passes alone 2 times in 3, the ballot path is unchanged); Playwright as
+  `e2e.yml` runs it (the preview on :4173) **184 passed, 6 skipped** (`adminMenu.spec.ts` updated for Install and
+  Remove). Run without `e2e.yml`'s `CIVIC_UI_BASE_URL` and `CIVIC_E2E_UI_ORIGIN`, the console and start-page specs
+  fail on the wrong port: set both.
+- **Wire:** the same 904 local events serialized by `e92804c` and by this slice: identical in all three views. Dev:
+  see the HANDOFF entry.
+- **HTTP side by side** (`e92804c` on :3200, the slice on :3000, one local database filled by the API suite, both
+  freshly started so their in-memory Polis fakes agree): **12,049 request pairs**: 12,000 byte-identical, 33
+  identical as JSON, 16 different, all of them `/health` (its new `plugins` field; the schema check covers 60 tables,
+  57 before) and `/.well-known/civic.json` (its new `plugins` list), identical apart from those fields. A first run
+  with one server restarted and the other not showed conversation routes differing: each fake Polis keeps its own
+  conversations in memory, not a code difference.
+
+---
+
 ## Frontend pass: one data hook, the feed on the public stream, pages loaded when needed (2026-10-24)
 
 **Component tests** (new layer, `ui/`): vitest with jsdom and `@testing-library/react`, beside the code they test
