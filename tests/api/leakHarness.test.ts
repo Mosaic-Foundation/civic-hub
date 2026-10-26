@@ -433,6 +433,8 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /admin/hub/settings": {},
   "GET /admin/hub/settings/template/:key": {},
   "GET /admin/hub/plugins/live": {},
+  // The Plugins page's installs (ADR-014): the caller's own hub's records.
+  "GET /admin/hub/plugins/installs": {},
   // Each job's last run (job_runs). Floyd has a failed run carrying MARKER_B.
   "GET /admin/hub/jobs/runs": {},
   "GET /admin/settings": {},
@@ -641,6 +643,10 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "DELETE /proposals/:id/support": {},
   // One sample at a time (admin menu slice): Floyd's ids are never Athens's samples.
   "DELETE /admin/hub/sample-content/:id": {},
+  // Install and Remove (ADR-014): the parameter is a plugin's id, not a record;
+  // the change is to the caller's own hub (tests/api/pluginPackages.test.ts).
+  "POST /admin/hub/plugins/:plugin/install": { skip: "the parameter names a plugin, not a row; acts on the caller's hub only (pluginPackages)" },
+  "POST /admin/hub/plugins/:plugin/remove": { skip: "the parameter names a plugin, not a row; acts on the caller's hub only (pluginPackages)" },
   // Send to Civic.Social (feedback routing): Floyd's feedback is never Athens's to forward.
   "POST /admin/feedback/:id/forward": { body: { stream: "bug" } },
   "POST /reviews/:reviewId/revise": { body: { title: X.title, description: X.description } },

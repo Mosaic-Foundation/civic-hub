@@ -6,6 +6,9 @@
 // Floyd row in any hub table, cannot write one, cannot move a row across, and
 // cannot drive transition_process, cast_ballot, reshuffle_ballots,
 // claim_vote_key or ballot_by_receipt (or their helpers) on Floyd.
+// It walks the plugin packages' grants (ADR-014): every table a grant names
+// is a hub table under the template, and read through that package's own
+// granted database as Athens it holds nothing of Floyd's.
 // And for each atomic function, a failure forced part-way through under the
 // minted token leaves no residue in any table it writes.
 //
@@ -20,6 +23,10 @@ import { localRest, localStack } from "../fixtures/adminSession.js";
 import { HUB_TABLES } from "../../src/db/forHub.js";
 import { parseSigningKey, signHubToken } from "../../src/db/hubToken.js";
 import { NO_OBJECT_STORAGE } from "../fixtures/helpers.js";
+import { loadedPackages } from "../../src/plugins/loader.js";
+import { grantedDb } from "../../src/plugins/host.js";
+import { getHubBySlug } from "../../src/db/hubs.js";
+import { withHubScope } from "../../src/config/hubContext.js";
 
 const keyHash = (k: string) => createHash("sha256").update(k, "utf8").digest("hex");
 
@@ -136,6 +143,24 @@ describe("reads: a hub token sees only its hub", () => {
         else if ((res.body as Rows).length) problems.push(`${hub} ${table}: saw ${JSON.stringify(res.body)}`);
       }
     }
+    expect(problems).toEqual([]);
+  });
+
+  it("every table a plugin package's grant names is a hub table, and the package's own database as Athens holds nothing of Floyd's", async () => {
+    const athens = (await getHubBySlug("athens"))!;
+    const problems: string[] = [];
+    let walked = 0;
+    for (const p of loadedPackages()) {
+      for (const table of p.pkg.manifest.capabilities.state.tables) {
+        if (!(HUB_TABLES as readonly string[]).includes(table)) problems.push(`${p.pkg.name}: ${table} is not a hub table`);
+        const rows = await withHubScope(athens, {}, async () =>
+          grantedDb(p.pkg.name, p.pkg.manifest.capabilities.state.tables).from(table).select<{ hub_id: string }>("hub_id"),
+        );
+        walked++;
+        for (const r of rows) if (r.hub_id !== "athens") problems.push(`${p.pkg.name}: ${table} returned a ${r.hub_id} row to Athens`);
+      }
+    }
+    expect(walked).toBeGreaterThanOrEqual(15);
     expect(problems).toEqual([]);
   });
 
