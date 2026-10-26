@@ -1,15 +1,16 @@
 // The local record of who has voted and who has submitted in a deliberation
-// (deliberation_votes, deliberation_submissions), for deliberationController
-// (ADR-012, the database convention: a controller does not query). Polis holds
+// (deliberation_votes, deliberation_submissions), for the controller (ADR-012,
+// the database convention: a controller does not query), through the database
+// the package's host hands it (its granted tables only). Polis holds
 // the votes themselves; these rows only tell a new participant from one who
 // has voted on everything (Polis answers null for both) and enforce one
 // statement per person. Every read and write is on the hub in scope.
 
-import { forHub, type HubDb } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
+import type { GrantedDb } from "../../src/sdk/index.js";
+import { conversationHost } from "./host.js";
 
-function db(): HubDb {
-  return forHub(currentHubId());
+function db(): GrantedDb {
+  return conversationHost.get().db();
 }
 
 /**

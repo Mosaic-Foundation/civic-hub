@@ -11,7 +11,7 @@
 
 import { describe, it, expect } from "vitest";
 import { getRegisteredTypes, residentActionsOf } from "../../src/processes/registry.js";
-import { createPolisDeliberationHandler } from "../../src/shared/polis_deliberation/handler.js";
+import { createPolisDeliberationHandler } from "../../packages/civic.polis_deliberation/handler.js";
 
 /** What each type opens to residents. A new type must be added here on purpose. */
 const EXPECTED: Record<string, string[]> = {

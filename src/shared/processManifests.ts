@@ -7,38 +7,12 @@
 // The types are plugin packages (ADR-014): the configured list
 // (config/plugins.json, written out by `npm run plugins:sync` as
 // config/plugins/manifests.ts) supplies their manifests. Adding a type is
-// adding a package and a line in config/plugins.json. The conversation type is
-// not yet a package, so the packages' manifests are taken one by one from the
-// configured list and it sits among them, where it has always been.
+// adding a package and a line in config/plugins.json.
 
-import { POLIS_DELIBERATION_MANIFEST } from "./polis_deliberation/manifest.js";
 import { PACKAGE_MANIFESTS } from "../../config/plugins/manifests.js";
 import type { ProcessManifest } from "../processes/manifest.js";
 
-// The packages' manifests, in config/plugins.json's order.
-const [
-  VOTE_MANIFEST,
-  PROPOSAL_MANIFEST,
-  PROJECT_MANIFEST,
-  VOTE_RESULTS_MANIFEST,
-  BRIEF_MANIFEST,
-  ANNOUNCEMENT_MANIFEST,
-  MEETING_SUMMARY_MANIFEST,
-  WORDCLOUD_MANIFEST,
-] = PACKAGE_MANIFESTS;
-
-export const PROCESS_MANIFESTS = [
-  VOTE_MANIFEST,
-  PROPOSAL_MANIFEST,
-  PROJECT_MANIFEST,
-  VOTE_RESULTS_MANIFEST,
-  BRIEF_MANIFEST,
-  ANNOUNCEMENT_MANIFEST,
-  MEETING_SUMMARY_MANIFEST,
-  POLIS_DELIBERATION_MANIFEST,
-  WORDCLOUD_MANIFEST,
-] as const;
-
+export const PROCESS_MANIFESTS = PACKAGE_MANIFESTS;
 /** The same list, each as a plain ProcessManifest (for reading fields every manifest has). */
 export const MANIFEST_LIST: readonly ProcessManifest[] = PROCESS_MANIFESTS;
 

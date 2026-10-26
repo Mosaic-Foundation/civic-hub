@@ -29,6 +29,7 @@ import type { ProcessHandler } from "../processes/types.js";
 import type { JobRunner } from "../jobs/types.js";
 import type { Adapters } from "../adapters/index.js";
 import type { aiComplete, aiConfigured, aiDefaultModel } from "../adapters/ai.js";
+import type { admitAiCall } from "../services/aiBudget.js";
 import type { sendEmail as sendMessage } from "../utils/email.js";
 import type { sendEmail as deliverEmail } from "../services/mailer.js";
 import type { notifyCronOutcome } from "../services/cronAlerts.js";
@@ -72,7 +73,13 @@ export interface GrantedDb {
  * through the hub's guard (beta hubs, the platform's sending domain).
  */
 export interface PluginAdapters {
-  ai: { complete: typeof aiComplete; configured: typeof aiConfigured; defaultModel: typeof aiDefaultModel };
+  ai: {
+    complete: typeof aiComplete;
+    configured: typeof aiConfigured;
+    defaultModel: typeof aiDefaultModel;
+    /** A resident's request that will use the AI, admitted against the hub's limits first. */
+    admit: typeof admitAiCall;
+  };
   mail: {
     /** One message, through the hub's mail guard (src/utils/email.ts). */
     send: typeof sendMessage;

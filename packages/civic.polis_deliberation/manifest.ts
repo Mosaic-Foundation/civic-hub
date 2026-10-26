@@ -3,8 +3,8 @@
 // are built from it. The host wiring (src/processes/deliberationBoot.ts)
 // pairs it with the portable handler (./handler.ts).
 
-import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
-import { DEADLINE_CLOSE_INPUT } from "../deadlineClose.js";
+import { defineDescriptor, defineManifest } from "../../src/processes/manifest.js";
+import { DEADLINE_CLOSE_INPUT } from "../../src/shared/deadlineClose.js";
 
 /**
  * What a Polis conversation is (src/processes/descriptor.ts). Residents take
@@ -74,7 +74,7 @@ const descriptor = defineDescriptor({
   outside_services: [
     {
       name: "Polis",
-      adapter: "src/shared/polis_deliberation/adapter/polisAdapter.ts",
+      adapter: "packages/civic.polis_deliberation/adapter/polisAdapter.ts",
       egress_setting: "plugin.conversation.polis_url",
       participant_identifier: "account_id",
       service_credential: "shared_service_token",
@@ -172,3 +172,5 @@ export const POLIS_DELIBERATION_MANIFEST = defineManifest({
     ui: { surfaces: ["process-page", "create-page", "feed-card", "nav-section", "settings-panel"] },
   },
 });
+
+export default POLIS_DELIBERATION_MANIFEST;

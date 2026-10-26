@@ -4,11 +4,11 @@
 //   - a Polis outage answers 503, not the generic 500.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createPolisDeliberationHandler } from "../../src/shared/polis_deliberation/handler.js";
-import type { PolisDeliberationState } from "../../src/shared/polis_deliberation/types.js";
+import { createPolisDeliberationHandler } from "../../packages/civic.polis_deliberation/handler.js";
+import type { PolisDeliberationState } from "../../packages/civic.polis_deliberation/types.js";
 
 const created: string[] = [];
-vi.mock("../../src/shared/polis_deliberation/adapter/polisAdapter.js", () => ({
+vi.mock("../../packages/civic.polis_deliberation/adapter/polisAdapter.js", () => ({
   createPolisAdapter: (cfg: { baseUrl: string }) => ({
     async createDeliberation() {
       created.push(cfg.baseUrl);
@@ -116,9 +116,10 @@ describe("the hub's Polis", () => {
     const { installAdapters } = await import("../../src/adapters/index.js");
     const { polisService } = await import("../../src/hosting/polis.js");
     installAdapters({ deliberation: polisService });
-    // Through the registry, which boots it (importing the boot file first is a cycle).
-    await import("../../src/processes/registry.js");
-    const { getPolisAdapter } = await import("../../src/processes/deliberationBoot.js");
+    // Through the registry, whose first use loads the packages and boots it
+    // (importing the boot file first is a cycle).
+    (await import("../../src/processes/registry.js")).getAllHandlers();
+    const { getPolisAdapter } = await import("../../packages/civic.polis_deliberation/boot.js");
     const { withHubScope } = await import("../../src/config/hubContext.js");
     const hub = (id: string) => ({ id, name: id }) as never;
     await withHubScope(hub("a"), { "plugin.conversation.polis_url": "https://polis.a.example" }, () =>
@@ -135,8 +136,8 @@ describe("the hub's Polis", () => {
   });
 
   it("down, slow or failing answers 503; a refusal stays what it was", async () => {
-    await import("../../src/processes/registry.js");
-    const { getPolisAdapter, PolisUnavailableError } = await import("../../src/processes/deliberationBoot.js");
+    (await import("../../src/processes/registry.js")).getAllHandlers();
+    const { getPolisAdapter, PolisUnavailableError } = await import("../../packages/civic.polis_deliberation/boot.js");
     const { withHubScope } = await import("../../src/config/hubContext.js");
     await withHubScope({ id: "a", name: "a" } as never, {}, async () => {
       const a = getPolisAdapter();

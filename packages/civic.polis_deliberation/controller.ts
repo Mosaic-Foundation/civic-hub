@@ -1,38 +1,49 @@
-import { ConflictError, NotFoundError, ValidationError } from "../errors/index.js";
-import { route } from "../http/route.js";
-import { AiLimitError, admitAiCall } from "../services/aiBudget.js";
-import { getActor, getAuthUser } from "../middleware/auth.js";
-import { can } from "../authz/canActor.js";
-import { getPolisAdapter } from "../processes/deliberationBoot.js";
 import {
-  findExistingSubmission,
-  getVotedStatementIds,
-  recordLocalVoteTracking,
-  recordSubmission,
-} from "../services/deliberationVotes.js";
-import * as processService from "../services/processService.js";
-import type { PolisDeliberationState } from "../shared/polis_deliberation/types.js";
-import type { VoteDirection } from "../shared/polis_deliberation/adapter/types.js";
-import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+  AiLimitError,
+  route,
+  getActor,
+  getAuthUser,
+  can,
+  executeAction,
+  getAllProcesses,
+  getProcess,
+  readsAsClosed,
   isSeedConversation,
   getMockClusters,
   getMockNextStatement,
   advanceMockStatement,
   addMockStatement,
-} from "../debug/seedDeliberationMocks.js";
-import { submitAsCreator, reviewMailbox } from "../modules/civic.review/index.js";
-import { readAsPage, viewFor } from "./processController.js";
-import { checkTextAgainstCoC, getHubConfig } from "../modules/civic.assistant/index.js";
-import { assertPassesWordlist } from "../shared/wordlist/index.js";
-import { personFallbackName } from "../services/creatorDisplay.js";
+  submitAsCreator,
+  reviewMailbox,
+  checkTextAgainstCoC,
+  getHubConfig,
+  personFallbackName,
+  readAsPage,
+  viewFor,
+  getProcessHandler,
+} from "../../src/sdk/index.js";
+import { getPolisAdapter } from "./boot.js";
+import { conversationHost } from "./host.js";
+import {
+  findExistingSubmission,
+  getVotedStatementIds,
+  recordLocalVoteTracking,
+  recordSubmission,
+} from "./votes.js";
+import type { PolisDeliberationState } from "./types.js";
+import type { VoteDirection } from "./adapter/types.js";
+import { assertPassesWordlist } from "../../src/shared/wordlist/index.js";
 
 
 async function getConversationId(processId: string): Promise<string> {
-  const process = await processService.getProcess(processId);
+  const process = await getProcess(processId);
   if (!process) throw new NotFoundError("Conversation not found");
   // Past its deadline it reads as closed until the hourly job closes it, so
   // it takes no more statements or votes in the meantime.
-  if (process.status !== "active" || (await processService.readsAsClosed(process))) {
+  if (process.status !== "active" || (await readsAsClosed(process))) {
     throw new ConflictError("Conversation is not active", "conversation_not_active");
   }
   const state = process.state as unknown as PolisDeliberationState;
@@ -203,7 +214,7 @@ export const handleCreateDeliberation = route(async (req, res) => {
   try {
     // Counted like the drafts' check (Audit 2): over the hourly count is a
     // 429; a spent hub budget falls through to "unavailable" below.
-    await admitAiCall("review", user.id);
+    await conversationHost.get().adapter("ai").admit("review", user.id);
     const findings = await checkTextAgainstCoC(
       [
         { label: "Topic", text: String(topic) },
@@ -257,7 +268,7 @@ export const handleStartDeliberation = route(async (req, res) => {
   const user = getAuthUser(res);
   const processId = req.params.processId as string;
 
-  const result = await processService.executeAction(processId, {
+  const result = await executeAction(processId, {
     type: "start",
     actor: user.id,
     payload: {},
@@ -272,7 +283,7 @@ export const closeDeliberation = route(async (req, res) => {
 
   // Before its deadline, the close needs the admin's note (Close early).
   const note = typeof req.body?.note === "string" ? req.body.note : undefined;
-  const result = await processService.executeAction(processId, {
+  const result = await executeAction(processId, {
     type: "close",
     actor: user.id,
     payload: note === undefined ? {} : { note },
@@ -285,7 +296,7 @@ export const regenerateSummary = route(async (req, res) => {
   const user = getAuthUser(res);
   const processId = req.params.processId as string;
 
-  const result = await processService.executeAction(processId, {
+  const result = await executeAction(processId, {
     type: "regenerate_summary",
     actor: user.id,
     payload: {},
@@ -297,12 +308,10 @@ export const regenerateSummary = route(async (req, res) => {
 export const listDeliberations = route(async (_req, res) => {
   // Type-filtered in SQL — this list was fetching every process's full
   // state JSONB to keep five conversations (perf pass, 2026-08-28).
-  const deliberations = await processService.getAllProcesses([
+  const deliberations = await getAllProcesses([
     "civic.polis_deliberation",
   ]);
-  const handler = (await import("../processes/registry.js")).getProcessHandler(
-    "civic.polis_deliberation",
-  );
+  const handler = getProcessHandler("civic.polis_deliberation");
   if (!handler) {
     res.json([]);
     return;

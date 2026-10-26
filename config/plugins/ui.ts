@@ -9,6 +9,7 @@ import u3 from "../../packages/civic.vote_results/ui";
 import u4 from "../../packages/civic.brief/ui";
 import u5 from "../../packages/civic.announcement/ui";
 import u6 from "../../packages/civic.meeting_summary/ui";
-import u7 from "../../packages/civic.wordcloud/ui";
+import u7 from "../../packages/civic.polis_deliberation/ui";
+import u8 from "../../packages/civic.wordcloud/ui";
 
-export const PACKAGE_UI: readonly ProcessUi[] = [u0, u1, u2, u3, u4, u5, u6, u7];
+export const PACKAGE_UI: readonly ProcessUi[] = [u0, u1, u2, u3, u4, u5, u6, u7, u8];

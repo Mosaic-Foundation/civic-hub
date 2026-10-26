@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { createPolisAdapter } from "../../src/shared/polis_deliberation/adapter/polisAdapter";
+import { createPolisAdapter } from "../../packages/civic.polis_deliberation/adapter/polisAdapter";
 
 /**
  * Regression cover for the failure that wedged proc_5889e8e441d1495e on

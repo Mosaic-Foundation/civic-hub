@@ -24,7 +24,6 @@ import debugRoutes from "./routes/debugRoutes.js";
 import inputRoutes from "./routes/inputRoutes.js";
 import assistantRoutes from "./routes/assistantRoutes.js";
 import { draftRouter } from "./routes/draftRoutes.js";
-import { deliberationDraftKind } from "./processes/draftKinds.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
@@ -32,7 +31,6 @@ import linkPreviewRoutes from "./routes/linkPreviewRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
 import { jobRouter } from "./routes/jobRoutes.js";
 import { JOBS, internalPath } from "./jobs/registry.js";
-import deliberationRoutes from "./routes/deliberationRoutes.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
@@ -180,13 +178,6 @@ app.use("/process", inputRoutes);
 // Gated route by route, not here: the Code of Conduct check under /assistant
 // runs with the Writing assistant off (src/routes/assistantRoutes.ts).
 app.use("/assistant", assistantRoutes);
-
-// Deliberation endpoints — Polis-backed community deliberation
-// Conversation draft endpoints — mounted before /deliberations so
-// /deliberations/drafts doesn't get caught by /deliberations/:processId.
-app.use("/deliberations/drafts", requirePlugin("conversation"), draftRouter(deliberationDraftKind));
-
-app.use("/deliberations", requirePlugin("conversation"), deliberationRoutes);
 
 // The plugin packages' routes (ADR-014), in configured order, each behind
 // its plugin's switch and the loader's verdict.

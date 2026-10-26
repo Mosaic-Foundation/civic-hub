@@ -19,7 +19,6 @@ describe("civic/db-convention", () => {
   it("refuses the database layer in a module on the convention", async () => {
     expect(await errors("src/modules/civic.wordcloud/x.ts", `import { forHub } from "../../db/forHub.js";`)).toHaveLength(1);
     expect(await errors("src/modules/civic.vote/x.ts", `import { readAll } from "../../db/readAll.js";`)).toHaveLength(1);
-    expect(await errors("src/shared/polis_deliberation/x.ts", `import { forHub } from "../../db/forHub.js";`)).toHaveLength(1);
   });
 
   it("lets a module import types and error classes from it", async () => {

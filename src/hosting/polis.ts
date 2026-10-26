@@ -1,6 +1,6 @@
 // The `deliberation` adapter's Polis implementations (hosting layer,
 // ADR-012): what is ours about reaching Polis. The plugin's own adapter
-// (src/shared/polis_deliberation/adapter/) speaks Polis's API.
+// (packages/civic.polis_deliberation/adapter/) speaks Polis's API.
 //
 //   polisService      the hub setting's address (or the default), the
 //                     POLIS_AUTH_TOKEN service token, the SSRF-guarded fetch

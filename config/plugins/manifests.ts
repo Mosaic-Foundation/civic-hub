@@ -8,9 +8,10 @@ import m3 from "../../packages/civic.vote_results/manifest.js";
 import m4 from "../../packages/civic.brief/manifest.js";
 import m5 from "../../packages/civic.announcement/manifest.js";
 import m6 from "../../packages/civic.meeting_summary/manifest.js";
-import m7 from "../../packages/civic.wordcloud/manifest.js";
+import m7 from "../../packages/civic.polis_deliberation/manifest.js";
+import m8 from "../../packages/civic.wordcloud/manifest.js";
 
-export const PACKAGE_MANIFESTS = [m0, m1, m2, m3, m4, m5, m6, m7] as const;
+export const PACKAGE_MANIFESTS = [m0, m1, m2, m3, m4, m5, m6, m7, m8] as const;
 
 /** Each configured package's directory and name, beside its manifest. */
 export const PACKAGE_ENTRIES = [
@@ -21,5 +22,6 @@ export const PACKAGE_ENTRIES = [
   { dir: "packages/civic.brief", name: "@civic-social/plugin-brief", manifest: m4 },
   { dir: "packages/civic.announcement", name: "@civic-social/plugin-announcement", manifest: m5 },
   { dir: "packages/civic.meeting_summary", name: "@civic-social/plugin-meeting-summary", manifest: m6 },
-  { dir: "packages/civic.wordcloud", name: "@civic-social/plugin-wordcloud", manifest: m7 },
+  { dir: "packages/civic.polis_deliberation", name: "@civic-social/plugin-conversation", manifest: m7 },
+  { dir: "packages/civic.wordcloud", name: "@civic-social/plugin-wordcloud", manifest: m8 },
 ] as const;

@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { buildEvent } from "../../src/events/eventEmitter.js";
-import { DescriptorViolationError, HOST_EVENT_TYPES } from "../../src/processes/descriptor.js";
+import { DescriptorViolationError, HOST_EVENT_TYPES, registerDescriptor } from "../../src/processes/descriptor.js";
 import { getManifests } from "../../src/processes/registry.js";
 import { withHubScope } from "../../src/config/hubContext.js";
 import { GrantRefusedError } from "../../src/plugins/grant.js";
@@ -29,10 +29,18 @@ function build(eventType: string, processType: string) {
 }
 
 describe("the emission path's declared-type check", () => {
-  it("refuses an event a type does not declare, naming the type and the event", async () => {
+  it("refuses a package's event its grant does not name, before anything is stored", async () => {
     await expect(build("civic.process.vote_submitted", "civic.wordcloud")).rejects.toThrow(GrantRefusedError);
-    await expect(build("civic.project.created", "civic.polis_deliberation")).rejects.toThrow(
-      "civic.polis_deliberation emitted civic.project.created, which its descriptor does not declare",
+    await expect(build("civic.project.created", "civic.polis_deliberation")).rejects.toThrow(GrantRefusedError);
+  });
+
+  it("refuses an event a type no package provides does not declare, naming the type and the event", async () => {
+    // Every shipped type is a package now; a descriptor registered on its own
+    // still has the descriptor check (plugin architecture §5a, Stage 1).
+    const vote = getManifests().find((m) => m.descriptor.type === "civic.vote")!.descriptor;
+    registerDescriptor({ ...vote, type: "civic.emission_check", emits: ["civic.process.started"] });
+    await expect(build("civic.project.created", "civic.emission_check")).rejects.toThrow(
+      "civic.emission_check emitted civic.project.created, which its descriptor does not declare",
     );
   });
 

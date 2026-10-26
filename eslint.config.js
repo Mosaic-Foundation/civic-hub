@@ -218,10 +218,11 @@ const hostingBoundaryRule = {
 };
 
 // The database convention (Architecture 5, ADR-012):
-//   - A module (src/modules/civic.*, src/shared/polis_deliberation/: the
-//     plugins) never imports src/db/. It declares a store in its own store.ts
-//     and the host binds it (src/stores/). Types and error classes may still
-//     be imported from src/db/.
+//   - A module (src/modules/civic.*) never imports src/db/. It declares a
+//     store in its own store.ts and the host binds it (src/stores/). Types and
+//     error classes may still be imported from src/db/. A plugin package
+//     (packages/) reaches the database only through its host's db(), its
+//     granted tables only (civic/package-boundary, ADR-014).
 //   - Only processService owns the `processes` table: `.from("processes")`
 //     appears in src/services/processService.ts and processRows.ts (and the
 //     data layer, the console's export reader, scripts and tests), nowhere
@@ -248,7 +249,7 @@ const dbConventionRule = {
   create(context) {
     const file = context.filename;
     const rel = relative(ROOT, file).split("\\").join("/");
-    const isPlugin = rel.startsWith("src/modules/") || rel.startsWith("src/shared/polis_deliberation/");
+    const isPlugin = rel.startsWith("src/modules/");
     const pluginChecked = isPlugin;
     const isController = rel.startsWith("src/controllers/");
     const tableChecked = (rel.startsWith("src/") || rel.startsWith("packages/")) && !PROCESS_TABLE_OWNERS.some((p) => rel.startsWith(p));
@@ -410,7 +411,8 @@ const authzSeamRule = {
 // that no longer reaches a package).
 export const PACKAGE_REACH_NOT_YET = {
   "src/services/sampleSeed.ts": "seeds every type's sample content by calling its service; each package should contribute its own samples",
-  "src/processes/deliberationBoot.ts": "types the brief a conversation hands back (BriefContent, BriefSection) from the brief package",
+  "src/debug/fakePolis.ts": "the deliberation adapter's development fake answers in the conversation package's Polis types (its state, its adapter's shapes)",
+  "src/debug/seedData.ts": "the debug seed writes a sample conversation's state in the conversation package's type",
   "src/processes/spawnBrief.ts": "makes the pending brief when a process closes: its state type (BriefProcessState) and its aggregation event (emitBriefAggregationCompleted)",
   "src/services/briefRegenerate.ts": "regenerates a brief: builds its state (createBriefState), emits its updated event and types its content",
   "src/services/briefResponses.ts": "stores the brief's responses and types them (BriefResponseRecord)",

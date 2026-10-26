@@ -16,7 +16,7 @@ import { youtubeTranscripts } from "../../src/hosting/youtube.js";
 import { sentryErrors } from "../../src/hosting/sentry.js";
 import { healthchecksHeartbeat, heartbeatUrl } from "../../src/hosting/healthchecks.js";
 import { polisService } from "../../src/hosting/polis.js";
-import { createPolisAdapter } from "../../src/shared/polis_deliberation/adapter/polisAdapter.js";
+import { createPolisAdapter } from "../../packages/civic.polis_deliberation/adapter/polisAdapter.js";
 
 const has = (name: string) => Boolean(process.env[name]?.trim());
 const visible = process.env.CIVIC_CONTRACT_TESTS === "1";

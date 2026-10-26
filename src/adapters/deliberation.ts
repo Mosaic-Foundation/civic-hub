@@ -1,6 +1,6 @@
 // The `deliberation` adapter (ADR-012): how the conversation plugin reaches
 // its external service (Polis, a Tier 3 plugin). The plugin's own
-// anti-corruption adapter (src/shared/polis_deliberation/adapter/) speaks the
+// anti-corruption adapter (packages/civic.polis_deliberation/adapter/) speaks the
 // service's API; this supplies what is ours: the address, the service token,
 // the fetch every call goes through, and (for the fake) a summarizer that
 // needs no model. Hosting: src/hosting/polis.ts, which also supplies the fake

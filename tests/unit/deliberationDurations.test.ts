@@ -4,8 +4,8 @@
 // adapter's createDeliberation.
 
 import { describe, it, expect } from "vitest";
-import { createPolisDeliberationHandler } from "../../src/shared/polis_deliberation/handler.js";
-import type { PolisDeliberationState } from "../../src/shared/polis_deliberation/types.js";
+import { createPolisDeliberationHandler } from "../../packages/civic.polis_deliberation/handler.js";
+import type { PolisDeliberationState } from "../../packages/civic.polis_deliberation/types.js";
 
 function makeHandler(created: Array<Record<string, unknown>> = []) {
   return createPolisDeliberationHandler({

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildSystemPrompt } from "../../src/modules/civic.assistant/systemPrompt";
 import { proposalAssistantConfig } from "../../packages/civic.proposals/assistantConfig";
-import { deliberationAssistantConfig } from "../../src/processes/deliberationAssistantConfig";
+import { deliberationAssistantConfig } from "../../packages/civic.polis_deliberation/assistantConfig";
 import { voteAssistantConfig } from "../../packages/civic.vote/assistantConfig";
 import { projectAssistantConfig } from "../../packages/civic.projects/assistantConfig";
 

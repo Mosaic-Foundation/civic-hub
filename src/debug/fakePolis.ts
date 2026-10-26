@@ -2,7 +2,7 @@
 // (CIVIC_POLIS_FAKE=on, refused in production: src/config/devFlags.ts).
 //
 // It stands where Polis's HTTP API would, behind the hub's REAL adapter
-// (src/shared/polis_deliberation/adapter/polisAdapter.ts), which is handed
+// (packages/civic.polis_deliberation/adapter/polisAdapter.ts), which is handed
 // fakePolisFetch in place of the network. So the adapter's own request
 // building, auth header, timeout, retry and error handling all run: the
 // conformance suite tests the hub's side of the Tier 3 contract (plugin
@@ -20,8 +20,8 @@
 // participants and statements and one consensus statement per voted one.
 
 import { createHash } from "node:crypto";
-import type { DeliberationSummary } from "../shared/polis_deliberation/types.js";
-import type { PolisAdapter } from "../shared/polis_deliberation/adapter/types.js";
+import type { DeliberationSummary } from "../../packages/civic.polis_deliberation/types.js";
+import type { PolisAdapter } from "../../packages/civic.polis_deliberation/adapter/types.js";
 
 export const FAKE_POLIS_BASE_URL = "https://polis.fake.invalid";
 /** What the adapter is given in fake mode: short, so outages test quickly. */

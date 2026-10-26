@@ -13,8 +13,8 @@
 //   cd civic-hub && POLIS_URL=https://polis.civic.social POLIS_AUTH_TOKEN=… \
 //     npx tsx scripts/compare-fake-polis.ts --create-on-real
 
-import { createPolisAdapter } from "../src/shared/polis_deliberation/adapter/polisAdapter.js";
-import type { PolisAdapterConfig } from "../src/shared/polis_deliberation/adapter/types.js";
+import { createPolisAdapter } from "../packages/civic.polis_deliberation/adapter/polisAdapter.js";
+import type { PolisAdapterConfig } from "../packages/civic.polis_deliberation/adapter/types.js";
 import { FAKE_POLIS_BASE_URL, fakePolisFetch } from "../src/debug/fakePolis.js";
 
 type Fetch = NonNullable<PolisAdapterConfig["fetch"]>;

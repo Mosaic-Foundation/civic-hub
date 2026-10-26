@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { requireResident, requireAdmin } from "../middleware/auth.js";
-import * as ctrl from "../controllers/deliberationController.js";
+import { requireResident, requireAdmin } from "../../src/sdk/index.js";
+import * as ctrl from "./controller.js";
 
 const router = Router();
 

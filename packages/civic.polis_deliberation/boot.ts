@@ -1,33 +1,36 @@
-import { createPolisDeliberationHandler } from "../shared/polis_deliberation/handler.js";
-import { createPolisAdapter } from "../shared/polis_deliberation/adapter/polisAdapter.js";
-import { createPolisSummarizer } from "../shared/polis_deliberation/summarization/polisSummarizer.js";
-import { emitEvent } from "../events/eventEmitter.js";
-import { describeSubmissionFields } from "../shared/submissionPreview.js";
-import { setDraftStatus } from "../modules/civic.drafts/index.js";
-import { deliberationDraftKind } from "./draftKinds.js";
-import { generateId } from "../utils/id.js";
-import { forHub } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
-import { aiComplete, aiDefaultModel } from "../adapters/ai.js";
-import { adapters } from "../adapters/index.js";
-import { closeThroughDispatcher, getActionDispatcher } from "./registry.js";
-import { afterActionCommits } from "../services/actionScope.js";
-import { UnavailableError } from "../errors/index.js";
-import { isPastDeadline } from "../utils/deadline.js";
-import type { Process } from "../models/process.js";
-import type { ProcessHandler, RegeneratedBrief } from "./types.js";
-import type { PolisHostInterface } from "../shared/polis_deliberation/hostInterface.js";
-import type { PolisAdapter } from "../shared/polis_deliberation/adapter/types.js";
-import type { PolisDeliberationState } from "../shared/polis_deliberation/types.js";
-import type { BriefContent, BriefSection } from "../../packages/civic.brief/api.js";
-import { defaultJurisdiction } from "../config/hub.js";
-import { str } from "../utils/readField.js";
-import type { FeedProcessMeta } from "./contracts/feedMeta.js";
-import { deliberationAssistantConfig } from "./deliberationAssistantConfig.js";
-import { getSettingSync } from "../services/hubSettings.js";
-import { KEYS } from "../models/hubSettings.js";
-import { fakeSummarize } from "../debug/fakePolis.js";
-import { POLIS_DELIBERATION_MANIFEST } from "../shared/polis_deliberation/manifest.js";
+import { createPolisDeliberationHandler } from "./handler.js";
+import { createPolisAdapter } from "./adapter/polisAdapter.js";
+import { createPolisSummarizer } from "./summarization/polisSummarizer.js";
+import { describeSubmissionFields } from "../../src/shared/submissionPreview.js";
+import { deliberationDraftKind } from "./draftKind.js";
+import {
+  emitEvent,
+  setDraftStatus,
+  generateId,
+  closeThroughDispatcher,
+  getActionDispatcher,
+  afterActionCommits,
+  UnavailableError,
+  isPastDeadline,
+  defaultJurisdiction,
+  str,
+  getSettingSync,
+  KEYS,
+  fakeSummarize,
+  type PluginHost,
+  type Process,
+  type ProcessHandler,
+  type RegeneratedBrief,
+  type BriefContent,
+  type BriefSection,
+  type FeedProcessMeta,
+} from "../../src/sdk/index.js";
+import type { PolisHostInterface } from "./hostInterface.js";
+import type { PolisAdapter } from "./adapter/types.js";
+import type { PolisDeliberationState } from "./types.js";
+import { deliberationAssistantConfig } from "./assistantConfig.js";
+import { POLIS_DELIBERATION_MANIFEST } from "./manifest.js";
+import { conversationHost } from "./host.js";
 
 let _adapter: PolisAdapter | null = null;
 
@@ -68,7 +71,7 @@ const ADAPTER_METHODS = [
   "getStatements",
 ] as const satisfies ReadonlyArray<keyof PolisAdapter>;
 
-export function bootDeliberation(): ProcessHandler {
+export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
   // The deliberation adapter (ADR-012) says where Polis is, with which token
   // and fetch; read per call, so the hosting layer may install it after this
   // boot. The fake (CIVIC_FAKE_ADAPTERS or CIVIC_POLIS_FAKE, never
@@ -76,7 +79,7 @@ export function bootDeliberation(): ProcessHandler {
   // timeouts, and summaries made without a language model.
   // The address is read per call, for the hub in scope: the hub setting, or
   // the default (the cleanup slice, Audit 3's Polis findings).
-  const service = () => adapters().deliberation;
+  const service = () => pluginHost.adapter("deliberation");
   const polisBaseUrl = (): string => service().baseUrl(getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL));
 
   // One real adapter per Polis address and service, made on first use; the
@@ -118,8 +121,9 @@ export function bootDeliberation(): ProcessHandler {
       user: string;
       maxTokens: number;
     }): Promise<string> {
-      const result = await aiComplete("job.deliberation_summary", {
-        model: aiDefaultModel(),
+      const ai = pluginHost.adapter("ai");
+      const result = await ai.complete("job.deliberation_summary", {
+        model: ai.defaultModel(),
         system: params.system,
         userText: params.user,
         maxTokens: params.maxTokens,
@@ -390,7 +394,8 @@ export function bootDeliberation(): ProcessHandler {
 
 /** Whether this person has put a statement into this conversation. */
 async function hasSubmittedStatement(processId: string, userId: string): Promise<boolean> {
-  const row = await forHub(currentHubId())
+  const row = await conversationHost.get()
+    .db()
     .from("deliberation_submissions")
     .select<{ user_id: string }>("user_id")
     .eq("process_id", processId)

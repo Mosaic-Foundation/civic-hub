@@ -1,10 +1,10 @@
 // civic.polis_deliberation: a structured group conversation
 // (manifest: src/shared/polis_deliberation/manifest.ts). The conversation plugin.
 
-import { DeliberationDetail, Deliberations, NewConversation } from "../lazyPages";
-import { getProcessState } from "../services/api";
-import { UrlField } from "../pages/settings/pluginFields";
-import type { FeedKindUi, ProcessUi } from "./types";
+import { DeliberationDetail, Deliberations, NewConversation } from "../../ui/src/lazyPages";
+import { getProcessState } from "../../ui/src/services/api";
+import { UrlField } from "../../ui/src/pages/settings/pluginFields";
+import type { FeedKindUi, ProcessUi } from "../../ui/src/processes/types";
 
 // Polis conversations expose their subject as `topic`/`framing` in
 // the read model, not `title`/`description` — map them so the feed
@@ -19,7 +19,7 @@ const conversationMeta: FeedKindUi["meta"] = (id) =>
     };
   });
 
-export const conversationUi: ProcessUi = {
+const conversationUi: ProcessUi = {
   type: "civic.polis_deliberation",
   routes: [
     { path: "/deliberations", element: <Deliberations /> },
@@ -52,3 +52,5 @@ export const conversationUi: ProcessUi = {
     />
   ),
 };
+
+export default conversationUi;

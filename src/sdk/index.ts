@@ -27,7 +27,7 @@ export {
 
 // --- The process contract ------------------------------------------------------------
 export type { Process, ProcessAction, ProcessStatus } from "../models/process.js";
-export type { ProcessHandler } from "../processes/types.js";
+export type { ProcessHandler, RegeneratedBrief } from "../processes/types.js";
 export type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 export { storeSlot, type StoreSlot } from "../processes/storeSlot.js";
 export type { GrantedDb, PluginAdapters, PluginHost, PluginPackage, PluginServer, PluginMount } from "../plugins/package.js";
@@ -47,6 +47,7 @@ export {
   requireOfficial,
   resolveCallerIsAdmin,
   requireBoardOrAdmin,
+  requireAdmin,
 } from "../middleware/auth.js";
 export { KEYS } from "../models/hubSettings.js";
 
@@ -125,7 +126,7 @@ export {
 export { currentHubId } from "../config/hubContext.js";
 
 // --- Acting on a process ---------------------------------------------------------------
-export { closeThroughDispatcher } from "../processes/serviceSlots.js";
+export { closeThroughDispatcher, getActionDispatcher } from "../processes/serviceSlots.js";
 export { afterActionCommits } from "../services/actionScope.js";
 export { isPastDeadline } from "../utils/deadline.js";
 export { AlreadyVotedError } from "../db/atomic.js";
@@ -215,3 +216,29 @@ export { resolveTimeZone } from "../utils/hubTime.js";
 
 // --- Types of the adapters' calls (src/adapters/ai.ts) -----------------------------------
 export type { AiSingleTurnInput } from "../adapters/ai.js";
+
+// --- The conversation's (packages/civic.polis_deliberation/) -------------------------------
+// Acting on a process through the hub's one action path, and reading one as closed.
+export { executeAction, readsAsClosed } from "../services/processService.js";
+// A registered type's handler (the conversation list summarizes through its own).
+export { getProcessHandler } from "../processes/registry.js";
+// The authorization seam's yes-or-no questions (ADR-011): a package asks, never decides.
+export { can } from "../authz/canActor.js";
+export { getActor } from "../middleware/auth.js";
+// The hub's own moderation of what residents write: the Code of Conduct check
+// (the hub's, run on a statement before it reaches Polis) and its refusal.
+export { checkTextAgainstCoC, getHubConfig } from "../modules/civic.assistant/index.js";
+export { AiLimitError } from "../services/aiBudget.js";
+// A creator's submission into the hub's review flow, and its mailbox.
+export { submitAsCreator, reviewMailbox } from "../modules/civic.review/index.js";
+export { personFallbackName } from "../services/creatorDisplay.js";
+// Development only: the seeded sample conversations' stand-in Polis answers,
+// and the fake deliberation adapter's summary (made without a model).
+export {
+  isSeedConversation,
+  getMockClusters,
+  getMockNextStatement,
+  advanceMockStatement,
+  addMockStatement,
+} from "../debug/seedDeliberationMocks.js";
+export { fakeSummarize } from "../debug/fakePolis.js";

@@ -1,7 +1,7 @@
 // Seed data scenarios — used by debug/seed endpoint and test scripts.
 // NOT loaded at startup. Server starts with zero processes.
 
-import type { PolisDeliberationState, DeliberationSummary } from "../shared/polis_deliberation/types.js";
+import type { PolisDeliberationState, DeliberationSummary } from "../../packages/civic.polis_deliberation/types.js";
 
 // --- Deliberation seed data (bypasses Polis API) -------------------------
 

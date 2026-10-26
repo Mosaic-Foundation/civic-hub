@@ -16,7 +16,7 @@ import {
 } from "../../src/modules/civic.assistant/service";
 import type { CallClaudeMultiTurnFn } from "../../src/modules/civic.assistant/service";
 import { proposalAssistantConfig } from "../../packages/civic.proposals/assistantConfig";
-import { deliberationAssistantConfig } from "../../src/processes/deliberationAssistantConfig";
+import { deliberationAssistantConfig } from "../../packages/civic.polis_deliberation/assistantConfig";
 
 const baseInput = {
   hub_config: { hub_name: "Test Hub", community_description: "a test community", code_of_conduct: "Be civil." },

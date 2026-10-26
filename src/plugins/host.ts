@@ -6,6 +6,7 @@ import { forHub, type TableName } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { adapters } from "../adapters/index.js";
 import { aiComplete, aiConfigured, aiDefaultModel } from "../adapters/ai.js";
+import { admitAiCall } from "../services/aiBudget.js";
 import { sendEmail as sendMessage } from "../utils/email.js";
 import { sendEmail as deliverEmail } from "../services/mailer.js";
 import { notifyCronOutcome } from "../services/cronAlerts.js";
@@ -26,7 +27,7 @@ export function grantedDb(packageName: string, tables: readonly string[]): Grant
 }
 
 const ADAPTER_FACADES: { [K in GrantableAdapter]: () => PluginAdapters[K] } = {
-  ai: () => ({ complete: aiComplete, configured: aiConfigured, defaultModel: aiDefaultModel }),
+  ai: () => ({ complete: aiComplete, configured: aiConfigured, defaultModel: aiDefaultModel, admit: admitAiCall }),
   mail: () => ({ send: sendMessage, deliver: deliverEmail, adminAddresses: getAdminEmailsSync, notifyJobOutcome: notifyCronOutcome }),
   web: () => ({ fetchHtml, fetchJson, fetchPdf, fetchXml }),
   // Read when asked, so a test or the hosting layer installing an adapter later is seen.
