@@ -8,16 +8,6 @@ import { Router } from "express";
 import { handleAdminQueueCounts, handleMarkAdminQueueSeen } from "../controllers/adminQueueController.js";
 import { handleAdminListEdits } from "../controllers/editNotificationController.js";
 import {
-  handleAdminGetMeetingSummary,
-  handleAdminListMeetingSummaries,
-  handleAcceptMeetingSummaryRevision,
-  handleApproveMeetingSummary,
-  handleDiscardMeetingSummaryRevision,
-  handleBatchApproveMeetingSummaries,
-  handleBatchDeleteMeetingSummaries,
-  handlePatchMeetingSummary,
-} from "../controllers/meetingSummaryController.js";
-import {
   handleGetSettings,
   handlePatchSettings,
 } from "../controllers/adminSettingsController.js";
@@ -78,31 +68,12 @@ router.use(requireAdmin);
 // Plugin-specific admin surfaces answer 404 on a hub with the plugin off
 // (src/middleware/pluginGate.ts). The shared queues — reviews, archived,
 // edits, moderation of comments — belong to no one plugin and stay.
-router.use("/meeting-summaries", requirePlugin("meeting_summary"));
 router.use("/feedback", requirePlugin("feedback"));
 
 // The plugin packages' admin routes (ADR-014), each behind its plugin's
 // switch and the loader's verdict, after the admin check above.
 mountPackageRoutes(router, "adminRoutes");
 
-
-// Meeting Summaries (batch routes before /:id to avoid Express treating them as an id)
-router.post("/meeting-summaries/batch-approve", handleBatchApproveMeetingSummaries);
-router.post("/meeting-summaries/batch-delete", handleBatchDeleteMeetingSummaries);
-router.get("/meeting-summaries", handleAdminListMeetingSummaries);
-router.get("/meeting-summaries/:id", handleAdminGetMeetingSummary);
-router.patch("/meeting-summaries/:id", handlePatchMeetingSummary);
-router.post("/meeting-summaries/:id/approve", handleApproveMeetingSummary);
-// Revision review — a regenerated summary waiting beside a published one.
-// Neither route can take a page offline: the live version keeps serving.
-router.post(
-  "/meeting-summaries/:id/revision/accept",
-  handleAcceptMeetingSummaryRevision,
-);
-router.post(
-  "/meeting-summaries/:id/revision/discard",
-  handleDiscardMeetingSummaryRevision,
-);
 
 // Process reviews (collaborative admin review before publication)
 router.get("/reviews", handleAdminListReviews);

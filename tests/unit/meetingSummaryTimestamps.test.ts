@@ -7,7 +7,7 @@
 // and the pipeline quietly fell back to the agenda: a summary with a video
 // link and not one timestamp, which nothing flagged and nothing revisited.
 //
-// The rules pinned here (src/modules/civic.meeting_summary/readiness.ts):
+// The rules pinned here (packages/civic.meeting_summary/readiness.ts):
 //   - a summary is written only from a record: minutes, or a timed transcript;
 //   - a listed video without a usable timed transcript means WAIT, not "skip
 //     the transcript";
@@ -16,14 +16,14 @@
 //   - a flagged summary is never published without an admin confirming.
 
 import { describe, it, expect, vi } from "vitest";
-import { summarizeMeeting } from "../../src/modules/civic.meeting_summary/pipeline.js";
+import { summarizeMeeting } from "../../packages/civic.meeting_summary/pipeline.js";
 import {
   FLAG_MESSAGES,
   isMeetingNotReady,
   isTimedTranscript,
   meetingHasHappened,
   summaryPredatesMeeting,
-} from "../../src/modules/civic.meeting_summary/readiness.js";
+} from "../../packages/civic.meeting_summary/readiness.js";
 import {
   acceptRevision,
   approveMeetingSummary,
@@ -31,13 +31,13 @@ import {
   editMeetingSummary,
   effectiveQualityFlag,
   FlaggedSummaryError,
-} from "../../src/modules/civic.meeting_summary/service.js";
+} from "../../packages/civic.meeting_summary/service.js";
 import type {
   MeetingEntry,
   MeetingSummaryConfig,
   MeetingSummaryProcessState,
   SummaryBlock,
-} from "../../src/modules/civic.meeting_summary/models.js";
+} from "../../packages/civic.meeting_summary/models.js";
 
 const cfg: MeetingSummaryConfig = {
   source_url: "https://county.example/agendas-minutes",

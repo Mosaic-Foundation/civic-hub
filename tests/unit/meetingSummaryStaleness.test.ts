@@ -15,7 +15,7 @@ import { describe, it, expect } from "vitest";
 import {
   meetingHasHappened,
   summaryPredatesMeeting,
-} from "../../src/modules/civic.meeting_summary/readiness.js";
+} from "../../packages/civic.meeting_summary/readiness.js";
 
 /** The creation-loop guard. */
 function shouldDefer(meeting_date: string, today: string): boolean {

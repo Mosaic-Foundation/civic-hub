@@ -267,7 +267,7 @@ export interface FetchPdfFn {
 }
 
 /** A transcript line: the `video` adapter's (src/adapters/video.ts). */
-import type { TranscriptSegment } from "../../adapters/video.js";
+import { type TranscriptSegment } from "../../src/sdk/index.js";
 export type { TranscriptSegment };
 
 export interface FetchYouTubeTranscriptFn {

@@ -30,7 +30,6 @@ import authRoutes from "./routes/authRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import linkPreviewRoutes from "./routes/linkPreviewRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
-import meetingSummaryRoutes from "./routes/meetingSummaryRoutes.js";
 import { jobRouter } from "./routes/jobRoutes.js";
 import { JOBS, internalPath } from "./jobs/registry.js";
 import deliberationRoutes from "./routes/deliberationRoutes.js";
@@ -223,10 +222,6 @@ app.use("/waitlist", waitlistRoutes);
 
 // Members and "Share this hub" (members and invites slice)
 app.use("/members", memberRoutes);
-
-// Meeting summaries (Slice 6):
-//   /meeting-summary/:id    — public read of published summaries
-app.use("/meeting-summary", requirePlugin("meeting_summary"), meetingSummaryRoutes);
 
 // Scheduled jobs: every /internal/*/run route comes from one list,
 // src/jobs/registry.ts, which vercel.json's "crons" is checked against. Each

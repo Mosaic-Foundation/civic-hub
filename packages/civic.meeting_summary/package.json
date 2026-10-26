@@ -1,0 +1,11 @@
+{
+  "name": "@civic-social/plugin-meeting-summary",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Meeting summaries: plain-language summaries of public meetings, drafted for admin review. A Civic Hub plugin package (docs/PLUGIN-PACKAGE.md).",
+  "peerDependencies": {
+    "cheerio": "^1.2.0",
+    "express": "^4.22.3"
+  }
+}

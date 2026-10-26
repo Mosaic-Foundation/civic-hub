@@ -78,8 +78,8 @@ const ENTRY = {
   source_id: "wix:2017Agenda:2026-09-22:regular-meeting",
 };
 
-vi.mock("../../src/modules/civic.meeting_summary/index.js", async (orig) => ({
-  ...(await orig<typeof import("../../src/modules/civic.meeting_summary/index.js")>()),
+vi.mock("../../packages/civic.meeting_summary/api.js", async (orig) => ({
+  ...(await orig<typeof import("../../packages/civic.meeting_summary/api.js")>()),
   discoverMeetings: async () => [ENTRY],
 }));
 

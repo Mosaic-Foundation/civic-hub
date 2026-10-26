@@ -36,7 +36,7 @@ import {
 import { getAllProcesses, getSampleProcessIds } from "../../services/processService.js";
 import { getManifest, publicationOf, typesPublishedThrough } from "../../processes/registry.js";
 import { listReviews } from "../civic.review/index.js";
-import { effectiveQualityFlag } from "../civic.meeting_summary/index.js";
+import { effectiveQualityFlag } from "../../../packages/civic.meeting_summary/api.js";
 import { sendEmail } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
 import { getSettingSync, hubDisplayNameSync, hubModeSync, isPluginEnabledSync } from "../../services/hubSettings.js";

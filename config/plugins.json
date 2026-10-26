@@ -6,6 +6,7 @@
     "packages/civic.vote_results",
     "packages/civic.brief",
     "packages/civic.announcement",
+    "packages/civic.meeting_summary",
     "packages/civic.wordcloud"
   ]
 }

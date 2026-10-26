@@ -4,19 +4,41 @@
 // Runs once per active hub, inside that hub's scope (src/jobs/runJob.ts), which
 // has already checked the cron credential and plugin.meeting_summary.enabled.
 // Every setting it reads is that hub's `plugin.meeting_summary.*` (see
-// src/modules/civic.meeting_summary/config.ts). Loads the hub's configured
-// MeetingSourceConnector, discovers meeting entries, summarizes new ones via
-// Claude and creates one summary process per entry; re-summarizes provisional
-// (agenda- or recording-sourced) summaries once better sources appear.
+// ./config.ts). Loads the hub's configured MeetingSourceConnector, discovers
+// meeting entries, summarizes new ones via Claude and creates one summary
+// process per entry; re-summarizes provisional (agenda- or recording-sourced)
+// summaries once better sources appear.
 // Per-meeting failures are isolated: one bad meeting does not abort the batch.
 // Returns a JobOutcome: 200 with the counts (or a skip reason), or 500 with an
 // error when the run could not start or aborted. Runs worth an admin's
 // attention are mailed to the hub's admins (src/services/cronAlerts.ts).
 // The admin review queue and the public read are the handlers in
-// meetingSummaryController.ts.
+// controller.ts.
 
-import { env } from "../config/env.js";
-import { emitEvent } from "../events/eventEmitter.js";
+import {
+  emitEvent,
+  createProcess,
+  getAllProcesses,
+  getArchivedProcesses,
+  saveProcessState,
+  fetchHtml,
+  fetchJson,
+  fetchPdf,
+  fetchXml,
+  findBrokenPublications,
+  type BrokenPublication,
+  notifyCronOutcome,
+  REVISION_NAG_DAYS,
+  type CronOutcome,
+  type FlaggedSummary,
+  type WaitingMeeting,
+  getSettingSync,
+  KEYS,
+  processJurisdiction,
+  type AiSingleTurnInput,
+  type JobOutcome,
+  type JobRunner,
+} from "../../src/sdk/index.js";
 import {
   approveMeetingSummary,
   effectiveQualityFlag,
@@ -45,35 +67,12 @@ import {
   type MeetingSourceType,
   type MeetingSummaryConfig,
   type MeetingSummaryProcessState,
-} from "../modules/civic.meeting_summary/index.js";
-import {
-  createProcess,
-  getAllProcesses,
-  getArchivedProcesses,
-  saveProcessState,
-} from "../services/processService.js";
-import { aiComplete, aiConfigured, aiDefaultModel, type AiSingleTurnInput } from "../adapters/ai.js";
-import { adapters } from "../adapters/index.js";
-import { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../utils/http.js";
+} from "./api.js";
+import { meetingSummaryHost } from "./host.js";
 /** The meeting summary's model calls, through the ai adapter's gate, as a job. */
-const callClaude = (input: AiSingleTurnInput) => aiComplete("job.meeting_summary", input);
+const callClaude = (input: AiSingleTurnInput) => meetingSummaryHost.get().adapter("ai").complete("job.meeting_summary", input);
 /** A recording's transcript, through the video adapter. */
-const fetchYouTubeTranscript = (url: string) => adapters().video.transcript(url);
-import {
-  findBrokenPublications,
-  type BrokenPublication,
-} from "../services/feedHealth.js";
-import {
-  notifyCronOutcome,
-  REVISION_NAG_DAYS,
-  type CronOutcome,
-  type FlaggedSummary,
-  type WaitingMeeting,
-} from "../services/cronAlerts.js";
-import { getSettingSync } from "../services/hubSettings.js";
-import { KEYS } from "../models/hubSettings.js";
-import { processJurisdiction } from "../config/hub.js";
-import type { JobOutcome, JobRunner } from "./types.js";
+const fetchYouTubeTranscript = (url: string) => meetingSummaryHost.get().adapter("video").transcript(url);
 
 const CRON_ACTOR = "system:meeting-summary-cron";
 const DEFAULT_MAX_PER_RUN = 3;
@@ -113,7 +112,7 @@ function meetingKey(date: string, title: string): string {
 }
 
 // todayIso, meetingHasHappened and summaryPredatesMeeting live in the module
-// (src/modules/civic.meeting_summary/readiness.ts) since 2026-09-29, so the
+// (./readiness.ts) since 2026-09-29, so the
 // tests exercise the real rules rather than copies of them.
 
 /**
@@ -148,7 +147,7 @@ export function summaryState(
 }
 
 function modelName(): string {
-  return aiDefaultModel();
+  return meetingSummaryHost.get().adapter("ai").defaultModel();
 }
 
 function autoPublish(): boolean {
@@ -268,7 +267,7 @@ export const meetingSummaryJob: JobRunner = async () => {
     return await failRun(500, resolved.reason, { connector_id: resolved.connectorId });
   }
 
-  if (!aiConfigured()) {
+  if (!meetingSummaryHost.get().adapter("ai").configured()) {
     return await failRun(
       500,
       "ANTHROPIC_API_KEY must be set. Create a key at https://console.anthropic.com and add it to Vercel env vars.",

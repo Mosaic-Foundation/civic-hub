@@ -5,9 +5,8 @@
 // round-tripping through engineering. Exported as string builders so
 // evals / tests can diff them.
 
-import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
-import { getSettingSync } from "../../services/hubSettings.js";
-import { KEYS } from "../../models/hubSettings.js";
+import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
+import { getSettingSync, KEYS } from "../../src/sdk/index.js";
 
 /** The hub's word for the people who read its summaries ("residents", "neighbors", "members"). */
 function hubPeople(): string {

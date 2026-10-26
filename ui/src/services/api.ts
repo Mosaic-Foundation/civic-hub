@@ -1462,7 +1462,7 @@ export interface SummaryBlock {
 
 /**
  * Why a summary must not be published without an admin looking first —
- * today, missing video timestamps. Shape: src/modules/civic.meeting_summary/
+ * today, missing video timestamps. Shape: packages/civic.meeting_summary/
  * readiness.ts.
  */
 export interface SummaryQualityFlag {

@@ -5,9 +5,9 @@
 
 import { describe, expect, it } from "vitest";
 import { DEFAULT_WIX_FIELDS, parseWixFields } from "../../src/shared/wixFields.js";
-import { rowsToMeetings } from "../../src/modules/civic.meeting_summary/connectors/wixCms.js";
-import { canonicalYouTubeUrl } from "../../src/modules/civic.meeting_summary/identity.js";
-import { daysSetting, RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS, todayIso } from "../../src/modules/civic.meeting_summary/readiness.js";
+import { rowsToMeetings } from "../../packages/civic.meeting_summary/connectors/wixCms.js";
+import { canonicalYouTubeUrl } from "../../packages/civic.meeting_summary/identity.js";
+import { daysSetting, RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS, todayIso } from "../../packages/civic.meeting_summary/readiness.js";
 import { normalizeValue } from "../../src/models/hubSettingsWrite.js";
 import { fieldSpec } from "../../src/shared/hubSettingsSections.js";
 import { describeJobRun } from "../../src/jobs/describe.js";

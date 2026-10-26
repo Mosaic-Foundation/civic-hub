@@ -1,6 +1,6 @@
 // The meeting-summary job's alert email to a hub's admins.
 //
-// When: after each run of the "meeting_summary" job (src/jobs/meetingSummary.ts),
+// When: after each run of the "meeting_summary" job (packages/civic.meeting_summary/job.ts),
 // and when a run aborts. Why: cronAlertReason names the reasons a run deserves
 // attention even when it exited cleanly (a summary failed, one is held for
 // review with a quality flag, a meeting has waited past its grace period, a
@@ -15,7 +15,7 @@ import { type BrokenPublication } from "./feedHealth.js";
 import { brokenLinkProblem } from "../jobs/describe.js";
 import { getAdminEmailsSync, hubDisplayNameSync } from "./hubSettings.js";
 import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
-import { RECORD_GRACE_DAYS } from "../modules/civic.meeting_summary/index.js";
+import { RECORD_GRACE_DAYS } from "../../packages/civic.meeting_summary/api.js";
 
 /**
  * How long a revision may wait for review before the cron mentions it.

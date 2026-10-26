@@ -18,7 +18,7 @@ import {
   parseMeetingDateFromTitle,
   channelFeedUrl,
   type FeedVideo,
-} from "../../src/modules/civic.meeting_summary/connectors/youtubeChannel.js";
+} from "../../packages/civic.meeting_summary/connectors/youtubeChannel.js";
 
 const CHANNEL = "UCxyzO8F2UfiN1NVOax2s27Q";
 

@@ -4,7 +4,7 @@
 //   npx tsx --env-file=.env scripts/diagnoseMeetingSummary.ts --hub <slug> --summarize # + Claude
 //
 // It diagnoses ONE hub, reading that hub's plugin.meeting_summary.* settings
-// through the same resolver the cron uses (src/modules/civic.meeting_summary/
+// through the same resolver the cron uses (packages/civic.meeting_summary/
 // config.ts), so what it reports is what the cron would do for that hub.
 //
 // WHY THIS EXISTS
@@ -31,7 +31,7 @@ import {
   isValidChannelId,
   resolveMeetingSummaryConfig,
   type MeetingEntry,
-} from "../src/modules/civic.meeting_summary/index.js";
+} from "../packages/civic.meeting_summary/api.js";
 import { adapters } from "../src/adapters/index.js";
 import { aiDefaultModel, type AiSingleTurnInput } from "../src/adapters/ai.js";
 import { installHosting } from "../src/hosting/index.js";

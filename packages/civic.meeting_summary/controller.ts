@@ -10,12 +10,22 @@
 //     Public read of published summaries only.
 //
 // The job that creates the summaries is "meeting_summary",
-// src/jobs/meetingSummary.ts.
+// ./job.ts.
 
-import { ConflictError, NotFoundError, ValidationError } from "../errors/index.js";
-import { route } from "../http/route.js";
+import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+  route,
+  emitEvent,
+  archiveProcess,
+  getAllProcesses,
+  getProcess,
+  saveProcessState,
+  getAuthUser,
+  enrichCreator,
+} from "../../src/sdk/index.js";
 import { Request, Response } from "express";
-import { emitEvent } from "../events/eventEmitter.js";
 import {
   approveMeetingSummary,
   effectiveQualityFlag,
@@ -30,16 +40,8 @@ import {
   type MeetingSummaryPatch,
   type MeetingSummaryProcessState,
   type SummaryBlock,
-} from "../modules/civic.meeting_summary/index.js";
-import {
-  archiveProcess,
-  getAllProcesses,
-  getProcess,
-  saveProcessState,
-} from "../services/processService.js";
-import { getAuthUser } from "../middleware/auth.js";
-import { enrichCreator } from "../services/creatorDisplay.js";
-import { summaryState } from "../jobs/meetingSummary.js";
+} from "./api.js";
+import { summaryState } from "./job.js";
 
 function isApprovalStatus(s: string): s is MeetingSummaryApprovalStatus {
   return s === "pending" || s === "approved" || s === "published";

@@ -210,7 +210,7 @@ describe("describeJobRun — meeting source gone quiet", () => {
 
 describe("newestMeetingDate", () => {
   it("takes the newest valid date, ignoring blanks", async () => {
-    const { newestMeetingDate } = await import("../../src/modules/civic.meeting_summary/readiness.js");
+    const { newestMeetingDate } = await import("../../packages/civic.meeting_summary/readiness.js");
     expect(newestMeetingDate(["2026-08-01", null, "2026-09-22", "", undefined, "2026-09-01"])).toBe("2026-09-22");
     expect(newestMeetingDate([])).toBeNull();
   });

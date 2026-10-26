@@ -30,7 +30,7 @@ import {
   emitCreationEvents as emitMeetingSummaryCreationEvents,
   type MeetingSummaryProcessContext,
   type MeetingSummaryProcessState,
-} from "../modules/civic.meeting_summary/index.js";
+} from "../../packages/civic.meeting_summary/api.js";
 import type { Process } from "../models/process.js";
 import {
   FLOCK_CAMERA_VOTE,

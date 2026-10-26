@@ -19,8 +19,7 @@
 //
 // Pure functions only; the controller and the tests share them.
 
-import { ConflictError } from "../../errors/index.js";
-import { resolveTimeZone } from "../../utils/hubTime.js";
+import { ConflictError, resolveTimeZone } from "../../src/sdk/index.js";
 import type { SummaryBlock, TranscriptSegment } from "./models.js";
 
 /**

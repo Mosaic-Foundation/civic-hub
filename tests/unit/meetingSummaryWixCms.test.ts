@@ -12,7 +12,7 @@ import {
   parseWixMeetingDate,
   rowsToMeetings,
   type WixMeetingRow,
-} from "../../src/modules/civic.meeting_summary/connectors/wixCms.js";
+} from "../../packages/civic.meeting_summary/connectors/wixCms.js";
 
 const ORIGIN = "https://www.floydcova.gov";
 const OPTS = {

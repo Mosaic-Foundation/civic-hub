@@ -7,7 +7,7 @@ import {
   canonicalConnectorId,
   resolveMeetingSummaryConfig,
   sitePdfPattern,
-} from "../../src/modules/civic.meeting_summary/index.js";
+} from "../../packages/civic.meeting_summary/api.js";
 import {
   ATHENS_HUB,
   ATHENS_MEETINGS_URL,

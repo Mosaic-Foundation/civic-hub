@@ -5,7 +5,7 @@
 // callClaude implementations (see civic-hub/src/utils/anthropic,
 // youtube, http). Keeps the module portable and testable.
 
-import { ValidationError } from "../../errors/index.js";
+import { ValidationError } from "../../src/sdk/index.js";
 import type {
   CallClaudeFn,
   CreateMeetingSummaryInput,

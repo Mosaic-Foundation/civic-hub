@@ -10,7 +10,7 @@ import {
   documentFingerprint,
   sourceFingerprints,
   videoFingerprint,
-} from "../../src/modules/civic.meeting_summary/identity.js";
+} from "../../packages/civic.meeting_summary/identity.js";
 
 describe("documentFingerprint", () => {
   it("treats the same Wix file served from different hosts as one document", () => {

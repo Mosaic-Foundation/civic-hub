@@ -2,8 +2,8 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
-import { MEETING_CONNECTOR_OPTIONS } from "../../shared/connectorOptions.js";
+import { defineDescriptor, defineManifest } from "../../src/processes/manifest.js";
+import { MEETING_CONNECTOR_OPTIONS } from "../../src/shared/connectorOptions.js";
 
 /**
  * What a meeting summary is (src/processes/descriptor.ts). The meeting
@@ -117,3 +117,5 @@ export const MEETING_SUMMARY_MANIFEST = defineManifest({
     ui: { surfaces: ["process-page", "feed-card", "settings-panel"] },
   },
 });
+
+export default MEETING_SUMMARY_MANIFEST;

@@ -8,8 +8,7 @@
 // Kept apart from the 1,500-line controller so the rule can be tested without
 // a database or a model.
 
-import { getSettingSync, isPluginEnabledSync } from "../../services/hubSettings.js";
-import { KEYS } from "../../models/hubSettings.js";
+import { getSettingSync, isPluginEnabledSync, KEYS } from "../../src/sdk/index.js";
 import {
   CONNECTORS,
   PAGE_CONNECTOR_IDS,

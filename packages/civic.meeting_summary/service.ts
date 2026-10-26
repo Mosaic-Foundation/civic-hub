@@ -4,7 +4,7 @@
 // lives here beyond what the injected callbacks perform. The host hub is
 // responsible for persisting state changes after these functions return.
 
-import { ConflictError } from "../../errors/index.js";
+import { ConflictError } from "../../src/sdk/index.js";
 import type {
   CreateMeetingSummaryInput,
   MeetingSummaryPatch,

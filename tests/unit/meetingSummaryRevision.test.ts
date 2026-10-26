@@ -14,11 +14,11 @@ import {
   acceptRevision,
   discardRevision,
   stageRevision,
-} from "../../src/modules/civic.meeting_summary/service.js";
+} from "../../packages/civic.meeting_summary/service.js";
 import type {
   MeetingSummaryProcessState,
   MeetingSummaryRevision,
-} from "../../src/modules/civic.meeting_summary/models.js";
+} from "../../packages/civic.meeting_summary/models.js";
 
 function published(): MeetingSummaryProcessState {
   return {

@@ -13,7 +13,7 @@ import type { Hub } from "../../src/models/hub.js";
 import {
   blockCountGuidance,
   buildSummarizationPrompt,
-} from "../../src/modules/civic.meeting_summary/prompts.js";
+} from "../../packages/civic.meeting_summary/prompts.js";
 
 const base = {
   extraction_instructions: "",

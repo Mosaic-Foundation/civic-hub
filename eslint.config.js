@@ -399,7 +399,8 @@ const authzSeamRule = {
 // civic/package-boundary (plugin session 1, ADR-014). A plugin package
 // (packages/<dir>/) reaches the hub only through the plugin SDK
 // (src/sdk/index.ts), plain shared data (src/shared/), its own files, the
-// packages its index.ts `requires`, Node's built-ins and express. Its
+// packages its index.ts `requires`, Node's built-ins and the npm packages its
+// package.json lists as peerDependencies (express, and what it parses with). Its
 // manifest.ts reaches only src/shared/ and src/processes/manifest.ts, because
 // the UI reads it. In the other direction, engine code (src/) never imports a
 // package: the hub loads them from the configured list (config/plugins/).
@@ -414,6 +415,10 @@ export const PACKAGE_REACH_NOT_YET = {
   "src/services/briefResponses.ts": "stores the brief's responses and types them (BriefResponseRecord)",
   "src/debug/autoSeed.ts": "seeds an announcement's published state and events (emitPublicationEvents, AnnouncementProcessState) for the development scenarios",
   "src/jobs/newsSync.ts": "posts each news item as an announcement: its result-published event (emitAnnouncementResultPublished) and its state types",
+  "src/jobs/describe.ts": "describes a meeting summary run's problems with the module's readiness thresholds (RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS)",
+  "src/modules/civic.admin_digest/service.ts": "the admin digest sorts summaries waiting for review by their quality flag (effectiveQualityFlag)",
+  "src/modules/civic.news_sync/paraphrase.ts": "types its model call with the one the meeting summary pipeline defines (CallClaudeFn)",
+  "src/services/cronAlerts.ts": "words a meeting summary run's alert with its record grace period (RECORD_GRACE_DAYS)",
   "src/controllers/debugController.ts": "the development reset empties the proposals (clearProposals) along with the other modules' records",
   "src/controllers/inputController.ts": "checks that the proposal an input names exists (proposalExists) before it is accepted",
 };
@@ -425,6 +430,16 @@ const ENGINE_LIST_READERS = {
   "src/plugins/mountedState.ts": "config/plugins/manifests.ts",
   "src/plugins/grant.ts": "config/plugins/manifests.ts",
 };
+
+const peerDependenciesCache = new Map();
+/** The npm packages a package's package.json lists as peerDependencies. */
+function peerDependencies(pkgDir) {
+  if (peerDependenciesCache.has(pkgDir)) return peerDependenciesCache.get(pkgDir);
+  const pj = resolve(ROOT, pkgDir, "package.json");
+  const names = existsSync(pj) ? Object.keys(JSON.parse(readFileSync(pj, "utf8")).peerDependencies ?? {}) : [];
+  peerDependenciesCache.set(pkgDir, names);
+  return names;
+}
 
 const packageNamesCache = new Map();
 /** The directories (packages/<dir>) of the packages a package's index.ts requires, by name. */
@@ -466,8 +481,9 @@ const packageBoundaryRule = {
       if (typeof spec !== "string") return;
       if (inPackage) {
         if (!spec.startsWith(".")) {
-          if (isManifest || !(spec.startsWith("node:") || spec === "express")) {
-            context.report({ node, message: `"${spec}": a plugin package imports the hub through src/sdk/index.ts, and of other packages only node: built-ins and express (ADR-014).` });
+          const bare = spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0];
+          if (isManifest || !(spec.startsWith("node:") || peerDependencies(pkgDir).includes(bare))) {
+            context.report({ node, message: `"${spec}": a plugin package imports the hub through src/sdk/index.ts, and of other packages only node: built-ins and the peerDependencies its package.json lists (ADR-014).` });
           }
           return;
         }

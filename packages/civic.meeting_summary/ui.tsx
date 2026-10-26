@@ -1,8 +1,8 @@
 // civic.meeting_summary: a plain-language summary of a public meeting
-// (manifest: src/modules/civic.meeting_summary/manifest.ts).
+// (manifest: ./manifest.ts).
 
-import { AdminMeetingSummaries, MeetingSummary } from "../lazyPages";
-import { getMeetingSummary } from "../services/api";
+import { AdminMeetingSummaries, MeetingSummary } from "../../ui/src/lazyPages";
+import { getMeetingSummary } from "../../ui/src/services/api";
 import {
   BooleanField,
   ChoiceField,
@@ -11,9 +11,9 @@ import {
   TextAreaField,
   TextField,
   UrlField,
-} from "../pages/settings/pluginFields";
-import { formatCount, formatDuration, formatMeetingDate } from "./feedText";
-import type { ProcessUi } from "./types";
+} from "../../ui/src/pages/settings/pluginFields";
+import { formatCount, formatDuration, formatMeetingDate } from "../../ui/src/processes/feedText";
+import type { ProcessUi } from "../../ui/src/processes/types";
 
 const MEETING_CONNECTOR_LABELS: Record<string, string> = {
   auto: "Automatic (try each source below)",
@@ -22,7 +22,7 @@ const MEETING_CONNECTOR_LABELS: Record<string, string> = {
   "youtube-channel": "YouTube channel",
 };
 
-export const meetingSummaryUi: ProcessUi = {
+const meetingSummaryUi: ProcessUi = {
   type: "civic.meeting_summary",
   routes: [
     { path: "/admin/meeting-summaries", element: <AdminMeetingSummaries />, admin: true },
@@ -153,3 +153,5 @@ export const meetingSummaryUi: ProcessUi = {
     </>
   ),
 };
+
+export default meetingSummaryUi;

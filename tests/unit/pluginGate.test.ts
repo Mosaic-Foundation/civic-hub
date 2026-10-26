@@ -33,7 +33,7 @@ const {
   isProcessTypeEnabled,
 } = await import("../../src/services/pluginGate.js");
 const { voteDurationLimitsSync } = await import("../../src/services/hubSettings.js");
-const { CONNECTORS } = await import("../../src/modules/civic.meeting_summary/connectors/index.js");
+const { CONNECTORS } = await import("../../packages/civic.meeting_summary/connectors/index.js");
 const { NEWS_CONNECTORS } = await import("../../src/modules/civic.news_sync/connectors/index.js");
 
 const off = (id: string) => ({ [`plugin.${id}.enabled`]: "false" });

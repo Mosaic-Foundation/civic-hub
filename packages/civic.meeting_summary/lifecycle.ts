@@ -7,7 +7,7 @@
 // brief's documented deviation from Civic Process Spec §6.2 — "closed"
 // is skipped because there is no participation window.
 
-import { ConflictError } from "../../errors/index.js";
+import { ConflictError } from "../../src/sdk/index.js";
 import type {
   MeetingSummaryApprovalStatus,
   MeetingSummaryProcessState,

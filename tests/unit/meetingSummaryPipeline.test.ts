@@ -6,13 +6,13 @@
 // the new connector useless.
 
 import { describe, it, expect, vi } from "vitest";
-import { summarizeMeeting } from "../../src/modules/civic.meeting_summary/pipeline.js";
-import { MeetingNotReadyError } from "../../src/modules/civic.meeting_summary/readiness.js";
+import { summarizeMeeting } from "../../packages/civic.meeting_summary/pipeline.js";
+import { MeetingNotReadyError } from "../../packages/civic.meeting_summary/readiness.js";
 import type {
   CallClaudeFn,
   MeetingEntry,
   MeetingSummaryConfig,
-} from "../../src/modules/civic.meeting_summary/models.js";
+} from "../../packages/civic.meeting_summary/models.js";
 
 const cfg: MeetingSummaryConfig = {
   source_url: "",

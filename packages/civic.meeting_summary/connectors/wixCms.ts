@@ -42,7 +42,7 @@ import type {
   MeetingSummaryConfig,
 } from "../models.js";
 import { matchesTitleFilter } from "./youtubeChannel.js";
-import { DEFAULT_WIX_FIELDS, parseWixFields, type WixFieldMap } from "../../../shared/wixFields.js";
+import { DEFAULT_WIX_FIELDS, parseWixFields, type WixFieldMap } from "../../../src/shared/wixFields.js";
 
 /** Wix serves compiled page structure from this host. */
 const PAGE_JSON_HOST = "https://pages.parastorage.com/sites";

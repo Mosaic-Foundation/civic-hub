@@ -60,6 +60,8 @@ export {
   getAllProcesses,
   saveProcessState,
   createProcess,
+  archiveProcess,
+  getArchivedProcesses,
 } from "../services/processService.js";
 export { readProcessState, writeProcessState, publishedBriefRows } from "../services/processRows.js";
 
@@ -117,6 +119,7 @@ export {
   getVoteResultsRecipients,
   hubDisplayNameSync,
   getAdminEmailsSync,
+  isPluginEnabledSync,
 } from "../services/hubSettings.js";
 
 // --- The hub in scope (src/config/hubContext.ts) ---------------------------------------
@@ -141,7 +144,7 @@ export { enrichCreator, enrichCreators, PUBLIC_ADMIN_NAME } from "../services/cr
 export { actOnProcess, readAsPage, viewFor } from "../controllers/processController.js";
 
 // --- src/config/hub.ts -------------------------------------------------------------------
-export { defaultJurisdiction } from "../config/hub.js";
+export { defaultJurisdiction, processJurisdiction } from "../config/hub.js";
 
 // --- src/modules/civic.process_links/ ----------------------------------------------------
 export { validateLinkSet } from "../modules/civic.process_links/index.js";
@@ -191,3 +194,26 @@ export {
 
 // --- src/modules/civic.auth/ -------------------------------------------------------------
 export { getUser } from "../modules/civic.auth/index.js";
+
+// --- src/utils/http.ts -------------------------------------------------------------------
+export { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../utils/http.js";
+
+// --- src/services/feedHealth.ts ----------------------------------------------------------
+export { findBrokenPublications } from "../services/feedHealth.js";
+export type { BrokenPublication } from "../services/feedHealth.js";
+
+// --- src/services/cronAlerts.ts ----------------------------------------------------------
+export { notifyCronOutcome, REVISION_NAG_DAYS } from "../services/cronAlerts.js";
+export type { CronOutcome, FlaggedSummary, WaitingMeeting } from "../services/cronAlerts.js";
+
+// --- src/jobs/types.ts -------------------------------------------------------------------
+export type { JobOutcome, JobRunner } from "../jobs/types.js";
+
+// --- src/adapters/video.ts ---------------------------------------------------------------
+export type { TranscriptSegment } from "../adapters/video.js";
+
+// --- src/utils/hubTime.ts ----------------------------------------------------------------
+export { resolveTimeZone } from "../utils/hubTime.js";
+
+// --- Types of the adapters' calls (src/adapters/ai.ts) -----------------------------------
+export type { AiSingleTurnInput } from "../adapters/ai.js";

@@ -19,7 +19,7 @@
 //
 // A transcript failure never breaks the run, and never degrades a summary
 // silently either: since 2026-09-29 a meeting whose video has no usable timed
-// transcript WAITS (src/modules/civic.meeting_summary/readiness.ts) and is
+// transcript WAITS (packages/civic.meeting_summary/readiness.ts) and is
 // retried on the next run.
 
 // The `youtube-transcript` package declares "type": "module" but its

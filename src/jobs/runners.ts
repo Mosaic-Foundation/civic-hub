@@ -9,7 +9,6 @@ import { loadedPackages } from "../plugins/loader.js";
 import { digestJob } from "./digest.js";
 import { adminDigestJob } from "./adminDigest.js";
 import { newsSyncJob } from "./newsSync.js";
-import { meetingSummaryJob } from "./meetingSummary.js";
 import { sweepHubExports } from "../services/hubExportsStore.js";
 import { closeAllExpired } from "../services/processService.js";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
@@ -18,7 +17,6 @@ import { finishWindDowns } from "../services/pluginInstall.js";
 import { clearEndedArchivedVoteKeys, reshuffleOpenBallots } from "../modules/civic.receipts/index.js";
 
 const HOST_JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
-  meeting_summary: meetingSummaryJob,
   news_sync: newsSyncJob,
   digest: digestJob,
   admin_digest: adminDigestJob,
