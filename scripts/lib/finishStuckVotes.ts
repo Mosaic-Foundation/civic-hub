@@ -3,7 +3,7 @@
 // Until 2026-10-07 a vote was finalized only when an admin approved its brief.
 // A vote that closed while the Briefs plugin was off got no brief, so nothing
 // ever finished it: it stayed `closed`, its results never announced. Since
-// then every vote finishes at close (src/modules/civic.vote/handler.ts); this
+// then every vote finishes at close (packages/civic.vote/handler.ts); this
 // finishes the ones left behind, the same way.
 //
 // What counts as stuck: a civic.vote in `closed` with NO brief. A closed vote
@@ -31,7 +31,7 @@ import {
   getVotingMethod,
   DEFAULT_METHOD,
   type VoteProcessState,
-} from "../../src/modules/civic.vote/index.js";
+} from "../../packages/civic.vote/service.js";
 import { getBallotChoicesForProcess } from "../../src/modules/civic.receipts/index.js";
 
 export const FINISH_ACTOR = "system:finish-stuck-votes";

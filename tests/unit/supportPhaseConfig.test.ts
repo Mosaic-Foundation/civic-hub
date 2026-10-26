@@ -4,7 +4,7 @@
 // on approval — expressed through the same registry seam every approval uses.
 
 import { describe, it, expect } from "vitest";
-import { supportPhaseConfig, createVoteState } from "../../src/modules/civic.vote/index.js";
+import { supportPhaseConfig, createVoteState } from "../../packages/civic.vote/service.js";
 import { activationOnApproval } from "../../src/processes/registry.js";
 import type { Process } from "../../src/models/process.js";
 

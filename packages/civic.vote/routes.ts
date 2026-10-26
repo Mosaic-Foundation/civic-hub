@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { handleGetVoteLog, handleVerifyReceipt, handleClaimReceipt } from "../controllers/voteLogController.js";
-import { requireResident } from "../middleware/auth.js";
+import { handleGetVoteLog, handleVerifyReceipt, handleClaimReceipt } from "./controller.js";
+import { requireResident } from "../../src/sdk/index.js";
 
 const router = Router();
 

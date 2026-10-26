@@ -25,12 +25,9 @@ import inputRoutes from "./routes/inputRoutes.js";
 import proposalRoutes from "./routes/proposalRoutes.js";
 import assistantRoutes from "./routes/assistantRoutes.js";
 import { draftRouter } from "./routes/draftRoutes.js";
-import { requireResident } from "./middleware/auth.js";
-import { proposalDraftKind, voteDraftKind, projectDraftKind, deliberationDraftKind } from "./processes/draftKinds.js";
-import { voteDurationLimitsSync } from "./services/hubSettings.js";
+import { proposalDraftKind, projectDraftKind, deliberationDraftKind } from "./processes/draftKinds.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import voteLogRoutes from "./routes/voteLogRoutes.js";
 import voteResultsRoutes from "./routes/voteResultsRoutes.js";
 import briefRoutes from "./routes/briefRoutes.js";
 import announcementRoutes from "./routes/announcementRoutes.js";
@@ -195,20 +192,6 @@ app.use("/assistant", assistantRoutes);
 // /proposals so /proposals/drafts doesn't get caught by /proposals/:id).
 app.use("/proposals/drafts", requirePlugin("proposal"), draftRouter(proposalDraftKind));
 
-// Vote draft endpoints — AI-augmented vote drafting (mounted before /votes
-// so /votes/drafts doesn't get caught by /votes/:id).
-app.use(
-  "/votes/drafts",
-  requirePlugin("vote"),
-  draftRouter(voteDraftKind, (router) => {
-    // The hub's allowed voting windows, for the duration picker.
-    router.get("/duration-limits", requireResident, route((_req, res) => {
-      const { minDays, maxDays, defaultDays } = voteDurationLimitsSync();
-      res.json({ min_days: minDays, max_days: maxDays, default_days: defaultDays });
-    }));
-  }),
-);
-
 // Project draft endpoints — AI-augmented project drafting (mounted before
 // /projects so /projects/drafts doesn't get caught by /projects/:id).
 app.use("/projects/drafts", requirePlugin("project"), draftRouter(projectDraftKind));
@@ -238,9 +221,6 @@ app.use("/notifications", notificationRoutes);
 
 // Admin endpoints — proposal review and conversion to votes
 app.use("/admin", adminRoutes);
-
-// Vote log and receipt verification
-app.use("/votes", requirePlugin("vote"), voteLogRoutes);
 
 // Vote results — public read of published vote-results pages.
 // Renamed from /brief in Slice 8.5.

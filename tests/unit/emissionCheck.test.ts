@@ -31,8 +31,8 @@ function build(eventType: string, processType: string) {
 describe("the emission path's declared-type check", () => {
   it("refuses an event a type does not declare, naming the type and the event", async () => {
     await expect(build("civic.process.vote_submitted", "civic.wordcloud")).rejects.toThrow(GrantRefusedError);
-    await expect(build("civic.project.created", "civic.vote")).rejects.toThrow(
-      "civic.vote emitted civic.project.created, which its descriptor does not declare",
+    await expect(build("civic.project.created", "civic.polis_deliberation")).rejects.toThrow(
+      "civic.polis_deliberation emitted civic.project.created, which its descriptor does not declare",
     );
   });
 

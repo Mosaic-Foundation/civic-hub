@@ -1,14 +1,37 @@
-// civic.vote process handler — thin wrapper around the civic.vote module.
+// civic.vote process handler — thin wrapper around the vote package's service.
 //
-// This handler delegates all vote-specific logic to the portable module
-// at /modules/civic.vote/. It adapts the module's service interface
-// to the hub's ProcessHandler contract.
+// This handler delegates all vote-specific logic to the service
+// (./service.ts). It adapts the service interface to the hub's
+// ProcessHandler contract.
 
-import { ValidationError } from "../../errors/index.js";
-import { Process, ProcessAction } from "../../models/process.js";
-import { buildEvent, emitEvent } from "../../events/eventEmitter.js";
-import type { CivicEvent } from "../../models/event.js";
-import { ProcessHandler } from "../../processes/types.js";
+import {
+  ValidationError,
+  type Process,
+  type ProcessAction,
+  buildEvent,
+  emitEvent,
+  type CivicEvent,
+  type ProcessHandler,
+  recordOrUpdateVote,
+  clearActiveVoteKeysForProcess,
+  countVoters,
+  getBallotChoicesForProcess,
+  hasUserVoted,
+  reshuffleBallotsForProcess,
+  VoteRefusedError,
+  type HeldReceipt,
+  AlreadyVotedError,
+  reportError,
+  getInputsByProcess,
+  closeThroughDispatcher,
+  afterActionCommits,
+  setDraftStatus,
+  type BriefContent,
+  isPastDeadline,
+  str,
+  num,
+  type FeedProcessMeta,
+} from "../../src/sdk/index.js";
 import { voteAssistantConfig } from "./assistantConfig.js";
 import {
   createVoteState,
@@ -25,31 +48,11 @@ import {
   DEFAULT_METHOD,
   type VoteProcessState,
   type Ballot,
-} from "./index.js";
-import {
-  recordOrUpdateVote,
-  clearActiveVoteKeysForProcess,
-  countVoters,
-  getBallotChoicesForProcess,
-  hasUserVoted,
-  reshuffleBallotsForProcess,
-  VoteRefusedError,
-  type HeldReceipt,
-} from "../civic.receipts/index.js";
-import { AlreadyVotedError } from "../../db/atomic.js";
-import { reportError } from "../../utils/reportError.js";
-import { getInputsByProcess } from "../civic.input/index.js";
-import { closeThroughDispatcher } from "../../processes/registry.js";
-import { afterActionCommits } from "../../services/actionScope.js";
-import { describeSubmissionFields } from "../../shared/submissionPreview.js";
-import { setDraftStatus } from "../civic.drafts/index.js";
-import { voteDraftKind } from "../../processes/draftKinds.js";
-import type { BriefContent } from "../civic.brief/index.js";
+} from "./service.js";
+import { describeSubmissionFields } from "../../src/shared/submissionPreview.js";
+import { voteDraftKind } from "./draftKind.js";
 
-import { isPastDeadline } from "../../utils/deadline.js";
 import { VOTE_MANIFEST } from "./manifest.js";
-import { str, num } from "../../utils/readField.js";
-import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 
 // --- Helpers ---
 

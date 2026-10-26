@@ -29,7 +29,6 @@ import type { ProcessTypeDisplay } from "../shared/typeDisplay.js";
 export type { ProcessTypeDisplay };
 import type { Process } from "../models/process.js";
 import type { PluginId } from "../models/hubSettings.js";
-import voteProcess from "../modules/civic.vote/handler.js";
 import proposalAdapter from "../modules/civic.proposals/handler.js";
 import projectAdapter from "../modules/civic.projects/handler.js";
 import voteResultsProcess from "../modules/civic.vote_results/handler.js";
@@ -79,18 +78,22 @@ import { configuredPackageOfType } from "../plugins/mountedState.js";
 // from the loader (ADR-014); the pairing is made on first use, because a
 // package's own imports reach this module while the loader is still loading
 // it. src/app.ts asks for it at startup, so a bad pairing still stops the start.
+// The handlers not yet in packages and the packages' are listed in the
+// manifests' order.
 const deliberationHandler = bootDeliberation();
-const handlers = (): readonly ProcessHandler[] => [
-  voteProcess,
-  proposalAdapter,
-  projectAdapter,
-  voteResultsProcess,
-  briefProcess,
-  announcementProcess,
-  meetingSummaryProcess,
-  deliberationHandler,
-  ...loadedPackages().map((p) => p.server.handler),
-];
+const handlers = (): readonly ProcessHandler[] => {
+  const rank = new Map(MANIFESTS.map((m, i) => [m.descriptor.type, i]));
+  return [
+    proposalAdapter,
+    projectAdapter,
+    voteResultsProcess,
+    briefProcess,
+    announcementProcess,
+    meetingSummaryProcess,
+    deliberationHandler,
+    ...loadedPackages().map((p) => p.server.handler),
+  ].sort((a, b) => (rank.get(a.type) ?? Infinity) - (rank.get(b.type) ?? Infinity) || 0);
+};
 
 const MANIFESTS = withPackageNames(() =>
   checkManifests(PROCESS_MANIFESTS, {

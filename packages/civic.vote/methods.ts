@@ -11,7 +11,7 @@
 //   2. Register it in VOTING_METHODS below
 //   3. No other file changes needed
 
-import { ValidationError } from "../../errors/index.js";
+import { ValidationError } from "../../src/sdk/index.js";
 import type { VoteResult } from "./models.js";
 
 // --- Interface ---------------------------------------------------------------

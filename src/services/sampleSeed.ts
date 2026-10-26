@@ -61,8 +61,8 @@ import {
 } from "./sampleTemplates.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { processWireIris } from "./processLinks.js";
-import * as vote from "../modules/civic.vote/index.js";
-import type { VoteProcessState } from "../modules/civic.vote/index.js";
+import * as vote from "../../packages/civic.vote/service.js";
+import type { VoteProcessState } from "../../packages/civic.vote/service.js";
 import { getBallotChoicesForProcess, clearActiveVoteKeysForProcess } from "../modules/civic.receipts/index.js";
 import { createProposal, supportProposal } from "../modules/civic.proposals/index.js";
 import { createProject, setProjectSentiment } from "../modules/civic.projects/index.js";

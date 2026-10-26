@@ -2,8 +2,8 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
-import { DEADLINE_CLOSE_INPUT } from "../../shared/deadlineClose.js";
+import { defineDescriptor, defineManifest } from "../../src/processes/manifest.js";
+import { DEADLINE_CLOSE_INPUT } from "../../src/shared/deadlineClose.js";
 
 /**
  * What a vote is (src/processes/descriptor.ts). Residents support while it
@@ -241,3 +241,5 @@ export const VOTE_MANIFEST = defineManifest({
     ui: { surfaces: ["process-page", "create-page", "feed-card", "nav-section", "settings-panel"] },
   },
 });
+
+export default VOTE_MANIFEST;

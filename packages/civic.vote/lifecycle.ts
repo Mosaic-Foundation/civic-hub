@@ -8,7 +8,7 @@
 //
 // No skipping within a path. No reversal.
 
-import { ConflictError } from "../../errors/index.js";
+import { ConflictError } from "../../src/sdk/index.js";
 import type { VoteStatus } from "./models.js";
 
 type ActivationMode = "direct" | "proposal_required";

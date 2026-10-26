@@ -13,7 +13,7 @@ import { hashPackage } from "../../src/plugins/hash.js";
 import type { CatalogRow } from "../../src/db/pluginCatalog.js";
 import type { ConfiguredPackage, PluginPackage } from "../../src/plugins/package.js";
 
-const real = loadedPackages()[0];
+const real = loadedPackages().find((p) => p.pkg.name === "@civic-social/plugin-wordcloud")!;
 
 /** A configured entry like the word cloud's, with some fields replaced. */
 function entry(over: Partial<Record<keyof PluginPackage, unknown>>, dir = "packages/civic.test"): ConfiguredPackage {

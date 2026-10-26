@@ -6,11 +6,11 @@
 //
 // The types are plugin packages (ADR-014): the configured list
 // (config/plugins.json, written out by `npm run plugins:sync` as
-// config/plugins/manifests.ts) supplies their manifests, after the types not
-// yet moved into packages. Adding a type is adding a package and a line in
-// config/plugins.json.
+// config/plugins/manifests.ts) supplies their manifests. Adding a type is
+// adding a package and a line in config/plugins.json. The conversation type is
+// not yet a package, so the packages' manifests are taken one by one from the
+// configured list and it sits among them, where it has always been.
 
-import { VOTE_MANIFEST } from "../modules/civic.vote/manifest.js";
 import { PROPOSAL_MANIFEST } from "../modules/civic.proposals/manifest.js";
 import { PROJECT_MANIFEST } from "../modules/civic.projects/manifest.js";
 import { VOTE_RESULTS_MANIFEST } from "../modules/civic.vote_results/manifest.js";
@@ -21,6 +21,9 @@ import { POLIS_DELIBERATION_MANIFEST } from "./polis_deliberation/manifest.js";
 import { PACKAGE_MANIFESTS } from "../../config/plugins/manifests.js";
 import type { ProcessManifest } from "../processes/manifest.js";
 
+// The packages' manifests, in config/plugins.json's order.
+const [VOTE_MANIFEST, WORDCLOUD_MANIFEST] = PACKAGE_MANIFESTS;
+
 export const PROCESS_MANIFESTS = [
   VOTE_MANIFEST,
   PROPOSAL_MANIFEST,
@@ -30,7 +33,7 @@ export const PROCESS_MANIFESTS = [
   ANNOUNCEMENT_MANIFEST,
   MEETING_SUMMARY_MANIFEST,
   POLIS_DELIBERATION_MANIFEST,
-  ...PACKAGE_MANIFESTS,
+  WORDCLOUD_MANIFEST,
 ] as const;
 
 /** The same list, each as a plain ProcessManifest (for reading fields every manifest has). */

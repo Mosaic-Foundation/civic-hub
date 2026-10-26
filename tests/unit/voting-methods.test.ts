@@ -3,7 +3,7 @@ import {
   getVotingMethod,
   getAvailableMethods,
   DEFAULT_METHOD,
-} from "../../src/modules/civic.vote/methods.js";
+} from "../../packages/civic.vote/methods.js";
 
 describe("Voting methods registry", () => {
   it("default method is yes_no_unsure", () => {

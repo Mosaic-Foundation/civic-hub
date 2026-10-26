@@ -9,12 +9,17 @@
 //     receipt in the body, so no request log pairs it with an address
 //     (2026-10-10)
 
-import { checkModeOf } from "../shared/checkMode.js";
-import { NotFoundError, ValidationError } from "../errors/index.js";
-import { route } from "../http/route.js";
-import { claimVoteKey, getVoteLog, verifyReceipt } from "../modules/civic.receipts/index.js";
-import { getProcess } from "../services/processService.js";
-import { getAuthUser } from "../middleware/auth.js";
+import { checkModeOf } from "../../src/shared/checkMode.js";
+import {
+  NotFoundError,
+  ValidationError,
+  route,
+  claimVoteKey,
+  getVoteLog,
+  verifyReceipt,
+  getProcess,
+  getAuthUser,
+} from "../../src/sdk/index.js";
 
 /**
  * GET /votes/:id/log

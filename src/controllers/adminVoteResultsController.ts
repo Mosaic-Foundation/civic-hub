@@ -40,7 +40,7 @@ import {
   getVotingMethod,
   DEFAULT_METHOD,
   type VoteProcessState,
-} from "../modules/civic.vote/index.js";
+} from "../../packages/civic.vote/service.js";
 import { getBallotChoicesForProcess } from "../modules/civic.receipts/index.js";
 import {
   getAllProcesses,

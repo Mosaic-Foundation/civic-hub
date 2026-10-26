@@ -409,6 +409,7 @@ const authzSeamRule = {
 // that no longer reaches a package).
 export const PACKAGE_REACH_NOT_YET = {
   "src/services/sampleSeed.ts": "seeds every type's sample content by calling its service; each package should contribute its own samples",
+  "src/controllers/adminVoteResultsController.ts": "finalizes the linked vote (finalizeVote) and reads its tally method (getVotingMethod) when an admin approves a vote's results",
 };
 
 const PACKAGES_DIR = "packages/";

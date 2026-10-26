@@ -1,13 +1,13 @@
-// civic.vote: an advisory vote (manifest: src/modules/civic.vote/manifest.ts).
+// civic.vote: an advisory vote (manifest: ./manifest.ts).
 // Its pages, its two feed cards and the vote plugin's panel on the Plugins page.
 
-import { NewVote, Process, VoteLog, Votes } from "../lazyPages";
-import hub from "../config/hub";
-import { voteResultLine } from "../../../src/shared/feedActivity";
-import { getProcessState, type VoteState } from "../services/api";
-import { ChoiceField, NumberField, ParticipationValues } from "../pages/settings/pluginFields";
-import { formatCount } from "./feedText";
-import type { FeedKindUi, ProcessMeta, ProcessUi } from "./types";
+import { NewVote, Process, VoteLog, Votes } from "../../ui/src/lazyPages";
+import hub from "../../ui/src/config/hub";
+import { voteResultLine } from "../../src/shared/feedActivity";
+import { getProcessState, type VoteState } from "../../ui/src/services/api";
+import { ChoiceField, NumberField, ParticipationValues } from "../../ui/src/pages/settings/pluginFields";
+import { formatCount } from "../../ui/src/processes/feedText";
+import type { FeedKindUi, ProcessMeta, ProcessUi } from "../../ui/src/processes/types";
 
 const voteMeta = (id: string): Promise<ProcessMeta | null> =>
   getProcessState(id).then((state) => {
@@ -53,7 +53,7 @@ const voteClosed: FeedKindUi = {
   },
 };
 
-export const voteUi: ProcessUi = {
+const voteUi: ProcessUi = {
   type: "civic.vote",
   routes: [
     { path: "/votes", element: <Votes /> },
@@ -94,3 +94,5 @@ export const voteUi: ProcessUi = {
     </>
   ),
 };
+
+export default voteUi;

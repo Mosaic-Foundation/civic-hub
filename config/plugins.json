@@ -1,5 +1,6 @@
 {
   "packages": [
+    "packages/civic.vote",
     "packages/civic.wordcloud"
   ]
 }

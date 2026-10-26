@@ -1,0 +1,10 @@
+{
+  "name": "@civic-social/plugin-vote",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Votes: advisory votes residents propose and cast, with results. A Civic Hub plugin package (docs/PLUGIN-PACKAGE.md).",
+  "peerDependencies": {
+    "express": "^4.22.3"
+  }
+}

@@ -32,16 +32,20 @@ export type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 export { storeSlot, type StoreSlot } from "../processes/storeSlot.js";
 export type { GrantedDb, PluginHost, PluginPackage, PluginServer, PluginMount } from "../plugins/package.js";
 
+// --- Requests ------------------------------------------------------------------------
+// Listed ahead of the groups that reach the loader (the events and services
+// below): a package's routes call route() and take requireResident when they
+// load, and the loader loads every package while this file is still being
+// evaluated if a package's own file was the first thing imported.
+export { route } from "../http/route.js";
+export { resolveCallerId, getAuthUser, requireResident } from "../middleware/auth.js";
+
 // --- Events: the one emission path ---------------------------------------------------
-export { emitEvent } from "../events/eventEmitter.js";
+export { emitEvent, buildEvent } from "../events/eventEmitter.js";
 
 // --- The hub's services a package calls ----------------------------------------------
 export { getProcess } from "../services/processService.js";
 export { readProcessState, writeProcessState } from "../services/processRows.js";
-
-// --- Requests ------------------------------------------------------------------------
-export { route } from "../http/route.js";
-export { resolveCallerId } from "../middleware/auth.js";
 
 // --- Storage helpers (over host.db()) ---------------------------------------------------
 export { HubDbError } from "../db/forHub.js";
@@ -51,3 +55,56 @@ export { readAll } from "../db/readAll.js";
 // --- Small utilities ----------------------------------------------------------------
 export { generateId } from "../utils/id.js";
 export { str, num } from "../utils/readField.js";
+
+// --- The vote's ballots and receipts (src/modules/civic.receipts/) -----------------------
+export {
+  claimVoteKey,
+  getVoteLog,
+  verifyReceipt,
+  recordOrUpdateVote,
+  clearActiveVoteKeysForProcess,
+  countVoters,
+  getBallotChoicesForProcess,
+  hasUserVoted,
+  reshuffleBallotsForProcess,
+  VoteRefusedError,
+} from "../modules/civic.receipts/index.js";
+export type { HeldReceipt } from "../modules/civic.receipts/index.js";
+
+// --- Drafts and the drafting assistant (src/modules/civic.drafts/, civic.assistant/) ----
+export type { AssistantTypeConfig, DraftField } from "../modules/civic.assistant/index.js";
+export {
+  getDraft,
+  appendConversation,
+  saveReviewResult,
+  applyGeneratedDraft,
+  updateDraft,
+  setDraftStatus,
+} from "../modules/civic.drafts/index.js";
+export type { Draft } from "../modules/civic.drafts/index.js";
+export { DAY_MS, lines } from "../processes/draftKinds.js";
+export type { DraftKind } from "../processes/draftKinds.js";
+
+// --- Resident input on a process (src/modules/civic.input/) -----------------------------
+export { getInputsByProcess } from "../modules/civic.input/index.js";
+
+// --- Events (src/models/event.ts) ------------------------------------------------------
+export type { CivicEvent } from "../models/event.js";
+
+// --- Settings the hub keeps (src/services/hubSettings.ts) ------------------------------
+export { voteDurationLimitsSync, getSupportThreshold, defaultCheckModeSync } from "../services/hubSettings.js";
+
+// --- The hub in scope (src/config/hubContext.ts) ---------------------------------------
+export { currentHubId } from "../config/hubContext.js";
+
+// --- Acting on a process ---------------------------------------------------------------
+export { closeThroughDispatcher } from "../processes/serviceSlots.js";
+export { afterActionCommits } from "../services/actionScope.js";
+export { isPastDeadline } from "../utils/deadline.js";
+export { AlreadyVotedError } from "../db/atomic.js";
+
+// --- Brief content a process hands its brief (src/processes/contracts/briefContent.ts) ---
+export type { BriefContent } from "../processes/contracts/briefContent.js";
+
+// --- Reporting (src/utils/reportError.ts) ----------------------------------------------
+export { reportError } from "../utils/reportError.js";
