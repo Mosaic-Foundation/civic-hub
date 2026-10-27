@@ -6,8 +6,8 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Plugin session 2: signed approvals, versions with a grant per hub, the summary move, the developer path — 2026-10-26
 
-`multi-tenant`, `2f4d9ee`..(this commit), from `6fe304b`. Dev runs `b9fa5ee` plus later commits that change no package
-it loads. Decision record ADR-015 (mono repo, committed locally for
+`multi-tenant`, `2f4d9ee`..(this commit), from `6fe304b`. Dev serves each push (Vercel); its database has every migration but
+the Straw polls 0.1.1 entry (`20261027011215`), which the next `release.sh dev` applies. Decision record ADR-015 (mono repo, committed locally for
 Adam to push); guides `docs/BUILD-A-PLUGIN.md` (new) and `docs/PLUGIN-PACKAGE.md`. Reports:
 `~/Documents/Mosaic/0 Management/Civic Social/Plugin-2-Session-Report-2026-10-26.md` and
 `Plugin-2-Handoff-to-Management-2026-10-26.md`.
