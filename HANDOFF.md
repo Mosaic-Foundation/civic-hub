@@ -60,6 +60,14 @@ hubs moved to Briefs and Conversations 0.2.0 as `system:required`; the straw pol
 `CIVIC_CATALOG_SIGNATURES=required` on dev (Adam), verified by this commit's release: nine mounted under `required`.
 The first release's step 9 timed out (20:26 UTC) before anything was signed; that is all its "7 unsigned" meant.
 
+**CI, found at the close:** CI had failed on every push of the session, for two reasons that only showed on the CI runners.
+- The proof failed (`e2b729e`): a fresh install took `youtube-transcript` 1.3.1, which moved the file the engine
+  imports. The kit's packages now pin every dependency to the hub's lockfile (`1a239de`).
+- The window test archived the local stack's `smoke` hub, which CI does not have (404, not 403). It now makes its own
+  hub (`849b47f`).
+
+The two Smoke failures (`e2b729e`, `7420e4c`) were dev as it was before the signing and the Conversations approval.
+
 **Left:** see the session report: production (key already set; approve the three entries and sign, then `required`),
 Adam's mono-repo push (ADR-015), the docs session's mirror of BUILD-A-PLUGIN, publishing the packages (Adam's call;
 licence AGPL-pending).

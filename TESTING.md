@@ -120,7 +120,7 @@ a conversation's summary is its brief's; the conformance suite runs as a package
 - **The developer path** (`kit/scripts/prove.ts`, CI after the API suite): both packages packed, installed into an
   empty folder outside the repository; `civic-conformance` there passes the straw poll (14 steps), fails the broken copy
   at 4b (a resident answered twice) and refuses the non-additive copy before anything runs; the local stack is left as
-  found (no tables, hubs, processes or events of the run). It needs npm's registry for the packages' dependencies.
+  found (no tables, hubs, processes or events of the run). It needs npm's registry for the packages' dependencies, which `pack.ts` pins to the hub's lockfile (a fresh install once took a newer `youtube-transcript` the engine could not import, in CI only).
 - **Playwright:** `conversationSummary.spec.ts` (a conversation that closes still shows its summary, now from its
   brief); `pluginUpdate.spec.ts` (the degrade path on the conversation page, the new intro, Update with what changes).
 - **The leak harness and route parity** know the Update route (it names a plugin, not a row).
