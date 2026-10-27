@@ -33,6 +33,14 @@ const ADDED: Record<string, string> = {
   "POST /admin/analytics/keys": "issue a reporting key",
   "POST /admin/analytics/keys/:id/revoke": "revoke a reporting key",
   "GET /internal/analytics/run": "the Activity job",
+  // Plugin Events (2026-10-27): its drafts, through the hub's drafts routes, and its calendar.
+  "POST /calendar/drafts": "Events: a new event draft (the hub's drafts routes)",
+  "GET /calendar/drafts": "Events: a resident's event drafts",
+  "GET /calendar/drafts/:id": "Events: one event draft",
+  "PATCH /calendar/drafts/:id": "Events: filling an event draft",
+  "POST /calendar/drafts/:id/submit": "Events: submitting an event for review",
+  "GET /calendar/events": "Events: the calendar, for its page",
+  "GET /calendar/hub.ics": "Events: the calendar as iCalendar, to subscribe to",
 };
 
 interface Layer {

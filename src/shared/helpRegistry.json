@@ -84,6 +84,12 @@
     "page": "/reference/plugins",
     "anchor": "plugins-wordcloud"
   },
+  "plugins.events": {
+    "text": "A calendar. People propose events, which go through review like proposals, and say they're going. Anyone can subscribe to the calendar in their own calendar app. Off hides the Events pages; nothing is deleted.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-events",
+    "pending": true
+  },
   "plugins.brief": {
     "text": "The published record of what people decided, sent to officials. The hub drafts each brief and an admin approves it before it is published and emailed.",
     "page": "/reference/plugins",

@@ -489,7 +489,12 @@ const packageBoundaryRule = {
     const rel = relative(ROOT, file).split("\\").join("/");
     const inPackage = rel.startsWith(PACKAGES_DIR);
     const inEngine = rel.startsWith("src/");
-    const inOutside = rel.startsWith(OUTSIDE_DIR);
+    // A package here written on SDK v1 (it peer-depends on the SDK, as the
+    // Events package does) is held to the outside rule: liftable into its own
+    // repository without a code change.
+    const inOutside =
+      rel.startsWith(OUTSIDE_DIR) ||
+      (inPackage && peerDependencies(rel.split("/").slice(0, 2).join("/")).includes("@civic-social/plugin-sdk"));
     if (inOutside) {
       const dir = rel.split("/").slice(0, 2).join("/");
       const manifest = rel === `${dir}/manifest.ts`;

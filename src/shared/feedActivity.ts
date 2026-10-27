@@ -68,7 +68,8 @@ export type ActivityKind =
   | "conversation"
   | "conversation-results" // legacy deliberation outcome delivered (close)
   | "brief" // universal civic.brief published — the final result of any process
-  | "brief-response"; // an official responded to a published brief (anchored)
+  | "brief-response" // an official responded to a published brief (anchored)
+  | "event"; // an event put on the hub's calendar (the Events plugin, 2026-10-27)
 
 /**
  * THE color decision (2026-08-28, Adam): every surface colors a card, row,
@@ -98,6 +99,7 @@ export type ActivityColor =
   | "announcement-author"
   | "meeting"
   | "official-response"
+  | "event"
   | "generic";
 
 export interface Activity {

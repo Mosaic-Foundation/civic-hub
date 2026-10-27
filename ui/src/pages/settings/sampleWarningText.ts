@@ -10,6 +10,7 @@ const KIND_NOUN: Record<string, [string, string]> = {
   reaction: ["reaction to a statement", "reactions to statements"],
   submission: ["submission", "submissions"],
   response: ["official response", "official responses"],
+  going: ["person going to an event", "people going to events"],
   review: ["proposed edit", "proposed edits"],
 };
 

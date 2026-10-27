@@ -22,7 +22,9 @@
       "react/*": ["./node_modules/@types/react/*"],
       "react-router-dom": ["./node_modules/react-router-dom"],
       /* The plugin SDK's UI types, as the example package's ui.tsx imports them (../kit/sdk/ui.ts). */
-      "@civic-social/plugin-sdk/ui": ["../kit/sdk/ui.ts"]
+      "@civic-social/plugin-sdk/ui": ["../kit/sdk/ui.ts"],
+      /* Its manifest's helpers, which the UI reads too (../kit/sdk/manifest.ts). */
+      "@civic-social/plugin-sdk/manifest": ["../kit/sdk/manifest.ts"]
     },
 
     /* Linting */

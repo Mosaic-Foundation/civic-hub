@@ -117,6 +117,9 @@
   --type-meeting-bg: var(--ds-color-success-100);
   --type-meeting-fg: var(--ds-color-success-700);
   --type-official-response-bg: #fdf1e0;          --type-official-response-fg: #8a5a13;
+  /* Events (the Events plugin, 2026-10-27): a rose of its own, apart from
+     meeting-green, so a calendar entry never reads as a meeting summary. */
+  --type-event-bg: #f6e3ec;                      --type-event-fg: #8a2456;
   /* Outcomes (briefs, vote results) wear the hub's terracotta — the one
      accent the detail pages had been leaving on the table (Adam,
      2026-09-03: "a little boring… add some of that terracotta"). */

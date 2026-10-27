@@ -6,7 +6,7 @@ hub's repository.
 
 | Import | For |
 |---|---|
-| `@civic-social/plugin-sdk` | the package's code: the SDK's errors, the package and process contract (types), `emitEvent`, deadlines (`closeThroughDispatcher`, `isPastDeadline`), its own records (`storeSlot`, `readAll`, `HubDbError`), routes (`route`, `requireResident`, `requireAdmin`, `getAuthUser`), small utilities |
+| `@civic-social/plugin-sdk` | the package's code: the SDK's errors, the package and process contract (types), a type residents draft (`DraftKind`, `Draft`), `emitEvent`, deadlines (`closeThroughDispatcher`, `isPastDeadline`), its own records (`storeSlot`, `readAll`, `HubDbError`), routes (`route`, `requireResident`, `requireAdmin`, `getAuthUser`), small utilities |
 | `@civic-social/plugin-sdk/manifest` | its `manifest.ts`, and nothing else: `defineDescriptor`, `defineManifest`, `DEADLINE_CLOSE_INPUT` |
 | `@civic-social/plugin-sdk/ui` | its `ui.tsx`: the `ProcessUi` type |
 | `@civic-social/plugin-sdk/host`, `/testing` | the conformance suite's, not a package's |

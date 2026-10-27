@@ -24,3 +24,26 @@ export interface ActivityRecipe {
   type: string;
   object: ActivityObjectRecipe;
 }
+
+/**
+ * The object a type's processes are on the wire, when it is a standard
+ * vocabulary object rather than a `civic:Process` (an AS2 `Event`; plugin
+ * Events, 2026-10-27). The serializer builds every process object of the type
+ * as usual, then, when the payload carries every `requires` property, types it
+ * `type` and lifts each declared property from the payload, in declared order,
+ * before `hub:payload`. A payload without them (the hub's own `created`, a
+ * status change) keeps `civic:Process`, so nothing that lacks the object's
+ * substance claims to be one.
+ */
+export interface WireObjectRecipe {
+  /** The object's type: "Event". */
+  type: string;
+  /**
+   * Wire property → payload path, dotted, under `process` (always public, so
+   * nothing lifted escapes the type's declared public shape):
+   * `{ startTime: "process.event.start_time" }`.
+   */
+  properties: Readonly<Record<string, string>>;
+  /** Wire properties that must all be present for the object to take `type`. */
+  requires: readonly string[];
+}

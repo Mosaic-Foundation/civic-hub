@@ -48,7 +48,7 @@ test.describe("Nav order", () => {
     await expect(tabStrip).toBeVisible();
 
     const labels = (await tabStrip.locator("a").allTextContents()).map((l) => l.trim());
-    const canonical = ["Feed", "Conversations", "Proposals", "Votes", "Projects", "Outcomes"];
+    const canonical = ["Feed", "Conversations", "Proposals", "Votes", "Events", "Projects", "Outcomes"];
     expect(labels[0]).toBe("Feed");
     expect(labels).toEqual(canonical.filter((l) => labels.includes(l)));
     expect(labels.every((l) => canonical.includes(l))).toBe(true);

@@ -88,6 +88,7 @@ describe("a resident calling an action not open to residents is refused, for eve
       [
         "civic.announcement",
         "civic.brief",
+        "civic.event",
         "civic.meeting_summary",
         "civic.polis_deliberation",
         "civic.project",

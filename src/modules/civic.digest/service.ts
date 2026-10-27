@@ -288,6 +288,14 @@ function digestTitleSummary(
     case "conversation-results":
       return { title: rawTitle ?? "Conversation results", summary: "The conversation has concluded — see the results." };
 
+    case "event": {
+      // The Events plugin's publish carries its time and place (data.process.event).
+      const ev = (event.data as { process?: { event?: { start_time?: unknown; location?: { name?: unknown } } } })?.process?.event;
+      const when = typeof ev?.start_time === "string" ? new Date(ev.start_time).toUTCString().replace(/:\d\d GMT$/, " UTC") : "";
+      const where = typeof ev?.location?.name === "string" ? ev.location.name : "";
+      return { title: rawTitle ?? "New event", summary: [when, where].filter(Boolean).join(" · ") || "A new event is on the calendar." };
+    }
+
     case "brief": {
       const brief = (event.data as { brief?: { title?: unknown; headline?: unknown } })
         ?.brief;
@@ -350,6 +358,7 @@ type DigestSection =
   | "proposals"
   | "projects"
   | "conversations"
+  | "events"
   | "briefs";
 
 /** Which email section each classifier kind renders under. */
@@ -372,6 +381,7 @@ const SECTION_OF: Record<ActivityKind, DigestSection> = {
   // section — the "Completed — results" section carries both the brief
   // and, later, the government's reply to it.
   "brief-response": "briefs",
+  event: "events",
 };
 
 const SECTION_LABELS: Record<DigestSection, string> = {
@@ -383,6 +393,7 @@ const SECTION_LABELS: Record<DigestSection, string> = {
   proposals: "Proposals",
   projects: "Projects",
   conversations: "Conversations",
+  events: "New events",
   briefs: "Completed — results",
 };
 
@@ -395,6 +406,7 @@ const SECTION_ORDER: DigestSection[] = [
   "proposals",
   "projects",
   "conversations",
+  "events",
   "briefs",
 ];
 
@@ -417,6 +429,7 @@ const PILL_COLORS: Record<ActivityColor, { bg: string; fg: string }> = {
   "announcement-author": { bg: "#e4ddf0", fg: "#3a2c5e" },
   meeting: { bg: "#d9ecd9", fg: "#0f4a26" },
   "official-response": { bg: "#fdf1e0", fg: "#8a5a13" },
+  event: { bg: "#f6e3ec", fg: "#8a2456" },
   generic: { bg: "#dce5f2", fg: "#1f3a66" },
 };
 

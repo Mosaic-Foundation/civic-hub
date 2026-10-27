@@ -73,6 +73,8 @@ describe("process type descriptors", () => {
       "Conversations",
       "Proposals",
       "Votes",
+      // Plugin Events (Adam, 2026-10-27): after Votes.
+      "Events",
       "Projects",
       "Outcomes",
     ]);

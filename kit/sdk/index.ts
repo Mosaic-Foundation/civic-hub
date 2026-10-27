@@ -51,6 +51,10 @@ export type {
 // --- The one emission path: every event a package writes goes through it ------------------
 export { emitEvent } from "../../src/sdk/index.js";
 
+// --- A type residents draft: its kind; the drafts routes, the Code of Conduct gate and the
+// review queue are the hub's (docs/PLUGIN-PACKAGE.md, "drafts") --------------------------------
+export type { Draft, DraftKind } from "../../src/sdk/index.js";
+
 // --- Deadlines: the hub drives them; a package closes through the hub's action path --------
 export { closeThroughDispatcher, isPastDeadline } from "../../src/sdk/index.js";
 

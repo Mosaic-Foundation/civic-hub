@@ -27,6 +27,8 @@ export const MARKED_TABLES = ["processes", "events", "users"] as const;
 export const PROCESS_CHILD_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   active_vote_keys: ["process_id"],
   brief_responses: ["brief_id"],
+  calendar_attendance: ["process_id"],
+  calendar_events: ["process_id"],
   community_inputs: ["process_id"],
   deliberation_submissions: ["process_id"],
   deliberation_votes: ["process_id"],
@@ -54,6 +56,7 @@ export const NOT_PROCESS_CONTENT: Readonly<Record<string, string>> = {
   analytics_period: "Activity's period counts, derived from the events and accounts; samples are not counted",
   analytics_report_keys: "reporting keys an admin issued; never seeded",
   analytics_report_reads: "reads made with a reporting key; never seeded",
+  calendar_drafts: "a resident's unsubmitted event draft; the seed writes none",
   ai_usage: "a record of paid model calls, for the daily budget",
   deliberation_drafts: "a resident's unsubmitted draft; the seed writes none",
   feedback_submissions: "product feedback to the hub, not about a process",
@@ -135,6 +138,7 @@ export const PARTICIPATION_TABLES: ReadonlyArray<{
   { table: "deliberation_votes", processColumn: "process_id", userColumn: "user_id", kind: "reaction" },
   { table: "wordcloud_submissions", processColumn: "process_id", userColumn: "author_id", kind: "submission" },
   { table: "brief_responses", processColumn: "brief_id", userColumn: "responder_id", kind: "response" },
+  { table: "calendar_attendance", processColumn: "process_id", userColumn: "user_id", kind: "going" },
   { table: "process_reviews", processColumn: "process_id", userColumn: "creator_id", kind: "review", seededOnly: true },
 ];
 
@@ -146,6 +150,7 @@ export type ParticipationKind =
   | "reaction"
   | "submission"
   | "response"
+  | "going"
   | "review";
 
 /**
@@ -154,6 +159,7 @@ export type ParticipationKind =
  */
 export const NOT_PARTICIPATION: Readonly<Record<string, string>> = {
   active_vote_keys: "a voter's key while a vote is open; their ballot is counted through vote_participation",
+  calendar_events: "the event's place on the calendar, written by the event itself",
   events: "the log of the actions counted here",
   process_links: "links between processes",
   project_updates: "written by the project's own author",

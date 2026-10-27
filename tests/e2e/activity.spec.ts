@@ -62,7 +62,7 @@ test("1. Admin → Activity: totals, kinds, the funder measures, Recount now and
   await expect(page.getByRole("heading", { level: 1, name: /Activity/ })).toBeVisible();
   await expect(page.getByTestId("activity-period")).toContainText(/so far/);
   await expect(page.getByTestId("activity-total-active_residents")).toContainText(/\d/);
-  await expect(page.getByTestId("activity-by-type").getByRole("row")).toHaveCount(10); // the header and nine kinds
+  await expect(page.getByTestId("activity-by-type").getByRole("row")).toHaveCount(11); // the header and ten kinds (Events, 2026-10-27)
   const measures = page.getByTestId("activity-measures");
   for (const name of ["Attended a public meeting", "Worked with neighbours on something", "Contacted an official"]) {
     await expect(measures.getByRole("heading", { name })).toBeVisible();

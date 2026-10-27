@@ -9,8 +9,7 @@
 // the result covers the draft as it then stands.
 
 import { AiLimitError, admitAiCall } from "./aiBudget.js";
-import { codeOfConductFields, codeOfConductHash, toDraftState } from "./codeOfConduct.js";
-import { getProcessHandler } from "../processes/registry.js";
+import { checkDraftStore, codeOfConductFields, codeOfConductHash, toDraftState } from "./codeOfConduct.js";
 import { checkTextAgainstCoC } from "../modules/civic.assistant/service.js";
 import {
   getHubConfig,
@@ -39,7 +38,7 @@ export async function runCodeOfConductCheck(
   draft: AssistantDraft,
   userId: string,
 ): Promise<CodeOfConductRun> {
-  const store = getProcessHandler(processType)?.getAssistantConfig?.().draftStore;
+  const store = checkDraftStore(processType);
   if (!store) throw new Error(`No draft store for ${processType}`);
 
   // The text as the type's store reads it: the same reading the submit's
