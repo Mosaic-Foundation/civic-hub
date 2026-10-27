@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS public.calendar_drafts (
 
 CREATE INDEX IF NOT EXISTS calendar_drafts_hub_user_status_idx ON public.calendar_drafts (hub_id, user_id, status);
 
-CREATE TRIGGER set_calendar_drafts_updated_at
+CREATE OR REPLACE TRIGGER set_calendar_drafts_updated_at
   BEFORE UPDATE ON public.calendar_drafts
   FOR EACH ROW
   EXECUTE FUNCTION set_updated_at();
