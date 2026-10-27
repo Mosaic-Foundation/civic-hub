@@ -5,6 +5,7 @@ import { useAuth } from "./context/authState";
 import { useHub } from "./config/hub";
 import { whenPlugin } from "./config/plugins";
 import { PROCESS_UI } from "./processes";
+import { FEATURE_UI } from "./features";
 import { pluginOfType } from "./processes/display";
 import ShareBanner from "./components/ShareBanner";
 import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
@@ -104,6 +105,16 @@ function processRoutes() {
       return <Route key={`${ui.type} ${r.path}`} path={r.path} element={r.ungated || !plugin ? page : whenPlugin(plugin, page)} />;
     });
   });
+}
+
+/** Every feature package's pages (ui/src/features.ts), each behind its feature's switch. */
+function featureRoutes() {
+  return FEATURE_UI.flatMap((ui) =>
+    ui.routes.map((r) => {
+      const page = r.admin ? <AdminGuard>{r.element}</AdminGuard> : r.element;
+      return <Route key={`${ui.feature} ${r.path}`} path={r.path} element={whenPlugin(ui.feature, page)} />;
+    }),
+  );
 }
 
 function BannerSlot() {
@@ -212,6 +223,7 @@ function AppContent() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 {processRoutes()}
+                {featureRoutes()}
                 <Route path="/my-submissions" element={<MySubmissions />} />
                 <Route path="/my-submissions/:reviewId" element={<MySubmissions />} />
                 <Route path="/admin" element={<AdminGuard><AdminAnchor /></AdminGuard>} />

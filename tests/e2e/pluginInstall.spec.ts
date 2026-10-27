@@ -60,7 +60,7 @@ test.describe("Install and Remove on the Plugins page", () => {
     await visitAs(page, token);
     await page.goto("/admin/settings/plugins#wordcloud");
     const card = page.getByRole("region", { name: "Word clouds", exact: true });
-    await expect(card.getByText("version 0.1.0", { exact: false })).toBeVisible();
+    await expect(card.getByText("version 0.1.1", { exact: false })).toBeVisible();
 
     await card.getByRole("button", { name: "Remove…" }).click();
     const remove = page.getByRole("dialog", { name: "Remove Word clouds?" });
@@ -76,7 +76,7 @@ test.describe("Install and Remove on the Plugins page", () => {
     await expect(dialog.getByText(/Keep its own records on this hub: residents' one-word answers/)).toBeVisible();
     await expect(dialog.getByText("It will not be able to:")).toBeVisible();
     await expect(dialog.getByText("Send email.", { exact: true })).toBeVisible();
-    await expect(dialog.getByText(/Version 0\.1\.0, checked by Civic\.Social on/)).toBeVisible();
+    await expect(dialog.getByText(/Version 0\.1\.1, checked by Civic\.Social on/)).toBeVisible();
     await dialog.getByRole("button", { name: "Install", exact: true }).click();
     await expect(card.locator(".plugin-card-state")).toHaveText("Installed");
 

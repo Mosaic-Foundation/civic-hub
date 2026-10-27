@@ -360,6 +360,26 @@ test("the admins audience IRI and a process's participation aggregate answer, re
   }
 });
 
+test("the hub's numbers at /analytics: 404 or 401 with Public numbers off, 200 and counts only when on, read-only (ADR-016)", async ({ request }) => {
+  const config = await (await request.get(`${apiBase()}/hub-config`)).json();
+  const on = config.settings?.["plugin.analytics.public_numbers"] === "true";
+  for (const url of [`${baseUrl()}/analytics`, `${apiBase()}/analytics?period=quarter`]) {
+    const res = await request.get(url);
+    if (!on) {
+      expect([401, 404], url).toContain(res.status());
+      continue;
+    }
+    expect(res.status(), url).toBe(200);
+    expect(res.headers()["cache-control"]).toContain("no-store");
+    const body = await res.json();
+    expect(body.suppression).toEqual({ applied: true, below: 5, shown_as: "fewer than 5" });
+    expect(Object.keys(body.totals).sort()).toEqual(["active_residents", "new_residents", "outcomes", "participations", "processes_closed", "processes_created"]);
+    expect(JSON.stringify(body)).not.toMatch(/user_[0-9a-f]{8}|@/);
+  }
+  // A key that is not one reads nothing, whatever the switch says.
+  expect((await request.get(`${baseUrl()}/analytics`, { headers: { Authorization: `Bearer csr_${"x".repeat(43)}` } })).status()).toBe(401);
+});
+
 test("a resident and an admin are signed in", async ({ browser }) => {
   const r = await open(browser);
   await visitAs(r, resident);

@@ -84,13 +84,14 @@ describe("forHub — construction", () => {
     expect(() => floyd.from("nope" as never)).toThrow(/not a hub-scoped table/);
   });
 
-  it("covers every tenant table: 40, and never hubs", () => {
+  it("covers every tenant table: 44, and never hubs", () => {
     // 32 since 2026-09-29: job_runs. 33 since 2026-10-11: ai_usage. 34 since
     // 2026-10-14: sign_in_codes. 35 since 2026-10-14: hub_invites. 36 since 2026-10-15: admin_digest_marks. 35 since 20261019100000: pending_verifications dropped.
     // 36 since 20261023000000 (Architecture 4): hub_roles.
     // 37 since 20261025000000 (plugin session 1): hub_plugins.
-    // 40 since 20261027120000 (plugin Events): calendar_events, calendar_attendance, calendar_drafts.
-    expect(HUB_TABLES).toHaveLength(40);
+    // 41 since the analytics slice (ADR-016): the Activity feature's four tables.
+    // 44 since 20261027120000 (plugin Events): calendar_events, calendar_attendance, calendar_drafts.
+    expect(HUB_TABLES).toHaveLength(44);
     expect(HUB_TABLES).not.toContain("hubs");
   });
 });

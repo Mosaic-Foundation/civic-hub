@@ -165,6 +165,12 @@ export const STRAW_POLL_MANIFEST = defineManifest({
   pluginSection: { order: 70, name: "Straw polls", what: "A quick one-question poll that closes on a date.", fields: [] },
   activities: {},
   disclosure: "anonymous",             // who a participant's name is shown to: anonymous, members or public
+  participation: {                     // what the hub's analytics counts (conformance step 10)
+    participation: ["civic.process.submission_received"],
+    creation: ["civic.process.created"],
+    closing: ["civic.process.ended"],
+    outcome: ["civic.process.result_published"],
+  },
   publicPayload: { "civic.process.result_published": ["straw_poll_result"] },
   deadlineRefusal: { code: "straw_poll_closed", message: "This straw poll has closed." },
   capabilities: { /* the grant: next section */ },
@@ -178,6 +184,10 @@ export default STRAW_POLL_MANIFEST;
 - **`publicPayload`**: per event type, the fields of your event's `data` the public record may carry. Anything else in
   `data` stays with the hub's admins.
 - **`disclosure`**: whether anyone sees who took part. A straw poll publishes counts, never names.
+- **`participation`**: which of your events record a resident taking part (an answer), and which create, close and
+  record the outcome of one of your processes. The hub counts participation from this alone, in counts that never name
+  anyone, so your type is counted from the day it is installed. If residents never take part in it, say `"none"`;
+  if they take part outside the hub and another type records their total, say `"elsewhere"`.
 
 ### The grant: `capabilities`
 

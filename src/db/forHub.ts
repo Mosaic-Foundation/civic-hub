@@ -50,6 +50,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDb, getHubTokenDb, hubTokensEnabled } from "./client.js";
 import { reportError } from "../utils/reportError.js";
 import { MANIFEST_LIST, type ProcessTableName } from "../shared/processManifests.js";
+import { FEATURE_MANIFEST_LIST, type FeatureTableName } from "../shared/featureManifests.js";
 
 /**
  * The tables the hub itself owns, whatever process types it carries. Each
@@ -79,13 +80,14 @@ export const HOST_TABLES = [
   "waitlist",
 ] as const;
 
-/** Every table that carries hub_id: the host's and every process type's, sorted. */
+/** Every table that carries hub_id: the host's, every process type's and every feature's (ADR-016), sorted. */
 export const HUB_TABLES: readonly TableName[] = [
   ...HOST_TABLES,
   ...MANIFEST_LIST.flatMap((m) => m.tables.map((t) => t.name as ProcessTableName)),
+  ...FEATURE_MANIFEST_LIST.flatMap((m) => m.tables.map((t) => t.name as FeatureTableName)),
 ].sort();
 
-export type TableName = (typeof HOST_TABLES)[number] | ProcessTableName;
+export type TableName = (typeof HOST_TABLES)[number] | ProcessTableName | FeatureTableName;
 
 const TABLE_SET: ReadonlySet<string> = new Set(HUB_TABLES);
 

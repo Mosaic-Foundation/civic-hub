@@ -22,9 +22,9 @@ describe("job registry", () => {
     expect(vercel.crons).toEqual(vercelCrons());
   });
 
-  it("covers every job the brief names: both digests, meeting summaries, news sync, the vote close, the export sweep, the sample refresh", () => {
+  it("covers every job the brief names: both digests, meeting summaries, news sync, the vote close, the export sweep, the sample refresh, the Activity counts", () => {
     expect(JOBS.map((j) => j.id).sort()).toEqual(
-      ["admin_digest", "digest", "hub_exports_sweep", "meeting_summary", "news_sync", "sample_refresh", "vote_close"].sort(),
+      ["admin_digest", "analytics", "digest", "hub_exports_sweep", "meeting_summary", "news_sync", "sample_refresh", "vote_close"].sort(),
     );
   });
 

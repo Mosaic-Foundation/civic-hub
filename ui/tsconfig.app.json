@@ -35,6 +35,6 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "../examples/*/ui.tsx"],
+  "include": ["src", "../examples/*/ui.tsx", "../features/*/ui.tsx", "../features/*/ui/**/*", "../features/*/consoleView.tsx"],
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test"]
 }

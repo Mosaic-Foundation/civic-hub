@@ -77,6 +77,15 @@ export const MEETING_SUMMARY_MANIFEST = defineManifest({
   // everything a published summary's history already serves stays.
   // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
   disclosure: "public",
+  // What the hub's analytics counts (ADR-016): a public meeting recorded.
+  // Nobody's attendance is recorded.
+  participation: {
+    participation: "none",
+    creation: ["civic.process.created"],
+    closing: [],
+    outcome: ["civic.process.result_published"],
+    measures: { met_in_public: "outcome" },
+  },
   publicPayload: {
     "civic.process.aggregation_completed": [
       "aggregation_method",

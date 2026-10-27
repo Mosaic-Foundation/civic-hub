@@ -54,6 +54,7 @@ import { installHosting } from "./hosting/index.js";
 import { installStores } from "./stores/index.js";
 import { getAllHandlers } from "./processes/registry.js";
 import { awaitPackages, mountPackageRoutes } from "./plugins/mount.js";
+import { mountFeatureRoutes } from "./plugins/features.js";
 import { API_SECURITY_HEADERS } from "./shared/securityHeaders.js";
 
 // Every declared setting, checked once (src/config/settings.ts, ADR-012): a
@@ -182,6 +183,8 @@ app.use("/assistant", assistantRoutes);
 // The plugin packages' routes (ADR-014), in configured order, each behind
 // its plugin's switch and the loader's verdict.
 mountPackageRoutes(app, "routes");
+// Feature packages' routes (ADR-016), each behind its feature switch.
+mountFeatureRoutes(app, "routes");
 
 // Process review — resident submissions go through collaborative admin review
 app.use("/reviews", reviewRoutes);

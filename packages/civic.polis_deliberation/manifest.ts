@@ -143,6 +143,15 @@ export const POLIS_DELIBERATION_MANIFEST = defineManifest({
   // duplicates of what `context` already carries (row 6).
   // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
   disclosure: "anonymous",
+  // What the hub's analytics counts (ADR-016): participants take part in
+  // Polis, so the hub counts the total its brief records.
+  participation: {
+    participation: "elsewhere",
+    creation: ["civic.process.created"],
+    closing: ["civic.process.ended"],
+    outcome: [],
+    measures: { met_in_public: "participation" },
+  },
   publicPayload: {
     "civic.process.started": ["topic"],
     "civic.process.ended": ["participation_stats", "closed_early"],

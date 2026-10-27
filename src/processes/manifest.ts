@@ -20,6 +20,7 @@ import type { ThemeTypeKey } from "../shared/theme.js";
 import type { ActivityRecipe, WireObjectRecipe } from "../shared/activityRecipe.js";
 import type { FeedDeclaration } from "../shared/feedActivity.js";
 import { grantProblem, type PluginCapabilities } from "../shared/pluginGrant.js";
+import { participationProblem, type ParticipationDeclaration } from "../shared/participation.js";
 
 /**
  * One scheduled job of a type: src/jobs/registry.ts's HubJobSpec, with the
@@ -203,6 +204,14 @@ export interface ProcessManifest {
    * it at install, and the hub's seams refuse anything beyond it.
    */
   capabilities: PluginCapabilities;
+  /**
+   * Which of its events count as a resident taking part, which create, close
+   * and record the outcome of one of its processes, and the funder measures
+   * they feed (the analytics slice, ADR-016; src/shared/participation.ts).
+   * The hub counts every type from this alone. Optional to load (a type
+   * without one is counted as undeclared); the conformance suite requires it.
+   */
+  participation?: ParticipationDeclaration;
 }
 
 /**
@@ -219,6 +228,24 @@ export function defineDescriptor<const P extends string>(descriptor: ProcessType
  * table names become part of forHub's TableName type).
  */
 export function defineManifest<const M extends ProcessManifest>(manifest: M): M {
+  return manifest;
+}
+
+/**
+ * What a feature package is, as plain data the host reads without loading its
+ * code (ADR-016; src/plugins/feature.ts): the hub feature (switch) it rides
+ * on, its tables, what it needs of the schema, and its scheduled jobs (their
+ * `plugin` is the feature's id).
+ */
+export interface FeatureManifest {
+  feature: string;
+  tables: readonly TableDeclaration[];
+  requiredSchema: readonly SchemaRequirement[];
+  jobs: readonly ManifestJob[];
+}
+
+/** Declare a feature's manifest, keeping its literal values (its table names join forHub's TableName). */
+export function defineFeatureManifest<const M extends FeatureManifest>(manifest: M): M {
   return manifest;
 }
 
@@ -369,6 +396,11 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       throw new ManifestError(
         `${where(m)}: disclosure "${String(m.disclosure)}" must be one of ${DISCLOSURE_POLICIES.join(", ")}`,
       );
+    }
+
+    if (m.participation !== undefined) {
+      const problem = participationProblem(m.participation, { emits: d.emits, hostTypes: host.hostActivityTypes });
+      if (problem) throw new ManifestError(`${where(m)}: ${problem}`);
     }
 
     if (m.eligibility !== undefined) {

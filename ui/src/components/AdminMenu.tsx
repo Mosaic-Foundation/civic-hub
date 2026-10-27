@@ -1,11 +1,14 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useNavData } from "../context/navDataState";
 import { useDropdownMenu } from "../hooks/useDropdownMenu";
+import { useHub } from "../config/hub";
+import { FEATURE_UI } from "../features";
 import "./AdminMenu.css";
 
 /**
  * The admin's way into everything (admin menu slice, 2026-10-13): a review
- * icon with a count, and the Admin pill, whose dropdown has five items, the
+ * icon with a count, and the Admin pill, whose dropdown has five items and
+ * the switched-on features' pages after Moderation (Activity, ADR-016), the
  * last one Contact Civic.Social (feedback routing, 2026-10-13). The account menu beside it holds only personal things.
  *
  * The review count is what is NEW since this admin last opened each review
@@ -20,6 +23,7 @@ import "./AdminMenu.css";
 
 export default function AdminMenu() {
   const navigate = useNavigate();
+  const hub = useHub();
   const { open, setOpen, buttonRef, menuRef, onMenuKey, choose } = useDropdownMenu();
   // The counts are read once for the whole navigation (context/NavDataContext.tsx).
   // The icon opens the first queue with something new, so the click clears
@@ -63,6 +67,9 @@ export default function AdminMenu() {
           >
             <MenuItem label="Reviews" count={reviews} onClick={() => choose(() => navigate(reviewsTo))} />
             <MenuItem label="Moderation" onClick={() => choose(() => navigate("/admin/moderation"))} />
+            {FEATURE_UI.filter((u) => u.adminTab && hub.plugins.enabled(u.feature)).map((u) => (
+              <MenuItem key={u.feature} label={u.adminTab!.label} onClick={() => choose(() => navigate(u.adminTab!.path))} />
+            ))}
             <MenuItem label="Hub settings" onClick={() => choose(() => navigate("/admin/settings"))} />
             <MenuItem label="Plugins" onClick={() => choose(() => navigate("/admin/settings/plugins"))} />
             <MenuItem label="Contact Civic.Social" onClick={() => choose(() => navigate("/admin/contact-civic-social"))} />

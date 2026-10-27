@@ -50,6 +50,12 @@ export interface AdminDigestPayload {
   lines: DigestLine[];
   /** Sum of new_count over the lines. */
   new_total: number;
-  /** Nothing new: the caller sends nothing. */
+  /**
+   * Sentences feature packages add (ADR-016): Activity's last-month line on
+   * the first digest of a month. A digest with a note is sent even when
+   * nothing is new in the queues.
+   */
+  notes?: string[];
+  /** Nothing new and no note: the caller sends nothing. */
   empty: boolean;
 }

@@ -6,6 +6,7 @@
 
 import type { JobOutcome, JobRunInput, JobRunner } from "./types.js";
 import { loadedPackages } from "../plugins/loader.js";
+import { featureJobRunners } from "../plugins/features.js";
 import { digestJob } from "./digest.js";
 import { adminDigestJob } from "./adminDigest.js";
 import { newsSyncJob } from "./newsSync.js";
@@ -73,6 +74,7 @@ export function jobRunners(): Readonly<Record<string, JobRunner>> {
   return {
     ...HOST_JOB_RUNNERS,
     ...Object.fromEntries(loadedPackages().flatMap((p) => Object.entries(p.server.jobs ?? {}))),
+    ...featureJobRunners(),
   };
 }
 

@@ -124,6 +124,13 @@ export const WORDCLOUD_MANIFEST = defineManifest({
   // published snapshots and result are the public record.
   // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
   disclosure: "anonymous",
+  // What the hub's analytics counts (ADR-016).
+  participation: {
+    participation: ["civic.process.submission_received"],
+    creation: ["civic.process.created"],
+    closing: ["civic.process.ended"],
+    outcome: ["civic.process.result_published"],
+  },
   publicPayload: {
     "civic.process.result_published": ["wordcloud_result", "wordcloud_snapshot"],
   },

@@ -109,6 +109,13 @@ export const PROPOSAL_MANIFEST = defineManifest({
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
   // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
   disclosure: "members",
+  // What the hub's analytics counts (ADR-016).
+  participation: {
+    participation: ["civic.proposal.supported", "civic.proposal.support_withdrawn"],
+    creation: ["civic.proposal.submitted"],
+    closing: ["civic.proposal.closed"],
+    outcome: [],
+  },
   publicPayload: {
     "civic.proposal.submitted": ["proposal"],
     "civic.proposal.supported": ["proposal"],

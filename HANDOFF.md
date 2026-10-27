@@ -4,6 +4,55 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The analytics slice: declared participation, counts from the event log, the Activity feature — 2026-10-27
+
+`multi-tenant`, `fdaaa7d`..(this commit), from `24471a1`, worked in a worktree (`../civic-hub-analytics`; the Events
+session uses `civic-hub/`). **Dev runs `ab4bf76`** (`release.sh dev --yes`, twelve migrations applied); **the nine
+packages are not mounted on dev until Adam approves their new entries in the dev console** (Plugins: Approve, one code
+for ten minutes). Not on production. Decision record ADR-016 (mono repo, committed locally for Adam to push). Docs:
+`docs/ACTIVITY.md` (admins; the help keys' anchors), `docs/PARTICIPATION.md` (developers). Reports:
+`~/Documents/Mosaic/0 Management/Civic Social/Analytics-Session-Report-2026-10-27.md` and
+`Analytics-Handoff-to-Management-2026-10-27.md`.
+
+**Adam's calls (2026-10-27):** the six tentative decisions and every recommendation (ADR-016's status line): the
+declaration in the manifests with new versions, the funder measures as reframed, the daily digest's first-of-month
+line, hashed keys shown once with an append-only read log, calendar periods with two rollup tables, "fewer than 5"
+below admin, "active resident" and "new residents" (the membership table, the one input outside the log).
+
+**What changed:**
+- **Participation, declared.** `participation` in each manifest (`src/shared/participation.ts`); checked at startup
+  when present; conformance step 10 requires it. New versions, required: seven packages 0.1.1, Briefs and
+  Conversations 0.2.1; the straw poll 0.1.2 (not installed on new hubs).
+- **Feature packages** (`src/plugins/feature.ts`, `features.ts`; `config/features*.ts`, `config/featureUi.ts`,
+  `config/featureConsole.ts`; `ui/src/features.ts`): a hub feature built as a package; `civic/package-boundary`
+  fences `features/`. The SDK's one new read: `EventLogReader` over `event_counts_by_day` and `event_actor_counts`
+  (counts only).
+- **Activity** (`features/analytics/`, migration `20261027100000`): the hourly `analytics` job filling
+  `analytics_daily` and `analytics_period`; `GET /analytics` (Public numbers, `plugin.analytics.public_numbers`, off by
+  default; or a reporting key) and `/admin/analytics` (report, CSV, recount, keys); `analytics_report_keys` (sha256,
+  shown once) and `analytics_report_reads` (append-only); the console's Activity section; the admin digest's
+  first-of-month line (`notes` in its payload); Admin → Activity (a tab, the Admin menu, the navigation's Admin group),
+  the Plugins panel, the About page's "This hub in numbers".
+- **Tests:** see TESTING.md, "The analytics slice". Unit 1,903; API 944 and 943 of 957 (the failures named there);
+  Playwright 191; smoke 22 of 28 locally (the six through the hub's own address, as documented); the wire identical.
+  **CI on `ab4bf76`:** build-and-test, run-anywhere, both API passes (946 each) and E2E green; the empty-folder proof
+  failed (the kit's packer did not copy `features/`), fixed in the next commit with the two kit fixtures declaring
+  `participation` (so the broken copy fails only for answering twice), and proved locally. Dev's smoke run on
+  `ab4bf76` failed only the checks that need the process plugins, which are not mounted until approved.
+
+**Left:**
+- Adam: approve the ten entries on dev (until then dev's hubs show every process plugin as "Not available right now",
+  and dev's smoke run fails its plugin checks); push ADR-016; the production release (one migration, ten entries to
+  approve and sign).
+- The Events session: `packages/civic.event` needs `participation` (conformance step 10). Its `calendar_*` migration is
+  on the shared local stack, which is why `rlsCatalog` failed locally here.
+- The docs session: mirror `docs/ACTIVITY.md` and `docs/PARTICIPATION.md`; the help keys `plugins.analytics` and
+  `plugin.analytics.public_numbers` are pending until the anchors are published.
+- Later: consented meeting attendance (would let "Attended a public meeting" count people); a survey plugin (Bucket 2);
+  the feature-plugin kind in the loader and catalog (ADR-016 lists what it needs).
+
+---
+
 ## Plugin session 2: signed approvals, versions with a grant per hub, the summary move, the developer path — 2026-10-26
 
 `multi-tenant`, `2f4d9ee`..(this commit), from `6fe304b`. Dev serves each push (Vercel); its database has every migration but

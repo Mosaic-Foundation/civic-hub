@@ -202,7 +202,7 @@ describe("a hub's plugin packages", () => {
     expect(civic.status).toBe(200);
     const listed = civic.body.plugins as Array<{ package: string; version: string; type: string; signed: boolean }>;
     expect(listed.length).toBeGreaterThanOrEqual(9);
-    expect(listed).toContainEqual(expect.objectContaining({ package: WORDCLOUD, version: "0.1.0", type: "civic.wordcloud" }));
+    expect(listed).toContainEqual(expect.objectContaining({ package: WORDCLOUD, version: "0.1.1", type: "civic.wordcloud" }));
     // Signed approvals (ADR-015): with a catalog key, every package listed runs on a verified signature.
     const health = await call("GET", "/health", HOST);
     if (health.body.plugins.signatures.key) {
@@ -381,7 +381,7 @@ describe("versions and updates", () => {
     expect(briefs.update_available).toBe(true);
     const pkg = (briefs.packages as Array<any>).find((p) => p.package === BRIEF);
     expect(pkg.version).toBe("0.1.0");
-    expect(pkg.update).toEqual({ version: "0.2.0", adds: [AI_LINE], drops: [] });
+    expect(pkg.update).toEqual({ version: "0.2.1", adds: [AI_LINE], drops: [] });
     expect(pkg.grant.cannot).toContain("Use AI.");
   });
 
@@ -392,11 +392,11 @@ describe("versions and updates", () => {
     expect(updated.status, JSON.stringify(updated.body)).toBe(200);
     expect(updated.body.plugin.update_available).toBe(false);
     const row = (await db.query("SELECT version, capabilities, upgraded_from, upgraded_by FROM hub_plugins WHERE hub_id = $1 AND package = $2", [SLUG, BRIEF])).rows[0];
-    expect(row).toMatchObject({ version: "0.2.0", upgraded_from: "0.1.0" });
+    expect(row).toMatchObject({ version: "0.2.1", upgraded_from: "0.1.0" });
     expect(row.capabilities.adapters).toContain("ai");
     expect(row.upgraded_by).not.toBe("system:required");
     const log = (await db.query("SELECT after FROM hub_admin_audit_log WHERE hub_id = $1 AND action = 'plugin.update' ORDER BY at DESC LIMIT 1", [SLUG])).rows[0];
-    expect(log.after).toMatchObject({ version: "0.2.0", adds: [AI_LINE] });
+    expect(log.after).toMatchObject({ version: "0.2.1", adds: [AI_LINE] });
 
     const { content } = await closedConversationBrief(`Allowed ${run}`);
     expect(content.deliberation.narrative).toBeUndefined();
@@ -412,7 +412,7 @@ describe("versions and updates", () => {
     expect((await call("POST", `/process/${id}/action`, HOST, { type: "process.activate", payload: {} }, admin)).status).toBe(200);
     expect((await one("vote")).update_available).toBe(true);
     expect((await call("POST", "/admin/hub/plugins/vote/update", HOST, {}, admin)).status).toBe(200);
-    expect((await record("@civic-social/plugin-vote")).version).toBe("0.1.0");
+    expect((await record("@civic-social/plugin-vote")).version).toBe("0.1.1");
     const read = await call("GET", `/process/${id}/state`, HOST, undefined, admin);
     expect(read.status).toBe(200);
     expect(read.body.status ?? read.body.lifecycle).toBe("active");
@@ -425,8 +425,8 @@ describe("versions and updates", () => {
   it("a version marked required moves every hub on an older one, with a notice on its Plugins page", async () => {
     await briefsBehind();
     const view = await consoleCall("GET", "/control/plugins", { cookie });
-    const entry = view.body.entries.find((e: any) => e.package === BRIEF && e.version === "0.2.0" && e.status === "approved" && e.matches_deployment);
-    expect(entry, "Briefs 0.2.0 is approved and running").toBeTruthy();
+    const entry = view.body.entries.find((e: any) => e.package === BRIEF && e.version === "0.2.1" && e.status === "approved" && e.matches_deployment);
+    expect(entry, "Briefs 0.2.1 is approved and running").toBeTruthy();
     const wasRequired = entry.required as boolean;
     try {
       if (wasRequired) {
@@ -436,11 +436,11 @@ describe("versions and updates", () => {
       const marked = await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: true, step_up_code: await stepCode() } });
       expect(marked.status, JSON.stringify(marked.body)).toBe(200);
       const row = (await db.query("SELECT version, upgraded_from, upgraded_by FROM hub_plugins WHERE hub_id = $1 AND package = $2", [SLUG, BRIEF])).rows[0];
-      expect(row).toEqual({ version: "0.2.0", upgraded_from: "0.1.0", upgraded_by: "system:required" });
+      expect(row).toEqual({ version: "0.2.1", upgraded_from: "0.1.0", upgraded_by: "system:required" });
       const briefs = await one("brief");
       expect(briefs.update_available).toBe(false);
       const pkg = (briefs.packages as Array<any>).find((p) => p.package === BRIEF);
-      expect(pkg.required_update).toMatchObject({ from: "0.1.0", to: "0.2.0" });
+      expect(pkg.required_update).toMatchObject({ from: "0.1.0", to: "0.2.1" });
     } finally {
       if (!wasRequired) {
         await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: false, step_up_code: await stepCode() } });

@@ -223,6 +223,22 @@ export { resolveTimeZone } from "../utils/hubTime.js";
 // --- Types of the adapters' calls (src/adapters/ai.ts) -----------------------------------
 export type { AiSingleTurnInput } from "../adapters/ai.js";
 
+// --- Feature packages (src/plugins/feature.ts; ADR-016) ----------------------------------
+// A hub feature built as a package is, and the one read capability it adds:
+// the event log as counts (EventLogReader), never an event, an actor or a payload.
+export type {
+  ActorCountPlan,
+  DayCount,
+  EventLogReader,
+  EventPair,
+  FeatureConsoleSection,
+  FeatureDigestLine,
+  FeatureHost,
+  FeaturePackage,
+  FeatureServer,
+  ProcessTypeSummary,
+} from "../plugins/feature.js";
+
 // --- The conversation's (packages/civic.polis_deliberation/) -------------------------------
 // Acting on a process through the hub's one action path, and reading one as closed.
 export { executeAction, readsAsClosed } from "../services/processService.js";

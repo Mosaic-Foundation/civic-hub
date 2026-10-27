@@ -71,6 +71,18 @@ export const BRIEF_MANIFEST = defineManifest({
   // bookkeeping delivered_to_count on outcome_recorded (row 2).
   // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
   disclosure: "public",
+  // What the hub's analytics counts (ADR-016): a brief is made by the hub
+  // and delivered to officials; it records the participants of a source
+  // whose participants took part outside the hub (a conversation's).
+  participation: {
+    participation: "none",
+    creation: ["civic.process.created"],
+    closing: [],
+    outcome: ["civic.process.outcome_recorded"],
+    sourceField: "source_process_id",
+    sourceTotals: [{ event: "civic.process.aggregation_completed", field: "participation_count" }],
+    measures: { contacted_an_official: "outcome" },
+  },
   publicPayload: {
     "civic.process.created": ["source_process_id", "source_process_type"],
     "civic.process.aggregation_completed": ["source_process_id", "participation_count"],

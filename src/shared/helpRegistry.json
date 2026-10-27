@@ -140,6 +140,12 @@
     "page": "/reference/plugins",
     "anchor": "plugins-admin-digest"
   },
+  "plugins.analytics": {
+    "text": "Activity: how many residents took part, of what kind, by week, month and quarter, counted from the hub's record in numbers that never name anyone. Admins see it under Admin → Activity, with a CSV.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-analytics",
+    "pending": true
+  },
   "participation.threshold": {
     "text": "How many endorsements a proposed vote needs before it opens for ballots. Set it to 0 to skip this stage. Votes already gathering support keep their old number.",
     "page": "/reference/settings/participation",
@@ -429,6 +435,12 @@
     "text": "Shows the Members page, and its place in the menus, before the hub reaches the number above. The count on the home page still waits.",
     "page": "/reference/plugins",
     "anchor": "plugin-members-page-before-threshold"
+  },
+  "plugin.analytics.public_numbers": {
+    "text": "Off by default. On, anyone can read this hub's Activity numbers at /analytics, and the About page shows them. Numbers from 1 to 4 read \"fewer than 5\". Organisations you give a reporting key can read them either way.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-analytics-public-numbers",
+    "pending": true
   },
   "admin.feedback_forward": {
     "text": "Shares this item with Civic.Social, which maintains the software, as a bug or an idea. The sender's name and address stay here. Their status then shows on the item.",

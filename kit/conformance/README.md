@@ -93,9 +93,17 @@ additive (refused); CI runs it too.
      reported, not failed);
    - the hub decides who takes part;
    - a close still happens, once, when the service is out.
+10. **What counts as its participation is declared** (ADR-016): the manifest's
+    `participation` names at least one event that records a resident taking
+    part, or says `"elsewhere"` (participants act outside the hub, and another
+    type records their total) or `"none"`; it names the events that create,
+    close and record the outcome of one of its processes; and every resident's
+    or creator's action that emits anything emits at least one event counted
+    in one of those roles.
+    The hub's analytics counts every type from this declaration alone.
 
 Types only the hub creates (briefs, meeting summaries, the retired vote
-results) get step 1, and are reported as "not walked". A brief is exercised in
+results) get steps 1 and 10, and are reported as "not walked". A brief is exercised in
 use by step 5 of every type that makes one.
 
 ## What a plugin author needs to make it pass

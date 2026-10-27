@@ -43,6 +43,9 @@ const AUTHENTICATED = [
   "claim_vote_key",
   "count_pending_reviews",
   "current_hub_id",
+  // The event log read as counts, for the Activity feature (ADR-016).
+  "event_actor_counts",
+  "event_counts_by_day",
   "reshuffle_ballots",
   "search_processes",
   "search_processes_count",

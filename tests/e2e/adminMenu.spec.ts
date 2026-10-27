@@ -89,7 +89,8 @@ async function reviewCount(page: Page): Promise<number> {
   return counts.reviews + counts.briefs + counts.meeting_summaries;
 }
 
-const ADMIN_ITEMS = ["Reviews", "Moderation", "Hub settings", "Plugins", "Contact Civic.Social"];
+// Activity: the Activity feature's page (ADR-016), on by default.
+const ADMIN_ITEMS = ["Reviews", "Moderation", "Activity", "Hub settings", "Plugins", "Contact Civic.Social"];
 
 // Since the navigation slice (2026-10-14) the Admin pill and the review icon
 // are in the header only on a desktop with Top tabs; a phone has More's Admin

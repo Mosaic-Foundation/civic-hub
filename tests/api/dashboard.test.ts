@@ -117,8 +117,26 @@ describe("GET /control/dashboard", () => {
   it("answers every section, in order, with when it was gathered", async () => {
     const res = await dashboard(false);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.sections.map((s) => s.id)).toEqual(["hubs", "jobs", "outside", "attention", "plugins"]);
+    expect(res.body.sections.map((s) => s.id)).toEqual(["hubs", "jobs", "outside", "attention", "plugins", "activity"]);
     expect(Math.abs(Date.now() - Date.parse(res.body.gathered_at))).toBeLessThan(60_000);
+  });
+
+  it("Activity (ADR-016): each live hub's report for every period, the sum, counts only", async () => {
+    const res = await dashboard(true);
+    const activity = section(res.body, "activity");
+    expect(activity.status, activity.message).toBe("ok");
+    const data = activity.data as {
+      periods: Record<string, { hubs: Array<{ id: string; report: { totals: Record<string, number>; by_type: unknown[] } | null }>; sum: Record<string, number> }>;
+    };
+    expect(Object.keys(data.periods)).toEqual(["week", "month", "quarter", "all"]);
+    const floyd = data.periods.month.hubs.find((h) => h.id === "floyd");
+    expect(floyd?.report?.by_type.length).toBeGreaterThan(0);
+    for (const kind of Object.keys(data.periods)) {
+      const { hubs, sum } = data.periods[kind];
+      expect(sum.active_residents).toBe(hubs.reduce((n, h) => n + (h.report?.totals.active_residents ?? 0), 0));
+    }
+    // Nothing per person: no account id, no address.
+    expect(JSON.stringify(activity.data)).not.toMatch(/user_[0-9a-f]{8}|@example\.test/);
   });
 
   it("a hub that never answers is down after two 8 s attempts; the other hubs and sections still come back", async () => {

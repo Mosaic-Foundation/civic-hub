@@ -1,6 +1,6 @@
 {
   "name": "@civic-social/plugin-proposal",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Proposals: ideas residents float and support, before a vote. A Civic Hub plugin package (docs/PLUGIN-PACKAGE.md).",

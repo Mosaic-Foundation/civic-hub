@@ -12,7 +12,7 @@ import { createProposalsStore } from "./storeImpl.js";
 
 const proposalPackage: PluginPackage = {
   name: "@civic-social/plugin-proposal",
-  version: "0.1.0",
+  version: "0.1.1",
   displayName: "Proposals",
   manifest,
   server(host) {

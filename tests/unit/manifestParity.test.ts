@@ -27,6 +27,11 @@
  * approved packages) and the schema contract gains hub_plugins and
  * plugin_catalog (all additive). Nothing else moved: the word cloud became a
  * package with every list it appears in unchanged.
+ * And (2026-10-27, the analytics slice, ADR-016): the Activity feature
+ * package adds its plugin id (analytics, last in the Plugins section, with
+ * its public_numbers setting), its four tables (two derived rollups omitted
+ * from the export; the reporting keys and their read log exported), their
+ * schema requirements and its hourly job. All additions; nothing else moved.
  * And (2026-10-27, plugin Events): the Events package adds its plugin, its
  * type, its three tables (exported), its five event types, its section and its
  * schema requirements; every other entry is unchanged (checked before writing).

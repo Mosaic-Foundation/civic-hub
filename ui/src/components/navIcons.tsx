@@ -84,6 +84,12 @@ const PATHS: Record<string, ReactElement> = {
       <path d="M3 13h5l1.5 2.5h5L16 13h5" />
     </>
   ),
+  activity: (
+    <>
+      <path d="M4 20V4M4 20h16" />
+      <path d="M8 16v-4M12 16V8M16 16v-6" />
+    </>
+  ),
   moderation: (
     <>
       <path d="M12 3l8 3v6c0 4.5-3.5 8-8 9-4.5-1-8-4.5-8-9V6z" />

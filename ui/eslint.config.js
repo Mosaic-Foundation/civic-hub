@@ -95,8 +95,10 @@ export default defineConfig([
         // the one Modal (components/Modal), which holds no hub state, so every
         // dialog in the hub and the console behaves alike (Submit and Save).
         // The third is the one error reporter (services/errorReporter), which
-        // holds no hub state either (operations shell).
-        patterns: [{ regex: '^\\.\\./(?!\\.\\./\\.\\./src/shared/|components/Modal$|services/errorReporter$)', message: 'The console stands alone: it imports nothing from the hub app (src/shared/, components/Modal and services/errorReporter excepted).' }],
+        // holds no hub state either (operations shell). The fourth is the
+        // feature packages' console views (config/featureConsole.ts, ADR-016),
+        // which import the console's own types and their feature's plain data.
+        patterns: [{ regex: '^\\.\\./(?!\\.\\./\\.\\./src/shared/|\\.\\./\\.\\./config/featureConsole$|components/Modal$|services/errorReporter$)', message: 'The console stands alone: it imports nothing from the hub app (src/shared/, components/Modal, services/errorReporter and the features\' console views excepted).' }],
       }],
     },
   },

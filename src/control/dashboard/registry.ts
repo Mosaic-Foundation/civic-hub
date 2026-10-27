@@ -20,6 +20,12 @@ import { loadJobs } from "./jobs.js";
 import { loadOutside } from "./outside.js";
 import { loadAttention } from "./attention.js";
 import { loadPluginGaps } from "../pluginCatalog.js";
+import { featureConsoleSections } from "../../plugins/features.js";
+import type { FeatureConsoleSection } from "../../plugins/feature.js";
+import { env } from "../../config/env.js";
+import { hubOrigin } from "../../utils/baseUrl.js";
+import { listHubs } from "../hubs.js";
+import { inHubScope } from "../inHub.js";
 
 export interface SectionContext {
   now: Date;
@@ -52,7 +58,26 @@ export const DASHBOARD_SECTIONS: readonly DashboardSection[] = [
   // Plugin packages this deployment loads but does not mount (ADR-014), and
   // the hubs left without them; catalog entries waiting for approval.
   { id: "plugins", name: "Plugins", load: loadPluginGaps },
+  // Feature packages' sections (ADR-016): Activity. Each gets the live hubs
+  // and runs its reads inside each hub's scope.
+  ...featureConsoleSections().map(asDashboardSection),
 ];
+
+/** A feature's section, given what it needs of the console: the live hubs and each one's scope. */
+function asDashboardSection(s: FeatureConsoleSection): DashboardSection {
+  return {
+    id: s.id,
+    name: s.name,
+    timeoutMs: HUBS_TIMEOUT_MS,
+    load: async (ctx) => {
+      const base = env.CIVIC_UI_BASE_URL ?? env.BASE_URL ?? "http://localhost:3000";
+      const hubs = (await listHubs())
+        .filter((h) => !h.archived_at)
+        .map((h) => ({ id: h.id, name: h.name, origin: hubOrigin(h.hostname, base) }));
+      return s.load({ now: ctx.now, hubs, inHub: inHubScope });
+    },
+  };
+}
 
 export interface SectionResult {
   id: string;

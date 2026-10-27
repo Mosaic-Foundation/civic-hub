@@ -200,6 +200,8 @@ export const KEYS = {
   // shows the page (and its section) anyway; the count still waits.
   PLUGIN_MEMBERS_MIN_COUNT: "plugin.members.min_count",
   PLUGIN_MEMBERS_PAGE_BEFORE_THRESHOLD: "plugin.members.page_before_threshold",
+  // Activity (ADR-016): whether /analytics and the About page's numbers are public. Off by default.
+  PLUGIN_ANALYTICS_PUBLIC_NUMBERS: "plugin.analytics.public_numbers",
 } as const;
 
 export type SettingKey = (typeof KEYS)[keyof typeof KEYS] | string;
@@ -360,6 +362,8 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID,
   // 2026-10-08 (Adam): the Feedback page prints it.
   KEYS.PLUGIN_FEEDBACK_CONTACT_EMAIL,
+  // 2026-10-27 (ADR-016): the About page shows the hub's numbers when it is on.
+  KEYS.PLUGIN_ANALYTICS_PUBLIC_NUMBERS,
 ];
 
 const PUBLIC_KEYS: ReadonlySet<string> = new Set(PUBLIC_KEY_LIST);

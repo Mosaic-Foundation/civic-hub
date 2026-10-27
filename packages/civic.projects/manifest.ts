@@ -99,6 +99,15 @@ export const PROJECT_MANIFEST = defineManifest({
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
   // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
   disclosure: "members",
+  // What the hub's analytics counts (ADR-016): a project is working with
+  // neighbours on something.
+  participation: {
+    participation: ["civic.project.sentiment_changed"],
+    creation: ["civic.project.created"],
+    closing: ["civic.project.updated"],
+    outcome: [],
+    measures: { worked_with_neighbours: "participation" },
+  },
   publicPayload: {
     "civic.project.created": ["project"],
     "civic.project.updated": ["project", "edit"],

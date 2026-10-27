@@ -202,6 +202,15 @@ export const VOTE_MANIFEST = defineManifest({
   // `process` (method, options, the voting window, status) is always public.
   // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
   disclosure: "anonymous",
+  // What the hub's analytics counts (ADR-016). A ballot is counted from its
+  // vote_submitted event (which names the voter, never the choice); a support
+  // is recorded only when it opens the vote (threshold_met).
+  participation: {
+    participation: ["civic.process.vote_submitted", "civic.process.threshold_met"],
+    creation: ["civic.process.created"],
+    closing: ["civic.process.ended"],
+    outcome: ["civic.process.result_published"],
+  },
   publicPayload: {
     "civic.process.ended": ["result", "closed_early"],
     "civic.process.aggregation_completed": [

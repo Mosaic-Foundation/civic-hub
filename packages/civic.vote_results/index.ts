@@ -10,7 +10,7 @@ import { voteResultsHost } from "./host.js";
 
 const voteResultsPackage: PluginPackage = {
   name: "@civic-social/plugin-vote-results",
-  version: "0.1.0",
+  version: "0.1.1",
   displayName: "Vote results",
   manifest,
   requires: ["@civic-social/plugin-vote"],

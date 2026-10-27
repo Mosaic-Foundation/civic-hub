@@ -457,6 +457,12 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /feed/meta": { query: ["", "?process=" /* + every floyd id, below */] },
   "GET /api/feed/": { query: ["", "?limit=200"] },
   "GET /api/feed/meta": { query: ["", "?process=" /* + every floyd id, below */] },
+  // Activity (ADR-016): counts only. Athens keeps Public numbers off, so the
+  // public route answers 404 here; tests/api/analytics walks it on, off and with a key.
+  "GET /analytics/": { query: ["", "?period=week", "?period=quarter", "?period=all"] },
+  "GET /admin/analytics/": { query: ["", "?period=all"] },
+  "GET /admin/analytics/csv": { query: ["", "?period=all"] },
+  "GET /admin/analytics/keys": {},
   "GET /\\.well-known/civic.json": {},
   "GET /\\.well-known/did.json": {},
 
@@ -467,6 +473,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /internal/admin-digest/run": { skip: "cron: returns counts only; admin digest per hub is tests/api/crons" },
   "GET /internal/sample-refresh/run": { skip: "cron: demo hubs only, replaces the calling hub's own samples; tests/api/sampleRefresh" },
   "GET /internal/vote-close/run": { skip: "cron: returns ids of the calling hub's own votes it closed; per-hub scope is tests/unit/jobsPerHub, the close in tests/api/pluginToggles" },
+  "GET /internal/analytics/run": { skip: "cron: returns counts only, of the calling hub; tests/api/analytics" },
   "GET /internal/hub-exports-sweep/run": { skip: "platform cron: deletes aged objects in the private hub-exports bucket, returns their keys (hub id + file name); tests/api/hubExportConsole" },
 };
 
@@ -646,6 +653,8 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /deliberations/:processId/regenerate": { body: {} },
   "POST /proposals/:id/support": { body: {} },
   "DELETE /proposals/:id/support": {},
+  // A reporting key (ADR-016): Floyd's ids are never one of Athens's keys.
+  "POST /admin/analytics/keys/:id/revoke": { body: {} },
   // One sample at a time (admin menu slice): Floyd's ids are never Athens's samples.
   "DELETE /admin/hub/sample-content/:id": {},
   // Install and Remove (ADR-014): the parameter is a plugin's id, not a record;
