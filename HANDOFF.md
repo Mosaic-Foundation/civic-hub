@@ -7,9 +7,9 @@ Updated after every Claude Code session. Records what was built, what's incomple
 ## The analytics slice: declared participation, counts from the event log, the Activity feature — 2026-10-27
 
 `multi-tenant`, `fdaaa7d`..(this commit), from `24471a1`, worked in a worktree (`../civic-hub-analytics`; the Events
-session uses `civic-hub/`). **Dev runs `ab4bf76`** (`release.sh dev --yes`, twelve migrations applied); **the nine
-packages are not mounted on dev until Adam approves their new entries in the dev console** (Plugins: Approve, one code
-for ten minutes). Not on production. Decision record ADR-016 (mono repo, committed locally for Adam to push). Docs:
+session uses `civic-hub/`). **Dev runs this commit's parent `3dd0e3a` and later** (`release.sh dev --yes`; twelve
+migrations applied with `ab4bf76`). Adam approved the ten entries on dev: nine packages mounted, all signed. **Not on
+production: it waits for the Events branch to merge, for one release and one approval round (Adam, 2026-10-27).** Decision record ADR-016 (mono repo, committed locally for Adam to push). Docs:
 `docs/ACTIVITY.md` (admins; the help keys' anchors), `docs/PARTICIPATION.md` (developers). Reports:
 `~/Documents/Mosaic/0 Management/Civic Social/Analytics-Session-Report-2026-10-27.md` and
 `Analytics-Handoff-to-Management-2026-10-27.md`.
@@ -41,9 +41,11 @@ below admin, "active resident" and "new residents" (the membership table, the on
   `ab4bf76` failed only the checks that need the process plugins, which are not mounted until approved.
 
 **Left:**
-- Adam: approve the ten entries on dev (until then dev's hubs show every process plugin as "Not available right now",
-  and dev's smoke run fails its plugin checks); push ADR-016; the production release (one migration, ten entries to
-  approve and sign).
+- Adam: push ADR-016; the production release after the Events branch merges (this slice's migration and ten entries,
+  with the Events package's, approved and signed in one round).
+- After approval, dev's smoke run failed twice on the feed check (the run's vote card not there at five seconds; the
+  wait for "Loading feed…" to go passes before the feed starts loading). The check now waits for the card, up to
+  20 s (`3dd0e3a`), and the smoke run passed, 28 of 28.
 - The Events session: `packages/civic.event` needs `participation` (conformance step 10). Its `calendar_*` migration is
   on the shared local stack, which is why `rlsCatalog` failed locally here.
 - The docs session: mirror `docs/ACTIVITY.md` and `docs/PARTICIPATION.md`; the help keys `plugins.analytics` and
