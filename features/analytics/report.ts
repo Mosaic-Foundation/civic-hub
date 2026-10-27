@@ -8,12 +8,14 @@ import { MEASURES } from "../../src/shared/participation.js";
 import { feeders, provenance, rolesOf } from "./plan.js";
 import { hubTimeZone, launchDay } from "./rollup.js";
 import { periodLabel, periodOf, previousPeriod, todayIn, type Period, type PeriodKind } from "./periods.js";
+import type { Count, MeasureRow, Report, TypeRow } from "./types.js";
+
+export type { Count, MeasureRow, Report, TypeRow };
 
 /** Below admin, a count from 1 to SMALL - 1 is shown as SMALL_LABEL. */
 export const SMALL = 5;
 export const SMALL_LABEL = "fewer than 5";
 
-export type Count = number | typeof SMALL_LABEL;
 
 export const DEFINITIONS = {
   active_residents:
@@ -28,48 +30,6 @@ export const DEFINITIONS = {
   residents_in_more_than_one_type: "Distinct residents active on more than one type of process in the period.",
   returning_from_previous_period: "Distinct residents active in the period who were also active in the period before it.",
 } as const;
-
-export interface TypeRow {
-  type: string;
-  label: string;
-  plural: string;
-  processes_created: Count;
-  processes_closed: Count;
-  participations: Count;
-  outcomes: Count;
-  active_residents: Count;
-}
-
-export interface MeasureRow {
-  id: string;
-  label: string;
-  residents: { label: string; value: Count };
-  records: { label: string; value: Count };
-  derivation: string;
-  provenance: { participation: Array<{ type: string; events: string[] }>; outcome: Array<{ type: string; events: string[] }> };
-}
-
-export interface Report {
-  hub: string;
-  period: { kind: PeriodKind; start: string; end: string; label: string; to_date: boolean };
-  previous_period: { start: string; end: string } | null;
-  generated_at: string;
-  /** When the counts of residents were last computed (the job runs hourly); null before its first run. */
-  computed_at: string | null;
-  totals: {
-    new_residents: Count;
-    active_residents: Count;
-    processes_created: Count;
-    processes_closed: Count;
-    participations: Count;
-    outcomes: Count;
-  };
-  by_type: TypeRow[];
-  measures: MeasureRow[];
-  retention: { residents_in_more_than_one_type: Count; returning_from_previous_period: Count };
-  definitions: typeof DEFINITIONS;
-  suppression: { applied: boolean; below: number; shown_as: string };
-}
 
 /** Exact for admins; below admin, 1 to 4 reads "fewer than 5". */
 export function suppress(v: number, exact: boolean): Count {

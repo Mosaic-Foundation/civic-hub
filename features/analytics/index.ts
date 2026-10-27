@@ -14,6 +14,7 @@ import type { FeaturePackage } from "../../src/sdk/index.js";
 import { ANALYTICS_MANIFEST } from "./manifest.js";
 import { adminRouter, publicRouter } from "./routes.js";
 import { rollup } from "./rollup.js";
+import { consoleSection } from "./console.js";
 
 const analytics: FeaturePackage = {
   name: "@civic-social/feature-analytics",
@@ -30,6 +31,7 @@ const analytics: FeaturePackage = {
           return { status: 200, body: result as unknown as Record<string, unknown> };
         },
       },
+      consoleSections: [consoleSection(host)],
     };
   },
 };
