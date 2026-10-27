@@ -119,7 +119,7 @@ const descriptor = defineDescriptor({
     label: "Event",
     plural: "Events",
     icon: "calendar",
-    section: { id: "events", label: "Events", path: "/events", detail_paths: ["/events/"], order: 35 },
+    section: { id: "events", label: "Events", path: "/events", detail_paths: ["/events/"], order: 33 },
   },
 });
 

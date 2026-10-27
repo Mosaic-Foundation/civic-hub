@@ -19,7 +19,7 @@ const ids = (order: string[], enabled: (p: string) => boolean = all) =>
 
 describe("the hub's sections", () => {
   it("default to today's strip, Feed first, then Members", () => {
-    expect(ids([])).toEqual(["feed", "conversations", "proposals", "votes", "projects", "outcomes", "members"]);
+    expect(ids([])).toEqual(["feed", "conversations", "proposals", "votes", "events", "projects", "outcomes", "members"]);
   });
 
   it("put Feed, Discuss, Proposals and Votes on the phone's bar by default", () => {
@@ -29,7 +29,7 @@ describe("the hub's sections", () => {
 
   it("follow the hub's order, and the bar follows it too", () => {
     const order = ["votes", "members", "proposals"];
-    expect(ids(order)).toEqual(["feed", "votes", "members", "proposals", "conversations", "projects", "outcomes"]);
+    expect(ids(order)).toEqual(["feed", "votes", "members", "proposals", "conversations", "events", "projects", "outcomes"]);
     expect(barSections(orderedSections({ types, enabled: all, order })).map((s) => s.id)).toEqual([
       "feed",
       "votes",
@@ -41,8 +41,8 @@ describe("the hub's sections", () => {
   it("drop a switched-off plugin's section everywhere, and keep its place for when it returns", () => {
     const order = ["votes", "conversations", "proposals"];
     const noConversations = (p: string) => p !== "conversation";
-    expect(ids(order, noConversations)).toEqual(["feed", "votes", "proposals", "projects", "outcomes", "members"]);
-    expect(ids(order)).toEqual(["feed", "votes", "conversations", "proposals", "projects", "outcomes", "members"]);
+    expect(ids(order, noConversations)).toEqual(["feed", "votes", "proposals", "events", "projects", "outcomes", "members"]);
+    expect(ids(order)).toEqual(["feed", "votes", "conversations", "proposals", "events", "projects", "outcomes", "members"]);
   });
 
   it("append a section the order does not name (a plugin newly switched on) after the named ones", () => {
@@ -52,6 +52,7 @@ describe("the hub's sections", () => {
       "votes",
       "conversations",
       "proposals",
+      "events",
       "outcomes",
     ]);
   });
@@ -71,6 +72,7 @@ describe("the hub's sections", () => {
       "conversations",
       "proposals",
       "votes",
+      "events",
       "petitions",
       "projects",
       "outcomes",
@@ -111,7 +113,7 @@ describe("switching a plugin off (Adam, 2026-10-14: a newly enabled section goes
 
   it("so switching it on again puts it at the end", () => {
     const order = parseSectionOrder('["votes","proposals"]');
-    expect(ids(order)).toEqual(["feed", "votes", "proposals", "conversations", "projects", "outcomes", "members"]);
+    expect(ids(order)).toEqual(["feed", "votes", "proposals", "conversations", "events", "projects", "outcomes", "members"]);
   });
 
   it("changes nothing with no order stored, or no listed section off", () => {
@@ -127,7 +129,7 @@ describe("switching a plugin off (Adam, 2026-10-14: a newly enabled section goes
 
 describe("the Members plugin's section (2026-10-14)", () => {
   it("is drawn only while its plugin says so (switched on, past its threshold or shown anyway, or an admin)", () => {
-    expect(ids([], (p) => p !== "members")).toEqual(["feed", "conversations", "proposals", "votes", "projects", "outcomes"]);
+    expect(ids([], (p) => p !== "members")).toEqual(["feed", "conversations", "proposals", "votes", "events", "projects", "outcomes"]);
     expect(ids([])).toContain("members");
   });
 

@@ -24,6 +24,14 @@ const ADDED: Record<string, string> = {
   "POST /admin/hub/plugins/:plugin/install": "Install (ADR-014)",
   "POST /admin/hub/plugins/:plugin/remove": "Remove: Stop now or Wind down (ADR-014)",
   "POST /admin/hub/plugins/:plugin/update": "Update to the version this deployment runs (ADR-015)",
+  // Plugin Events (2026-10-27): its drafts, through the hub's drafts routes, and its calendar.
+  "POST /calendar/drafts": "Events: a new event draft (the hub's drafts routes)",
+  "GET /calendar/drafts": "Events: a resident's event drafts",
+  "GET /calendar/drafts/:id": "Events: one event draft",
+  "PATCH /calendar/drafts/:id": "Events: filling an event draft",
+  "POST /calendar/drafts/:id/submit": "Events: submitting an event for review",
+  "GET /calendar/events": "Events: the calendar, for its page",
+  "GET /calendar/hub.ics": "Events: the calendar as iCalendar, to subscribe to",
 };
 
 interface Layer {

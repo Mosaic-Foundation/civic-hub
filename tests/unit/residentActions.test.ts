@@ -26,6 +26,8 @@ const EXPECTED: Record<string, string[]> = {
   "civic.announcement": [],
   "civic.meeting_summary": [],
   "civic.polis_deliberation": [],
+  // Plugin Events (2026-10-27): saying you're going, and taking it back.
+  "civic.event": ["going", "not_going"],
 };
 
 /** Lifecycle control and paid work: never a resident's, on any type. */

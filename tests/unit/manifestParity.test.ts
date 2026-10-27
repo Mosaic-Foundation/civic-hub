@@ -27,6 +27,9 @@
  * approved packages) and the schema contract gains hub_plugins and
  * plugin_catalog (all additive). Nothing else moved: the word cloud became a
  * package with every list it appears in unchanged.
+ * And (2026-10-27, plugin Events): the Events package adds its plugin, its
+ * type, its three tables (exported), its five event types, its section and its
+ * schema requirements; every other entry is unchanged (checked before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

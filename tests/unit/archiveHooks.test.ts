@@ -87,6 +87,7 @@ describe("registry snapshot — adding a process type forces an archive decision
   const KNOWN_TYPES = [
     "civic.announcement",
     "civic.brief",
+    "civic.event",
     "civic.meeting_summary",
     "civic.polis_deliberation",
     "civic.project",

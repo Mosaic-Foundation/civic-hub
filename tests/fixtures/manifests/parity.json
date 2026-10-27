@@ -3,6 +3,7 @@
     "vote",
     "proposal",
     "project",
+    "events",
     "conversation",
     "wordcloud",
     "brief",
@@ -25,13 +26,17 @@
     "civic.announcement": "announcement",
     "civic.meeting_summary": "meeting_summary",
     "civic.polis_deliberation": "conversation",
-    "civic.wordcloud": "wordcloud"
+    "civic.wordcloud": "wordcloud",
+    "civic.event": "events"
   },
   "HUB_TABLES": [
     "active_vote_keys",
     "admin_digest_marks",
     "ai_usage",
     "brief_responses",
+    "calendar_attendance",
+    "calendar_drafts",
+    "calendar_events",
     "community_inputs",
     "deliberation_drafts",
     "deliberation_submissions",
@@ -83,6 +88,18 @@
     },
     {
       "table": "brief_responses",
+      "rows": "export"
+    },
+    {
+      "table": "calendar_attendance",
+      "rows": "export"
+    },
+    {
+      "table": "calendar_drafts",
+      "rows": "export"
+    },
+    {
+      "table": "calendar_events",
       "rows": "export"
     },
     {
@@ -232,6 +249,16 @@
     "brief_responses": [
       "id"
     ],
+    "calendar_attendance": [
+      "process_id",
+      "user_id"
+    ],
+    "calendar_drafts": [
+      "id"
+    ],
+    "calendar_events": [
+      "process_id"
+    ],
     "community_inputs": [
       "id"
     ],
@@ -322,6 +349,11 @@
     ]
   },
   "mappedEventTypes": [
+    "civic.event.cancelled",
+    "civic.event.going",
+    "civic.event.not_going",
+    "civic.event.published",
+    "civic.event.updated",
     "civic.hub.moved",
     "civic.outcome_delivered",
     "civic.process.action_taken",
@@ -360,6 +392,7 @@
     "vote",
     "proposal",
     "project",
+    "events",
     "conversation",
     "wordcloud",
     "brief",
@@ -384,6 +417,10 @@
     },
     {
       "key": "plugin.project.enabled",
+      "kind": "boolean"
+    },
+    {
+      "key": "plugin.events.enabled",
       "kind": "boolean"
     },
     {
@@ -643,6 +680,27 @@
         "at"
       ],
       "owner": "civic.assistant"
+    },
+    {
+      "table": "calendar_attendance",
+      "columns": [
+        "process_id",
+        "user_id"
+      ],
+      "owner": "civic.event"
+    },
+    {
+      "table": "calendar_events",
+      "columns": [
+        "process_id",
+        "title",
+        "start_time",
+        "end_time",
+        "location",
+        "cancelled",
+        "archived"
+      ],
+      "owner": "civic.event"
     },
     {
       "table": "community_inputs",
@@ -1199,6 +1257,22 @@
       "label": "Word cloud",
       "plural": "Word clouds",
       "icon": "wordcloud"
+    },
+    {
+      "type": "civic.event",
+      "plugin": "events",
+      "label": "Event",
+      "plural": "Events",
+      "icon": "calendar",
+      "section": {
+        "id": "events",
+        "label": "Events",
+        "path": "/events",
+        "detail_paths": [
+          "/events/"
+        ],
+        "order": 33
+      }
     }
   ],
   "detail_paths": {
@@ -1210,6 +1284,7 @@
     "civic.announcement": "/announcement/p_x",
     "civic.meeting_summary": "/meeting-summary/p_x",
     "civic.polis_deliberation": "/deliberation/p_x",
-    "civic.wordcloud": "/wordcloud/p_x"
+    "civic.wordcloud": "/wordcloud/p_x",
+    "civic.event": "/events/p_x"
   }
 }

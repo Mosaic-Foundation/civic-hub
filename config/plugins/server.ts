@@ -11,6 +11,7 @@ import p5 from "../../packages/civic.announcement/index.js";
 import p6 from "../../packages/civic.meeting_summary/index.js";
 import p7 from "../../packages/civic.polis_deliberation/index.js";
 import p8 from "../../packages/civic.wordcloud/index.js";
+import p9 from "../../packages/civic.event/index.js";
 
 export const CONFIGURED_PACKAGES: readonly ConfiguredPackage[] = [
   { dir: "packages/civic.vote", pkg: p0, files: ["assistantConfig.ts","controller.ts","draftKind.ts","events.ts","handler.ts","index.ts","lifecycle.ts","manifest.ts","methods.ts","models.ts","package.json","results.ts","routes.ts","service.ts","ui.tsx"] },
@@ -22,4 +23,5 @@ export const CONFIGURED_PACKAGES: readonly ConfiguredPackage[] = [
   { dir: "packages/civic.meeting_summary", pkg: p6, files: ["adminRoutes.ts","api.ts","config.ts","connectors/index.ts","connectors/minutesPage.ts","connectors/wixCms.ts","connectors/youtubeChannel.ts","controller.ts","events.ts","handler.ts","host.ts","identity.ts","index.ts","job.ts","lifecycle.ts","manifest.ts","models.ts","package.json","pipeline.ts","prompts.ts","readiness.ts","routes.ts","service.ts","ui.tsx"] },
   { dir: "packages/civic.polis_deliberation", pkg: p7, files: ["adapter/index.ts","adapter/polisAdapter.ts","adapter/types.ts","api.ts","assistantConfig.ts","boot.ts","controller.ts","draftKind.ts","handler.ts","host.ts","hostInterface.ts","index.ts","manifest.ts","package.json","routes.ts","types.ts","ui.tsx","votes.ts"] },
   { dir: "packages/civic.wordcloud", pkg: p8, files: ["aggregation.ts","controller.ts","handler.ts","index.ts","manifest.ts","models.ts","package.json","routes.ts","service.ts","stopwords.ts","store.ts","storeImpl.ts","ui.tsx"] },
+  { dir: "packages/civic.event", pkg: p9, files: ["draftKind.ts","event.ts","handler.ts","ics.ts","index.ts","manifest.ts","migrations/20261027120000_calendar_tables.sql","package.json","routes.ts","store.ts","styles.css","ui.tsx"] },
 ];
