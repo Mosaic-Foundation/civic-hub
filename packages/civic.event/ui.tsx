@@ -662,6 +662,18 @@ function EditEventPage() {
   );
 }
 
+/** The feed's card when an event goes on the calendar: when and where, from its own payload. */
+function eventCard({ data, id, getTitle }: { data: Record<string, unknown>; id: string; getTitle: (id: string) => string | undefined }) {
+  const p = (data.process ?? {}) as { title?: string; event?: { start_time?: string; end_time?: string; location?: EventLocation } };
+  const ev = p.event;
+  const when = ev?.start_time && ev.end_time ? whenLine(ev.start_time, ev.end_time) : "";
+  const where = ev?.location ? (ev.location.type === "Link" ? "Online" : locationLine(ev.location)) : "";
+  return {
+    title: p.title ?? getTitle(id) ?? "New event",
+    summary: [when, where].filter(Boolean).join(" · ") || "A new event is on the calendar.",
+  };
+}
+
 const eventsUi: ProcessUi = {
   type: "civic.event",
   routes: [
@@ -670,6 +682,7 @@ const eventsUi: ProcessUi = {
     { path: "/events/:id", element: <EventPage /> },
     { path: "/events/:id/edit", element: <EditEventPage /> },
   ],
+  feed: { event: { card: eventCard } },
 };
 
 export default eventsUi;

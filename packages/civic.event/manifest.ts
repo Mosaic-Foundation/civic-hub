@@ -129,7 +129,7 @@ const ACTIVITY_OBJECT = { kind: "civic", class: "Event", id: "process", name: "t
 
 export const EVENT_MANIFEST = defineManifest({
   descriptor,
-  color: "meeting",
+  color: "event",
   detailPath: (id) => `/events/${id}`,
   requiredSchema: [
     { table: "calendar_events", columns: ["process_id", "title", "start_time", "end_time", "location", "cancelled", "archived"], owner: TYPE },
@@ -167,6 +167,12 @@ export const EVENT_MANIFEST = defineManifest({
     },
     requires: ["startTime"],
   },
+  // One card when an event goes on the calendar; none for a cancel or an RSVP.
+  feed: {
+    cards: [
+      { event: EVENTS.published, match: "event", card: { surface: "activity", kind: "event", color: "event", pill: "Event", href: "detail" } },
+    ],
+  },
   // Who is going: names to signed-in members, the count to everyone.
   disclosure: "members",
   publicPayload: {
@@ -181,7 +187,7 @@ export const EVENT_MANIFEST = defineManifest({
     adapters: [],
     network: { egress: [] },
     identity: { claims: ["participant-ref"] },
-    ui: { surfaces: ["process-page", "create-page", "nav-section"] },
+    ui: { surfaces: ["process-page", "create-page", "feed-card", "nav-section"] },
   },
 });
 
