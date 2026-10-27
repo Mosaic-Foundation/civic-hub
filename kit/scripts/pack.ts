@@ -4,7 +4,7 @@
 // ADR-015) as `npm pack` tarballs in <out dir>, without publishing them:
 //
 //   @civic-social/plugin-sdk          kit/sdk, with the hub's engine copied
-//                                     beside it as host/ (src, config, packages,
+//                                     beside it as host/ (src, config, packages, features,
 //                                     supabase, the scripts the test host runs,
 //                                     ui/src for the UI module's types), its
 //                                     imports pointed there;
@@ -51,7 +51,7 @@ export function pack(out: string): { sdk: string; conformance: string } {
     writeFileSync(join(sdk, f), text);
   }
   const skip = (src: string) => !/[/\\](node_modules|\.git|\.temp|\.branches|jurisdictions)([/\\]|$)/.test(src);
-  for (const d of ["src", "config", "packages", "supabase", "ui/src"]) cpSync(join(ROOT, d), join(host, d), { recursive: true, filter: skip });
+  for (const d of ["src", "config", "packages", "features", "supabase", "ui/src"]) cpSync(join(ROOT, d), join(host, d), { recursive: true, filter: skip });
   mkdirSync(join(host, "scripts"), { recursive: true });
   cpSync(join(ROOT, "scripts/plugins-sync.ts"), join(host, "scripts/plugins-sync.ts"));
   for (const f of ["tsconfig.json", "LICENSE", "LICENSING.md"]) cpSync(join(ROOT, f), join(host, f));

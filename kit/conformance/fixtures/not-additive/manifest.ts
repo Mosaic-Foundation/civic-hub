@@ -75,6 +75,13 @@ export const STRAW_POLL_MANIFEST = defineManifest({
   activities: {},
   // Who a participant's name is shown to: nobody. Answers are counted, never listed.
   disclosure: "anonymous",
+  // What the hub counts (ADR-016): declared as the worked example declares it.
+  participation: {
+    participation: ["civic.process.submission_received"],
+    creation: ["civic.process.created"],
+    closing: ["civic.process.ended"],
+    outcome: ["civic.process.result_published"],
+  },
   // What the public record carries, per event: the counts, when the poll closes.
   publicPayload: { "civic.process.result_published": ["straw_poll_result"] },
   deadlineRefusal: { code: "straw_poll_closed", message: "This straw poll has closed." },
