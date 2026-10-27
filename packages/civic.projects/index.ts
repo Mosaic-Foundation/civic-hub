@@ -11,7 +11,7 @@ import { createProjectsStore } from "./storeImpl.js";
 
 const projectPackage: PluginPackage = {
   name: "@civic-social/plugin-project",
-  version: "0.1.0",
+  version: "0.1.1",
   displayName: "Projects",
   manifest,
   server(host) {

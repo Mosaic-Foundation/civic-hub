@@ -20,6 +20,7 @@ import type { ThemeTypeKey } from "../shared/theme.js";
 import type { ActivityRecipe } from "../shared/activityRecipe.js";
 import type { FeedDeclaration } from "../shared/feedActivity.js";
 import { grantProblem, type PluginCapabilities } from "../shared/pluginGrant.js";
+import { participationProblem, type ParticipationDeclaration } from "../shared/participation.js";
 
 /**
  * One scheduled job of a type: src/jobs/registry.ts's HubJobSpec, with the
@@ -196,6 +197,14 @@ export interface ProcessManifest {
    * it at install, and the hub's seams refuse anything beyond it.
    */
   capabilities: PluginCapabilities;
+  /**
+   * Which of its events count as a resident taking part, which create, close
+   * and record the outcome of one of its processes, and the funder measures
+   * they feed (the analytics slice, ADR-016; src/shared/participation.ts).
+   * The hub counts every type from this alone. Optional to load (a type
+   * without one is counted as undeclared); the conformance suite requires it.
+   */
+  participation?: ParticipationDeclaration;
 }
 
 /**
@@ -362,6 +371,11 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       throw new ManifestError(
         `${where(m)}: disclosure "${String(m.disclosure)}" must be one of ${DISCLOSURE_POLICIES.join(", ")}`,
       );
+    }
+
+    if (m.participation !== undefined) {
+      const problem = participationProblem(m.participation, { emits: d.emits, hostTypes: host.hostActivityTypes });
+      if (problem) throw new ManifestError(`${where(m)}: ${problem}`);
     }
 
     if (m.eligibility !== undefined) {

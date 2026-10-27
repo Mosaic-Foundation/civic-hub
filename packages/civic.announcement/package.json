@@ -1,6 +1,6 @@
 {
   "name": "@civic-social/plugin-announcement",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Announcements: posts from the board and admins, shown on the public record. A Civic Hub plugin package (docs/PLUGIN-PACKAGE.md).",

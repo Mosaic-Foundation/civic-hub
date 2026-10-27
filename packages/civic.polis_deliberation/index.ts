@@ -15,7 +15,7 @@ import { conversationHost } from "./host.js";
 
 const conversationPackage: PluginPackage = {
   name: "@civic-social/plugin-conversation",
-  version: "0.2.0",
+  version: "0.2.1",
   displayName: "Conversations",
   manifest,
   requires: ["@civic-social/plugin-brief"],

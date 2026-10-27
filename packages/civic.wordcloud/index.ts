@@ -10,7 +10,7 @@ import { createWordcloudStore } from "./storeImpl.js";
 
 const wordcloudPackage: PluginPackage = {
   name: "@civic-social/plugin-wordcloud",
-  version: "0.1.0",
+  version: "0.1.1",
   displayName: "Word clouds",
   manifest,
   server(host) {

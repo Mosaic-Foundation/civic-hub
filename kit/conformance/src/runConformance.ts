@@ -25,7 +25,10 @@
 //   8. every event it wrote is declared by its descriptor and mapped to the
 //      wire, and nothing crosses to another hub;
 //   9. Tier 3: the hub's side of the external-service contract, through its
-//      one adapter, with the service down, slow or erroring (fake Polis).
+//      one adapter, with the service down, slow or erroring (fake Polis);
+//  10. what counts as its participation is declared (ADR-016): at least one
+//      participation event, or "elsewhere" or "none" said outright; every
+//      resident's action that emits anything emits an event it counts.
 // Tier 2 (sandboxed) has a slot and no runtime yet.
 //
 // Needs the local stack and a hub server started with CIVIC_POLIS_FAKE=on and
@@ -43,6 +46,7 @@ import {
   allowedTargets,
   checkDescriptor,
   getManifest,
+  participationProblem,
   publicPayloadKeys,
   rowToEvent,
   toActivity,
@@ -136,6 +140,27 @@ export function runConformance(options: ConformanceOptions): void {
     describe(`${d?.type ?? handler.type} (tier ${d?.tier ?? "?"})`, () => {
       it("1. its descriptor is well formed and agrees with its handler", () => {
         expect(checkDescriptor(handler, facts)).toEqual([]);
+      });
+      it("10. what counts as its participation is declared", () => {
+        expect(d, `${handler.type} has no descriptor`).toBeTruthy();
+        const decl = getManifest(d!.type)?.participation;
+        expect(decl, `${d!.type}: the manifest declares no "participation" (kit/conformance/README.md, step 10)`).toBeTruthy();
+        expect(participationProblem(decl, { emits: d!.emits, hostTypes: HOST_EVENT_TYPES })).toBeNull();
+        // Every resident's or creator's action that emits anything emits at
+        // least one event the declaration counts (a support that also opens a
+        // vote emits its threshold event and the vote's start).
+        const counted = new Set(
+          decl!.participation === "elsewhere" || decl!.participation === "none"
+            ? [...decl!.creation, ...decl!.closing, ...decl!.outcome]
+            : [...decl!.participation, ...decl!.creation, ...decl!.closing, ...decl!.outcome],
+        );
+        for (const a of d!.actions.filter((x) => x.callers.includes("resident") || x.callers.includes("creator"))) {
+          if (a.emits.length === 0) continue;
+          expect(
+            a.emits.some((e) => counted.has(e)),
+            `${d!.type}: ${a.name} emits ${a.emits.join(", ")}, none of which its participation declaration counts`,
+          ).toBe(true);
+        }
       });
       if (!d) return;
       if (!d.creation.resident && !d.creation.admin) {

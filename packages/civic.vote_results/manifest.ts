@@ -53,6 +53,14 @@ export const VOTE_RESULTS_MANIFEST = defineManifest({
   // internal results_id on result_published.
   // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
   disclosure: "public",
+  // What the hub's analytics counts (ADR-016): a vote's legacy result, made
+  // by the hub; its voters were counted on the vote.
+  participation: {
+    participation: "none",
+    creation: ["civic.process.created"],
+    closing: [],
+    outcome: ["civic.process.result_published"],
+  },
   publicPayload: {
     "civic.process.result_published": [
       "headline_result",

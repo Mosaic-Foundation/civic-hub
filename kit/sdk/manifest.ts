@@ -4,3 +4,4 @@
 export { defineDescriptor, defineManifest } from "../../src/processes/manifest.js";
 export type { ProcessManifest } from "../../src/processes/manifest.js";
 export { DEADLINE_CLOSE_INPUT } from "../../src/shared/deadlineClose.js";
+export type { ParticipationDeclaration, MeasureId } from "../../src/shared/participation.js";

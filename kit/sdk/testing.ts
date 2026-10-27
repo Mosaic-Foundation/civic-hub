@@ -26,6 +26,8 @@ export { EXPORT_MANIFEST } from "../../src/db/schemaContract.js";
 export { loadedPackages } from "../../src/plugins/loader.js";
 export { notAdditive } from "../../src/plugins/additive.js";
 export { hashPackage } from "../../src/plugins/hash.js";
+// What counts as participation (ADR-016): the declaration's check and the host's own events.
+export { participationProblem, HOST_PARTICIPATION } from "../../src/shared/participation.js";
 // The fake Code of Conduct check's markers (the test host runs CIVIC_FAKE_ADAPTERS=on).
 export { FAKE_COC_DOWN, FAKE_COC_FLAG } from "../../src/debug/fakeCodeOfConduct.js";
 // The in-memory adapters and stores the suite's own process binds, as the hub's tests do.

@@ -1,6 +1,6 @@
 {
   "name": "@civic-social/plugin-brief",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "Briefs: the admin-reviewed results record for any closed process. A Civic Hub plugin package (docs/PLUGIN-PACKAGE.md).",
