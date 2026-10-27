@@ -57,7 +57,7 @@
 
 import { CivicEvent } from "../models/event.js";
 import { MANIFEST_LIST } from "../shared/processManifests.js";
-import type { ActivityRecipe } from "../shared/activityRecipe.js";
+import type { ActivityRecipe, WireObjectRecipe } from "../shared/activityRecipe.js";
 import { apiOriginFor, baseUrl, uiBaseUrl, uiOriginFor } from "../utils/baseUrl.js";
 import { currentHub } from "../config/hubContext.js";
 import {
@@ -118,6 +118,33 @@ export const EXTENSION_TERMS: ReadonlyArray<{
   { term: "hub:ProcessAction", kind: "object type", why: "Generic fallback object for civic.process.action_taken payloads that are not official responses." },
 ];
 
+/**
+ * Terms from other published vocabularies a document may use, with the
+ * `@context` entry each needs. Like the `hub` entry, each is declared ONLY on
+ * a document that uses it, so every other document keeps its bytes. Today
+ * only a type's wire object (its manifest's `wireObject`; the Events plugin's
+ * AS2 `Event`) uses them, following Mobilizon's published shape.
+ */
+export const VOCABULARY_TERMS: ReadonlyArray<{ term: string; vocabulary: string; why: string }> = [
+  { term: "ical:status", vocabulary: "iCalendar (W3C RDF)", why: "An event's status: CONFIRMED, or CANCELLED for an event that stays on the calendar marked cancelled. AS2 has no status." },
+  { term: "address (schema:PostalAddress)", vocabulary: "schema.org", why: "A Place's structured street address, as Mobilizon publishes it. AS2's Place has only a name and coordinates." },
+];
+
+/** `ical:` (iCalendar in RDF), for ical:status. */
+export const ICAL_CONTEXT: Readonly<Record<string, string>> = { ical: "http://www.w3.org/2002/12/cal/ical#" };
+
+/** schema.org's PostalAddress, for a Place's `address`. */
+export const SCHEMA_ADDRESS_CONTEXT: Readonly<Record<string, string>> = {
+  schema: "http://schema.org/",
+  PostalAddress: "schema:PostalAddress",
+  address: "schema:address",
+  streetAddress: "schema:streetAddress",
+  addressLocality: "schema:addressLocality",
+  addressRegion: "schema:addressRegion",
+  postalCode: "schema:postalCode",
+  addressCountry: "schema:addressCountry",
+};
+
 // --- Public API ------------------------------------------------------------
 
 /**
@@ -166,7 +193,7 @@ export function toActivity(
   // are diffable by eye. JSON.stringify preserves insertion order, which is
   // what makes the output byte-stable.
   const activity: Record<string, unknown> = {
-    "@context": contextFor(usesHubTerms(object) || usesHubTerms(target), env.ns),
+    "@context": contextFor(usesHubTerms(object) || usesHubTerms(target), env.ns, vocabularyContexts(object)),
     id: activityIdOf(event),
     type: mapping.type,
     actor: wire.actorIriOverride ?? actorIri(event.actor, env),
@@ -569,6 +596,14 @@ export function hostMappedEventTypes(): string[] {
   return Object.keys(HOST_ACTIVITY_MAPPINGS).sort();
 }
 
+/**
+ * Each type's wire object (its manifest's `wireObject`), by process type. A
+ * type that declares none, every type before plugin Events, is absent.
+ */
+const WIRE_OBJECTS: ReadonlyMap<string, WireObjectRecipe> = new Map(
+  MANIFEST_LIST.flatMap((m) => (m.wireObject ? [[m.descriptor.type, m.wireObject] as const] : [])),
+);
+
 // --- Object builders -------------------------------------------------------
 //
 // Conservative by rule: a builder carries what `data` already holds and
@@ -595,7 +630,41 @@ function processObject(
     // The payload's own status wins when it records one.
     object["civic:terminalState"] = statusOf(data) ?? opts.terminalState;
   }
+  const recipe = WIRE_OBJECTS.get(processTypeOf(data) ?? "");
+  if (recipe) applyWireObject(object, data, recipe);
   return withPayload(object, data);
+}
+
+/**
+ * A type's wire object (src/shared/activityRecipe.ts): when the payload
+ * carries every required property, the object takes the recipe's type and
+ * each declared property the payload has, in declared order. Otherwise the
+ * object is left as built. Exported for its unit test.
+ */
+export function applyWireObject(
+  object: Record<string, unknown>,
+  data: Payload,
+  recipe: WireObjectRecipe,
+): void {
+  const lifted: Array<[string, unknown]> = [];
+  for (const [property, path] of Object.entries(recipe.properties)) {
+    const value = atPath(data, path);
+    if (value !== undefined && value !== null && value !== "") lifted.push([property, value]);
+  }
+  const have = new Set(lifted.map(([property]) => property));
+  if (!recipe.requires.every((property) => have.has(property))) return;
+  object.type = recipe.type;
+  for (const [property, value] of lifted) object[property] = value;
+}
+
+/** The value at a dotted payload path ("process.event.start_time"). */
+function atPath(data: Payload, path: string): unknown {
+  let value: unknown = data;
+  for (const key of path.split(".")) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    value = (value as Payload)[key];
+  }
+  return value;
 }
 
 function resultObject(data: Payload, id?: string | null): Record<string, unknown> {
@@ -951,10 +1020,27 @@ function placeOf(event: CivicEvent): Record<string, unknown> | null {
  * the hub extension namespace — but ONLY on documents that actually use a
  * `hub:` term, so a document with no extension in it stays pure profile.
  */
-function contextFor(usesHubTerms: boolean, ns: string): unknown[] {
-  const context: unknown[] = [AS2_CONTEXT, CIVIC_CONTEXT];
+function contextFor(usesHubTerms: boolean, ns: string, vocabularies: readonly unknown[] = []): unknown[] {
+  const context: unknown[] = [AS2_CONTEXT, CIVIC_CONTEXT, ...vocabularies];
   if (usesHubTerms) context.push({ hub: ns });
   return context;
+}
+
+/**
+ * The VOCABULARY_TERMS entries an object uses: `ical:` on the object itself,
+ * a structured `address` on its location. Shallow, like usesHubTerms: only a
+ * wire object puts them there.
+ */
+function vocabularyContexts(object: unknown): unknown[] {
+  if (!object || typeof object !== "object" || Array.isArray(object)) return [];
+  const o = object as Record<string, unknown>;
+  const out: unknown[] = [];
+  if (Object.keys(o).some((key) => key.startsWith("ical:"))) out.push(ICAL_CONTEXT);
+  const location = o.location;
+  if (location && typeof location === "object" && !Array.isArray(location) && "address" in location) {
+    out.push(SCHEMA_ADDRESS_CONTEXT);
+  }
+  return out;
 }
 
 /**

@@ -17,7 +17,7 @@ import type { ProcessTypeDescriptor } from "./descriptorTypes.js";
 import type { SchemaRequirement } from "../db/schemaRequirement.js";
 import type { SettingFieldSpec } from "../shared/hubSettingsSections.js";
 import type { ThemeTypeKey } from "../shared/theme.js";
-import type { ActivityRecipe } from "../shared/activityRecipe.js";
+import type { ActivityRecipe, WireObjectRecipe } from "../shared/activityRecipe.js";
 import type { FeedDeclaration } from "../shared/feedActivity.js";
 import { grantProblem, type PluginCapabilities } from "../shared/pluginGrant.js";
 
@@ -119,6 +119,13 @@ export interface ProcessManifest {
    * stored event stays serializable forever (the log is append-only).
    */
   legacyActivities?: Readonly<Record<string, ActivityRecipe>>;
+  /**
+   * What its processes are on the wire when a standard vocabulary has the
+   * object (an AS2 `Event`), instead of `civic:Process`
+   * (src/shared/activityRecipe.ts). Absent: `civic:Process`, as every type
+   * before plugin Events.
+   */
+  wireObject?: WireObjectRecipe;
   /** Present when an admin publishes its records (see Publication). */
   publication?: Publication;
   /**
@@ -378,6 +385,11 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       }
     }
 
+    if (m.wireObject !== undefined) {
+      const problem = wireObjectProblem(m.wireObject);
+      if (problem) throw new ManifestError(`${where(m)}: wireObject: ${problem}`);
+    }
+
     if (m.publication) {
       const pub = m.publication;
       if (typeof pub.field !== "string" || pub.field === "") throw new ManifestError(`${where(m)}: publication.field is empty`);
@@ -413,6 +425,31 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
     }
   }
   return manifests as ProcessManifest[];
+}
+
+/** AS2 terms a wire object may not claim: they are the activity's or the serializer's. */
+const RESERVED_WIRE_PROPERTIES = new Set(["@context", "id", "type", "name", "hub:payload"]);
+
+/** Why a wireObject recipe is malformed, or null. Pure. */
+export function wireObjectProblem(w: unknown): string | null {
+  if (!w || typeof w !== "object") return "must be an object";
+  const r = w as Partial<WireObjectRecipe>;
+  if (typeof r.type !== "string" || r.type === "" || r.type.startsWith("hub:") || r.type.startsWith("civic:")) {
+    return "type must name a standard vocabulary object (\"Event\"), not a civic or hub class";
+  }
+  if (!r.properties || typeof r.properties !== "object" || Object.keys(r.properties).length === 0) {
+    return "properties must map at least one wire property to a payload path";
+  }
+  for (const [prop, path] of Object.entries(r.properties)) {
+    if (RESERVED_WIRE_PROPERTIES.has(prop) || prop.startsWith("hub:")) return `${prop} cannot be lifted`;
+    if (typeof path !== "string" || !/^process(\.[a-z_]+)+$/.test(path)) {
+      return `${prop}: the path must be under "process" (always public), like "process.event.start_time"`;
+    }
+  }
+  if (!Array.isArray(r.requires) || r.requires.length === 0 || r.requires.some((p) => !(p in r.properties!))) {
+    return "requires must list one or more of its properties";
+  }
+  return null;
 }
 
 /** The actions a resident may call, from the descriptor's callers (the A3 allowlist). */
