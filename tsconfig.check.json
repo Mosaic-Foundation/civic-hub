@@ -11,6 +11,6 @@
     "declarationMap": false,
     "sourceMap": false
   },
-  "include": ["src/**/*", "packages/**/*.ts", "config/plugins/manifests.ts", "config/plugins/server.ts", "tests/**/*", "scripts/**/*", "api/**/*", "*.ts", "kit/**/*.ts", "examples/**/*.ts"],
+  "include": ["src/**/*", "packages/**/*.ts", "features/**/*.ts", "config/plugins/manifests.ts", "config/plugins/server.ts", "config/features.ts", "config/featureManifests.ts", "tests/**/*", "scripts/**/*", "api/**/*", "*.ts", "kit/**/*.ts", "examples/**/*.ts"],
   "exclude": ["node_modules", "dist", "ui/node_modules", "ui/dist", "scripts/**/*.js", "scripts/**/*.d.ts", "kit/sdk/ui.ts", "kit/**/node_modules"]
 }

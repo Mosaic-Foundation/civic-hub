@@ -383,7 +383,7 @@ export interface ImportPlan {
 }
 
 /** Tables whose triggers refuse deletes; cleared only with the triggers suspended (restore, purge). */
-export const APPEND_ONLY = ["events", "review_turns", "hub_admin_audit_log"];
+export const APPEND_ONLY = ["events", "review_turns", "hub_admin_audit_log", "analytics_report_reads"];
 
 /**
  * Everything checked before anything is written: the target's schema can

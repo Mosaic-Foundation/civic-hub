@@ -24,6 +24,7 @@
 
 import type { PluginId } from "../models/hubSettings.js";
 import { MANIFEST_LIST } from "../shared/processManifests.js";
+import { FEATURE_MANIFEST_LIST } from "../shared/featureManifests.js";
 
 interface JobSpecBase {
   /** Stable id, also the key into the runner table. */
@@ -144,11 +145,12 @@ const HOST_JOBS: readonly JobSpec[] = [
   },
 ];
 
-/** Every job: each process type's (from its manifest), then the host's. */
+/** Every job: each process type's (from its manifest), the host's, then each feature package's (ADR-016). */
 export const JOBS: readonly JobSpec[] = [
   // The startup check holds each job's plugin to its type's, a PluginId.
   ...MANIFEST_LIST.flatMap((m) => m.jobs.map((j) => ({ ...j, plugin: j.plugin as PluginId }))),
   ...HOST_JOBS,
+  ...FEATURE_MANIFEST_LIST.flatMap((m) => m.jobs.map((j) => ({ ...j, plugin: j.plugin as PluginId }))),
 ];
 
 export function jobById(id: string): JobSpec | undefined {

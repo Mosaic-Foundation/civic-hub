@@ -24,6 +24,15 @@ const ADDED: Record<string, string> = {
   "POST /admin/hub/plugins/:plugin/install": "Install (ADR-014)",
   "POST /admin/hub/plugins/:plugin/remove": "Remove: Stop now or Wind down (ADR-014)",
   "POST /admin/hub/plugins/:plugin/update": "Update to the version this deployment runs (ADR-015)",
+  // The Activity feature package (ADR-016).
+  "GET /analytics": "the hub's numbers, public when Public numbers is on or with a reporting key",
+  "GET /admin/analytics": "Admin → Activity's report",
+  "GET /admin/analytics/csv": "Admin → Activity's CSV",
+  "POST /admin/analytics/refresh": "Admin → Activity's Recount now",
+  "GET /admin/analytics/keys": "the reporting keys and their read log",
+  "POST /admin/analytics/keys": "issue a reporting key",
+  "POST /admin/analytics/keys/:id/revoke": "revoke a reporting key",
+  "GET /internal/analytics/run": "the Activity job",
 };
 
 interface Layer {

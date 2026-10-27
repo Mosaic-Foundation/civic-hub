@@ -224,6 +224,24 @@ export function defineManifest<const M extends ProcessManifest>(manifest: M): M 
   return manifest;
 }
 
+/**
+ * What a feature package is, as plain data the host reads without loading its
+ * code (ADR-016; src/plugins/feature.ts): the hub feature (switch) it rides
+ * on, its tables, what it needs of the schema, and its scheduled jobs (their
+ * `plugin` is the feature's id).
+ */
+export interface FeatureManifest {
+  feature: string;
+  tables: readonly TableDeclaration[];
+  requiredSchema: readonly SchemaRequirement[];
+  jobs: readonly ManifestJob[];
+}
+
+/** Declare a feature's manifest, keeping its literal values (its table names join forHub's TableName). */
+export function defineFeatureManifest<const M extends FeatureManifest>(manifest: M): M {
+  return manifest;
+}
+
 /** Why a manifest was refused at startup. */
 export class ManifestError extends Error {
   constructor(message: string) {

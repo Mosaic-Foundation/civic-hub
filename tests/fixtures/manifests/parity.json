@@ -14,7 +14,8 @@
     "feedback",
     "digest",
     "admin_digest",
-    "members"
+    "members",
+    "analytics"
   ],
   "PROCESS_TYPE_PLUGINS": {
     "civic.vote": "vote",
@@ -31,6 +32,10 @@
     "active_vote_keys",
     "admin_digest_marks",
     "ai_usage",
+    "analytics_daily",
+    "analytics_period",
+    "analytics_report_keys",
+    "analytics_report_reads",
     "brief_responses",
     "community_inputs",
     "deliberation_drafts",
@@ -80,6 +85,24 @@
       "table": "ai_usage",
       "rows": "omit",
       "reason": "an operational record of paid model calls, for this host's daily budget"
+    },
+    {
+      "table": "analytics_daily",
+      "rows": "omit",
+      "reason": "derived from the events, which the export carries; the next host's job recomputes it"
+    },
+    {
+      "table": "analytics_period",
+      "rows": "omit",
+      "reason": "derived from the events and accounts, which the export carries; the next host's job recomputes it"
+    },
+    {
+      "table": "analytics_report_keys",
+      "rows": "export"
+    },
+    {
+      "table": "analytics_report_reads",
+      "rows": "export"
     },
     {
       "table": "brief_responses",
@@ -229,6 +252,14 @@
       "user_id",
       "process_id"
     ],
+    "analytics_report_keys": [
+      "hub_id",
+      "id"
+    ],
+    "analytics_report_reads": [
+      "hub_id",
+      "id"
+    ],
     "brief_responses": [
       "id"
     ],
@@ -371,7 +402,8 @@
     "feedback",
     "digest",
     "admin_digest",
-    "members"
+    "members",
+    "analytics"
   ],
   "plugins_section": [
     {
@@ -432,6 +464,10 @@
     },
     {
       "key": "plugin.members.enabled",
+      "kind": "boolean"
+    },
+    {
+      "key": "plugin.analytics.enabled",
       "kind": "boolean"
     },
     {
@@ -556,6 +592,10 @@
     {
       "key": "plugin.members.page_before_threshold",
       "kind": "boolean"
+    },
+    {
+      "key": "plugin.analytics.public_numbers",
+      "kind": "boolean"
     }
   ],
   "JOBS": [
@@ -610,6 +650,13 @@
       "path": "/hub-exports-sweep/run",
       "schedule": "15 * * * *",
       "description": "Delete console hub exports older than 24 hours (the audit rows stay)"
+    },
+    {
+      "id": "analytics",
+      "plugin": "analytics",
+      "path": "/analytics/run",
+      "schedule": "40 * * * *",
+      "description": "Activity counts from the event log: the day's events and each period's residents, per hub"
     }
   ],
   "requirements": [
@@ -643,6 +690,58 @@
         "at"
       ],
       "owner": "civic.assistant"
+    },
+    {
+      "table": "analytics_daily",
+      "columns": [
+        "hub_id",
+        "day",
+        "process_type",
+        "event_type",
+        "events"
+      ],
+      "owner": "features/analytics"
+    },
+    {
+      "table": "analytics_period",
+      "columns": [
+        "hub_id",
+        "period_kind",
+        "period_start",
+        "period_end",
+        "measure",
+        "value",
+        "computed_at"
+      ],
+      "owner": "features/analytics"
+    },
+    {
+      "table": "analytics_report_keys",
+      "columns": [
+        "hub_id",
+        "id",
+        "organisation",
+        "contact",
+        "purpose",
+        "key_hash",
+        "key_hint",
+        "created_at",
+        "revoked_at"
+      ],
+      "owner": "features/analytics"
+    },
+    {
+      "table": "analytics_report_reads",
+      "columns": [
+        "hub_id",
+        "id",
+        "key_id",
+        "organisation",
+        "read_at",
+        "period_kind",
+        "period_start"
+      ],
+      "owner": "features/analytics"
     },
     {
       "table": "community_inputs",

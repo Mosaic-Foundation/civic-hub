@@ -4,6 +4,7 @@
 
 import { requirePlugin } from "../middleware/pluginGate.js";
 import { mountPackageRoutes } from "../plugins/mount.js";
+import { mountFeatureRoutes } from "../plugins/features.js";
 import { Router } from "express";
 import { handleAdminQueueCounts, handleMarkAdminQueueSeen } from "../controllers/adminQueueController.js";
 import { handleAdminListEdits } from "../controllers/editNotificationController.js";
@@ -73,6 +74,7 @@ router.use("/feedback", requirePlugin("feedback"));
 // The plugin packages' admin routes (ADR-014), each behind its plugin's
 // switch and the loader's verdict, after the admin check above.
 mountPackageRoutes(router, "adminRoutes");
+mountFeatureRoutes(router, "adminRoutes");
 
 
 // Process reviews (collaborative admin review before publication)

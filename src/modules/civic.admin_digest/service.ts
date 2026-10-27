@@ -44,6 +44,7 @@ import { KEYS, asEmailList } from "../../models/hubSettings.js";
 import { isSubstantiveEdit } from "../../services/processEdits.js";
 import { jobProblemsSince } from "../../services/jobRuns.js";
 import type { AdminDigestPayload, DigestLine } from "./models.js";
+import { featureDigestLines } from "../../plugins/features.js";
 
 /** A hub's first digest looks back this far. */
 const FIRST_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -215,7 +216,8 @@ export async function buildAdminDigest(since: string, until: string): Promise<Ad
   lines.push(await editsLine(since, until, sampleIds, ui));
   lines.push(await waitlistLine(since, until, ui));
   const new_total = lines.reduce((sum, l) => sum + l.new_count, 0);
-  return { hub_name: hubDisplayNameSync(), since, until, lines, new_total, empty: new_total === 0 };
+  const notes = await featureNotes(new Date(until));
+  return { hub_name: hubDisplayNameSync(), since, until, lines, new_total, notes, empty: new_total === 0 && notes.length === 0 };
 }
 
 // --- Rendering ----------------------------------------------------------------
@@ -247,9 +249,26 @@ export function shownLines(p: AdminDigestPayload): DigestLine[] {
   return p.lines.filter((l) => l.new_count > 0 || (l.waiting ?? 0) > 0);
 }
 
+/** Each switched-on feature's line for this digest; one that fails is reported and left out. */
+async function featureNotes(now: Date): Promise<string[]> {
+  const out: string[] = [];
+  for (const { feature, line } of featureDigestLines()) {
+    if (!isPluginEnabledSync(feature)) continue;
+    try {
+      const text = await line({ now });
+      if (text) out.push(text);
+    } catch (err) {
+      console.warn(`[admin-digest] the ${feature} line failed: ${(err as Error).message}`);
+    }
+  }
+  return out;
+}
+
 export function renderAdminDigestEmail(p: AdminDigestPayload): { subject: string; html: string; text: string } {
   const newParts = p.lines.filter((l) => l.new_count > 0).map((l) => `${l.new_count} ${noun(l, l.new_count)}`);
-  const subject = `[${p.hub_name}] ${p.new_total} new for admins: ${newParts.join(", ")}`;
+  const subject =
+    p.new_total > 0 ? `[${p.hub_name}] ${p.new_total} new for admins: ${newParts.join(", ")}` : `[${p.hub_name}] Last month's activity`;
+  const notes = p.notes ?? [];
   const lines = shownLines(p);
   const items = lines
     .map(
@@ -264,6 +283,7 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): { subject: string
       <h1 style="font-size:18px;font-weight:600;margin:0 0 8px;color:#1e3a5f;">${escapeHtml(p.hub_name)}: what's new for admins</h1>
       <p style="margin:0 0 20px;color:#6b7280;font-size:14px;">Since the last one of these emails. Each line opens its list on the hub.</p>
       <ul style="list-style:disc;padding-left:20px;margin:0;font-size:15px;">${items}</ul>
+      ${notes.map((n) => `<p style="margin:20px 0 0;font-size:15px;line-height:1.5;">${escapeHtml(n)}</p>`).join("")}
       <p style="margin:28px 0 0;color:#9ca3af;font-size:12px;">
         You receive this because you are an admin of ${escapeHtml(p.hub_name)}. It counts only what arrived since the last
         one, and nothing is sent when nothing is new. Whether it is sent at all is under Hub settings → Plugins.
@@ -274,6 +294,7 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): { subject: string
     `${p.hub_name}: what's new for admins (since the last one of these emails)`,
     "",
     ...lines.flatMap((l) => [`- ${digestLineText(l)}`, `  ${l.url}`]),
+    ...notes.flatMap((n) => ["", n]),
     "",
     `You receive this because you are an admin of ${p.hub_name}. It counts only what arrived since the last one, and nothing is sent when nothing is new.`,
   ].join("\n");

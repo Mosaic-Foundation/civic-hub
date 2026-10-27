@@ -31,6 +31,9 @@ describe("what leaves", () => {
     expect(omitted.map((o) => o.table).sort()).toEqual([
       "admin_digest_marks",
       "ai_usage",
+      // Derived from the events by the Activity job; the next host recomputes them (ADR-016).
+      "analytics_daily",
+      "analytics_period",
       // Derived by trigger from the settings and accounts the bundle carries;
       // the import re-derives it (20261023000000, ADR-011).
       "hub_plugins",

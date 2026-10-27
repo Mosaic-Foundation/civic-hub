@@ -63,6 +63,31 @@ describe("civic/package-boundary", () => {
     expect(await errors("src/plugins/loader.ts", `import { CONFIGURED_PACKAGES } from "../../config/plugins/server.js";`)).toHaveLength(0);
   });
 
+  it("holds a feature package to the same fence; the engine reaches one only through config/features.ts (ADR-016)", async () => {
+    for (const code of [
+      `import { readAll } from "../../src/sdk/index.js";`,
+      `import { MEASURES } from "../../src/shared/participation.js";`,
+      `import { x } from "./plan.js";`,
+      `import { createHash } from "node:crypto";`,
+      `import { Router } from "express";`,
+    ]) {
+      expect(await errors("features/analytics/x.ts", code), code).toHaveLength(0);
+    }
+    for (const code of [
+      `import { forHub } from "../../src/db/forHub.js";`,
+      `import { listHubs } from "../../src/control/hubs.js";`,
+      `import { castBallot } from "../../src/db/atomic.js";`,
+      `import x from "../../packages/civic.vote/service.js";`,
+      `import { createClient } from "@supabase/supabase-js";`,
+    ]) {
+      expect(await errors("features/analytics/x.ts", code), code).toHaveLength(1);
+    }
+    expect(await errors("features/analytics/manifest.ts", `import { readAll } from "../../src/sdk/index.js";`)).toHaveLength(1);
+    expect(await errors("src/services/somethingNew.ts", `import { rollup } from "../../features/analytics/rollup.js";`)).toHaveLength(1);
+    expect(await errors("src/services/somethingNew.ts", `import { FEATURE_PACKAGES } from "../../config/features.js";`)).toHaveLength(1);
+    expect(await errors("src/plugins/features.ts", `import { FEATURE_PACKAGES } from "../../config/features.js";`)).toHaveLength(0);
+  });
+
   it("names each engine file still reaching into a package, and every one still does (the list only shrinks)", () => {
     for (const [file, why] of Object.entries(PACKAGE_REACH_NOT_YET)) {
       expect(why.length, file).toBeGreaterThan(20);

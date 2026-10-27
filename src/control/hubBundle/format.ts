@@ -22,6 +22,7 @@
 
 import { createHash } from "node:crypto";
 import { MANIFEST_LIST } from "../../shared/processManifests.js";
+import { FEATURE_MANIFEST_LIST } from "../../shared/featureManifests.js";
 import { EXPORT_MANIFEST } from "../../db/schemaContract.js";
 import { isSampleRow, type SampleIds } from "../../models/sampleContent.js";
 
@@ -56,7 +57,7 @@ const HOST_TABLE_KEYS: Readonly<Record<string, readonly string[]>> = {
 export const TABLE_KEYS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
   [
     ...Object.entries(HOST_TABLE_KEYS),
-    ...MANIFEST_LIST.flatMap((m) => m.tables.filter((t) => t.rows === "export").map((t) => [t.name, t.key] as const)),
+    ...[...MANIFEST_LIST, ...FEATURE_MANIFEST_LIST].flatMap((m) => m.tables.filter((t) => t.rows === "export").map((t) => [t.name, t.key] as const)),
   ].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)),
 );
 

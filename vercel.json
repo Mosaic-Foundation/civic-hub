@@ -96,6 +96,10 @@
       "destination": "/api"
     },
     {
+      "source": "/analytics",
+      "destination": "/api"
+    },
+    {
       "source": "/activities/:id*",
       "destination": "/api"
     },
@@ -262,6 +266,10 @@
     {
       "path": "/api/internal/hub-exports-sweep/run",
       "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/internal/analytics/run",
+      "schedule": "40 * * * *"
     }
   ]
 }

@@ -20,6 +20,6 @@
       "@civic-social/plugin-sdk/*": ["./kit/sdk/*.ts"]
     }
   },
-  "include": ["src/**/*", "packages/**/*.ts", "config/plugins/manifests.ts", "config/plugins/server.ts"],
+  "include": ["src/**/*", "packages/**/*.ts", "features/**/*.ts", "config/plugins/manifests.ts", "config/plugins/server.ts", "config/features.ts", "config/featureManifests.ts"],
   "exclude": ["node_modules", "dist"]
 }

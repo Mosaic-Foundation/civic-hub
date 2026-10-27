@@ -27,6 +27,11 @@
  * approved packages) and the schema contract gains hub_plugins and
  * plugin_catalog (all additive). Nothing else moved: the word cloud became a
  * package with every list it appears in unchanged.
+ * And (2026-10-27, the analytics slice, ADR-016): the Activity feature
+ * package adds its plugin id (analytics, last in the Plugins section, with
+ * its public_numbers setting), its four tables (two derived rollups omitted
+ * from the export; the reporting keys and their read log exported), their
+ * schema requirements and its hourly job. All additions; nothing else moved.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

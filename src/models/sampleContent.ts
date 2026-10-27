@@ -50,6 +50,10 @@ export const PROCESS_CHILD_COLUMNS: Readonly<Record<string, readonly string[]>> 
  */
 export const NOT_PROCESS_CONTENT: Readonly<Record<string, string>> = {
   admin_digest_marks: "where the last admin digest stopped; never seeded",
+  analytics_daily: "Activity's daily counts, derived from the events; sample events are not counted",
+  analytics_period: "Activity's period counts, derived from the events and accounts; samples are not counted",
+  analytics_report_keys: "reporting keys an admin issued; never seeded",
+  analytics_report_reads: "reads made with a reporting key; never seeded",
   ai_usage: "a record of paid model calls, for the daily budget",
   deliberation_drafts: "a resident's unsubmitted draft; the seed writes none",
   feedback_submissions: "product feedback to the hub, not about a process",

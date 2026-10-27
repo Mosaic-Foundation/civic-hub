@@ -70,6 +70,13 @@ export const FUNCTION_CONTRACT: readonly FunctionRequirement[] = [
     owner: "services/hubInvites",
   },
   { name: "move_hub_hostname", args: "p_hub_id text, p_from text, p_to text, p_previous_hostnames text[], p_event jsonb", owner: "control/hubs (moveHub)" },
+  // The event log read as counts (ADR-016): src/plugins/features.ts's eventLogReader, for the Activity feature.
+  { name: "event_counts_by_day", args: "p_hub_id text, p_tz text, p_from date, p_to date", owner: "plugins/features (eventLog)" },
+  {
+    name: "event_actor_counts",
+    args: "p_hub_id text, p_tz text, p_from date, p_to date, p_prev_from date, p_prev_to date, p_plan jsonb",
+    owner: "plugins/features (eventLog)",
+  },
   { name: "count_pending_reviews", args: "p_hub_id text, p_since timestamp with time zone, p_excluded_types text[]", owner: "services/adminQueues" },
   { name: "ai_tokens_since", args: "p_hub_id text, p_since timestamp with time zone, p_purposes text[]", owner: "services/aiBudget" },
   {

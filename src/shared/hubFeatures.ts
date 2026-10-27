@@ -50,6 +50,16 @@ export const HUB_FEATURES = [
       { key: "plugin.members.page_before_threshold", kind: "boolean" },
     ],
   },
+  // Activity: the participation record (analytics slice, 2026-10-27; ADR-016).
+  // Built as a feature package (features/analytics/). Public numbers is off
+  // until the hub's admin turns it on.
+  {
+    id: "analytics",
+    order: 160,
+    name: "Activity",
+    what: "Counts of participation by period and kind, for admins; optionally public, and for outside organisations you give a reporting key.",
+    fields: [{ key: "plugin.analytics.public_numbers", kind: "boolean" }],
+  },
 ] as const satisfies readonly HubFeature[];
 
 export type HubFeatureId = (typeof HUB_FEATURES)[number]["id"];

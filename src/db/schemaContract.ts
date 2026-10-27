@@ -25,6 +25,7 @@
 
 import { getAllHandlers } from "../processes/registry.js";
 import { MANIFEST_LIST } from "../shared/processManifests.js";
+import { FEATURE_MANIFEST_LIST } from "../shared/featureManifests.js";
 
 export type { SchemaRequirement } from "./schemaRequirement.js";
 import type { SchemaRequirement } from "./schemaRequirement.js";
@@ -165,7 +166,7 @@ const HOST_EXPORTS: readonly ExportManifestEntry[] = [
 
 export const EXPORT_MANIFEST: readonly ExportManifestEntry[] = [
   ...HOST_EXPORTS,
-  ...MANIFEST_LIST.flatMap((m) =>
+  ...[...MANIFEST_LIST, ...FEATURE_MANIFEST_LIST].flatMap((m) =>
     m.tables.map((t): ExportManifestEntry => (t.reason ? { table: t.name, rows: t.rows, reason: t.reason } : { table: t.name, rows: t.rows })),
   ),
 ].sort((x, y) => (x.table < y.table ? -1 : x.table > y.table ? 1 : 0));
@@ -227,7 +228,7 @@ export function collectRequirements(
   return mergeRequirements([...core, ...fromHandlers]);
 }
 
-/** The contract for the live registry. */
+/** The contract for the live registry, with every feature's tables (ADR-016). */
 export function currentRequirements(): SchemaRequirement[] {
-  return collectRequirements(getAllHandlers());
+  return collectRequirements(getAllHandlers(), [...CORE_REQUIREMENTS, ...FEATURE_MANIFEST_LIST.flatMap((m) => m.requiredSchema)]);
 }

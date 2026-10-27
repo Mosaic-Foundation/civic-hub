@@ -426,11 +426,20 @@ export const PACKAGE_REACH_NOT_YET = {
 };
 
 const PACKAGES_DIR = "packages/";
+// A feature package (ADR-016): a hub feature built as a plugin package is,
+// under features/<dir>/. The same fence: the SDK, src/shared/, its own files,
+// node: built-ins and its peerDependencies; its manifest.ts plain data. The
+// engine reaches one only through the host's lists in config/.
+const FEATURES_DIR = "features/";
 // A package written outside this repository, as examples/ holds one (plugin
 // session 2, ADR-015): it reaches the hub only through the SDK by its npm
 // name. kit/conformance checks the same rule for a submitted package.
 const OUTSIDE_DIR = "examples/";
 const OUTSIDE_SDK = ["@civic-social/plugin-sdk", "@civic-social/plugin-sdk/manifest"];
+const FEATURE_LIST_READERS = {
+  "src/plugins/features.ts": "config/features.ts",
+  "src/shared/featureManifests.ts": "config/featureManifests.ts",
+};
 const ENGINE_LIST_READERS = {
   "src/plugins/loader.ts": "config/plugins/server.ts",
   "src/shared/processManifests.ts": "config/plugins/manifests.ts",
@@ -510,13 +519,14 @@ const packageBoundaryRule = {
         ImportExpression: (n) => n.source.type === "Literal" && checkOutside(n, n.source.value),
       };
     }
-    if (!inPackage && !inEngine) return {};
-    const pkgDir = inPackage ? rel.split("/").slice(0, 2).join("/") : null;
-    const isManifest = inPackage && rel === `${pkgDir}/manifest.ts`;
+    const inFeature = rel.startsWith(FEATURES_DIR);
+    if (!inPackage && !inEngine && !inFeature) return {};
+    const pkgDir = inPackage || inFeature ? rel.split("/").slice(0, 2).join("/") : null;
+    const isManifest = (inPackage || inFeature) && rel === `${pkgDir}/manifest.ts`;
 
     function check(node, spec) {
       if (typeof spec !== "string") return;
-      if (inPackage) {
+      if (inPackage || inFeature) {
         if (!spec.startsWith(".")) {
           const bare = spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0];
           if (isManifest || !(spec.startsWith("node:") || peerDependencies(pkgDir).includes(bare))) {
@@ -533,7 +543,7 @@ const packageBoundaryRule = {
           return;
         }
         if (target === "src/sdk/index" || target === "src/sdk") return;
-        if (requiredDirs(pkgDir).some((d) => target.startsWith(`${d}/`))) return;
+        if (inPackage && requiredDirs(pkgDir).some((d) => target.startsWith(`${d}/`))) return;
         context.report({
           node,
           message: `"${spec}": a plugin package reaches the hub only through src/sdk/index.ts (add the name there), src/shared/, its own files and the packages it requires (ADR-014).`,
@@ -544,6 +554,12 @@ const packageBoundaryRule = {
       const target = relative(ROOT, resolve(dirname(file), spec)).split("\\").join("/").replace(/\.js$/, ".ts");
       if (target.startsWith(PACKAGES_DIR) && !(rel in PACKAGE_REACH_NOT_YET)) {
         context.report({ node, message: `"${spec}": the engine never imports a plugin package; the hub loads them from config/plugins.json (ADR-014).` });
+      }
+      if (target.startsWith(FEATURES_DIR)) {
+        context.report({ node, message: `"${spec}": the engine never imports a feature package; the hub loads them from config/features.ts (ADR-016).` });
+      }
+      if ((target === "config/features.ts" || target === "config/featureManifests.ts") && FEATURE_LIST_READERS[rel] !== target) {
+        context.report({ node, message: `"${spec}": only the feature loader and the feature manifest list read the configured features (ADR-016).` });
       }
       if (target.startsWith("config/plugins/") && ENGINE_LIST_READERS[rel] !== target) {
         context.report({ node, message: `"${spec}": only the loader and the manifest list read the configured packages (ADR-014).` });
@@ -564,7 +580,7 @@ export default [
     ignores: ["node_modules/**", "dist/**", "ui/**", "test-results/**", "backups/**", "supabase/**"],
   },
   {
-    files: ["src/**/*.ts", "packages/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "kit/**/*.ts", "examples/**/*.ts"],
+    files: ["src/**/*.ts", "packages/**/*.ts", "features/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "kit/**/*.ts", "examples/**/*.ts"],
     languageOptions: { parser: tsParser, sourceType: "module", ecmaVersion: "latest" },
     // Other plugins' disable comments may exist in the tree; they are not errors here.
     linterOptions: { reportUnusedDisableDirectives: "off" },
@@ -575,7 +591,7 @@ export default [
   // environment only through src/config/env.ts. Scripts and tests read their
   // own.
   {
-    files: ["src/**/*.ts", "packages/**/*.ts", "api/**/*.ts"],
+    files: ["src/**/*.ts", "packages/**/*.ts", "features/**/*.ts", "api/**/*.ts"],
     ignores: ["src/config/env.ts"],
     rules: {
       "no-restricted-properties": [

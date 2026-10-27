@@ -97,8 +97,11 @@ describe("export manifest", () => {
     // 49 since 20261025000000 (plugin session 1): hub_plugins (hub data,
     // omitted: the new-hub trigger records the host's approved packages) and
     // plugin_catalog (platform).
-    expect(schema.tables.size).toBe(49);
-    expect(schema.withHubId.size).toBe(37);
+    // 53 since 20261027100000 (the analytics slice, ADR-016): analytics_daily
+    // and analytics_period (hub data, omitted: derived from the events),
+    // analytics_report_keys and analytics_report_reads (hub data, exported).
+    expect(schema.tables.size).toBe(53);
+    expect(schema.withHubId.size).toBe(41);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);
   });

@@ -1,0 +1,10 @@
+{
+  "name": "@civic-social/feature-analytics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Activity: how much participation a hub has, of what kind, over what period, counted from its event log in counts that never identify anyone (ADR-016). A hub feature built as a plugin package is.",
+  "peerDependencies": {
+    "express": "^4.22.3"
+  }
+}
