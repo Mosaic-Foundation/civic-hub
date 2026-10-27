@@ -27,6 +27,7 @@ export const THEME_TYPE_KEYS = [
   "meeting",
   "brief",
   "wordcloud",
+  "event",
 ] as const;
 export type ThemeTypeKey = (typeof THEME_TYPE_KEYS)[number];
 
@@ -75,6 +76,7 @@ export const DEFAULT_THEME_COLORS = {
     meeting: "#2a7340",
     brief: "#8c4a2b",
     wordcloud: "#5c6b2a",
+    event: "#8a2456",
   } as Record<ThemeTypeKey, string>,
 };
 
@@ -288,6 +290,7 @@ const TYPE_LABELS: Record<ThemeTypeKey, string> = {
   meeting: "Meeting summaries",
   brief: "Civic briefs",
   wordcloud: "Word clouds",
+  event: "Events",
 };
 
 export function themeTypeLabel(key: ThemeTypeKey): string {

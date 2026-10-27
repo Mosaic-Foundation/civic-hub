@@ -27,6 +27,8 @@ export const FEED_WIRE_FORMS: ReadonlyArray<{ type: string; object: string; even
   { type: "Create", object: "hub:OfficialResponse", event: "civic.process.action_taken" },
   { type: "Create", object: "hub:ProcessAction", event: "civic.process.action_taken" },
   { type: "Announce", object: "civic:Outcome", event: "civic.outcome_delivered" },
+  // The Events plugin's publish: a Create of an AS2 Event (its wireObject).
+  { type: "Create", object: "Event", event: "civic.event.published" },
 ];
 
 const BY_PAIR: ReadonlyMap<string, string> = new Map(FEED_WIRE_FORMS.map((f) => [`${f.type} ${f.object}`, f.event]));

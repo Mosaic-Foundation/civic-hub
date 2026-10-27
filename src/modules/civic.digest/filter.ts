@@ -56,6 +56,7 @@ const KIND_ORDER: Record<DigestItemKind, number> = {
   "conversation-results": 11,
   brief: 12,
   "brief-response": 13,
+  event: 14,
 };
 
 export function sortDigestItems(items: DigestItem[]): DigestItem[] {
