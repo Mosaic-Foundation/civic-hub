@@ -228,7 +228,7 @@ test("Hub settings → Theme: Sidebar and a new order take effect at once, every
   await expect(page.locator(".civic-nav")).toBeHidden();
   await expect(page.locator(".feed-votes-tabs")).toBeHidden();
   const sections = sidebar(page).getByRole("list", { name: "Sections" }).locator(".nav-item-label");
-  await expect(sections).toHaveText(["Feed", "Votes", "Conversations", "Proposals", "Projects", "Outcomes", "Members"]);
+  await expect(sections).toHaveText(["Feed", "Votes", "Conversations", "Proposals", "Events", "Projects", "Outcomes", "Members"]);
   await expect(sidebar(page).locator('[aria-current="page"]')).toContainText("Hub settings");
   await expect(sidebar(page).getByText("Admin", { exact: true })).toBeVisible();
   await expect(sidebar(page).locator('[data-nav-id="reviews"]')).toBeVisible();
@@ -263,8 +263,8 @@ test("a plugin switched off leaves the chooser, the sheet and the sidebar", asyn
 
   await page.setViewportSize(PHONE);
   await page.goto("/");
-  // Conversations was second in the order; Proposals and Projects move up.
-  await expect(bar(page).locator(".bottom-bar-label")).toHaveText(["Feed", "Votes", "Proposals", "Projects", "More"]);
+  // Conversations was second in the order; Proposals and Events move up.
+  await expect(bar(page).locator(".bottom-bar-label")).toHaveText(["Feed", "Votes", "Proposals", "Events", "More"]);
   await openMore(page);
   await expect(sheet(page).getByRole("link", { name: "Conversations" })).toHaveCount(0);
 
@@ -276,6 +276,7 @@ test("a plugin switched off leaves the chooser, the sheet and the sidebar", asyn
     "Feed",
     "Votes",
     "Proposals",
+    "Events",
     "Projects",
     "Outcomes",
     "Members",
