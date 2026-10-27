@@ -131,10 +131,24 @@ async function reviewCard(page: Page, title: string) {
   return page.locator(".process-card").filter({ hasText: title });
 }
 
-test.beforeAll(async () => {
+test.beforeAll(async ({ playwright }) => {
   await assertSmokeHub();
   admin = (await mintSession(adminEmail())).token;
   resident = await newResident("r");
+  // The smoke hub runs with the header; only the sidebar check sets Sidebar,
+  // and puts it back. A run cut off inside that check (a job timeout skips
+  // afterAll) left it set, and every later run read it as the hub's own
+  // (2026-10-27): put it back before anything looks at the header.
+  const request = await playwright.request.newContext();
+  const config = await (await request.get(`${apiBase()}/hub-config`)).json();
+  if (config.settings?.["nav.layout"] === "sidebar") {
+    const r = await request.put(`${apiBase()}/admin/hub/settings`, {
+      headers: auth(admin),
+      data: { section: "theme", values: { "nav.layout": "" } },
+    });
+    expect(r.ok(), `nav.layout back to the header: ${await r.text()}`).toBeTruthy();
+  }
+  await request.dispose();
 });
 
 test.afterAll(async ({ playwright }) => {
@@ -671,18 +685,27 @@ test("at desktop width with Navigation set to Sidebar, the sidebar replaces the 
   });
   expect(set.ok(), await set.text()).toBeTruthy();
 
-  const page = await open(browser, { viewport: { width: 1280, height: 860 } });
-  await visitAs(page, admin);
-  await page.goto("/votes");
-  const side = page.getByRole("navigation", { name: "Hub", exact: true });
-  // No wait for other instances: a save bumps the hub's settings version and
-  // every instance reloads on its next request (20261018000000).
-  await expect(side).toBeVisible();
-  await expect(page.locator(".civic-nav")).toBeHidden();
-  await expect(side.locator('[aria-current="page"]')).toContainText("Votes");
-  await expect(side.getByText("Admin", { exact: true })).toBeVisible();
-  await expect(side.getByText(/Signed in as/)).toBeVisible();
-  await page.close();
+  try {
+    const page = await open(browser, { viewport: { width: 1280, height: 860 } });
+    await visitAs(page, admin);
+    await page.goto("/votes");
+    const side = page.getByRole("navigation", { name: "Hub", exact: true });
+    // No wait for other instances: a save bumps the hub's settings version and
+    // every instance reloads on its next request (20261018000000).
+    await expect(side).toBeVisible();
+    await expect(page.locator(".civic-nav")).toBeHidden();
+    await expect(side.locator('[aria-current="page"]')).toContainText("Votes");
+    await expect(side.getByText("Admin", { exact: true })).toBeVisible();
+    await expect(side.getByText(/Signed in as/)).toBeVisible();
+    await page.close();
+  } finally {
+    // Put back here, not only in afterAll, which a cut-off run never reaches.
+    const back = await request.put(`${apiBase()}/admin/hub/settings`, {
+      headers: auth(admin),
+      data: { section: "theme", values: { "nav.layout": navLayoutBefore } },
+    });
+    if (back.ok()) navLayoutBefore = null;
+  }
 });
 
 test("a \"?\" beside a setting opens its note, with a link to the docs", async ({ browser }) => {
