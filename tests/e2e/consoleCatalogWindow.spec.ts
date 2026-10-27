@@ -19,7 +19,7 @@ const CONSOLE_UI = `${UI.protocol}//console.localhost${UI.port ? `:${UI.port}` :
 const STRAW = "@civic-social-examples/plugin-straw-poll";
 
 async function statusOf(page: Page): Promise<string> {
-  return (await page.getByTestId(`catalog-${STRAW}`).locator(".cx-plugin-status").first().innerText()).trim();
+  return (await page.getByTestId(`catalog-${STRAW}`).first().locator(".cx-plugin-status").first().innerText()).trim();
 }
 
 test("one code confirms catalog changes for ten minutes; each change is still recorded", async ({ page, context }) => {
@@ -27,7 +27,8 @@ test("one code confirms catalog changes for ten minutes; each change is still re
   const [name, value] = cookie.split("=");
   await context.addCookies([{ name: name!, value: decodeURIComponent(value!), domain: "console.localhost", path: "/" }]);
   await page.goto(`${CONSOLE_UI}#/plugins`);
-  const entry = page.getByTestId(`catalog-${STRAW}`);
+  // The newest version (the list is newest first).
+  const entry = page.getByTestId(`catalog-${STRAW}`).first();
   await expect(entry).toBeVisible();
   await expect(page.getByTestId("catalog-confirmed")).toHaveCount(0);
 
@@ -54,7 +55,7 @@ test("one code confirms catalog changes for ten minutes; each change is still re
     await expect(dialog).toHaveCount(0);
   }
 
-  const [row] = (await localRest(`plugin_catalog?select=id&package=eq.${encodeURIComponent(STRAW)}`)) as Array<{ id: string }>;
+  const [row] = (await localRest(`plugin_catalog?select=id&package=eq.${encodeURIComponent(STRAW)}&order=created_at.desc&limit=1`)) as Array<{ id: string }>;
   const audit = (await localRest(
     `control_audit_log?select=action,after&action=in.(plugin.approve,plugin.withdraw)&after->>id=eq.${row!.id}&order=id.desc&limit=3`,
   )) as Array<{ action: string; after: { confirmed: string } }>;

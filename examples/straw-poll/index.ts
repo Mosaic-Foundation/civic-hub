@@ -9,7 +9,7 @@ import { createStrawPollStore, strawPollStore } from "./store.js";
 
 const strawPollPackage: PluginPackage = {
   name: "@civic-social-examples/plugin-straw-poll",
-  version: "0.1.0",
+  version: "0.1.1",
   displayName: "Straw polls",
   manifest,
   server(host) {
