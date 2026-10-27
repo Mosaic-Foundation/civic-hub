@@ -562,6 +562,16 @@ function fromRecipe(recipe: ActivityRecipe): ActivityMapping {
           const props: { id?: string | null; name?: string | null } = {};
           if (o.id === "process") props.id = processIri(e, env);
           if (o.name === "title") props.name = titleOf(data);
+          // The type's own wire object (an AS2 Event): its activities always
+          // name it, and lift its properties as processObject does.
+          const wire = WIRE_OBJECTS.get(processTypeOf(data) ?? "");
+          if (wire && wire.type === o.class) {
+            const object: Record<string, unknown> = { type: o.class };
+            if (props.id) object.id = props.id;
+            if (props.name) object.name = props.name;
+            applyWireObject(object, data, wire);
+            return withPayload(object, data);
+          }
           return civicObject(o.class, data, props);
         },
       };
