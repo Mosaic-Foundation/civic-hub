@@ -7,7 +7,8 @@ import "./AdminMenu.css";
 
 /**
  * The admin's way into everything (admin menu slice, 2026-10-13): a review
- * icon with a count, and the Admin pill, whose dropdown has five items, the
+ * icon with a count, and the Admin pill, whose dropdown has five items and
+ * the switched-on features' pages after Moderation (Activity, ADR-016), the
  * last one Contact Civic.Social (feedback routing, 2026-10-13). The account menu beside it holds only personal things.
  *
  * The review count is what is NEW since this admin last opened each review

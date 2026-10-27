@@ -4,8 +4,9 @@
 //   sections  Feed, then the enabled types' sections and Members, in the
 //             hub's Section order (config/navigation.ts);
 //   hub       Share this hub (members), Feedback, Welcome (when written), About;
-//   admin     Reviews (with what is new), Moderation, Hub settings, Plugins,
-//             Contact Civic.Social: admins only;
+//   admin     Reviews (with what is new), Moderation, the switched-on features'
+//             pages (Activity), Hub settings, Plugins, Contact Civic.Social:
+//             admins only;
 //   you       My submissions, edited projects you support, Your settings,
 //             Post announcement (authors), Sign out: the signed-in person.
 //
@@ -18,6 +19,7 @@ import { useNavData } from "../context/navDataState";
 import { navSections } from "../config/navigation";
 import { useHub } from "../config/hub";
 import { sectionForPath } from "../../../src/shared/navSections";
+import { FEATURE_UI } from "../features";
 
 export interface NavItem {
   id: string;
@@ -124,7 +126,15 @@ export function useNavGroups({ onShare }: { onShare: () => void }): NavGroups {
           countLabel: `${data.reviews} new`,
           current: REVIEW_PATHS.some((p) => pathname.startsWith(p)),
         },
-        ...ADMIN_PAGES.map(({ match, ...page }) => ({ ...page, current: match(pathname) })),
+        ...ADMIN_PAGES.slice(0, 1).map(({ match, ...page }) => ({ ...page, current: match(pathname) })),
+        ...FEATURE_UI.filter((u) => u.adminTab && hub.plugins.enabled(u.feature)).map((u) => ({
+          id: u.feature,
+          label: u.adminTab!.label,
+          icon: u.adminTab!.icon,
+          to: u.adminTab!.path,
+          current: pathname.startsWith(u.adminTab!.path),
+        })),
+        ...ADMIN_PAGES.slice(1).map(({ match, ...page }) => ({ ...page, current: match(pathname) })),
       ]
     : null;
 

@@ -171,7 +171,7 @@ test("phones: an admin's More has the Admin group with Reviews", async ({ page }
   await openMore(page);
   const s = sheet(page);
   await expect(s.getByText("Admin", { exact: true })).toBeVisible();
-  for (const label of ["Reviews", "Moderation", "Hub settings", "Plugins", "Contact Civic.Social"]) {
+  for (const label of ["Reviews", "Moderation", "Activity", "Hub settings", "Plugins", "Contact Civic.Social"]) {
     await expect(s.locator(".nav-item", { hasText: label })).toBeVisible();
   }
   await s.getByRole("link", { name: "Hub settings" }).click();

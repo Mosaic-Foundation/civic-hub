@@ -12,7 +12,7 @@ const ActivityPage = lazy(() => import("./ui/ActivityPage"));
 const analyticsUi: FeatureUi = {
   feature: "analytics",
   routes: [{ path: "/admin/activity", element: <ActivityPage />, admin: true }],
-  adminTab: { label: "Activity", path: "/admin/activity" },
+  adminTab: { label: "Activity", path: "/admin/activity", icon: "activity" },
   settingsPanel: (f) => (
     <BooleanField
       f={f}

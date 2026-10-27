@@ -14,8 +14,8 @@ export interface FeatureUi {
   /** Its hub feature: the switch everything below rides on. */
   feature: PluginId;
   routes: readonly ProcessRoute[];
-  /** A tab in the admin tabs, and an item in the Admin menu. */
-  adminTab?: { label: string; path: string };
+  /** A tab in the admin tabs, and an item in the Admin menu and the navigation's Admin group (icon: navIcons.tsx). */
+  adminTab?: { label: string; path: string; icon: string };
   settingsPanel?: (f: FormApi) => ReactNode;
   /** Drawn at the foot of the About page. */
   aboutBlock?: ComponentType;
