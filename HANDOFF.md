@@ -6,9 +6,32 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Plugin Events: the hub's calendar, the first package on SDK v1 in the hub's list — 2026-10-27
 
-Branch `plugin-events` (from `24471a1`; `origin/multi-tenant` at `14b2ca0` merged in), pushed; **not merged to
-`multi-tenant`, not released anywhere**. Reports: `~/Documents/Mosaic/0 Management/Civic Social/Plugin-Events-Session-Report-2026-10-27.md`
-and `Plugin-Events-Handoff-to-Management-2026-10-27.md`.
+**On dev at `86fb68c`, approved and mounted (10 of 10); not on production.** Branch `plugin-events` merged into
+`multi-tenant` (`7c99129`), then the SDK runtime fix below (`8ee584a`, `86fb68c`). Reports:
+`~/Documents/Mosaic/0 Management/Civic Social/Plugin-Events-Session-Report-2026-10-27.md` and
+`Plugin-Events-Handoff-to-Management-2026-10-27.md`.
+
+**The release, and what went wrong on the way:** pushing the merge deployed it to dev before `release.sh` ran, and
+the function failed to start (`Cannot find package '@civic-social/plugin-sdk'`): only tsconfig `paths` resolved the
+SDK's name, which tsx honours (every test layer) and compiled code does not. `release.sh dev` applied both migrations
+(`20261027120000` the calendar tables, `20261027155758` the catalog entry) and stopped at the red health check. Adam
+rolled dev back to `1957218`, approved the fix, promoted `86fb68c`, and approved Events 0.1.0 in the dev console.
+- **The fix (`8ee584a`):** a `file:kit/sdk` dependency (so Vercel traces and compiles the SDK into the function) and
+  `src/sdkResolve.ts`, a `module.registerHooks` resolve hook that `api/index.ts` and `src/index.ts` import before the
+  app. Where compiled `kit/sdk/<entry>.js` sits beside the running code (the function, `dist/`) the name resolves
+  there; under tsx nothing changes. Vercel ships the SDK but not the `node_modules` link, so no `package.json` entry
+  alone can do it. Accepted as a stopgap; the real fix is publishing the SDK as built `.js` (next engine list, 14).
+- **The CI step (`86fb68c`):** the API job builds `dist/` and starts it under plain Node on :3002; it must answer ok,
+  mount every package in `config/plugins.json` and leave none unmounted.
+- Proved first with a local `vercel build` (the function loads with no `node_modules` outside it; `/health` 200, no
+  gaps) and `node dist/src/index.js` (10 mounted); `dist/` without the hook fails as dev did.
+- **Pushing `multi-tenant` deploys dev's code at once.** Migrations a release needs must already be on dev, or push
+  through `release.sh`, which applies them first.
+
+**Checks on the merged code:** local, on a fresh stack: unit 1,931, UI 35, both API passes 968, Playwright 203. CI and
+E2E green on `7c99129` and `86fb68c` (the new compiled-server step included). **Smoke 28 of 28 on the promoted
+`86fb68c`**; dev `/api/health` 10 mounted, none unmounted. No Events-specific smoke check was added: Smoke covers it
+through the mounted-packages and signed-approval checks.
 
 **What it is:** `packages/civic.event` (Events 0.1.0): residents propose an event through the hub's review (a demo hub
 publishes at once), residents say they're going (the count public, names per the `members` policy), its creator or an
@@ -37,12 +60,16 @@ Playwright `events.spec.ts` 12, the full suite 203. **CI on `faf3a96`: all green
 see the session report.
 
 **Left:**
-- Merge to `multi-tenant` (after Adam says the branch is clear), then `release.sh dev`; approve the Events 0.1.0 entry
-  in the dev console.
+- **Production:** the next release round, with the analytics slice: `release.sh prod` applies both Events
+  migrations, then Events 0.1.0 is approved (and signed) in the production console.
 - **The next engine session** (the report's list): an official caller role; deriving the hand lists; an open
   ActivityKind; type-declared statuses; applyEdit for free-text edits; afterActionCommits in SDK v1; a name lookup under
   the disclosure policy; the hub's name and base URL in SDK v1; DraftShell in SDK v1; the Code of Conduct check reading
-  a kind's own checked fields; a withdrawal role in the participation declaration.
+  a kind's own checked fields; a withdrawal role in the participation declaration; `civic-conformance` on a listed
+  package; **the API suite's order dependency** (the sign-in tests create `admin+athens@example.test` as a
+  non-resident with no name, and `mintSession` reuses it, so ~25 tests fail when those files run first; vitest orders
+  files by the durations cached in `node_modules/.vite/vitest/*/results.json`, so one crashed local run reorders the
+  next into that failure; move the file aside to recover); **publishing the SDK as built `.js`**, replacing the hook.
 - Website re-copy: two non-AS2 terms, `ical:status` and schema.org `address`/`PostalAddress` (`VOCABULARY_TERMS` in
   `activitySerializer.ts`).
 - Federation in (other hubs', Mobilizon's events), recurring events, reminders: not this slice. Followable from the

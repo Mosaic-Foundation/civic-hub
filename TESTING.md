@@ -123,6 +123,20 @@ each event is an AS2 `Event` on the public stream. Branch `plugin-events`.**
   **203 passed, 6 skipped** (after the nav and Activity specs counted Events; three AI-check 429s were this session's
   repeated runs on one stack: clear `rate_limit_hits` buckets `ai.review:%` on the LOCAL stack). **CI on `faf3a96`:**
   build-and-test, both API passes, run-anywhere and E2E (run by hand on the branch) green.
+- **The compiled server (CI, the API job, since `86fb68c`).** Every layer above runs under tsx, which resolves
+  tsconfig `paths`; compiled code does not, so the SDK's name passed them all and failed on Vercel. The API job now runs
+  `npm run build` and starts `node dist/src/index.js` on :3002: `/health` must answer ok, mount every package in
+  `config/plugins.json` and leave none unmounted. Locally: `npm run build`, then the same with the stack's settings.
+  To check what Vercel ships, `vercel build` in a scratch worktree (project settings written into
+  `.vercel/project.json` by hand, so nothing is pulled), then load `.vercel/output/functions/api/index.func/api/index.js`
+  with that worktree's `node_modules` moved aside. Its packages show unmounted there: a local `vercel build` leaves out
+  their `.ts` sources, which the hash check reads; dev's builds keep them.
+- **After a crashed local run, move vitest's duration cache aside** (`node_modules/.vite/vitest/*/results.json`).
+  Vitest runs the slowest recorded files first; a run that timed out records the sign-in files as slowest, and when
+  they run first they create `admin+athens@example.test` as a non-resident, so ~25 API tests fail on
+  `residency_required`. CI has no cache. Recorded for the next engine session.
+- **Merged and released (2026-10-27):** on `7c99129` local unit 1,931, both API passes 968, Playwright 203; CI and
+  E2E green on `7c99129` and `86fb68c`; Smoke 28 of 28 on dev at `86fb68c` with Events approved (10 mounted).
 
 ---
 
