@@ -36,6 +36,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@civic-social/plugin-sdk": "file:kit/sdk",
     "@supabase/supabase-js": "^2.103.3",
     "busboy": "^1.6.0",
     "cheerio": "^1.2.0",

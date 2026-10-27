@@ -5,8 +5,12 @@
 // The Express app auto-seeds on first import (cold start).
 
 import type { IncomingMessage, ServerResponse } from "http";
-import hubApp from "../src/app.js";
-import { withConsole } from "../src/control/index.js";
+// First, and the app only after it: a package imports the plugin SDK by name,
+// which compiled code resolves through this (src/sdkResolve.ts).
+import "../src/sdkResolve.js";
+
+const { default: hubApp } = await import("../src/app.js");
+const { withConsole } = await import("../src/control/index.js");
 
 // The super admin answers on its own hostname; everything else is the hub
 // app. See src/control/index.ts.

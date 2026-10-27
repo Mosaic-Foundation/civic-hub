@@ -1,9 +1,13 @@
 // Dev server entry point — imports the Express app and starts listening.
 // In production (Vercel), the app is imported by api/index.ts instead.
 
-import { env } from "./config/env.js";
-import hubApp from "./app.js";
-import { withConsole } from "./control/index.js";
+// First, and the app only after it: a package imports the plugin SDK by name,
+// which `npm start`'s compiled dist/ resolves through this (sdkResolve.ts).
+import "./sdkResolve.js";
+
+const { env } = await import("./config/env.js");
+const { default: hubApp } = await import("./app.js");
+const { withConsole } = await import("./control/index.js");
 
 // The super admin on CIVIC_CONSOLE_HOSTNAME (console.localhost locally);
 // every other host is the hub app. See src/control/index.ts.
