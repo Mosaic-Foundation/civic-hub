@@ -62,20 +62,20 @@ test.describe("Update on the Plugins page", () => {
 
     const card = page.getByRole("region", { name: "Briefs", exact: true });
     await expect(card.getByText(/Update available/)).toBeVisible();
-    await expect(card.getByText(/version 0\.2\.0\. Until you update, it keeps to what you approved/)).toBeVisible();
+    await expect(card.getByText(/version 0\.2\.1\. Until you update, it keeps to what you approved/)).toBeVisible();
     await card.getByRole("button", { name: "Update…" }).click();
 
-    const dialog = page.getByRole("dialog", { name: "Update Briefs to version 0.2.0?" });
+    const dialog = page.getByRole("dialog", { name: "Update Briefs to version 0.2.1?" });
     await expect(dialog.getByText("Briefs will also be able to:")).toBeVisible();
     await expect(dialog.getByText("Use the hub's AI service. Each use counts against the hub's daily AI allowance.")).toBeVisible();
-    await expect(dialog.getByText(/From version 0\.1\.0 to 0\.2\.0, checked by Civic\.Social on/)).toBeVisible();
+    await expect(dialog.getByText(/From version 0\.1\.0 to 0\.2\.1, checked by Civic\.Social on/)).toBeVisible();
     await dialog.getByRole("button", { name: "Update", exact: true }).click();
     await expect(dialog).toBeHidden();
     await expect(card.getByText(/Update available/)).toHaveCount(0);
-    await expect(card.getByText(/version 0\.2\.0/)).toBeVisible();
+    await expect(card.getByText(/version 0\.2\.1/)).toBeVisible();
 
     const [after] = (await localRest(`${filter}&select=version,upgraded_from`)) as Array<{ version: string; upgraded_from: string }>;
-    expect(after).toEqual({ version: "0.2.0", upgraded_from: "0.1.0" });
+    expect(after).toEqual({ version: "0.2.1", upgraded_from: "0.1.0" });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width);
   });
 });
