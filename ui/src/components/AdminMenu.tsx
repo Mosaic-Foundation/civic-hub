@@ -1,6 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useNavData } from "../context/navDataState";
 import { useDropdownMenu } from "../hooks/useDropdownMenu";
+import { useHub } from "../config/hub";
+import { FEATURE_UI } from "../features";
 import "./AdminMenu.css";
 
 /**
@@ -20,6 +22,7 @@ import "./AdminMenu.css";
 
 export default function AdminMenu() {
   const navigate = useNavigate();
+  const hub = useHub();
   const { open, setOpen, buttonRef, menuRef, onMenuKey, choose } = useDropdownMenu();
   // The counts are read once for the whole navigation (context/NavDataContext.tsx).
   // The icon opens the first queue with something new, so the click clears
@@ -63,6 +66,9 @@ export default function AdminMenu() {
           >
             <MenuItem label="Reviews" count={reviews} onClick={() => choose(() => navigate(reviewsTo))} />
             <MenuItem label="Moderation" onClick={() => choose(() => navigate("/admin/moderation"))} />
+            {FEATURE_UI.filter((u) => u.adminTab && hub.plugins.enabled(u.feature)).map((u) => (
+              <MenuItem key={u.feature} label={u.adminTab!.label} onClick={() => choose(() => navigate(u.adminTab!.path))} />
+            ))}
             <MenuItem label="Hub settings" onClick={() => choose(() => navigate("/admin/settings"))} />
             <MenuItem label="Plugins" onClick={() => choose(() => navigate("/admin/settings/plugins"))} />
             <MenuItem label="Contact Civic.Social" onClick={() => choose(() => navigate("/admin/contact-civic-social"))} />

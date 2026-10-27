@@ -43,10 +43,16 @@ function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 }
 
+/**
+ * A type's own name where its display label is shared with another type's (a
+ * brief and a vote's results both show as "Outcome"): `display.name`.
+ */
+const ownName = (m: (typeof MANIFEST_LIST)[number]) => (m.descriptor.display as { name?: string }).name;
+
 const TYPES: readonly ProcessTypeSummary[] = MANIFEST_LIST.map((m) => ({
   type: m.descriptor.type,
-  label: m.descriptor.display.label,
-  plural: m.descriptor.display.plural,
+  label: ownName(m) ?? m.descriptor.display.label,
+  plural: ownName(m) ? (ownName(m)!.endsWith("s") ? ownName(m)! : `${ownName(m)}s`) : m.descriptor.display.plural,
   residentCreated: m.descriptor.creation.resident !== null,
   participation: (m.participation as ParticipationDeclaration | undefined) ?? null,
 }));

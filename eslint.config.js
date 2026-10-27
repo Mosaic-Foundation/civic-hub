@@ -577,7 +577,8 @@ const packageBoundaryRule = {
 
 export default [
   {
-    ignores: ["node_modules/**", "dist/**", "ui/**", "test-results/**", "backups/**", "supabase/**"],
+    // features/*/ui/ is a feature's UI (ADR-016), read by the UI's build like a package's ui.tsx.
+    ignores: ["node_modules/**", "dist/**", "ui/**", "test-results/**", "backups/**", "supabase/**", "features/*/ui/**"],
   },
   {
     files: ["src/**/*.ts", "packages/**/*.ts", "features/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "kit/**/*.ts", "examples/**/*.ts"],

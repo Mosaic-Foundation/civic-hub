@@ -7,6 +7,7 @@ import {
   type AdminQueueCounts,
 } from "../services/api";
 import { useHub } from "../config/hub";
+import { FEATURE_UI } from "../features";
 import "./AdminTabs.css";
 
 /**
@@ -93,6 +94,12 @@ export default function AdminTabs() {
       <NavLink to="/admin/archived" className={tabClass}>
         Archived
       </NavLink>
+      {/* Feature packages' tabs (ui/src/features.ts): Activity. */}
+      {FEATURE_UI.filter((u) => u.adminTab && hub.plugins.enabled(u.feature)).map((u) => (
+        <NavLink key={u.feature} to={u.adminTab!.path} className={tabClass}>
+          {u.adminTab!.label}
+        </NavLink>
+      ))}
       <NavLink to="/admin/settings" className={tabClass}>
         Hub settings
       </NavLink>

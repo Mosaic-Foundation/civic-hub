@@ -8,6 +8,7 @@
 // with no view here is shown as "This section needs a newer console."
 
 import { useState, type ReactNode } from "react";
+import { FEATURE_CONSOLE_VIEWS } from "../../../config/featureConsole";
 import { ModeBadge } from "./ui";
 import { when } from "./format";
 import {
@@ -711,4 +712,6 @@ export const SECTION_VIEWS: Record<string, SectionView> = {
   outside: { tab: "Uptime and errors", summarize: summarizeOutside, render: OutsideView },
   attention: { tab: "Waiting", summarize: summarizeAttention, render: AttentionView },
   plugins: { tab: "Plugins", summarize: summarizePlugins, render: PluginsView },
+  // Feature packages' sections (ADR-016; config/featureConsole.ts): Activity.
+  ...FEATURE_CONSOLE_VIEWS,
 };

@@ -24,6 +24,7 @@
 // and News sync, without a source) stays on and shows a "Needs setup" badge
 // saying what is missing (Adam, 2026-10-07; src/shared/pluginSetup.ts).
 
+import { featureSettingsPanel } from "../../features";
 import { useApi } from "../../hooks/useApi";
 import { Link } from "react-router-dom";
 import SectionForm from "./SectionForm";
@@ -417,7 +418,7 @@ const FEATURE_PANELS: Partial<Record<PluginId, (f: FormApi) => React.ReactNode>>
 };
 
 function settingsPanel(f: FormApi, id: PluginId): React.ReactNode | null {
-  return processSettingsPanel(id, f) ?? FEATURE_PANELS[id]?.(f) ?? null;
+  return processSettingsPanel(id, f) ?? FEATURE_PANELS[id]?.(f) ?? featureSettingsPanel(id, f) ?? null;
 }
 
 /**

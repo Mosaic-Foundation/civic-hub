@@ -23,6 +23,7 @@ import { clearIntroSeen } from "../components/introSeen";
 import { useHubDocument } from "../hooks/useHubDocument";
 import { useAuth } from "../context/authState";
 import HubInfo from "../components/HubInfo";
+import { FEATURE_UI } from "../features";
 import "../components/LegalPage.css";
 
 export default function About() {
@@ -75,6 +76,12 @@ export default function About() {
           </>
         )}
       </div>
+
+      {/* Feature packages' blocks (ui/src/features.ts): Activity's "This hub in numbers", when public. */}
+      {FEATURE_UI.filter((u) => u.aboutBlock && hub.plugins.enabled(u.feature)).map((u) => {
+        const Block = u.aboutBlock!;
+        return <Block key={u.feature} />;
+      })}
 
       <p className="about-welcome-reset">
         {introCleared ? (
