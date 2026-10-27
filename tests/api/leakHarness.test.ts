@@ -388,6 +388,12 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /votes/drafts/": {},
   "GET /votes/drafts/duration-limits": {},
   "GET /votes/drafts/:id": {},
+  // The Events plugin (2026-10-27): its drafts, and the calendar (public; every
+  // row is a published event, and nothing on it names a person).
+  "GET /calendar/drafts/": {},
+  "GET /calendar/drafts/:id": {},
+  "GET /calendar/events": {},
+  "GET /calendar/hub.ics": {},
   // Since Audit 3 every drafting kind has the owner's list route.
   "GET /projects/drafts/": {},
   "GET /projects/drafts/:id": {},
@@ -640,6 +646,8 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /proposals/drafts/:id/submit": { body: {} },
   "PATCH /votes/drafts/:id": { body: { title: X.title } },
   "POST /votes/drafts/:id/submit": { body: {} },
+  "PATCH /calendar/drafts/:id": { body: { title: X.title } },
+  "POST /calendar/drafts/:id/submit": { body: {} },
   "PATCH /projects/drafts/:id": { body: { title: X.title } },
   "POST /projects/drafts/:id/submit": { body: {} },
   "POST /projects/:id/sentiment": { body: { sentiment: "oppose" } },
