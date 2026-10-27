@@ -181,11 +181,15 @@ export const EVENT_MANIFEST = defineManifest({
     [EVENTS.cancelled]: ["cancellation"],
   },
   deadlineRefusal: { code: "event_past", message: "This event has ended." },
-  // What the hub's analytics counts (ADR-016): saying you're going is taking
-  // part (taking it back is not a second act); an event closes at its end or
-  // when it is cancelled, and produces no result, as a proposal does not.
+  // What the hub's analytics counts (ADR-016): saying you're going, and a
+  // creator changing when or where, are taking part. Taking going back is
+  // counted too, because conformance step 10 requires every resident action
+  // that emits to emit a counted event; distinct residents are unchanged
+  // (they went first), the count of acts is not (the report's suite note). An
+  // event closes at its end or when it is cancelled, and produces no result,
+  // as a proposal does not.
   participation: {
-    participation: [EVENTS.going],
+    participation: [EVENTS.going, EVENTS.notGoing, EVENTS.updated],
     creation: ["civic.process.created"],
     closing: ["civic.process.ended", EVENTS.cancelled],
     outcome: [],
