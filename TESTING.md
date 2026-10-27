@@ -87,6 +87,45 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Plugin Events: the hub's calendar, the first package on SDK v1 in the hub's list (2026-10-27)
+
+**Events (`packages/civic.event`): residents propose events through review, say they're going, and anyone subscribes;
+each event is an AS2 `Event` on the public stream. Branch `plugin-events`.**
+- **Adding a type is not one line yet.** A package in `config/plugins.json` is counted, on purpose, by these tests,
+  each updated by hand with a note: `archiveHooks`, `exportManifest` and `forHub` (table counts), `navSections`,
+  `pluginRoutes`, `processDescriptors` (section labels), `residentActions` (unit and API), `manifestParity` (the
+  parity fixture gains only the new type's entries; check with a diff before writing), and `leakHarness`
+  (`GET_PLAN`/`WRITE_PLAN` for its routes). The next engine session's list (HANDOFF) proposes deriving them.
+- **The wire** (`tests/unit/eventsWire.test.ts`, 8): `Create`, `Update` (`ical:status` CANCELLED for a cancel),
+  `Join` and `Leave` on an AS2 `Event` with `startTime`, `endTime`, a `Place` with a schema.org `PostalAddress` or an
+  online `Link`, `summary`, `content`; every term AS2's or declared in the document's `@context`; the public
+  projection keeps them; the hub's own `created` stays `civic:Process` with its old `@context`.
+  `tests/unit/wireObject.test.ts`: the manifest's `wireObject` recipe (lifting, and what it refuses).
+- **The .ics export** (`tests/unit/eventsIcs.test.ts`, 4): CRLF lines folded at 75 octets without splitting a
+  character, escaped text, UTC times, the cancelled mark, the event's page linked.
+- **Conformance:** `catalog:add` runs it on the type (22 steps, step 10 the participation declaration). A type
+  residents draft that has no AI drafting assistant now submits (the Code of Conduct check reads its draft through
+  its draft kind); the suite found that.
+- **Playwright** (`tests/e2e/events.spec.ts`, 12: six flows at phone and desktop width): add an event on the demo
+  hub; submit on the beta hub, approve in the review queue, see it on the calendar; going and taking it back; the
+  calendar by day with past events below (the past one's calendar row is moved back, since the form refuses a time
+  already over); the Events section after Votes; the creator cancels. It installs the plugin on both fixture hubs
+  first.
+- **A shared stack:** two sessions on one local stack must not run suites at the same time (each run's
+  `dropTestHubs` deletes the hubs the other made). A branch whose migrations the stack does not have cannot
+  `migration up` past another branch's applied ones; reset only when every branch's migrations are in one checkout.
+- **`civic-conformance` from outside:** the kit packed (with Events left out of the packed host's list), installed
+  into an empty folder with the package copied in: 22 steps green. Run inside the hub's repository it refuses, and a
+  packed host that already lists the package collides with it ("already mapped"); pack from a list without it.
+- **Results, local:** unit **1,931** (6 skipped); UI component 35; API service role 965 of 968 then the three list
+  fixes green (leak harness plans, resident actions), minted tokens 967 of 968 (the word cloud's 4b got a 502 from the
+  local gateway under five simultaneous calls; its file passed 139 of 139 again); Playwright as `e2e.yml` runs it
+  **203 passed, 6 skipped** (after the nav and Activity specs counted Events; three AI-check 429s were this session's
+  repeated runs on one stack: clear `rate_limit_hits` buckets `ai.review:%` on the LOCAL stack). **CI on `faf3a96`:**
+  build-and-test, both API passes, run-anywhere and E2E (run by hand on the branch) green.
+
+---
+
 ## The analytics slice: declared participation, counts from the event log, the Activity feature (2026-10-27)
 
 **Every type declares what counts as participation; the hub counts it from the event log alone, in counts that never

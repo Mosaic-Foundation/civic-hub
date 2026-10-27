@@ -4,6 +4,52 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Plugin Events: the hub's calendar, the first package on SDK v1 in the hub's list — 2026-10-27
+
+Branch `plugin-events` (from `24471a1`; `origin/multi-tenant` at `14b2ca0` merged in), pushed; **not merged to
+`multi-tenant`, not released anywhere**. Reports: `~/Documents/Mosaic/0 Management/Civic Social/Plugin-Events-Session-Report-2026-10-27.md`
+and `Plugin-Events-Handoff-to-Management-2026-10-27.md`.
+
+**What it is:** `packages/civic.event` (Events 0.1.0): residents propose an event through the hub's review (a demo hub
+publishes at once), residents say they're going (the count public, names per the `members` policy), its creator or an
+admin changes when or where or cancels it (it stays on the calendar, marked), and at its end time the hub marks it past.
+A calendar section after Votes, an event page, phone-width forms, a feed card, and `/calendar/hub.ics`. On the wire each
+event is an AS2 `Event` (`Create`, `Update` with `ical:status` for a cancel, `Join`, `Leave`) with `startTime`,
+`endTime`, a `Place` with a schema.org `PostalAddress` or an online `Link`. It imports only the SDK by name; the fence
+holds it to that.
+
+**Engine changes (each its own commit, additive; every existing document and card unchanged):**
+- E1 `wireObject` in the manifest (the serializer types a process object and lifts declared properties; `ical:` and
+  schema.org's address context only on documents that use them), and its follow-up for a type's own recipes.
+- E2 `DraftKind`, `Draft` in SDK v1.
+- B1 the UI build resolves `@civic-social/plugin-sdk/manifest`; an SDK-v1 package under `packages/` is held to the
+  outside fence.
+- B2 the three hand lists: help note `plugins.events` (pending), sample-content rows, `/events/:id` share route.
+- E4 the `event` feed kind and the Events colour (rose `#8a2456` on `#f6e3ec`; theme key, digest section "New events").
+- E5 (found by conformance): the Code of Conduct check read drafts only through the AI drafting assistant's store, so a
+  type without AI drafting answered every submit with a 500; it now falls back to the type's draft kind. Not approved
+  ahead: the approved E2 could not work without it.
+
+**Tests:** unit 1,931 (including `eventsWire`, `eventsIcs`, `wireObject`); both API passes green after the list
+fixes; conformance 22 steps (in `catalog:add`, and `civic-conformance` from an empty folder outside the repo);
+Playwright `events.spec.ts` 12, the full suite 203. **CI on `faf3a96`: all green, E2E included.** See TESTING.md,
+"Plugin Events". The wire read by an ActivityPub library (Fedify 1.10) the same way as a Mobilizon-shaped `Event`:
+see the session report.
+
+**Left:**
+- Merge to `multi-tenant` (after Adam says the branch is clear), then `release.sh dev`; approve the Events 0.1.0 entry
+  in the dev console.
+- **The next engine session** (the report's list): an official caller role; deriving the hand lists; an open
+  ActivityKind; type-declared statuses; applyEdit for free-text edits; afterActionCommits in SDK v1; a name lookup under
+  the disclosure policy; the hub's name and base URL in SDK v1; DraftShell in SDK v1; the Code of Conduct check reading
+  a kind's own checked fields; a withdrawal role in the participation declaration.
+- Website re-copy: two non-AS2 terms, `ical:status` and schema.org `address`/`PostalAddress` (`VOCABULARY_TERMS` in
+  `activitySerializer.ts`).
+- Federation in (other hubs', Mobilizon's events), recurring events, reminders: not this slice. Followable from the
+  fediverse needs an ActivityPub actor and outbox (Phase 3).
+
+---
+
 ## The analytics slice: declared participation, counts from the event log, the Activity feature — 2026-10-27
 
 `multi-tenant`, `fdaaa7d`..(this commit), from `24471a1`, worked in a worktree (`../civic-hub-analytics`; the Events
