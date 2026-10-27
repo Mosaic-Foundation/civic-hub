@@ -199,7 +199,7 @@ jobs:
       # `authenticated` with a minted hub token (multi-tenant Phase 3), so the
       # forced RLS policies are live. The whole API layer runs against each,
       # the leak harness and the RLS catalog test included.
-      - name: Start the hub (service role, and minted hub tokens)
+      - name: Start the hub (service role, minted hub tokens, and compiled)
         run: |
           PORT=3000 BASE_URL=http://localhost:3000 \
             node --import tsx src/index.ts > /tmp/hub.log 2>&1 &
@@ -219,6 +219,26 @@ jobs:
           # must accept them: /health reports both.
           curl -s -H "Host: floyd.civic.social" http://localhost:3001/health | tee /dev/stderr \
             | jq -e '.hub_db.mode == "hub_token" and .hub_db.ok == true' >/dev/null
+          # The compiled server, without tsx: tsx resolves tsconfig `paths`
+          # and compiled code does not, so a bare import only `paths` can
+          # resolve (the plugin SDK's name, 2026-10-27) passes every layer
+          # above and fails on Vercel. `npm run build`'s dist/ must start,
+          # answer ok and mount every listed package.
+          npm run build
+          PORT=3002 BASE_URL=http://localhost:3002 node dist/src/index.js > /tmp/hub-compiled.log 2>&1 &
+          compiled=$!
+          ok=""
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3002/health >/dev/null && ok=1 && break
+            sleep 1
+          done
+          if [ -z "$ok" ]; then
+            echo "the compiled hub did not start:"; cat /tmp/hub-compiled.log; exit 1
+          fi
+          curl -s http://localhost:3002/health | tee /dev/stderr \
+            | jq -e --argjson listed "$(jq '.packages | length' config/plugins.json)" \
+              '.status == "ok" and (.plugins.mounted | length) == $listed and (.plugins.unmounted | length) == 0' >/dev/null
+          kill "$compiled"
         env:
           SUPABASE_URL: http://127.0.0.1:54321
           SUPABASE_SERVICE_ROLE_KEY: ${{ env.LOCAL_SERVICE_ROLE_KEY }}
