@@ -23,6 +23,12 @@
 //
 // A check of the text, not a parser: it refuses what it can see, and the
 // conformance run and the operator's review stand behind it.
+//
+// And a table a migration makes must be granted to the hub's roles in that
+// migration (`ungrantedTables`), as every hub migration does since
+// 20260922000000: a hosted project's default privileges hide a missing GRANT,
+// a local or CI stack's do not, and the plugin then fails with "permission
+// denied" on its first write (the straw poll, found in CI).
 
 export interface NotAdditive {
   file: string;
@@ -63,6 +69,27 @@ export function notAdditive(file: string, sql: string): NotAdditive[] {
   for (const statement of statements(sql)) {
     const rule = RULES.find((r) => r.re.test(statement));
     if (rule) out.push({ file, statement: statement.slice(0, 120), why: rule.why });
+  }
+  return out;
+}
+
+const ROLE_GUARD = "IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN";
+
+/** Every table a migration creates without granting it to service_role in the same file, with how to. */
+export function ungrantedTables(file: string, sql: string): NotAdditive[] {
+  const text = sql.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  const out: NotAdditive[] = [];
+  for (const m of text.matchAll(/\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?([a-z_][a-z0-9_]*)"?/gi)) {
+    const table = m[1]!;
+    const granted = new RegExp(`\\bgrant\\b[^;]*\\bon\\s+(?:table\\s+)?(?:public\\.)?"?${table}"?\\b[^;]*\\bto\\b[^;]*\\bservice_role\\b`, "i");
+    if (granted.test(text)) continue;
+    out.push({
+      file,
+      statement: m[0].replace(/\s+/g, " "),
+      why:
+        `it makes ${table} without granting it to the hub's roles; end the migration with ` +
+        `DO $$ BEGIN ${ROLE_GUARD} GRANT SELECT, INSERT, UPDATE, DELETE ON public.${table} TO authenticated, service_role; END IF; END $$`,
+    });
   }
   return out;
 }

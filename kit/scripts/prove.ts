@@ -42,7 +42,7 @@ const run = (pkg: string) =>
 const example = run("straw-poll");
 const broken = run("broken-poll");
 const refusal = spawnSync(join(project, "node_modules/.bin/civic-conformance"), ["./not-additive"], { cwd: project, encoding: "utf8", env: { PATH: process.env.PATH, HOME: process.env.HOME } });
-const refused = refusal.status !== 0 && refusal.stderr.includes("a migration is not additive") && !refusal.stdout.includes("applied to the local stack");
+const refused = refusal.status !== 0 && refusal.stderr.includes("it drops something") && !refusal.stdout.includes("applied to the local stack");
 console.log(`\nprove: the example ${example === 0 ? "passed, as it must" : `did not pass (exit ${example})`}`);
 console.log(`prove: the broken copy ${broken !== 0 ? "did not pass, as it must not" : "PASSED, which it must not"}`);
 console.log(`prove: the copy with a migration that is not additive ${refused ? "was refused before anything ran, as it must be" : `was not refused as it must be:\n${refusal.stderr}`}`);

@@ -2,7 +2,7 @@
 // `npm run catalog:add` refuses one that is not (src/plugins/additive.ts).
 
 import { describe, expect, it } from "vitest";
-import { notAdditive, statements } from "../../src/plugins/additive.js";
+import { notAdditive, statements, ungrantedTables } from "../../src/plugins/additive.js";
 
 const ok = (sql: string) => expect(notAdditive("m.sql", sql)).toEqual([]);
 const refused = (sql: string, why: RegExp) => {
@@ -47,5 +47,21 @@ describe("additive migrations", () => {
       "SELECT 2",
       "CREATE FUNCTION f() RETURNS void AS $$ LANGUAGE plpgsql",
     ]);
+  });
+
+  it("a table must be granted to the hub's roles in the migration that makes it", () => {
+    const table = "CREATE TABLE IF NOT EXISTS public.straw_poll_answers (hub_id text NOT NULL);";
+    const found = ungrantedTables("m.sql", table);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.why).toMatch(/without granting it/);
+    expect(found[0]!.why).toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON public.straw_poll_answers TO authenticated, service_role");
+    // The guarded form the portability rule asks for, as the straw poll does.
+    expect(ungrantedTables("m.sql", `${table}
+      DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+        GRANT SELECT, INSERT, UPDATE, DELETE ON public.straw_poll_answers TO authenticated, service_role;
+      END IF; END $$;`)).toEqual([]);
+    // A grant in a comment, or to another table, does not count.
+    expect(ungrantedTables("m.sql", `${table} -- GRANT ALL ON straw_poll_answers TO service_role;`)).toHaveLength(1);
+    expect(ungrantedTables("m.sql", `${table} GRANT SELECT ON public.other TO service_role;`)).toHaveLength(1);
   });
 });

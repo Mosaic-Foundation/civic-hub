@@ -123,13 +123,18 @@ async function main(): Promise<void> {
   if (!pj.version || !/^\d+\.\d+\.\d+$/.test(pj.version)) fail('package.json needs a "version" like "0.1.0"');
   const fence = fenceProblems(dir);
   if (fence.length > 0) fail(`what it imports:\n${fence.map((p) => `  ${p.file}: "${p.spec}": ${p.why}`).join("\n")}`);
-  const { notAdditive } = (await import(pathToFileURL(join(HOST_ROOT, "src/plugins/additive.ts")).href)) as {
-    notAdditive(file: string, sql: string): Array<{ file: string; statement: string; why: string }>;
+  type Refusal = { file: string; statement: string; why: string };
+  const { notAdditive, ungrantedTables } = (await import(pathToFileURL(join(HOST_ROOT, "src/plugins/additive.ts")).href)) as {
+    notAdditive(file: string, sql: string): Refusal[];
+    ungrantedTables(file: string, sql: string): Refusal[];
   };
   const migrationsDir = join(dir, "migrations");
   const migrations = existsSync(migrationsDir) ? readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).sort() : [];
-  const refused = migrations.flatMap((f) => notAdditive(`migrations/${f}`, readFileSync(join(migrationsDir, f), "utf8")));
-  if (refused.length > 0) fail(`a migration is not additive, and every hub shares the database:\n${refused.map((r) => `  ${r.file}: ${r.why}: ${r.statement}`).join("\n")}`);
+  const refused = migrations.flatMap((f) => {
+    const sql = readFileSync(join(migrationsDir, f), "utf8");
+    return [...notAdditive(`migrations/${f}`, sql), ...ungrantedTables(`migrations/${f}`, sql)];
+  });
+  if (refused.length > 0) fail(`a migration cannot be taken, and every hub shares the database:\n${refused.map((r) => `  ${r.file}: ${r.why}: ${r.statement}`).join("\n")}`);
   console.log(`civic-conformance: ${pj.name}@${pj.version}: shape, imports and migrations checked`);
 
   // 2. Into the test host's list.

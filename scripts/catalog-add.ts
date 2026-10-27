@@ -40,7 +40,7 @@ import { tmpdir } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { hashPackage } from "../src/plugins/hash.js";
-import { notAdditive } from "../src/plugins/additive.js";
+import { notAdditive, ungrantedTables } from "../src/plugins/additive.js";
 import type { PluginPackage } from "../src/plugins/package.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -137,11 +137,14 @@ async function main(): Promise<void> {
   const refused = existsSync(migrationsDir)
     ? readdirSync(migrationsDir)
         .filter((f) => f.endsWith(".sql"))
-        .flatMap((f) => notAdditive(`${dir}/migrations/${f}`, readFileSync(join(migrationsDir, f), "utf8")))
+        .flatMap((f) => {
+          const sql = readFileSync(join(migrationsDir, f), "utf8");
+          return [...notAdditive(`${dir}/migrations/${f}`, sql), ...ungrantedTables(`${dir}/migrations/${f}`, sql)];
+        })
     : [];
   if (refused.length > 0) {
     fail(
-      `a migration is not additive, and every hub shares the database it changes (ADR-015):\n` +
+      `a migration cannot be taken: every hub shares the database it changes (ADR-015):\n` +
         refused.map((r) => `  ${r.file}: ${r.why}: ${r.statement}`).join("\n"),
     );
   }

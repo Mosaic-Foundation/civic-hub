@@ -147,7 +147,8 @@ Files named `<14-digit timestamp>_<words>.sql`. `npm run plugins:sync` copies ea
 `supabase/migrations/<timestamp>_pkg_<dir>__<words>.sql`, where the database CLI applies it in timestamp order with
 the hub's own, migrations before code as every release does. A new table carries `hub_id` and calls
 `SELECT public._civic_apply_hub_policy('public.<table>')`; the RLS catalog test and the leak harness fail on one that
-does not. The hub's own packages have no migrations of their own yet: their tables' migrations are applied history on
+does not. It is granted to `authenticated` and `service_role` in the same migration, inside a `pg_roles` check
+(`docs/BUILD-A-PLUGIN.md` shows it); `catalog:add` and `civic-conformance` refuse a table made without the grant. The hub's own packages have no migrations of their own yet: their tables' migrations are applied history on
 every database and stay where they are.
 
 ### Conformance inputs
@@ -162,7 +163,7 @@ suite drives the type with them and nothing type-specific (`tests/conformance/RE
    (`config/plugins/manifests.ts`, `server.ts`, `ui.ts`), because the server's and the UI's bundlers follow only
    static imports. CI fails when they are stale.
 2. **The catalog entry.** `npm run catalog:add -- packages/<dir>` checks the package's shape, hashes its files, refuses
-   a migration that is not additive, starts a throwaway hub on the local stack with the package mounted unverified
+   a migration that is not additive or makes a table without granting it, starts a throwaway hub on the local stack with the package mounted unverified
    (`CIVIC_PLUGINS_UNVERIFIED`, development only), runs the conformance suite against its type alone, and on green
    writes a catalog entry as a migration: `supabase/migrations/<now>_catalog_<dir>_<version>.sql`, status `pending`,
    unsigned, with the hash, the grant and the run. `--required` writes it marked required; `--no-auto-install`, as one

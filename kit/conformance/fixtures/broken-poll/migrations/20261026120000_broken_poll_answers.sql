@@ -17,3 +17,12 @@ COMMENT ON TABLE public.broken_poll_answers IS
   'The broken copy of the straw poll example''s answers (docs/BUILD-A-PLUGIN.md): one per resident per poll; only counts are published.';
 
 SELECT public._civic_apply_hub_policy('public.broken_poll_answers');
+
+-- Granted to the hub's roles here, as every hub migration does: a local or CI
+-- stack gives a new table no privileges by default (20260922000000).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON public.broken_poll_answers TO authenticated, service_role;
+  END IF;
+END $$;

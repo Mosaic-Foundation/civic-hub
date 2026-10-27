@@ -227,10 +227,21 @@ CREATE TABLE IF NOT EXISTS public.straw_poll_answers (
 );
 
 SELECT public._civic_apply_hub_policy('public.straw_poll_answers');
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON public.straw_poll_answers TO authenticated, service_role;
+  END IF;
+END $$;
 ```
 
-- **`hub_id`** on every row, and the last line, which puts the table under the hub's row-level security: one hub never
-  sees another's rows. The suite fails a table without it.
+- **`hub_id`** on every row, and the policy line, which puts the table under the hub's row-level security: one hub
+  never sees another's rows. The suite fails a table without it.
+- **The grant** to the hub's database roles, in the migration that makes the table, inside that role check (a
+  database without them still takes the migration). A hosted database's defaults may grant it anyway; a local one
+  does not, and your plugin would fail with "permission denied" on its first write. The suite refuses a table made
+  without it, before anything runs, and says what to add.
 - **The primary key** is what makes "one answer each" true when two answers arrive together.
 - **Migrations are additive only.** Every hub on a deployment shares one database, and a hub that has not updated to
   your new version still runs on it. Add tables, columns (nullable or with a default), indexes, comments; never drop,

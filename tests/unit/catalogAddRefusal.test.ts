@@ -11,7 +11,7 @@ describe("catalog:add", () => {
     const before = readdirSync("supabase/migrations").length;
     const r = spawnSync("npx", ["tsx", "scripts/catalog-add.ts", "kit/conformance/fixtures/not-additive"], { encoding: "utf8" });
     expect(r.status).toBe(1);
-    expect(r.stderr).toContain("a migration is not additive");
+    expect(r.stderr).toContain("a migration cannot be taken");
     expect(r.stderr).toContain("20261026130000_drop_answered_at.sql: it drops something");
     expect(readdirSync("supabase/migrations").length).toBe(before);
   }, 60_000);
