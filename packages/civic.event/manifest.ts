@@ -181,6 +181,15 @@ export const EVENT_MANIFEST = defineManifest({
     [EVENTS.cancelled]: ["cancellation"],
   },
   deadlineRefusal: { code: "event_past", message: "This event has ended." },
+  // What the hub's analytics counts (ADR-016): saying you're going is taking
+  // part (taking it back is not a second act); an event closes at its end or
+  // when it is cancelled, and produces no result, as a proposal does not.
+  participation: {
+    participation: [EVENTS.going],
+    creation: ["civic.process.created"],
+    closing: ["civic.process.ended", EVENTS.cancelled],
+    outcome: [],
+  },
   capabilities: {
     activities: { emit: EMITS, listen: [] },
     state: { read: ["own-process"], write: ["own-process"], tables: ["calendar_events", "calendar_attendance", "calendar_drafts"] },
