@@ -621,6 +621,9 @@ test("a feed item carries its type's pill; the phone's bar and More (closing fro
   const r = await open(browser, { viewport: { width: 375, height: 812 } });
   await visitAs(r, resident);
   await r.goto("/");
+  // The feed's first load on a just-deployed dev can take longer than an
+  // expect's five seconds (seen 2026-10-27: still "Loading feed…" at 5 s).
+  await expect(r.getByText("Loading feed…")).toHaveCount(0, { timeout: 20_000 });
   if (smokeVoteTitle) {
     const card = r.locator("article.feed-post", { hasText: smokeVoteTitle });
     await expect(card.getByTestId("feed-type-pill")).toHaveText("Vote");
