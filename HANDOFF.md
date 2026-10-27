@@ -6,7 +6,8 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Plugin session 2: signed approvals, versions with a grant per hub, the summary move, the developer path — 2026-10-26
 
-`multi-tenant`, `2f4d9ee`..(this commit), from `6fe304b`. Decision record ADR-015 (mono repo, committed locally for
+`multi-tenant`, `2f4d9ee`..(this commit), from `6fe304b`. Dev runs `b9fa5ee` plus later commits that change no package
+it loads. Decision record ADR-015 (mono repo, committed locally for
 Adam to push); guides `docs/BUILD-A-PLUGIN.md` (new) and `docs/PLUGIN-PACKAGE.md`. Reports:
 `~/Documents/Mosaic/0 Management/Civic Social/Plugin-2-Session-Report-2026-10-26.md` and
 `Plugin-2-Handoff-to-Management-2026-10-26.md`.
@@ -32,7 +33,7 @@ new setting is named before the dev release.
   `kit/conformance` (`@civic-social/plugin-conformance`, the suite moved from `tests/conformance`, the
   `civic-conformance` command), `examples/straw-poll`, `kit/scripts/{pack,prove}.ts` (in CI), catalog:add for a
   submitted package. Not published to npm.
-- **Catalog entries:** Briefs 0.2.0 and Conversations 0.2.0 (required), the straw poll 0.1.0 (`auto_install` false).
+- **Catalog entries:** Briefs 0.2.0 and Conversations 0.2.0 (required), the straw poll 0.1.0 (`auto_install` false), then 0.1.1 (its table granted; below).
 - **The console's fresh codes, found approving on dev** (three commits): every catalog action's first code request
   was refused (a code had been emailed under a minute before: the sign-in's or the last action's, already used), the
   dialog hid it and said a code was coming, and each refused request still counted against the IP's five an hour,
@@ -43,10 +44,10 @@ new setting is named before the dev release.
   confirms catalog actions (Approve, Withdraw, Sign, Mark required) for ten minutes on that session
   (`control_sessions.catalog_confirmed_until`, `20261026220000`), each still audited with how it was confirmed.
 
-**Release notes:** six additive migrations (`20261026000000`, `…0100`, three catalog entries, `20261026220000`); nobody is signed out;
+**Release notes:** seven additive migrations (`20261026000000`, `…0100`, four catalog entries, `20261026220000`); nobody is signed out;
 the wire is unchanged. New settings: `CIVIC_CATALOG_SIGNING_KEY` (each deployment's own, made with the command in
 RUNBOOK-release.md, "The catalog key"); `CIVIC_CATALOG_SIGNATURES` (unset is `transition`; set `required` once every
-approval is signed); `CIVIC_CATALOG_TRUSTED_KEYS` (only for a rotation). In each console: approve the three entries,
+approval is signed); `CIVIC_CATALOG_TRUSTED_KEYS` (only for a rotation). In each console: approve Briefs 0.2.0, Conversations 0.2.0 and Straw polls **0.1.1** (leave 0.1.0 pending),
 then "Sign approved entries" once the new code is live; Briefs and Conversations 0.2.0, being required, move every hub
 when the new code mounts them.
 
@@ -67,8 +68,24 @@ The first release's step 9 timed out (20:26 UTC) before anything was signed; tha
   hub (`849b47f`).
 
 The two Smoke failures (`e2b729e`, `7420e4c`) were dev as it was before the signing and the Conversations approval.
+- With those fixed, the proof ran in CI for the first time and found a real gap: the straw poll's migration made its
+  table without a GRANT. A hosted database's default privileges hide that, but CI's database grants nothing by default,
+  so every answer failed with "permission denied". Now a package migration that makes a table must grant it in the
+  same migration, inside a `pg_roles` check, and `catalog:add` and `civic-conformance` refuse one that does not
+  (`7ae48c9`). **Straw polls is 0.1.1** with the grant (`03b35cf`, entry `20261027011215`). Proven locally with CI-like
+  default privileges removed for the run and then restored.
+- **Smoke left dev's smoke hub on Sidebar.** The `03b35cf` run waited 8 minutes for Vercel and was cut off by the job's
+  10-minute timeout inside the sidebar check, so `afterAll` never put Navigation back. Every later run then recorded
+  Sidebar as the hub's own and restored it, and "a resident and an admin are signed in" found no Account menu (three
+  runs). Now the sidebar check puts it back in its own `finally`, and `beforeAll` moves the smoke hub back to the header
+  when it finds Sidebar (`58e200c`). The members threshold check (`membersMinBefore`) still restores only in `afterAll`;
+  the same cut-off could leave it changed.
+- **The feed check** found dev's feed still "Loading feed…" at 5 s after a deploy; it now waits up to 20 s for the feed
+  to load (`460f0e6`). A slow first feed load after a deploy is worth watching.
+- **CI, E2E and Smoke all green on `460f0e6`** (Smoke 27 of 27).
 
-**Left:** see the session report: production (key already set; approve the three entries and sign, then `required`),
+**Left:** see the session report: Straw polls 0.1.1 to approve in the dev console (installed nowhere, so nothing
+waits on it); production (key already set; approve the three entries and sign, then `required`),
 Adam's mono-repo push (ADR-015), the docs session's mirror of BUILD-A-PLUGIN, publishing the packages (Adam's call;
 licence AGPL-pending).
 
