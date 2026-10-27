@@ -53,8 +53,16 @@ when the new code mounts them.
 **Verified (local):** see TESTING.md, "Plugin session 2": unit, UI, API both modes, Playwright 186, the proof, the wire
 identical over 7,583 events, the HTTP side by side with every difference explained.
 
-**Left:** see the session report: the dev release and its signing, production, Adam's mono-repo push, the docs
-session's mirror of BUILD-A-PLUGIN, publishing the packages (Adam's call, with the license question).
+**On dev:** the keys are set on both projects (`civic-hub-dev` and `civic-hub`). Signed with `ed25519:5023f0fdd37acfb9`:
+the shipped nine ("Sign approved entries", 21:35 UTC), Briefs 0.2.0 (21:36), the straw poll and Conversations 0.2.0
+(23:15, one code then the window). Release `9432f9e`: nine mounted, none unsigned (transition). Every one of dev's 18
+hubs moved to Briefs and Conversations 0.2.0 as `system:required`; the straw poll is installed on none. Then
+`CIVIC_CATALOG_SIGNATURES=required` on dev (Adam), verified by this commit's release: nine mounted under `required`.
+The first release's step 9 timed out (20:26 UTC) before anything was signed; that is all its "7 unsigned" meant.
+
+**Left:** see the session report: production (key already set; approve the three entries and sign, then `required`),
+Adam's mono-repo push (ADR-015), the docs session's mirror of BUILD-A-PLUGIN, publishing the packages (Adam's call;
+licence AGPL-pending).
 
 ---
 
