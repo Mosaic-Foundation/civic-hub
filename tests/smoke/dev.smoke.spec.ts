@@ -644,11 +644,14 @@ test("a feed item carries its type's pill; the phone's bar and More (closing fro
   // The feed's first load on a just-deployed dev can take longer than an
   // expect's five seconds (seen 2026-10-27: still "Loading feed…" at 5 s).
   await expect(r.getByText("Loading feed…")).toHaveCount(0, { timeout: 20_000 });
+  // "No Loading feed…" is also true before the feed has begun to load, so
+  // wait for the card itself, as long (seen 2026-10-27 on dev: still loading
+  // at the five-second mark, twice).
   if (smokeVoteTitle) {
     const card = r.locator("article.feed-post", { hasText: smokeVoteTitle });
-    await expect(card.getByTestId("feed-type-pill")).toHaveText("Vote");
+    await expect(card.getByTestId("feed-type-pill")).toHaveText("Vote", { timeout: 20_000 });
   } else {
-    await expect(r.getByTestId("feed-type-pill").first()).toBeVisible();
+    await expect(r.getByTestId("feed-type-pill").first()).toBeVisible({ timeout: 20_000 });
   }
   const bar = r.getByRole("navigation", { name: "Sections", exact: true });
   await expect(bar.locator(".bottom-bar-label").last()).toHaveText("More");
