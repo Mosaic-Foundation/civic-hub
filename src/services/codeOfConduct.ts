@@ -11,11 +11,37 @@
 //   - an autosave that lands while the check is running is not covered by
 //     that run's pass, because the hash is of what the check saw.
 // One rule for every drafting type, read through the type's own draft store
-// (AssistantTypeConfig.draftStore), so a new type gets it by declaring one.
+// (AssistantTypeConfig.draftStore), so a new type gets it by declaring one; a
+// type with no drafting assistant (a package on SDK v1, which gives the hub
+// only its draft kind; plugin Events, 2026-10-27) is read through that kind.
 
 import { createHash } from "node:crypto";
 import { getProcessHandler } from "../processes/registry.js";
 import type { AssistantDraft, DraftState } from "../modules/civic.assistant/index.js";
+import type { Suggestion } from "../modules/civic.assistant/models.js";
+import { getDraft, saveReviewResult } from "../modules/civic.drafts/index.js";
+import { loadedPackages } from "../plugins/loader.js";
+
+/** What the check reads a type's drafts through, and stores its result with. */
+export interface CheckDraftStore {
+  get(id: string): Promise<AssistantDraft | undefined>;
+  saveReviewResult(id: string, suggestions: Suggestion[], checkedHash: string): Promise<void>;
+}
+
+/**
+ * A type's draft store for the check: its drafting assistant's, or, for a
+ * type without one, a store over the draft kind its package gave the hub.
+ */
+export function checkDraftStore(processType: string): CheckDraftStore | undefined {
+  const assistant = getProcessHandler(processType)?.getAssistantConfig?.().draftStore;
+  if (assistant) return assistant;
+  const kind = loadedPackages().find((p) => p.type === processType)?.server.drafts?.kind;
+  if (!kind) return undefined;
+  return {
+    get: async (id) => (await getDraft(kind.spec, id)) as AssistantDraft | undefined,
+    saveReviewResult: (id, suggestions, checkedHash) => saveReviewResult(kind.spec, id, suggestions, checkedHash),
+  };
+}
 
 /** The generic draft fields the assistant and the check read. */
 export function toDraftState(draft: AssistantDraft): DraftState {
@@ -58,7 +84,7 @@ export async function currentCodeOfConductHash(
   processType: string,
   draftId: string,
 ): Promise<string | null> {
-  const store = getProcessHandler(processType)?.getAssistantConfig?.().draftStore;
+  const store = checkDraftStore(processType);
   const draft = store ? await store.get(draftId) : undefined;
   return draft ? codeOfConductHash(codeOfConductFields(toDraftState(draft))) : null;
 }
