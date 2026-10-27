@@ -15,6 +15,7 @@ import { ANALYTICS_MANIFEST } from "./manifest.js";
 import { adminRouter, publicRouter } from "./routes.js";
 import { rollup } from "./rollup.js";
 import { consoleSection } from "./console.js";
+import { digestLine } from "./digest.js";
 
 const analytics: FeaturePackage = {
   name: "@civic-social/feature-analytics",
@@ -32,6 +33,7 @@ const analytics: FeaturePackage = {
         },
       },
       consoleSections: [consoleSection(host)],
+      digestLines: [digestLine(host)],
     };
   },
 };
