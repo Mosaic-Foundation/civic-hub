@@ -12,6 +12,7 @@
 
 import type { FeaturePackage } from "../../src/sdk/index.js";
 import { ANALYTICS_MANIFEST } from "./manifest.js";
+import { adminRouter, publicRouter } from "./routes.js";
 import { rollup } from "./rollup.js";
 
 const analytics: FeaturePackage = {
@@ -21,6 +22,8 @@ const analytics: FeaturePackage = {
   manifest: ANALYTICS_MANIFEST,
   server(host) {
     return {
+      routes: [{ path: "/analytics", router: publicRouter(host) }],
+      adminRoutes: [{ path: "/analytics", router: adminRouter(host) }],
       jobs: {
         analytics: async ({ now }) => {
           const result = await rollup(host, now);
