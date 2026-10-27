@@ -108,9 +108,16 @@ describe("one code confirms catalog actions for ten minutes", () => {
       [third, "window"],
     ]);
 
-    // Another session needs its own code; so does anything that is not the catalog's.
+    // Another session needs its own code; so does anything that is not the catalog's
+    // (archiving a hub made for this, which the run's teardown deletes).
     expect((await act(third === "approve" ? "withdraw" : "approve", {}, await mintConsoleSession())).status).toBe(403);
-    const archive = await consoleCall("POST", "/control/hubs/smoke/archive", { cookie: session, body: {} });
+    const slug = `ccw-${Date.now().toString(36)}`;
+    const made = await consoleCall("POST", "/control/hubs", {
+      cookie: session,
+      body: { slug, name: "Window Check", hostname: `${slug}.localhost`, admin_email: "a@example.test", hub_kind: "other" },
+    });
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    const archive = await consoleCall("POST", `/control/hubs/${slug}/archive`, { cookie: session, body: {} });
     expect(archive.status).toBe(403);
     expect(archive.body.error).toBe("step_up_required");
 
