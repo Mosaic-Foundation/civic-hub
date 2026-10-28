@@ -39,6 +39,11 @@ if (supabaseUrl.includes(PRODUCTION_REF)) {
 }
 
 const { seedSampleContent } = await import("../src/services/sampleSeed.js");
+// The packages mounted as a server mounts them (an approved, matching catalog
+// entry; ADR-014): a script process judges none otherwise, and every type
+// read as switched off (plugin_disabled) since packages arrived.
+const { verifyPackages } = await import("../src/plugins/loader.js");
+await verifyPackages();
 
 await withScriptHub(async (hub) => {
   const report = await seedSampleContent({ dryRun: DRY_RUN });
