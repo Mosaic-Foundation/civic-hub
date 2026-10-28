@@ -131,6 +131,9 @@ additive (refused); CI runs it too.
     `POST /upload/process-image/:type` takes a resident's image under
     `<hub>/types/<type>/`; signed out it is 401, not an image 400, the plugin
     off 404. A type that declares nothing is refused the route (404).
+19. **Telling people** (Events 2): a package that calls `notify()` names `mail`
+    in its grant. The hub refuses `notify` for a type without it (a reach past
+    the grant), and builds the message's link to the process's own page.
 
 `kit/conformance/fixtures/sdk-tour` uses every one of 11 to 17 through the
 SDK alone; `kit/scripts/prove.ts` runs it from an empty folder.

@@ -41,6 +41,8 @@
 //  18. images its residents attach (Events 2, E1): a type that declares
 //      `uploads` takes one through the hub's upload route; one that does not
 //      is refused it.
+//  19. telling people (Events 2, E2): a package that calls notify() names
+//      `mail` in its grant.
 // Tier 2 (sandboxed) has a slot and no runtime yet.
 //
 // Needs the local stack and a hub server started with CIVIC_POLIS_FAKE=on and
@@ -898,6 +900,18 @@ function sdkSurfaceSteps(d: ProcessTypeDescriptor, facts: HostFacts, touched: Ar
         const ok = await act(BETA, id, a.name, payload, official.token);
         expect(ok.status, JSON.stringify(ok.body)).toBeLessThan(300);
       }
+    });
+  });
+
+  describe("19. telling people", () => {
+    it("a package that calls notify names mail in its grant (the hub refuses it otherwise, and the Plugins page says it sends email)", () => {
+      const pkg = loadedPackages().find((p) => p.type === d.type);
+      if (!pkg) return;
+      const dir = resolve(HOST_ROOT, pkg.dir);
+      const calls = readdirSync(dir)
+        .filter((f) => /\.tsx?$/.test(f))
+        .some((f) => /\bnotify\s*\(/.test(readFileSync(join(dir, f), "utf8")));
+      if (calls) expect(manifest?.capabilities.adapters, `${d.type}: it calls notify`).toContain("mail");
     });
   });
 

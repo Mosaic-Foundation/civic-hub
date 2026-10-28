@@ -90,6 +90,7 @@ export {
   listResponsesForBrief,
   listVisibleInPhase,
   namesFor,
+  notify,
   num,
   personFallbackName,
   processJurisdiction,

@@ -83,6 +83,7 @@ export const lines = e.lines;
 export const listResponsesForBrief = e.listResponsesForBrief;
 export const listVisibleInPhase = e.listVisibleInPhase;
 export const namesFor = e.namesFor;
+export const notify = e.notify;
 export const num = e.num;
 export const personFallbackName = e.personFallbackName;
 export const processJurisdiction = e.processJurisdiction;

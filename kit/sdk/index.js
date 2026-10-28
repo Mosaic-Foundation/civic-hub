@@ -20,6 +20,7 @@ export const generateId = e.generateId;
 export const getAuthUser = e.getAuthUser;
 export const isPastDeadline = e.isPastDeadline;
 export const namesFor = e.namesFor;
+export const notify = e.notify;
 export const num = e.num;
 export const readAll = e.readAll;
 export const readProcessState = e.readProcessState;

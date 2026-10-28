@@ -74,6 +74,11 @@ export type { EditPolicy, EditChangeSet } from "../../src/sdk/index.js";
 // policy (names to members, nothing to the public, per ADR-010), never an account -------------
 export { namesFor } from "../../src/sdk/index.js";
 
+// --- Telling people (Events 2, E2): the accounts it names get one message each, by email,
+// through the hub's mail guard; the hub holds the addresses and skips whoever unsubscribed ------
+export { notify } from "../../src/sdk/index.js";
+export type { Notice, NoticeReport } from "../../src/sdk/index.js";
+
 // --- Its own records, on the database its host hands it (its granted tables only) ----------
 export { storeSlot, HubDbError, readAll, readProcessState, writeProcessState } from "../../src/sdk/index.js";
 export type { StoreSlot } from "../../src/sdk/index.js";
