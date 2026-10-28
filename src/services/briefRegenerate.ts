@@ -27,9 +27,11 @@ import { getProcessHandler, processDetailPath } from "../processes/registry.js";
 import { getProcess, isTerminalStatus, saveProcessState } from "./processService.js";
 import { closedEarlyView } from "./closeEarly.js";
 import { auditActor, recordHubAdminAudit } from "./hubAdminAudit.js";
-import { emitBriefUpdated } from "../../packages/civic.brief/events.js";
-import { createBriefState } from "../../packages/civic.brief/service.js";
-import { finalizeBriefContent } from "../../packages/civic.brief/finalize.js";
+// The brief package, loaded on first use, never as the engine starts (engine 2, ADR-017).
+const emitBriefUpdated: typeof import("../../packages/civic.brief/events.js").emitBriefUpdated = async (...a) =>
+  (await import("../../packages/civic.brief/events.js")).emitBriefUpdated(...a);
+const finalizeBriefContent: typeof import("../../packages/civic.brief/finalize.js").finalizeBriefContent = async (...a) =>
+  (await import("../../packages/civic.brief/finalize.js")).finalizeBriefContent(...a);
 import type { BriefContent, BriefProcessState } from "../../packages/civic.brief/models.js";
 import type { Process } from "../models/process.js";
 import type { RegeneratedBrief } from "../processes/types.js";
@@ -52,6 +54,7 @@ async function freshContent(source: Process): Promise<RegeneratedBrief | null> {
   if (!fresh) return null;
   // Finished by the brief, as a new brief's content is (spawnBrief.ts).
   const content = await finalizeBriefContent(fresh.content);
+  const { createBriefState } = await import("../../packages/civic.brief/service.js");
   const early = closedEarlyView(source.state);
   if (early) content.closed_early = { line: early.line, note: early.note };
   // The same normalization a new brief gets (fields, lists, image).

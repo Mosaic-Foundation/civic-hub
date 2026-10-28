@@ -24,7 +24,9 @@ import {
   redactForAudience, personFallbackName } from "../services/creatorDisplay.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { currentHubId } from "../config/hubContext.js";
-import { proposalExists } from "../../packages/civic.proposals/service.js";
+/** Whether a proposal exists. Loaded on first use, never as the engine starts (engine 2, ADR-017). */
+const proposalExists = async (id: string): Promise<boolean> =>
+  (await import("../../packages/civic.proposals/service.js")).proposalExists(id);
 import { readSourceProposalId } from "../services/processRows.js";
 
 /**

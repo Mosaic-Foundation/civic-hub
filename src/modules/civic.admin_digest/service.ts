@@ -36,7 +36,7 @@ import {
 import { getAllProcesses, getSampleProcessIds } from "../../services/processService.js";
 import { getManifest, publicationOf, typesPublishedThrough } from "../../processes/registry.js";
 import { listReviews } from "../civic.review/index.js";
-import { effectiveQualityFlag } from "../../../packages/civic.meeting_summary/api.js";
+
 import { sendEmail } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
 import { getSettingSync, hubDisplayNameSync, hubModeSync, isPluginEnabledSync } from "../../services/hubSettings.js";
@@ -85,6 +85,8 @@ async function reviewsLine(since: string, until: string, sampleIds: ReadonlySet<
 }
 
 async function briefAndSummaryLines(since: string, until: string, ui: string): Promise<DigestLine[]> {
+  // Loaded on first use, never as the engine starts (engine 2, ADR-017).
+  const { effectiveQualityFlag } = await import("../../../packages/civic.meeting_summary/api.js");
   const on = { briefs: isPluginEnabledSync("brief"), summaries: isPluginEnabledSync("meeting_summary") };
   // Briefs are the published-through-"briefs" types that summarize another
   // process (not a vote's results record); summaries are the other queue's.

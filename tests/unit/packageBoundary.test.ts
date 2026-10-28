@@ -62,6 +62,13 @@ describe("civic/package-boundary", () => {
     expect(await errors("packages/civic.wordcloud/manifest.ts", `import { Router } from "express";`)).toHaveLength(1);
   });
 
+  it("lets a file on the reach list load a package only on first use: types statically, values by await import() (ADR-017)", async () => {
+    const reach = "src/services/sampleSeed.ts";
+    expect(await errors(reach, `import { createProposal } from "../../packages/civic.proposals/service.js";`)).toHaveLength(1);
+    expect(await errors(reach, `import type { ProposalSummary } from "../../packages/civic.proposals/service.js";`)).toHaveLength(0);
+    expect(await errors(reach, `export const f = async () => (await import("../../packages/civic.proposals/service.js")).createProposal;`)).toHaveLength(0);
+  });
+
   it("refuses engine code importing a package, or reading the configured list, outside the files named", async () => {
     expect(await errors("src/services/somethingNew.ts", `import { x } from "../../packages/civic.wordcloud/service.js";`)).toHaveLength(1);
     expect(await errors("src/services/somethingNew.ts", `import { CONFIGURED_PACKAGES } from "../../config/plugins/server.js";`)).toHaveLength(1);
@@ -97,7 +104,7 @@ describe("civic/package-boundary", () => {
     for (const [file, why] of Object.entries(PACKAGE_REACH_NOT_YET)) {
       expect(why.length, file).toBeGreaterThan(20);
       expect(readFileSync(resolve(ROOT, file), "utf8"), `${file} no longer reaches a package: take it off the list`).toMatch(
-        /from "(\.\.\/)+packages\//,
+        /(from |import\()"(\.\.\/)+packages\//,
       );
     }
   });

@@ -569,6 +569,12 @@ const packageBoundaryRule = {
       const target = relative(ROOT, resolve(dirname(file), spec)).split("\\").join("/").replace(/\.js$/, ".ts");
       if (target.startsWith(PACKAGES_DIR) && !(rel in PACKAGE_REACH_NOT_YET)) {
         context.report({ node, message: `"${spec}": the engine never imports a plugin package; the hub loads them from config/plugins.json (ADR-014).` });
+      } else if (target.startsWith(PACKAGES_DIR) && node.type !== "ImportExpression" && node.importKind !== "type" && node.exportKind !== "type") {
+        // Even a file still allowed to reach a package loads it on first use
+        // (await import()), never as the engine starts: a package imports the
+        // SDK by name, and the hub hands the SDK its engine only once the
+        // engine has loaded (ADR-017; the compiled server failed to start).
+        context.report({ node, message: `"${spec}": load a package's values with await import() where they are used; only its types may be imported statically (ADR-017).` });
       }
       if (target.startsWith(FEATURES_DIR)) {
         context.report({ node, message: `"${spec}": the engine never imports a feature package; the hub loads them from config/features.ts (ADR-016).` });

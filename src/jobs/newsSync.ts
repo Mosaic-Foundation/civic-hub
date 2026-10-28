@@ -36,11 +36,10 @@ import { aiComplete, aiConfigured, aiDefaultModel, type AiSingleTurnInput } from
 
 /** The news sync's model calls, through the ai adapter's gate, as a job. */
 const callClaude = (input: AiSingleTurnInput) => aiComplete("job.news_sync", input);
-import {
-  emitAnnouncementResultPublished,
-  type AnnouncementProcessContext,
-  type AnnouncementProcessState,
-  type AnnouncementSource,
+import type {
+  AnnouncementProcessContext,
+  AnnouncementProcessState,
+  AnnouncementSource,
 } from "../../packages/civic.announcement/api.js";
 import { getSettingSync, isPluginEnabledSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
@@ -231,6 +230,8 @@ export const newsSyncJob: JobRunner = async (): Promise<JobOutcome> => {
           jurisdiction: record.jurisdiction,
           emit: emitEvent,
         };
+        // Loaded on first use, never as the engine starts (engine 2, ADR-017).
+        const { emitAnnouncementResultPublished } = await import("../../packages/civic.announcement/api.js");
         await emitAnnouncementResultPublished(ctx, CRON_ACTOR, state);
 
         record.status = "finalized";

@@ -14,8 +14,7 @@ import { getProcessFactory, getProcessHandler } from "./registry.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { HubDbError } from "../db/forHub.js";
 import { briefIdForSource } from "../services/processRows.js";
-import { emitBriefAggregationCompleted } from "../../packages/civic.brief/events.js";
-import { finalizeBriefContent, type BriefProcessState } from "../../packages/civic.brief/api.js";
+import type { BriefProcessState } from "../../packages/civic.brief/api.js";
 
 /**
  * Spawn a pending civic.brief from a just-closed source process. Returns
@@ -43,6 +42,8 @@ export async function spawnBriefFromClosedProcess(
   if (!handed) return null;
   // What the source handed the brief to finish with the AI (a conversation's
   // result), finished by the brief under its own grant, before it is written.
+  // Loaded on first use, never as the engine starts (engine 2, ADR-017).
+  const { finalizeBriefContent } = await import("../../packages/civic.brief/api.js");
   const content = await finalizeBriefContent(handed);
   // Closed early: every brief carries the line and the admin's note, whatever
   // its type (src/services/closeEarly.ts).
@@ -76,6 +77,7 @@ export async function spawnBriefFromClosedProcess(
   // civic.process.created is already emitted by the generic factory; emit
   // only the aggregation_completed pair (mirrors the vote-results spawn).
   const briefState = brief.state as unknown as BriefProcessState;
+  const { emitBriefAggregationCompleted } = await import("../../packages/civic.brief/events.js");
   await emitBriefAggregationCompleted(
     {
       process_id: brief.id,

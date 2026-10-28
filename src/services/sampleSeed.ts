@@ -61,24 +61,14 @@ import {
 } from "./sampleTemplates.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { processWireIris } from "./processLinks.js";
-import * as vote from "../../packages/civic.vote/service.js";
+import type * as VoteService from "../../packages/civic.vote/service.js";
 import type { VoteProcessState } from "../../packages/civic.vote/service.js";
 import { getBallotChoicesForProcess, clearActiveVoteKeysForProcess } from "../modules/civic.receipts/index.js";
-import { createProposal, supportProposal } from "../../packages/civic.proposals/service.js";
-import { createProject, setProjectSentiment } from "../../packages/civic.projects/service.js";
-import { emitProjectUpdated } from "../../packages/civic.projects/events.js";
 import { submitInput } from "../modules/civic.input/index.js";
-import { approveBrief, setRecipients, type BriefProcessState } from "../../packages/civic.brief/api.js";
-import { emitBriefAggregationCompleted } from "../../packages/civic.brief/events.js";
-import { emitAnnouncementResultPublished } from "../../packages/civic.announcement/events.js";
+import type { BriefProcessState } from "../../packages/civic.brief/api.js";
 import type { AnnouncementProcessState } from "../../packages/civic.announcement/models.js";
-import {
-  approveMeetingSummary,
-  buildProcessDescription,
-  emitCreationEvents as emitMeetingSummaryCreationEvents,
-  type MeetingSummaryProcessState,
-} from "../../packages/civic.meeting_summary/api.js";
-import { activateWordcloud, type WordcloudProcessState } from "../../packages/civic.wordcloud/service.js";
+import type { MeetingSummaryProcessState } from "../../packages/civic.meeting_summary/api.js";
+import type { WordcloudProcessState } from "../../packages/civic.wordcloud/service.js";
 import { generateId } from "../utils/id.js";
 import { DEFAULT_POLIS_URL } from "../shared/polisUrl.js";
 import { setSetting } from "./hubSettings.js";
@@ -114,6 +104,40 @@ const DAY = 24 * 60 * 60 * 1000;
  * type whose plugin is off) accept every template. Only this run sees the
  * switches that way; the stored settings are not touched.
  */
+// The types' services, loaded on first use, never as the engine starts
+// (engine 2, ADR-017): a package imports the SDK by name, and the hub hands
+// the SDK its engine only once the engine has loaded, before any package.
+let vote: typeof VoteService;
+let createProposal: typeof import("../../packages/civic.proposals/service.js").createProposal;
+let supportProposal: typeof import("../../packages/civic.proposals/service.js").supportProposal;
+let createProject: typeof import("../../packages/civic.projects/service.js").createProject;
+let setProjectSentiment: typeof import("../../packages/civic.projects/service.js").setProjectSentiment;
+let emitProjectUpdated: typeof import("../../packages/civic.projects/events.js").emitProjectUpdated;
+let approveBrief: typeof import("../../packages/civic.brief/api.js").approveBrief;
+let setRecipients: typeof import("../../packages/civic.brief/api.js").setRecipients;
+let emitBriefAggregationCompleted: typeof import("../../packages/civic.brief/events.js").emitBriefAggregationCompleted;
+let emitAnnouncementResultPublished: typeof import("../../packages/civic.announcement/events.js").emitAnnouncementResultPublished;
+let approveMeetingSummary: typeof import("../../packages/civic.meeting_summary/api.js").approveMeetingSummary;
+let buildProcessDescription: typeof import("../../packages/civic.meeting_summary/api.js").buildProcessDescription;
+let emitMeetingSummaryCreationEvents: typeof import("../../packages/civic.meeting_summary/api.js").emitCreationEvents;
+let activateWordcloud: typeof import("../../packages/civic.wordcloud/service.js").activateWordcloud;
+
+async function loadPackages(): Promise<void> {
+  if (vote) return;
+  vote = await import("../../packages/civic.vote/service.js");
+  ({ createProposal, supportProposal } = await import("../../packages/civic.proposals/service.js"));
+  ({ createProject, setProjectSentiment } = await import("../../packages/civic.projects/service.js"));
+  ({ emitProjectUpdated } = await import("../../packages/civic.projects/events.js"));
+  ({ approveBrief, setRecipients } = await import("../../packages/civic.brief/api.js"));
+  ({ emitBriefAggregationCompleted } = await import("../../packages/civic.brief/events.js"));
+  ({ emitAnnouncementResultPublished } = await import("../../packages/civic.announcement/events.js"));
+  const meeting = await import("../../packages/civic.meeting_summary/api.js");
+  approveMeetingSummary = meeting.approveMeetingSummary;
+  buildProcessDescription = meeting.buildProcessDescription;
+  emitMeetingSummaryCreationEvents = meeting.emitCreationEvents;
+  ({ activateWordcloud } = await import("../../packages/civic.wordcloud/service.js"));
+}
+
 export async function seedSampleContent(
   opts: {
     dryRun?: boolean;
@@ -122,6 +146,7 @@ export async function seedSampleContent(
     only?: readonly string[];
   } = {},
 ): Promise<SampleSeedReport> {
+  await loadPackages();
   const hub = currentHub();
   if (!hub) currentHubId(); // throws the usual "no hub in scope"
   const settings = { ...(currentHubSettings() ?? {}) };

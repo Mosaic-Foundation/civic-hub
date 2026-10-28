@@ -20,17 +20,8 @@ import { emitEvent } from "../events/eventEmitter.js";
 import { getEventCount } from "../events/eventStore.js";
 import { countProcessesInHub } from "../services/processRows.js";
 import { currentHubIdOrNull } from "../config/hubContext.js";
-import {
-  emitPublicationEvents as emitAnnouncementPublicationEvents,
-  type AnnouncementProcessContext,
-  type AnnouncementProcessState,
-} from "../../packages/civic.announcement/api.js";
-import {
-  approveMeetingSummary,
-  emitCreationEvents as emitMeetingSummaryCreationEvents,
-  type MeetingSummaryProcessContext,
-  type MeetingSummaryProcessState,
-} from "../../packages/civic.meeting_summary/api.js";
+import type { AnnouncementProcessContext, AnnouncementProcessState } from "../../packages/civic.announcement/api.js";
+import type { MeetingSummaryProcessContext, MeetingSummaryProcessState } from "../../packages/civic.meeting_summary/api.js";
 import type { Process } from "../models/process.js";
 import {
   FLOCK_CAMERA_VOTE,
@@ -153,6 +144,8 @@ async function runAnnouncementSeed(
     jurisdiction: proc.jurisdiction,
     emit: emitEvent,
   };
+  // Loaded on first use, never as the engine starts (engine 2, ADR-017).
+  const { emitPublicationEvents: emitAnnouncementPublicationEvents } = await import("../../packages/civic.announcement/api.js");
   await emitAnnouncementPublicationEvents(ctx, actor, state);
   proc.status = "finalized";
   await saveProcessState(proc);
@@ -178,6 +171,7 @@ async function runMeetingSummarySeed(
     jurisdiction: proc.jurisdiction,
     emit: emitEvent,
   };
+  const { emitCreationEvents: emitMeetingSummaryCreationEvents, approveMeetingSummary } = await import("../../packages/civic.meeting_summary/api.js");
   await emitMeetingSummaryCreationEvents(ctx, actor, state);
   await approveMeetingSummary(state, actor, ctx);
   proc.status = "finalized";
