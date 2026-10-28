@@ -21,6 +21,7 @@
     "jobs:crontab": "tsx scripts/jobs-crontab.ts",
     "settings:doc": "tsx scripts/settings-doc.ts",
     "plugins:sync": "tsx scripts/plugins-sync.ts",
+    "sdk:build": "tsx kit/scripts/build-sdk.ts",
     "catalog:add": "tsx scripts/catalog-add.ts",
     "check:tenancy": "tsx scripts/check-tenancy.ts",
     "seed": "curl -s http://localhost:3000/debug/seed | node -e \"process.stdin.on('data',d=>{const j=JSON.parse(d);console.log(j.message);j.processes.forEach(p=>console.log('  '+p.status.padEnd(6)+' '+p.title));console.log(j.event_count+' events emitted')})\""

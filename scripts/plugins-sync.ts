@@ -107,6 +107,8 @@ function main(): void {
     "config/plugins/server.ts":
       HEADER +
       "// Every configured package's server entry, in load order, for src/plugins/loader.ts.\n\n" +
+      "// First: the engine the built plugin SDK reads, before any package's module runs (ADR-017).\n" +
+      'import "../../src/sdk/install.js";\n' +
       'import type { ConfiguredPackage } from "../../src/plugins/package.js";\n' +
       `${imports("p", "index", ".js")}\n\n` +
       "export const CONFIGURED_PACKAGES: readonly ConfiguredPackage[] = [\n" +

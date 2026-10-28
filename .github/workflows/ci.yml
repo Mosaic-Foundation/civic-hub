@@ -67,6 +67,11 @@ jobs:
       # changed without `npm run plugins:sync`.
       - name: Plugin lists current
         run: npx tsx scripts/plugins-sync.ts --check
+      # The plugin SDK's built .js (ADR-017): what a compiled server resolves
+      # the SDK's name to; stale when kit/sdk's sources changed without
+      # `npm run sdk:build`.
+      - name: Plugin SDK built
+        run: npx tsx kit/scripts/build-sdk.ts --check
       - name: Backend unit tests
         # tests/unit only — tests/api and tests/e2e need a live Supabase/dev
         # server and are not runnable in CI. `npm test` would run everything.

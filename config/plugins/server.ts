@@ -1,6 +1,8 @@
 // Written by `npm run plugins:sync` from config/plugins.json. Do not edit.
 // Every configured package's server entry, in load order, for src/plugins/loader.ts.
 
+// First: the engine the built plugin SDK reads, before any package's module runs (ADR-017).
+import "../../src/sdk/install.js";
 import type { ConfiguredPackage } from "../../src/plugins/package.js";
 import p0 from "../../packages/civic.vote/index.js";
 import p1 from "../../packages/civic.proposals/index.js";

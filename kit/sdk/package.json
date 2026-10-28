@@ -5,12 +5,24 @@
   "type": "module",
   "license": "SEE LICENSE IN LICENSE",
   "exports": {
-    ".": "./index.ts",
-    "./manifest": "./manifest.ts",
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.js"
+    },
+    "./first-party": {
+      "types": "./first-party.ts",
+      "default": "./first-party.js"
+    },
+    "./manifest": {
+      "types": "./manifest.ts",
+      "default": "./manifest.js"
+    },
     "./ui": "./ui.ts",
     "./host": "./host.ts",
     "./testing": "./testing.ts",
     "./package.json": "./package.json"
   },
-  "engines": { "node": ">=22.12" }
+  "engines": {
+    "node": ">=22.12"
+  }
 }
