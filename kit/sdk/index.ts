@@ -62,6 +62,14 @@ export { closeThroughDispatcher, isPastDeadline } from "../../src/sdk/index.js";
 // happen when the action loses a race or fails, so the action itself stays retry-safe ---------
 export { afterActionCommits } from "../../src/sdk/index.js";
 
+// --- Edits of a live process (engine 2, A1): the hub's edit path. A type opts in with its
+// handler's editPolicy (who: the creator, or admins too; which of its own state fields), and
+// its draft kind's applyLiveEdit hands the edit here, after the hub ran the Code of Conduct
+// check on the draft (its `coc` fields included). The hub writes it at the row's version,
+// records civic.process.updated with the change, and calls the handler's onEdited. ----------
+export { applyEdit } from "../../src/sdk/index.js";
+export type { EditPolicy, EditChangeSet } from "../../src/sdk/index.js";
+
 // --- Who did something, as the hub would show it (A3): names under the process's disclosure
 // policy (names to members, nothing to the public, per ADR-010), never an account -------------
 export { namesFor } from "../../src/sdk/index.js";

@@ -3,7 +3,7 @@
 // public: a published event is the public record.
 
 import { Router, type Request } from "express";
-import { route } from "@civic-social/plugin-sdk";
+import { namesFor, route } from "@civic-social/plugin-sdk";
 import { eventStore } from "./store.js";
 import { toIcs } from "./ics.js";
 
@@ -27,6 +27,18 @@ router.get(
     res.json({
       events: rows.map(({ archived: _archived, ...row }) => row),
     });
+  }),
+);
+
+// GET /calendar/events/:id/going: how many are going, and who, as the hub
+// discloses it (engine 2, A3): names to signed-in members, none to the public
+// (the type's `members` policy), never an account.
+router.get(
+  "/events/:id/going",
+  route(async (req, res) => {
+    const id = String(req.params.id);
+    const accounts = await eventStore.get().goingAccounts(id);
+    res.json({ count: accounts.length, names: await namesFor(req, id, accounts) });
   }),
 );
 

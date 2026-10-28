@@ -13,6 +13,7 @@ export const UnauthorizedError = e.UnauthorizedError;
 export const UnavailableError = e.UnavailableError;
 export const ValidationError = e.ValidationError;
 export const afterActionCommits = e.afterActionCommits;
+export const applyEdit = e.applyEdit;
 export const closeThroughDispatcher = e.closeThroughDispatcher;
 export const emitEvent = e.emitEvent;
 export const generateId = e.generateId;

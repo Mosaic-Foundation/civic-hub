@@ -50,23 +50,8 @@ const descriptor = defineDescriptor({
       from: ["pending_review"],
       to: "active",
       emits: [EVENTS.published],
-    },
-    {
-      name: "edit",
-      description: "Change when or where an upcoming event is",
-      callers: ["creator", "admin"],
-      from: ["active"],
-      to: null,
-      emits: [EVENTS.updated],
-      input_schema: {
-        type: "object",
-        properties: {
-          start_time: { type: "string" },
-          end_time: { type: "string" },
-          location: { type: "object" },
-        },
-        examples: [{ end_time: "2030-06-01T20:00:00Z" }],
-      },
+      // The calendar row is written after the action commits (A2).
+      retry_safe: true,
     },
     {
       name: "cancel",
@@ -75,6 +60,7 @@ const descriptor = defineDescriptor({
       from: ["active"],
       to: "closed",
       emits: [EVENTS.cancelled],
+      retry_safe: true,
       input_schema: {
         type: "object",
         properties: { reason: { type: "string" } },
@@ -106,10 +92,12 @@ const descriptor = defineDescriptor({
       from: ["active"],
       to: "closed",
       emits: ["civic.process.ended"],
+      retry_safe: true,
     },
   ],
   emits: EMITS,
-  creation: { resident: { drafts: "/calendar/drafts" }, admin: false, system: false },
+  // Officials publish directly, as admins do (engine 2, A6; Adam, 2026-10-27).
+  creation: { resident: { drafts: "/calendar/drafts", publish_at_once: ["official"] }, admin: false, system: false },
   deadline: { action: "close", source: "state.end_time" },
   brief: false,
   tables: ["calendar_events", "calendar_attendance", "calendar_drafts"],
@@ -198,18 +186,27 @@ export const EVENT_MANIFEST = defineManifest({
     [EVENTS.cancelled]: ["cancellation"],
   },
   deadlineRefusal: { code: "event_past", message: "This event has ended." },
-  // What the hub's analytics counts (ADR-016): saying you're going, and a
-  // creator changing when or where, are taking part. Taking going back is
-  // counted too, because conformance step 10 requires every resident action
-  // that emits to emit a counted event; distinct residents are unchanged
-  // (they went first), the count of acts is not (the report's suite note). An
-  // event closes at its end or when it is cancelled, and produces no result,
-  // as a proposal does not.
+  // What the hub's analytics counts (ADR-016): saying you're going is taking
+  // part. An event closes at its end or when it is cancelled, and produces no
+  // result, as a proposal does not.
   participation: {
-    participation: [EVENTS.going, EVENTS.notGoing, EVENTS.updated],
+    participation: [EVENTS.going],
     creation: ["civic.process.created"],
     closing: ["civic.process.ended", EVENTS.cancelled],
     outcome: [],
+    // Taking back "going", and a change to the event, are acts, not taking
+    // part (engine 2, E17): accounted for, counted as nothing.
+    withdrawal: [EVENTS.notGoing, EVENTS.updated],
+  },
+  // Its own words for where an event is (A4): the hub's status stays active
+  // or closed, which the descriptor and the wire serve.
+  statuses: {
+    declared: [
+      { id: "scheduled", label: "Scheduled", hub: "active" },
+      { id: "past", label: "Past", hub: "closed" },
+      { id: "cancelled", label: "Cancelled", hub: "closed" },
+    ],
+    of: (p) => (p.state.cancelled ? "cancelled" : p.status === "closed" ? "past" : "scheduled"),
   },
   capabilities: {
     activities: { emit: EMITS, listen: [] },

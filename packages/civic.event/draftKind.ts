@@ -2,7 +2,7 @@
 // claim against a double submit, the Code of Conduct check and the review
 // queue are the hub's; an admin's submission is approved at once.
 
-import { ValidationError, type Draft, type DraftKind } from "@civic-social/plugin-sdk";
+import { ValidationError, applyEdit, type Draft, type DraftKind } from "@civic-social/plugin-sdk";
 import { TYPE } from "./manifest.js";
 import {
   ADDRESS_FIELD_MAX,
@@ -39,8 +39,10 @@ function checked<T>(fn: () => T): T {
 
 const nullable = (v: unknown) => (typeof v === "string" && v.trim() !== "" ? v : null);
 
+/** A free-text field others will read: the Code of Conduct check reads it under its label (engine 2, A1). */
 function textField(max: number, label: string) {
   return {
+    coc: label,
     read: (v: unknown) => nullable(v),
     write: (v: unknown) => {
       if (v !== null && typeof v !== "string") throw new ValidationError(`${label} must be text.`);
@@ -78,6 +80,7 @@ export const eventDraftKind: DraftKind<EventDraft> = {
         read: (v: unknown) => nullable(v),
         write: (v: unknown) => checked(() => onlineLink(v)),
         checked: true,
+        coc: "The online link",
       },
     },
   },
@@ -96,5 +99,17 @@ export const eventDraftKind: DraftKind<EventDraft> = {
       const state = { ...times, location };
       return { title: d.title.trim(), description: d.description.trim(), state, revise: { state } };
     });
+  },
+  // "Edit event" (A1): the creator or an admin, from the event's page. The
+  // hub has run the check on this draft; its edit path writes the words and
+  // the time and place together, at the event's version.
+  async applyLiveEdit(_d, processId, editor, submission) {
+    const state = (submission.state ?? {}) as Record<string, unknown>;
+    const changes = await applyEdit(processId, editor, {
+      title: submission.title,
+      description: submission.description,
+      state: { start_time: state.start_time, end_time: state.end_time, location: state.location },
+    });
+    return { process_id: processId, edited: true, changed_fields: changes.changed_fields };
   },
 };

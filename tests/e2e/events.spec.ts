@@ -155,15 +155,15 @@ for (const vp of VIEWPORTS) {
       await expect(page).toHaveURL(/\/events\/new$/);
       await expect(page.getByRole("heading", { level: 1, name: "New event" })).toBeVisible();
 
-      await page.getByLabel("Name", { exact: true }).fill(title);
-      await page.getByLabel("What it is").fill("An evening to meet the neighbours.");
-      await page.getByLabel("Starts").fill(start);
-      await page.getByLabel("Ends").fill(end);
+      await page.getByRole("textbox", { name: "Name", exact: true }).fill(title);
+      await page.getByRole("textbox", { name: "What it is", exact: true }).fill("An evening to meet the neighbours.");
+      await page.getByRole("textbox", { name: "Starts", exact: true }).fill(start);
+      await page.getByRole("textbox", { name: "Ends", exact: true }).fill(end);
       await page.getByRole("radio", { name: "A place" }).check();
-      await page.getByLabel("Place", { exact: true }).fill(VENUE);
+      await page.getByRole("textbox", { name: "Place", exact: true }).fill(VENUE);
       await page.getByText("Street address", { exact: false }).first().click();
-      await page.getByLabel("Street", { exact: true }).fill(ADDRESS);
-      await page.getByLabel("Town or city").fill(TOWN);
+      await page.getByRole("textbox", { name: "Street", exact: true }).fill(ADDRESS);
+      await page.getByRole("textbox", { name: "Town or city", exact: true }).fill(TOWN);
       await page.getByRole("button", { name: "Submit" }).click();
 
       // A demo hub publishes it at once: the page, not a waiting note.
@@ -184,10 +184,10 @@ for (const vp of VIEWPORTS) {
       const title = `Beta hub meeting ${vp.label} ${run}`;
 
       await page.goto(`${originOf(BETA)}/events/new`);
-      await page.getByLabel("Name", { exact: true }).fill(title);
-      await page.getByLabel("Starts").fill(localTime(5, 18, 0));
-      await page.getByLabel("Ends").fill(localTime(5, 19, 30));
-      await page.getByLabel("Place", { exact: true }).fill(VENUE);
+      await page.getByRole("textbox", { name: "Name", exact: true }).fill(title);
+      await page.getByRole("textbox", { name: "Starts", exact: true }).fill(localTime(5, 18, 0));
+      await page.getByRole("textbox", { name: "Ends", exact: true }).fill(localTime(5, 19, 30));
+      await page.getByRole("textbox", { name: "Place", exact: true }).fill(VENUE);
       await page.getByRole("button", { name: "Submit" }).click();
 
       await expect(page.getByRole("status")).toContainText("Thank you. Your event is with the hub's admins");
@@ -227,6 +227,8 @@ for (const vp of VIEWPORTS) {
       await expect(count).toHaveText("0 people are going");
       await page.getByRole("button", { name: "I'm going" }).click();
       await expect(count).toHaveText("1 person is going");
+      // Who is going, as the hub discloses it (engine 2, A3): a member sees the name.
+      await expect(page.getByTestId("going-names")).toHaveText(/\S/);
       await expect(page.getByRole("button", { name: "I'm not going" })).toBeVisible();
       await expect(page.getByRole("button", { name: "I'm going", exact: true })).toHaveCount(0);
 
@@ -315,6 +317,27 @@ for (const vp of VIEWPORTS) {
       await expect(page.getByRole("heading", { level: 1, name: "Events" })).toBeVisible();
     });
 
+    test("the creator edits an event through the hub's edit path: its name, time and place change on its page", async ({ request, page }) => {
+      const label = `edit-${vp.label}`;
+      const token = await residentOn(DEMO, label, page);
+      const event = await makeEvent(request, DEMO, token, `Edited gathering ${vp.label} ${run}`, localTime(7, 10, 0), localTime(7, 11, 0));
+      const renamed = `Renamed gathering ${vp.label} ${run}`;
+
+      await page.goto(`${originOf(DEMO)}/events/${event.id}`);
+      await page.getByRole("button", { name: "Edit event", exact: true }).click();
+      await expect(page).toHaveURL(/\/events\/new\?draft=.*edit=/);
+      await expect(page.getByRole("heading", { level: 1, name: "Edit event" }).first()).toBeAttached();
+      const name = page.getByRole("textbox", { name: "Name", exact: true });
+      await expect(name).toHaveValue(event.title);
+      await name.fill(renamed);
+      await page.getByRole("textbox", { name: "Place", exact: true }).fill("The library");
+      await page.getByRole("button", { name: "Save" }).click();
+
+      await expect(page).toHaveURL(new RegExp(`/events/${event.id}$`));
+      await expect(page.getByRole("heading", { level: 1, name: renamed })).toBeVisible();
+      await expect(page.locator(".ev-facts")).toContainText("The library");
+    });
+
     test("the creator cancels an event: its page says it was cancelled and the calendar marks it Cancelled", async ({ request, page }) => {
       const label = `cancel-${vp.label}`;
       const token = await residentOn(DEMO, label, page);
@@ -325,9 +348,9 @@ for (const vp of VIEWPORTS) {
 
       await page.goto(`${originOf(DEMO)}/events/${event.id}`);
       await expect(page.getByRole("heading", { level: 1, name: event.title })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Change time or place" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Edit event", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Cancel event", exact: true }).click();
-      await page.getByLabel("Why (optional, shown on the event)").fill(reason);
+      await page.getByRole("textbox", { name: "Why (shown on the event)" }).fill(reason);
       await page.getByRole("button", { name: "Cancel the event", exact: true }).click();
 
       await expect(page.getByRole("status").filter({ hasText: "This event was cancelled." })).toContainText(reason);

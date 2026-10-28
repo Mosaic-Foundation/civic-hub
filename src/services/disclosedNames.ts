@@ -17,6 +17,8 @@ import { disclosureOf } from "../events/publicPayload.js";
 import { DISCLOSURE_POLICIES, type DisclosurePolicy } from "../processes/manifest.js";
 import { getManifest } from "../processes/registry.js";
 import { personFallbackName, resolveCreators } from "./creatorDisplay.js";
+import { getProcess } from "./processService.js";
+import { isPubliclyFetchable } from "./processLifecycle.js";
 
 /** The policy a process's names are disclosed under: its own override where its type allows one. */
 export function disclosurePolicyOf(process: Pick<Process, "definition" | "state">): DisclosurePolicy {
@@ -42,16 +44,22 @@ export function namesShown(policy: DisclosurePolicy, viewer: { signedIn: boolean
 
 /**
  * The names of `accounts`, in order (duplicates once), as this request's
- * reader may see them on this process; null when the policy shows this reader
- * no names (show a count instead).
+ * reader may see them on this process (the row, or its id); null when the
+ * policy shows this reader no names (show a count instead), or there is no
+ * such process.
  */
 export async function namesFor(
   req: Request,
-  process: Pick<Process, "definition" | "state">,
+  process: Pick<Process, "definition" | "state"> | string,
   accounts: readonly string[],
 ): Promise<string[] | null> {
+  // A package on SDK v1 holds the process's id, not its row.
+  const row = typeof process === "string" ? await getProcess(process) : process;
+  if (!row) return null;
   const [user, admin] = await Promise.all([resolveCallerUser(req), resolveCallerIsAdmin(req)]);
-  if (!namesShown(disclosurePolicyOf(process), { signedIn: Boolean(user), admin })) return null;
+  // A process the public cannot find (under review, archived) shows names to admins only.
+  if ("status" in row && typeof row.status === "string" && !isPubliclyFetchable(row.status as Process["status"]) && !admin) return null;
+  if (!namesShown(disclosurePolicyOf(row), { signedIn: Boolean(user), admin })) return null;
   const unique = [...new Set(accounts.filter((a) => typeof a === "string" && a.length > 0))];
   const people = await resolveCreators(unique);
   return unique.map((id) => people.get(id)?.name ?? personFallbackName());

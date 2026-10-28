@@ -27,7 +27,7 @@ export {
 
 // --- The process contract ------------------------------------------------------------
 export type { Process, ProcessAction, ProcessStatus } from "../models/process.js";
-export type { ProcessHandler, RegeneratedBrief } from "../processes/types.js";
+export type { ProcessHandler, RegeneratedBrief, EditPolicy, EditChangeSet } from "../processes/types.js";
 export type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 export { storeSlot, type StoreSlot } from "../processes/storeSlot.js";
 export type { GrantedDb, PluginAdapters, PluginHost, PluginPackage, PluginServer, PluginMount } from "../plugins/package.js";

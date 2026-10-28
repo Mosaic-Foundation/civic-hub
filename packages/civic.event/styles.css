@@ -1,4 +1,7 @@
-/* Events' pages, on the hub's theme variables (ui/src/styles/theme.css). */
+/* Events' pages, on the hub's theme variables (ui/src/styles/theme.css). Its
+   buttons, fields, inputs and the form's shell are the hub's UI kit
+   (@civic-social/plugin-sdk/ui; engine 2, A7); only the calendar's own layout
+   is here. */
 
 .ev-page {
   max-width: var(--max-width-feed, 680px);
@@ -136,6 +139,10 @@
   color: var(--color-warning);
 }
 
+.ev-going-names {
+  color: var(--color-text-muted);
+}
+
 .ev-actions {
   display: flex;
   flex-wrap: wrap;
@@ -143,84 +150,9 @@
   margin-top: var(--space-md, 16px);
 }
 
-.ev-button {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: var(--radius-md, 8px);
-  border: 1px solid var(--color-border-strong);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.ev-button--primary {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-ink, #fff);
-}
-
-.ev-button--danger {
-  color: var(--color-error);
-  border-color: var(--color-error);
-}
-
-.ev-button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.ev-slim {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: calc(-1 * var(--space-md, 16px)) calc(-1 * var(--space-md, 16px)) var(--space-md, 16px);
-  padding: 8px var(--space-md, 16px);
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.ev-slim-back {
-  font-size: 1.6em;
-  line-height: 1;
-  padding: 4px 8px;
-  color: var(--color-link);
-  text-decoration: none;
-}
-
-.ev-slim-title {
-  margin: 0;
-  font-size: var(--font-size-lg);
-}
-
 .ev-form {
   display: grid;
   gap: var(--space-md, 16px);
-}
-
-.ev-form label {
-  display: grid;
-  gap: 4px;
-  font-weight: 600;
-  font-size: var(--font-size-sm);
-}
-
-.ev-form input,
-.ev-form textarea {
-  font: inherit;
-  font-weight: 400;
-  padding: 10px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm, 4px);
-  background: var(--color-surface);
-  color: var(--color-text);
-  min-width: 0;
 }
 
 .ev-row {
@@ -264,10 +196,6 @@
   cursor: pointer;
   color: var(--color-link);
   font-size: var(--font-size-sm);
-}
-
-.ev-error {
-  color: var(--color-error);
 }
 
 @media (max-width: 520px) {

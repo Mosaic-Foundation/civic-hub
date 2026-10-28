@@ -2,6 +2,7 @@
 
 import {
   ValidationError,
+  afterActionCommits,
   closeThroughDispatcher,
   emitEvent,
   isPastDeadline,
@@ -53,8 +54,18 @@ async function emit(
   });
 }
 
-/** Put the event's row on the calendar as it now is. */
+/**
+ * Put the event's row on the calendar as it now is, once the action's
+ * transaction has committed (engine 2, A2): an action that lost a race and is
+ * run again, or failed, writes nothing here, so publish, cancel and the close
+ * are retry-safe. Outside an action (an edit) it writes at once.
+ */
 async function index(process: Process): Promise<void> {
+  const snapshot = structuredClone(process);
+  await afterActionCommits(() => writeIndex(snapshot));
+}
+
+async function writeIndex(process: Process): Promise<void> {
   const state = stateOf(process);
   await eventStore.get().upsertEvent({
     process_id: process.id,
@@ -107,26 +118,6 @@ const handler: ProcessHandler = {
         await emit(process, action.actor, { event_type: "civic.event.published" });
         return { status: "published" };
       }
-      case "edit": {
-        const p = action.payload;
-        const changed = checked(() => {
-          const start = "start_time" in p ? instant(p.start_time, "The start") : state.start_time;
-          const end = "end_time" in p ? instant(p.end_time, "The end") : state.end_time;
-          const times = checkTimes(start, end);
-          const location = "location" in p ? checkLocation(p.location) : state.location;
-          return { ...times, location };
-        });
-        if (JSON.stringify([changed.start_time, changed.end_time, changed.location]) === JSON.stringify([state.start_time, state.end_time, state.location])) {
-          return { status: "unchanged" };
-        }
-        const changedFields = (["start_time", "end_time", "location"] as const).filter(
-          (k) => JSON.stringify(changed[k]) !== JSON.stringify(state[k]),
-        );
-        Object.assign(state, changed);
-        await index(process);
-        await emit(process, action.actor, { event_type: "civic.event.updated", extra: { edit: { changed_fields: changedFields } } });
-        return { status: "edited", changed_fields: changedFields };
-      }
       case "cancel": {
         const reason = typeof action.payload.reason === "string" ? action.payload.reason.trim() : "";
         if (reason.length > REASON_MAX) throw new ValidationError(`The reason can be at most ${REASON_MAX} characters.`, "too_long");
@@ -155,6 +146,38 @@ const handler: ProcessHandler = {
       default:
         throw new ValidationError("That action isn't supported on an event.", "action_not_supported");
     }
+  },
+
+  // "Edit event" (engine 2, A1): the hub's edit path, with the Code of
+  // Conduct check on its words and its place. The creator and the hub's
+  // admins edit everything of an upcoming event (Adam, 2026-10-27): its name,
+  // what it is, when and where.
+  editPolicy(process: Process) {
+    if (process.status !== "active") {
+      return { editable: false, locked_fields: [], reason: "Only an upcoming event can be edited." };
+    }
+    return { editable: true, locked_fields: [], admins_edit: true, state_fields: ["start_time", "end_time", "location"] };
+  },
+
+  async draftFromProcess(process: Process, editorId: string): Promise<string> {
+    return eventStore.get().draftFromEvent(editorId, { title: process.title, description: process.description, state: stateOf(process) });
+  },
+
+  async syncDraftFromProcess(draftId: string, process: Process): Promise<void> {
+    await eventStore.get().syncDraft(draftId, { title: process.title, description: process.description, state: stateOf(process) });
+  },
+
+  // After the hub wrote the edit (and its civic.process.updated): the
+  // calendar row, and the AS2 Update of the Event its readers follow.
+  async onEdited(process: Process, changes, editor) {
+    const edited = structuredClone(process);
+    for (const key of ["title", "description"] as const) if (key in changes.current) edited[key] = String(changes.current[key]);
+    const state = stateOf(edited);
+    for (const key of ["start_time", "end_time", "location"] as const) {
+      if (key in changes.current) (state as unknown as Record<string, unknown>)[key] = changes.current[key];
+    }
+    await writeIndex(edited);
+    await emit(edited, editor?.id ?? process.createdBy, { event_type: "civic.event.updated", extra: { edit: { changed_fields: changes.changed_fields } } });
   },
 
   async getReadModel(process: Process, actor?: string): Promise<Record<string, unknown>> {

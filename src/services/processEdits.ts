@@ -297,10 +297,11 @@ export async function applyEdit(
 
   const handler = getProcessHandler(process.definition.type);
   // The handler mirrors everything that was written, formatting included.
-  await handler?.onEdited?.(process, {
-    ...changes,
-    current: { ...changes.current, ...changes.formatting_values },
-  });
+  await handler?.onEdited?.(
+    process,
+    { ...changes, current: { ...changes.current, ...changes.formatting_values } },
+    { id: editor.id },
+  );
 
   // Formatting-only: saved, but no event, no history entry, no notice.
   if (changes.changed_fields.length === 0) return changes;

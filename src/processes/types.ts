@@ -201,7 +201,7 @@ export interface ProcessHandler {
    * keep title/description/sources/banner on `projects`). The shared service
    * has already updated the `processes` row and the creator's links.
    */
-  onEdited?(process: Process, changes: EditChangeSet): Promise<void>;
+  onEdited?(process: Process, changes: EditChangeSet, editor?: { id: string }): Promise<void>;
 
   /**
    * A creator's update was posted to this process through the shared

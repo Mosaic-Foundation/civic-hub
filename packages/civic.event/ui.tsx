@@ -1,12 +1,13 @@
-// Events' UI module: the calendar, an event's page, and the forms to propose
-// and change one. Its own React components, using the React the hub runs and
-// the hub's theme variables; it reads and acts through the hub's routes for
-// every process (/process/:id/state, /process/:id/action), the hub's drafts
-// routes at /calendar/drafts, and its own /calendar routes.
+// Events' UI module: the calendar, an event's page, and the form to propose
+// and edit one. Drawn with the hub's UI kit (@civic-social/plugin-sdk/ui:
+// its buttons, fields and drafting shell; engine 2, A7), so it looks like the
+// hub's own pages; it reads and acts through the hub's routes for every
+// process (/process/:id/state, /process/:id/action, /process/:id/edit), the
+// hub's drafts routes at /calendar/drafts, and its own /calendar routes.
 
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { ProcessUi } from "@civic-social/plugin-sdk/ui";
+import { Button, DateTimeInput, DraftShell, Field, TextArea, TextInput, type ProcessUi } from "@civic-social/plugin-sdk/ui";
 import { locationLine, type EventLocation } from "./event";
 import "./styles.css";
 
@@ -67,6 +68,8 @@ interface EventView {
   going_count: number;
   is_going: boolean;
   is_creator: boolean;
+  /** Its own status word (scheduled, past, cancelled), from its manifest (A4). */
+  type_status?: { id: string; label: string };
 }
 
 // --- Dates, in the reader's own time zone ------------------------------------
@@ -81,34 +84,7 @@ function whenLine(start: string, end: string): string {
     : `${dayHeading(start)}, ${timeOf(start)} – ${dayHeading(end)}, ${timeOf(end)}`;
 }
 
-/** An ISO instant as a datetime-local value, in the reader's time zone. */
-function toLocalInput(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** A datetime-local value as an ISO instant (the reader's time zone), or null. */
-function fromLocalInput(value: string): string | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
-
 // --- Pieces -------------------------------------------------------------------
-
-/** A slim bar for the forms: back, and what the page is. */
-function SlimHeader({ back, title }: { back: string; title: string }) {
-  return (
-    <div className="ev-slim">
-      <Link to={back} className="ev-slim-back" aria-label="Back">
-        ‹
-      </Link>
-      <h1 className="ev-slim-title">{title}</h1>
-    </div>
-  );
-}
 
 function Pill({ children }: { children: ReactNode }) {
   return <span className="ev-pill">{children}</span>;
@@ -159,7 +135,7 @@ function CalendarPage() {
       <div className="ev-head">
         <h1>Events</h1>
         {signedIn() && (
-          <Link to="/events/new" className="ev-button ev-button--primary">
+          <Link to="/events/new" className="btn-primary">
             Add an event
           </Link>
         )}
@@ -217,17 +193,25 @@ function CalendarItem({ event, showDay }: { event: CalendarEvent; showDay?: bool
 
 function EventPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const isAdmin = useIsAdmin();
   const [event, setEvent] = useState<EventView | null>(null);
+  const [going, setGoing] = useState<{ count: number; names: string[] | null } | null>(null);
+  const [editable, setEditable] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
 
-  const load = () =>
-    api<EventView>(`/process/${id}/state`).then(setEvent, (e: Error) => setMessage(e.message));
+  const load = () => {
+    void api<EventView>(`/process/${id}/state`).then(setEvent, (e: Error) => setMessage(e.message));
+    // Who is going, as the hub discloses it: names to members, the count to everyone (A3).
+    void api<{ count: number; names: string[] | null }>(`/calendar/events/${id}/going`).then(setGoing, () => setGoing(null));
+  };
   useEffect(() => {
-    void load();
+    load();
+    // Whether this reader may edit it: the hub's edit policy (the creator, or an admin).
+    if (signedIn()) api<{ editable: boolean }>(`/process/${id}/edit-policy`).then((p) => setEditable(p.editable), () => setEditable(false));
   }, [id]);
 
   async function act(type: string, payload: Record<string, unknown> = {}, done?: string) {
@@ -236,7 +220,7 @@ function EventPage() {
     try {
       await api(`/process/${id}/action`, { method: "POST", body: { type, payload } });
       if (done) setMessage(done);
-      await load();
+      load();
     } catch (e) {
       setMessage((e as Error).message);
     } finally {
@@ -244,16 +228,30 @@ function EventPage() {
     }
   }
 
+  // "Edit event": the hub's edit path opens the form on a draft of the event as published (A1).
+  async function edit() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const r = await api<{ draft_path: string }>(`/process/${id}/edit`, { method: "POST", body: {} });
+      navigate(r.draft_path);
+    } catch (e) {
+      setMessage((e as Error).message);
+      setBusy(false);
+    }
+  }
+
   if (!event) return <main className="ev-page">{message ? <p role="alert">{message}</p> : <p className="ev-muted">Loading…</p>}</main>;
   const upcoming = event.status === "active";
-  const canChange = upcoming && (event.is_creator || isAdmin);
+  const canCancel = upcoming && (event.is_creator || isAdmin);
+  const count = going?.count ?? event.going_count;
 
   return (
     <main className="ev-page">
       <p className="ev-crumb">
         <Link to="/events">‹ Events</Link>
       </p>
-      <Pill>Event</Pill>
+      <Pill>{event.type_status && event.type_status.id !== "scheduled" ? `Event · ${event.type_status.label}` : "Event"}</Pill>
       <h1 className="ev-title">{event.title}</h1>
       {event.cancelled && (
         <p className="ev-cancelled" role="status">
@@ -269,36 +267,41 @@ function EventPage() {
           <Where location={event.location} />
         </dd>
         <dt>Going</dt>
-        <dd data-testid="going-count">
-          {event.going_count === 1 ? "1 person is going" : `${event.going_count} people are going`}
-        </dd>
+        <dd data-testid="going-count">{count === 1 ? "1 person is going" : `${count} people are going`}</dd>
+        {going?.names && going.names.length > 0 && (
+          <dd className="ev-going-names" data-testid="going-names">
+            {going.names.join(", ")}
+          </dd>
+        )}
       </dl>
       {event.description && <p className="ev-description">{event.description}</p>}
 
       {upcoming && signedIn() && (
         <div className="ev-actions">
           {event.is_going ? (
-            <button type="button" className="ev-button" disabled={busy} onClick={() => act("not_going")}>
+            <Button disabled={busy} onClick={() => act("not_going")}>
               I'm not going
-            </button>
+            </Button>
           ) : (
-            <button type="button" className="ev-button ev-button--primary" disabled={busy} onClick={() => act("going", {}, "You're going.")}>
+            <Button variant="primary" disabled={busy} onClick={() => act("going", {}, "You're going.")}>
               I'm going
-            </button>
+            </Button>
           )}
         </div>
       )}
       {upcoming && !signedIn() && <p className="ev-muted">Sign in to say you're going.</p>}
 
-      {canChange && (
+      {(editable || canCancel) && (
         <div className="ev-actions ev-actions--secondary">
-          <Link to={`/events/${event.id}/edit`} className="ev-button">
-            Change time or place
-          </Link>
-          {!cancelling && (
-            <button type="button" className="ev-button ev-button--danger" onClick={() => setCancelling(true)}>
+          {editable && (
+            <Button disabled={busy} onClick={() => void edit()}>
+              Edit event
+            </Button>
+          )}
+          {canCancel && !cancelling && (
+            <Button variant="danger" onClick={() => setCancelling(true)}>
               Cancel event
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -311,17 +314,14 @@ function EventPage() {
             setCancelling(false);
           }}
         >
-          <label>
-            Why (optional, shown on the event)
-            <textarea value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
-          </label>
+          <Field label="Why (shown on the event)" optional htmlFor="ev-cancel-reason">
+            <TextArea id="ev-cancel-reason" value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
+          </Field>
           <div className="ev-actions">
-            <button type="submit" className="ev-button ev-button--danger" disabled={busy}>
+            <Button type="submit" variant="danger" disabled={busy}>
               Cancel the event
-            </button>
-            <button type="button" className="ev-button" onClick={() => setCancelling(false)}>
-              Keep it
-            </button>
+            </Button>
+            <Button onClick={() => setCancelling(false)}>Keep it</Button>
           </div>
         </form>
       )}
@@ -330,7 +330,7 @@ function EventPage() {
   );
 }
 
-// --- Proposing and changing one ---------------------------------------------------
+// --- Proposing and editing one --------------------------------------------------
 
 interface WhereFields {
   mode: "place" | "online";
@@ -344,20 +344,6 @@ interface WhereFields {
 }
 
 const EMPTY_WHERE: WhereFields = { mode: "place", venue: "", street_address: "", locality: "", region: "", postal_code: "", country: "", online_url: "" };
-
-function whereFieldsOf(location: EventLocation): WhereFields {
-  if (location.type === "Link") return { ...EMPTY_WHERE, mode: "online", online_url: location.href };
-  const a = location.address ?? { type: "PostalAddress" as const };
-  return {
-    ...EMPTY_WHERE,
-    venue: location.name,
-    street_address: a.streetAddress ?? "",
-    locality: a.addressLocality ?? "",
-    region: a.addressRegion ?? "",
-    postal_code: a.postalCode ?? "",
-    country: a.addressCountry ?? "",
-  };
-}
 
 /** The draft's location fields: a place and its address, or an online link. */
 function whereBody(w: WhereFields): Record<string, string | null> {
@@ -375,20 +361,6 @@ function whereBody(w: WhereFields): Record<string, string | null> {
       };
 }
 
-/** The stored location shape an edit sends. */
-function whereLocation(w: WhereFields): EventLocation {
-  if (w.mode === "online") return { type: "Link", name: "Online", href: w.online_url.trim() };
-  const address = {
-    type: "PostalAddress" as const,
-    ...(w.street_address.trim() ? { streetAddress: w.street_address.trim() } : {}),
-    ...(w.locality.trim() ? { addressLocality: w.locality.trim() } : {}),
-    ...(w.region.trim() ? { addressRegion: w.region.trim() } : {}),
-    ...(w.postal_code.trim() ? { postalCode: w.postal_code.trim() } : {}),
-    ...(w.country.trim() ? { addressCountry: w.country.trim() } : {}),
-  };
-  return Object.keys(address).length > 1 ? { type: "Place", name: w.venue.trim(), address } : { type: "Place", name: w.venue.trim() };
-}
-
 function WhenWhere({
   start,
   end,
@@ -397,28 +369,26 @@ function WhenWhere({
   onEnd,
   onWhere,
 }: {
-  start: string;
-  end: string;
+  start: string | null;
+  end: string | null;
   where: WhereFields;
-  onStart(v: string): void;
-  onEnd(v: string): void;
+  onStart(v: string | null): void;
+  onEnd(v: string | null): void;
   onWhere(w: WhereFields): void;
 }) {
   const set = (k: keyof WhereFields) => (e: { target: { value: string } }) => onWhere({ ...where, [k]: e.target.value });
   return (
     <>
       <div className="ev-row">
-        <label>
-          Starts
-          <input type="datetime-local" required value={start} onChange={(e) => onStart(e.target.value)} />
-        </label>
-        <label>
-          Ends
-          <input type="datetime-local" required value={end} onChange={(e) => onEnd(e.target.value)} />
-        </label>
+        <Field label="Starts" required htmlFor="ev-start">
+          <DateTimeInput id="ev-start" required value={start} onChange={onStart} />
+        </Field>
+        <Field label="Ends" required htmlFor="ev-end">
+          <DateTimeInput id="ev-end" required value={end} onChange={onEnd} />
+        </Field>
       </div>
       <fieldset className="ev-where">
-        <legend>Where</legend>
+        <legend className="form-label">Where</legend>
         <div className="ev-toggle" role="radiogroup" aria-label="Where">
           <label>
             <input type="radio" name="where" checked={where.mode === "place"} onChange={() => onWhere({ ...where, mode: "place" })} /> A place
@@ -429,43 +399,36 @@ function WhenWhere({
         </div>
         {where.mode === "place" ? (
           <>
-            <label>
-              Place
-              <input required maxLength={120} placeholder="The room or building" value={where.venue} onChange={set("venue")} />
-            </label>
+            <Field label="Place" required htmlFor="ev-venue">
+              <TextInput id="ev-venue" required maxLength={120} placeholder="The room or building" value={where.venue} onChange={set("venue")} />
+            </Field>
             <details className="ev-address" open={Boolean(where.street_address || where.locality)}>
               <summary>Street address (helps maps and calendars)</summary>
-              <label>
-                Street
-                <input maxLength={120} autoComplete="street-address" value={where.street_address} onChange={set("street_address")} />
-              </label>
+              <Field label="Street" htmlFor="ev-street">
+                <TextInput id="ev-street" maxLength={120} autoComplete="street-address" value={where.street_address} onChange={set("street_address")} />
+              </Field>
               <div className="ev-row">
-                <label>
-                  Town or city
-                  <input maxLength={120} autoComplete="address-level2" value={where.locality} onChange={set("locality")} />
-                </label>
-                <label>
-                  Region
-                  <input maxLength={120} autoComplete="address-level1" value={where.region} onChange={set("region")} />
-                </label>
+                <Field label="Town or city" htmlFor="ev-locality">
+                  <TextInput id="ev-locality" maxLength={120} autoComplete="address-level2" value={where.locality} onChange={set("locality")} />
+                </Field>
+                <Field label="Region" htmlFor="ev-region">
+                  <TextInput id="ev-region" maxLength={120} autoComplete="address-level1" value={where.region} onChange={set("region")} />
+                </Field>
               </div>
               <div className="ev-row">
-                <label>
-                  Postal code
-                  <input maxLength={120} autoComplete="postal-code" value={where.postal_code} onChange={set("postal_code")} />
-                </label>
-                <label>
-                  Country
-                  <input maxLength={120} autoComplete="country-name" value={where.country} onChange={set("country")} />
-                </label>
+                <Field label="Postal code" htmlFor="ev-postal">
+                  <TextInput id="ev-postal" maxLength={120} autoComplete="postal-code" value={where.postal_code} onChange={set("postal_code")} />
+                </Field>
+                <Field label="Country" htmlFor="ev-country">
+                  <TextInput id="ev-country" maxLength={120} autoComplete="country-name" value={where.country} onChange={set("country")} />
+                </Field>
               </div>
             </details>
           </>
         ) : (
-          <label>
-            Link
-            <input type="url" required placeholder="https://" value={where.online_url} onChange={set("online_url")} />
-          </label>
+          <Field label="Link" required htmlFor="ev-link">
+            <TextInput id="ev-link" type="url" required placeholder="https://" value={where.online_url} onChange={set("online_url")} />
+          </Field>
         )}
       </fieldset>
     </>
@@ -476,6 +439,7 @@ interface SubmitResult {
   process_id?: string;
   auto_approved?: boolean;
   flagged?: boolean;
+  edited?: boolean;
 }
 
 interface DraftView {
@@ -493,15 +457,23 @@ interface DraftView {
   online_url: string | null;
 }
 
-function NewEventPage() {
+/**
+ * The form, inside the hub's drafting shell (its slim phone header and its
+ * Code of Conduct line). New: draft, fill, submit for review. "Edit & resubmit"
+ * after an admin asked for changes: ?draft=&review=. "Edit event" on a live
+ * one (A1): ?draft=&edit=<process id>, which the hub applies in place.
+ */
+function EventFormPage() {
   const navigate = useNavigate();
-  // "Edit & resubmit" after an admin asked for changes: the draft, and the review it revises.
   const [params] = useSearchParams();
   const reviewId = params.get("review");
+  const editId = params.get("edit");
+  const pageTitle = editId ? "Edit event" : "New event";
+  const back = editId ? `/events/${editId}` : "/events";
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
+  const [start, setStart] = useState<string | null>(null);
+  const [end, setEnd] = useState<string | null>(null);
   const [where, setWhere] = useState<WhereFields>(EMPTY_WHERE);
   const [draftId, setDraftId] = useState<string | null>(params.get("draft"));
   const [busy, setBusy] = useState(false);
@@ -515,8 +487,8 @@ function NewEventPage() {
       (d) => {
         setTitle(d.title);
         setDescription(d.description);
-        setStart(toLocalInput(d.start_time));
-        setEnd(toLocalInput(d.end_time));
+        setStart(d.start_time);
+        setEnd(d.end_time);
         const w = (v: string | null) => v ?? "";
         setWhere(
           d.online_url
@@ -547,13 +519,14 @@ function NewEventPage() {
       setDraftId(id);
       await api(`/calendar/drafts/${id}`, {
         method: "PATCH",
-        body: { title, description, start_time: fromLocalInput(start), end_time: fromLocalInput(end), ...whereBody(where) },
+        body: { title, description, start_time: start, end_time: end, ...whereBody(where) },
       });
       const result = await api<SubmitResult>(`/calendar/drafts/${id}/submit`, {
         method: "POST",
-        body: reviewId ? { review_id: reviewId } : {},
+        body: editId ? { edit_process_id: editId } : reviewId ? { review_id: reviewId } : {},
       });
-      if (result.auto_approved && result.process_id) navigate(`/events/${result.process_id}`);
+      if (editId) navigate(`/events/${editId}`);
+      else if (result.auto_approved && result.process_id) navigate(`/events/${result.process_id}`);
       else setQueued(true);
     } catch (err) {
       setError((err as Error).message);
@@ -562,103 +535,36 @@ function NewEventPage() {
     }
   }
 
-  if (!signedIn()) {
-    return (
-      <main className="ev-page">
-        <SlimHeader back="/events" title="New event" />
-        <p>Sign in to add an event to the calendar.</p>
-      </main>
-    );
-  }
+  const shell = (body: ReactNode) => (
+    <DraftShell backTo={back} backLabel={editId ? "Back to the event" : "Events"} title={pageTitle} phoneTitle={pageTitle} assistant={null} layout="page" error={error}>
+      {body}
+    </DraftShell>
+  );
+
+  if (!signedIn()) return shell(<p>Sign in to add an event to the calendar.</p>);
   if (queued) {
-    return (
-      <main className="ev-page">
-        <SlimHeader back="/events" title="New event" />
+    return shell(
+      <>
         <p role="status">Thank you. Your event is with the hub's admins, and goes on the calendar once they approve it.</p>
         <Link to="/events">Back to the calendar</Link>
-      </main>
+      </>,
     );
   }
-  return (
-    <main className="ev-page ev-page--form">
-      <SlimHeader back="/events" title="New event" />
-      <form className="ev-form" onSubmit={submit}>
-        <label>
-          Name
-          <input required maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
-        </label>
-        <label>
-          What it is
-          <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
-        </label>
-        <WhenWhere start={start} end={end} where={where} onStart={setStart} onEnd={setEnd} onWhere={setWhere} />
-        {error && <p role="alert" className="ev-error">{error}</p>}
-        <div className="ev-actions">
-          <button type="submit" className="ev-button ev-button--primary" disabled={busy}>
-            {busy ? "Submitting…" : "Submit"}
-          </button>
-        </div>
-      </form>
-    </main>
-  );
-}
-
-function EditEventPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [event, setEvent] = useState<EventView | null>(null);
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
-  const [where, setWhere] = useState<WhereFields>(EMPTY_WHERE);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api<EventView>(`/process/${id}/state`).then(
-      (e) => {
-        setEvent(e);
-        setStart(toLocalInput(e.start_time));
-        setEnd(toLocalInput(e.end_time));
-        setWhere(whereFieldsOf(e.location));
-      },
-      (e: Error) => setError(e.message),
-    );
-  }, [id]);
-
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await api(`/process/${id}/action`, {
-        method: "POST",
-        body: { type: "edit", payload: { start_time: fromLocalInput(start), end_time: fromLocalInput(end), location: whereLocation(where) } },
-      });
-      navigate(`/events/${id}`);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <main className="ev-page ev-page--form">
-      <SlimHeader back={`/events/${id}`} title="Change time or place" />
-      {!event && !error && <p className="ev-muted">Loading…</p>}
-      {event && (
-        <form className="ev-form" onSubmit={save}>
-          <p className="ev-muted">{event.title}</p>
-          <WhenWhere start={start} end={end} where={where} onStart={setStart} onEnd={setEnd} onWhere={setWhere} />
-          <div className="ev-actions">
-            <button type="submit" className="ev-button ev-button--primary" disabled={busy}>
-              {busy ? "Saving…" : "Save"}
-            </button>
-          </div>
-        </form>
-      )}
-      {error && <p role="alert" className="ev-error">{error}</p>}
-    </main>
+  return shell(
+    <form className="ev-form" onSubmit={submit}>
+      <Field label="Name" required htmlFor="ev-title">
+        <TextInput id="ev-title" required maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
+      </Field>
+      <Field label="What it is" htmlFor="ev-description">
+        <TextArea id="ev-description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
+      </Field>
+      <WhenWhere start={start} end={end} where={where} onStart={setStart} onEnd={setEnd} onWhere={setWhere} />
+      <div className="ev-actions">
+        <Button type="submit" variant="primary" disabled={busy}>
+          {busy ? (editId ? "Saving…" : "Submitting…") : editId ? "Save" : "Submit"}
+        </Button>
+      </div>
+    </form>,
   );
 }
 
@@ -678,9 +584,8 @@ const eventsUi: ProcessUi = {
   type: "civic.event",
   routes: [
     { path: "/events", element: <CalendarPage /> },
-    { path: "/events/new", element: <NewEventPage /> },
+    { path: "/events/new", element: <EventFormPage /> },
     { path: "/events/:id", element: <EventPage /> },
-    { path: "/events/:id/edit", element: <EditEventPage /> },
   ],
   feed: { event: { card: eventCard } },
 };

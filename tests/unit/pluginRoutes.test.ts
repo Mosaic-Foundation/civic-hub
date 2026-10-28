@@ -40,6 +40,7 @@ const ADDED: Record<string, string> = {
   "PATCH /calendar/drafts/:id": "Events: filling an event draft",
   "POST /calendar/drafts/:id/submit": "Events: submitting an event for review",
   "GET /calendar/events": "Events: the calendar, for its page",
+  "GET /calendar/events/:id/going": "Events: how many are going, and who as the hub discloses it (engine 2, A3)",
   "GET /calendar/hub.ics": "Events: the calendar as iCalendar, to subscribe to",
 };
 
