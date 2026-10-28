@@ -753,8 +753,10 @@ test("the Plugins page's Install, Remove and Update each have a \"?\" with its d
   const page = await open(browser);
   await visitAs(page, admin);
   await page.goto("/admin/settings/plugins");
-  const remove = page.getByRole("button", { name: "About Remove" }).first();
-  await remove.click();
+  // A card is collapsed until clicked; Remove is in an installed one's body. Opening it changes nothing.
+  const votes = page.getByRole("region", { name: "Votes" });
+  await votes.getByRole("button", { name: /^Votes/, expanded: false }).click();
+  await votes.getByRole("button", { name: "About Remove" }).click();
   await expect(page.getByRole("note").getByRole("link", { name: "More in the docs" })).toHaveAttribute(
     "href",
     /^https:\/\/docs\.civic\.social\/reference\/plugins#plugins-remove$/,
