@@ -35,3 +35,8 @@ export { installAdapters } from "../../src/adapters/index.js";
 export { fakeAdapters } from "../../src/adapters/fakes/index.js";
 export { installStores } from "../../src/stores/index.js";
 export { mountEverythingForTests } from "../../src/plugins/mountedState.js";
+// Steps 11 to 17 (engine 2, ADR-017): what the SDK v1 surface promises.
+export { namesFor, namesShown, disclosurePolicyOf } from "../../src/services/disclosedNames.js";
+export { typeStatusOf } from "../../src/processes/registry.js";
+export { DECLARED_FEED_KINDS, classifyActivity } from "../../src/shared/feedActivity.js";
+export { THEME_TYPE_KEYS, declaredTypeStylesheet } from "../../src/shared/theme.js";

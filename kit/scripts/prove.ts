@@ -5,6 +5,8 @@
 // packages (./pack.ts), installed into an empty folder outside this
 // repository, and `civic-conformance` run there against
 //   - the worked example (examples/straw-poll): it must pass;
+//   - the SDK tour (kit/conformance/fixtures/sdk-tour), every SDK v1
+//     capability through the SDK alone (steps 11 to 17): it must pass;
 //   - a deliberately broken copy of it (kit/conformance/fixtures/broken-poll,
 //     which lets a resident answer twice): it must not pass;
 //   - a copy whose migration is not additive (kit/conformance/fixtures/
@@ -29,6 +31,7 @@ const project = join(dir, "project");
 cpSync(join(ROOT, "examples/straw-poll"), join(project, "straw-poll"), { recursive: true });
 cpSync(join(ROOT, "kit/conformance/fixtures/broken-poll"), join(project, "broken-poll"), { recursive: true });
 cpSync(join(ROOT, "kit/conformance/fixtures/not-additive"), join(project, "not-additive"), { recursive: true });
+cpSync(join(ROOT, "kit/conformance/fixtures/sdk-tour"), join(project, "sdk-tour"), { recursive: true });
 writeFileSync(join(project, "package.json"), JSON.stringify({ name: "plugin-dev", private: true, type: "module" }, null, 2) + "\n");
 const install = spawnSync("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline", sdk, conformance], { cwd: project, stdio: "inherit" });
 if (install.status !== 0) {
@@ -41,10 +44,13 @@ const run = (pkg: string) =>
 
 const example = run("straw-poll");
 const broken = run("broken-poll");
+// Every SDK v1 capability through the SDK alone (engine 2, steps 11 to 17).
+const tour = run("sdk-tour");
 const refusal = spawnSync(join(project, "node_modules/.bin/civic-conformance"), ["./not-additive"], { cwd: project, encoding: "utf8", env: { PATH: process.env.PATH, HOME: process.env.HOME } });
 const refused = refusal.status !== 0 && refusal.stderr.includes("it drops something") && !refusal.stdout.includes("applied to the local stack");
 console.log(`\nprove: the example ${example === 0 ? "passed, as it must" : `did not pass (exit ${example})`}`);
+console.log(`prove: the SDK tour ${tour === 0 ? "passed, as it must" : `did not pass (exit ${tour})`}`);
 console.log(`prove: the broken copy ${broken !== 0 ? "did not pass, as it must not" : "PASSED, which it must not"}`);
 console.log(`prove: the copy with a migration that is not additive ${refused ? "was refused before anything ran, as it must be" : `was not refused as it must be:\n${refusal.stderr}`}`);
 if (!process.argv.includes("--keep-dir")) rmSync(dir, { recursive: true, force: true });
-process.exit(example === 0 && broken !== 0 && refused ? 0 : 1);
+process.exit(example === 0 && tour === 0 && broken !== 0 && refused ? 0 : 1);

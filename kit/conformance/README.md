@@ -103,6 +103,33 @@ additive (refused); CI runs it too.
     accounted for, and counted as nothing).
     The hub's analytics counts every type from this declaration alone.
 
+11. **Edits** (where its edit policy lets the creator edit a live one): the
+    hub's edit path opens a draft of it; flagged text is refused and nothing
+    changes; a clean edit is applied, recorded as `civic.process.updated`;
+    a stranger may not edit.
+12. **A retry-safe action** (`retry_safe: true`, open to residents): two
+    calls at once by one person write its events once. Write your own tables
+    with `afterActionCommits`.
+13. **Names under the disclosure policy:** `namesFor` shows names to whom the
+    type's policy says (public: everyone; members: signed-in members;
+    anonymous: admins only), and never an account id.
+14. **Statuses of its own** (manifest `statuses`): every process the walk
+    made reads a declared status that is a case of its hub status, served as
+    `type_status`.
+15. **Its own card kind** (manifest `feed.kinds`): its colour family is a
+    theme key, the stylesheet has its pill and edge, and its events' cards
+    wear its kinds, never another package's.
+16. **The official caller:** an action open to officials (and not to
+    residents) is refused to a resident and allowed to an official; with
+    `creation.resident.publish_at_once: ["official"]`, an official's
+    submission on a beta hub goes live at once and a resident's waits.
+17. **The hub's UI kit:** a package that draws its own pages imports its
+    controls from `@civic-social/plugin-sdk/ui`, and no stylesheet of its
+    sets `--color-primary-ink` text on a `--color-primary` fill.
+
+`kit/conformance/fixtures/sdk-tour` uses every one of 11 to 17 through the
+SDK alone; `kit/scripts/prove.ts` runs it from an empty folder.
+
 Types only the hub creates (briefs, meeting summaries, the retired vote
 results) get steps 1 and 10, and are reported as "not walked". A brief is exercised in
 use by step 5 of every type that makes one.

@@ -1,6 +1,6 @@
 {
   "name": "@civic-social-examples/plugin-straw-poll",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "type": "module",
   "description": "Straw polls: one question, one answer each, closing on a date. The worked example of a Civic Hub plugin package (docs/BUILD-A-PLUGIN.md).",

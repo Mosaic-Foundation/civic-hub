@@ -1,10 +1,10 @@
-// The straw poll's UI module: one page, its own React component, using the
-// React the hub runs. It reads the poll and answers through the hub's own
+// The straw poll's UI module: one page, its own React component drawn with
+// the hub's UI kit (@civic-social/plugin-sdk/ui), using the React the hub runs. It reads the poll and answers through the hub's own
 // routes for every process (GET /process/:id/state, POST /process/:id/action).
 
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import type { ProcessUi } from "@civic-social/plugin-sdk/ui";
+import { Button, type ProcessUi } from "@civic-social/plugin-sdk/ui";
 
 interface Poll {
   title: string;
@@ -54,9 +54,7 @@ function StrawPollPage() {
         <ul>
           {poll.options.map((o) => (
             <li key={o}>
-              <button type="button" onClick={() => answer(o)}>
-                {o}
-              </button>
+              <Button onClick={() => answer(o)}>{o}</Button>
             </li>
           ))}
         </ul>

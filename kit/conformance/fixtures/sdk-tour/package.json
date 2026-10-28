@@ -1,0 +1,11 @@
+{
+  "name": "@civic-social-examples/plugin-sdk-tour",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SDK tour: a conformance fixture that uses every capability of SDK v1 (edits, after-commit writes, names, statuses, card kinds, officials, the UI kit) from outside the hub.",
+  "peerDependencies": {
+    "@civic-social/plugin-sdk": "^0.1.0",
+    "express": "^4.22.3"
+  }
+}

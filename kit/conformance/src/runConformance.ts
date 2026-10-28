@@ -29,16 +29,28 @@
 //  10. what counts as its participation is declared (ADR-016): at least one
 //      participation event, or "elsewhere" or "none" said outright; every
 //      resident's action that emits anything emits an event it counts.
+//  11–17. what SDK v1 promises (engine 2, ADR-017), each where the type
+//      uses it: 11 an edit through the hub's edit path (the check refuses
+//      flagged text, a clean edit is recorded, a stranger may not); 12 a
+//      retry-safe action called twice at once writes its events once; 13
+//      names go to whom its disclosure policy says, never an account; 14 its
+//      own statuses are cases of its hub status; 15 its own card kind has its
+//      colour family, stylesheet and digest section; 16 an official may call
+//      what is open to officials, and publishes at once where declared; 17
+//      its own pages draw with the hub's UI kit.
 // Tier 2 (sandboxed) has a slot and no runtime yet.
 //
 // Needs the local stack and a hub server started with CIVIC_POLIS_FAKE=on and
 // CIVIC_COC_FAKE=on (CIVIC_API_BASE). kit/conformance/README.md says what a plugin author
 // needs to make it pass.
 
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { HOST_ROOT } from "@civic-social/plugin-sdk/host";
 import { call } from "./support/http.js";
 import { accountIdOf, foreignIds } from "./support/accountIds.js";
-import { localRest } from "./support/localStack.js";
+import { localRest, localStack } from "./support/localStack.js";
 import {
   HOST_EVENT_TYPES,
   JOBS,
@@ -49,6 +61,16 @@ import {
   participationProblem,
   publicPayloadKeys,
   rowToEvent,
+  namesFor,
+  namesShown,
+  disclosurePolicyOf,
+  typeStatusOf,
+  DECLARED_FEED_KINDS,
+  classifyActivity,
+  THEME_TYPE_KEYS,
+  declaredTypeStylesheet,
+  FAKE_COC_FLAG,
+  loadedPackages,
   toActivity,
   toRedactedActivity,
   withHubScope,
@@ -697,8 +719,203 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
     });
   });
 
+  sdkSurfaceSteps(d, facts, touched);
   for (const service of d.outside_services) tierThree(d, facts, service, touched);
 }
+
+/**
+ * Steps 11 to 17 (engine 2, ADR-017): what SDK v1 promises a package beyond
+ * the walk, each checked where the type uses it and skipped, named, where it
+ * does not. kit/conformance/fixtures/sdk-tour uses every one, through the SDK
+ * alone.
+ */
+function sdkSurfaceSteps(d: ProcessTypeDescriptor, facts: HostFacts, touched: Array<{ id: string; hub: Hub }>): void {
+  const manifest = getManifest(d.type);
+
+  describe("11. edits through the hub's edit path", () => {
+    it("the creator edits a live one: flagged text is refused and nothing changes; a clean edit is applied and recorded; a stranger may not", async () => {
+      if (!d.creation.resident) return;
+      const { token } = await resident(DEMO);
+      const id = await liveAs(d, facts, DEMO, token);
+      touched.push({ id, hub: DEMO });
+      const policy = await call("GET", `/process/${id}/edit-policy`, DEMO.host, undefined, token);
+      expect(policy.status).toBe(200);
+      if (!policy.body.editable) return; // this type is not edited once live
+      const stranger = await resident(DEMO);
+      expect((await call("GET", `/process/${id}/edit-policy`, DEMO.host, undefined, stranger.token)).body.editable).toBe(false);
+      expect((await call("POST", `/process/${id}/edit`, DEMO.host, {}, stranger.token)).status).toBe(403);
+
+      const started = await call("POST", `/process/${id}/edit`, DEMO.host, {}, token);
+      expect(started.status, JSON.stringify(started.body)).toBe(200);
+      const draftId = started.body.draft_id as string;
+      const path = d.creation.resident.drafts;
+      const before = (await call("GET", `/process/${id}/state`, DEMO.host)).body;
+      const renamed = uniqueTitle("Edited");
+
+      await call("PATCH", `${path}/${draftId}`, DEMO.host, { title: renamed, description: `Edited ${FAKE_COC_FLAG}` }, token);
+      const flagged = await call("POST", `${path}/${draftId}/submit`, DEMO.host, { edit_process_id: id }, token);
+      expect(flagged.status, JSON.stringify(flagged.body)).toBe(400);
+      expect((await call("GET", `/process/${id}/state`, DEMO.host)).body.title).toBe(before.title);
+
+      await call("PATCH", `${path}/${draftId}`, DEMO.host, { title: renamed, description: "Edited, cleanly." }, token);
+      const applied = await call("POST", `${path}/${draftId}/submit`, DEMO.host, { edit_process_id: id }, token);
+      expect(applied.status, JSON.stringify(applied.body)).toBe(200);
+      expect((await call("GET", `/process/${id}/state`, DEMO.host)).body.title).toBe(renamed);
+      expect((await eventsOf(id)).map((e) => e.event_type)).toContain("civic.process.updated");
+    });
+  });
+
+  describe("12. a retry-safe action", () => {
+    // Retry-safe means executeAction may run it again on a fresh read when
+    // another write landed in between, so its every other effect waits for
+    // the commit (afterActionCommits): however its calls interleave, its
+    // events are written once per call that won.
+    const retrySafe = d.actions.filter((x) => x.retry_safe && x.callers.includes("resident"));
+    if (retrySafe.length === 0) it.skip("none of its resident actions is declared retry-safe", () => {});
+    for (const a of retrySafe) {
+      it(`${a.name}: two calls at once by one person write its events once`, async () => {
+        const { token } = await resident(DEMO);
+        const id = await liveAs(d, facts, DEMO, token);
+        touched.push({ id, hub: DEMO });
+        const payload = examplePayload(d, a.name, await processRow(id));
+        await Promise.all([act(DEMO, id, a.name, payload, token), act(DEMO, id, a.name, payload, token)]);
+        const written = (await eventsOf(id)).filter((e) => a.emits.includes(e.event_type));
+        expect(written.length, `${a.name} wrote ${written.length} events for one person`).toBeLessThanOrEqual(a.emits.length);
+      });
+    }
+  });
+
+  describe("13. names under the disclosure policy", () => {
+    it("names go to whom the type's policy says, never an account", async () => {
+      // The engine is asked in this process (the SDK's namesFor), on the local stack.
+      const stack = localStack();
+      process.env.SUPABASE_URL ||= stack.url;
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||= stack.key;
+      const { token } = await resident(DEMO);
+      const id = await liveAs(d, facts, DEMO, token);
+      touched.push({ id, hub: DEMO });
+      const row = await processRow(id);
+      const creator = row.created_by!;
+      const policy = disclosurePolicyOf({ definition: { type: d.type, version: "1" }, state: row.state } as never);
+      const asked = (t?: string) =>
+        withHubScope(hubRowCache(DEMO.slug), {}, () =>
+          namesFor({ headers: t ? { authorization: `Bearer ${t}` } : {} } as never, id, [creator]),
+        ) as Promise<string[] | null>;
+      const adminNames = await asked(await admin(DEMO));
+      expect(adminNames).toHaveLength(1);
+      expect(adminNames![0]).not.toBe(creator);
+      const publicNames = await asked();
+      expect(publicNames === null).toBe(!namesShown(policy, { signedIn: false, admin: false }));
+      const member = await resident(DEMO);
+      const memberNames = await asked(member.token);
+      expect(memberNames === null).toBe(!namesShown(policy, { signedIn: true, admin: false }));
+      for (const names of [publicNames, memberNames]) if (names) expect(names).not.toContain(creator);
+    });
+  });
+
+  describe("14. statuses of its own", () => {
+    it("every process it walked reads a declared status that is a case of its hub status", async () => {
+      if (!manifest?.statuses) return;
+      for (const { id } of touched) {
+        const row = await processRow(id);
+        if (row.type !== d.type || !["active", "closed", "finalized", "proposed", "threshold_met"].includes(row.status)) continue;
+        const status = typeStatusOf(manifest, { status: row.status as ProcessStatus, state: row.state });
+        expect(status, `${id} (${row.status}) reads no declared status`).toBeTruthy();
+        const declared = manifest.statuses.declared.find((x) => x.id === status!.id)!;
+        expect(declared.hub, `${status!.id} is declared a case of ${declared.hub}, the process is ${row.status}`).toBe(row.status);
+        const state = await call("GET", `/process/${id}/state`, DEMO.host);
+        if (state.status === 200) expect(state.body.type_status).toEqual(status);
+      }
+    });
+  });
+
+  describe("15. its own card kind", () => {
+    it("a declared kind has its colour family, its stylesheet rules and its digest section, and its cards are of it", async () => {
+      for (const k of manifest?.feed?.kinds ?? []) {
+        expect(DECLARED_FEED_KINDS.get(k.kind)?.type).toBe(d.type);
+        expect(THEME_TYPE_KEYS).toContain(k.color.key);
+        expect(declaredTypeStylesheet()).toContain(`.feed-pill--type-${k.color.key}{`);
+      }
+      // The cards its events make wear its kinds, never another package's.
+      for (const { id } of touched) {
+        for (const row of await eventRowsOf(id)) {
+          const kind = classifyActivity(rowToEvent(row) as never)?.kind;
+          const declaredBy = kind ? DECLARED_FEED_KINDS.get(kind)?.type : undefined;
+          if (declaredBy) expect(declaredBy, `${row.event_type} wears ${kind}, another type's kind`).toBe(d.type);
+        }
+      }
+    });
+  });
+
+  describe("17. its pages on the hub's UI kit", () => {
+    it("a package that draws its own pages draws them with @civic-social/plugin-sdk/ui, and never sets -ink text on a primary fill", () => {
+      const pkg = loadedPackages().find((p) => p.type === d.type);
+      if (!pkg) return;
+      const dir = resolve(HOST_ROOT, pkg.dir);
+      const ui = existsSync(join(dir, "ui.tsx")) ? readFileSync(join(dir, "ui.tsx"), "utf8") : "";
+      // The hub's own packages draw the hub's own pages (ui/src/pages); a
+      // package on SDK v1 draws its own, with the kit.
+      const ownPages = /routes:\s*\[/.test(ui) && !/from\s+["'](\.\.\/)+ui\/src\//.test(ui);
+      if (ownPages) {
+        expect(ui, `${d.type}: its pages import nothing from @civic-social/plugin-sdk/ui`).toMatch(
+          /import\s*\{[^}]*\b(Button|Field|TextInput|TextArea|Select|DateTimeInput|DraftShell)\b[^}]*\}\s*from\s*["']@civic-social\/plugin-sdk\/ui["']/,
+        );
+      }
+      for (const f of readdirSync(dir).filter((x) => x.endsWith(".css"))) {
+        expect(inkOnPrimary(readFileSync(join(dir, f), "utf8")), `${d.type}: ${f}`).toEqual([]);
+      }
+    });
+  });
+
+  describe("16. the official caller", () => {
+    it("an action open to officials: an official may call it, a resident may not; officials' submissions skip the wait where declared", async () => {
+      const forOfficials = d.actions.filter((x) => (x.callers as readonly string[]).includes("official") && !x.callers.includes("resident"));
+      const atOnce = d.creation.resident?.publish_at_once?.includes("official");
+      if (forOfficials.length === 0 && !atOnce) return;
+      const official = await resident(BETA);
+      const officialId = await accountIdOf(BETA.host, official.token);
+      await localRest(`users?id=eq.${officialId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ official_type: "town_council", official_title: "Council member" }),
+      });
+      const plain = await resident(BETA);
+      if (atOnce) {
+        const s = await submitDraft(d, facts, BETA, official.token, { check: "passed" });
+        expect(s.status, JSON.stringify(s.body)).toBe(201);
+        expect(s.body.auto_approved, "an official's submission on a beta hub goes live at once").toBe(true);
+        touched.push({ id: s.processId, hub: BETA });
+        const r = await submitDraft(d, facts, BETA, plain.token, { check: "passed" });
+        expect(r.body.auto_approved).toBe(false);
+      }
+      for (const a of forOfficials) {
+        const id = await liveProcess(d, facts, BETA);
+        touched.push({ id, hub: BETA });
+        const payload = examplePayload(d, a.name, await processRow(id));
+        expect((await act(BETA, id, a.name, payload, plain.token)).status).toBe(403);
+        const ok = await act(BETA, id, a.name, payload, official.token);
+        expect(ok.status, JSON.stringify(ok.body)).toBeLessThan(300);
+      }
+    });
+  });
+}
+
+/** Step 17's rule: a stylesheet rule that fills with the primary colour sets its text with -text, never -ink. */
+function inkOnPrimary(css: string): string[] {
+  const out: string[] = [];
+  for (const m of css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (/background(-color)?\s*:\s*var\(--color-primary\)/.test(m[2]) && /(^|;|\s)color\s*:\s*var\(--color-primary-ink/.test(m[2])) out.push(m[1].trim());
+  }
+  return out;
+}
+
+const hubRows = new Map<string, unknown>();
+/** A hub's row, read once, for the steps that ask the engine in this process. */
+function hubRowCache(slug: string): never {
+  return hubRows.get(slug) as never;
+}
+beforeAll(async () => {
+  for (const hub of [BETA, DEMO]) hubRows.set(hub.slug, await hubRow(hub.slug));
+});
 
 // --- The walk ------------------------------------------------------------------
 
