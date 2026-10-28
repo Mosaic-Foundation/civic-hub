@@ -4,7 +4,7 @@
 // any registered type, is refused with 403 admin_required before anything
 // happens: the process row and its events stay as they were. The conformance
 // suite walks the types residents create; this covers every type, the ones
-// only the hub creates (briefs, meeting summaries, vote results) included,
+// only the hub creates (briefs, meeting summaries) included,
 // and an action no descriptor declares.
 //
 // Needs the local stack seeded as in CI and a server (CIVIC_API_BASE).
@@ -94,7 +94,6 @@ describe("a resident calling an action not open to residents is refused, for eve
         "civic.project",
         "civic.proposal",
         "civic.vote",
-        "civic.vote_results",
         "civic.wordcloud",
       ],
     );

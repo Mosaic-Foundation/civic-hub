@@ -93,7 +93,6 @@ describe("registry snapshot — adding a process type forces an archive decision
     "civic.project",
     "civic.proposal",
     "civic.vote",
-    "civic.vote_results",
     "civic.wordcloud",
   ];
 

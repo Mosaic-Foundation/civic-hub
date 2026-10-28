@@ -1,13 +1,11 @@
 /**
- * The admin's publication review (AdminBriefs and AdminVoteResults on one
- * shell, components/AdminPublicationReview; frontend pass, 2026-10-24).
+ * The admin's publication review (AdminBriefs on the shared shell,
+ * components/AdminPublicationReview; frontend pass, 2026-10-24; the vote
+ * results review retired into briefs, engine 2, C).
  *
  * A pending brief: in the queue with its status, the filter finds it, it
  * opens for review, a save keeps it pending, and Approve and publish asks for
  * a confirmation and publishes it (the brief a vote this run closes makes).
- * A legacy vote result, written straight into the local stack (nothing makes
- * them any more), opens for review with its positions and the vote it
- * snapshotted.
  */
 
 import { test, expect } from "@playwright/test";
@@ -83,38 +81,8 @@ test.describe("the publication review", () => {
     await expect(row.locator(".admin-brief-status-published")).toBeVisible();
   });
 
-  test("a vote result opens for review with its positions and the vote it snapshotted", async ({ page, request }) => {
-    const hub = await hubId(request);
-    const admin = await session(hub, adminEmailFor(hub));
-    const source = await liveVote(request, admin.token, `Results source ${run}`);
-    const id = `proc_vr_review_${run}`;
-    await localRest("processes", {
-      method: "POST",
-      body: JSON.stringify({
-        id, hub_id: hub, type: "civic.vote_results", title: `Vote results ${run}`, description: "d", status: "finalized",
-        state: {
-          type: "civic.vote_results", source_process_id: source, publication_status: "pending",
-          generated_at: new Date().toISOString(), approved_at: null, published_at: null, delivered_to: [],
-          content: {
-            title: `Vote results ${run}`, participation_count: 4,
-            position_breakdown: [
-              { option_id: "yes", option_label: "Yes", count: 3, percentage: 75 },
-              { option_id: "no", option_label: "No", count: 1, percentage: 25 },
-            ],
-            comments: [], admin_notes: "",
-            vote_context: { description: "Should we?", options: [{ option_id: "yes", option_label: "Yes" }, { option_id: "no", option_label: "No" }], starts_at: null, ends_at: null },
-          },
-        },
-      }),
-    });
-
-    await visitAs(page, admin.token);
-    await page.goto(`/admin/vote-results/${id}`);
-    await expect(page.getByRole("heading", { name: `Review: Vote results ${run}` })).toBeVisible();
-    await expect(page.locator(".brief-positions-list")).toContainText("Yes: 3 (75%)");
-    await expect(page.locator(".admin-vote-context-description")).toHaveText("Should we?");
-    await expect(page.getByRole("button", { name: "Save draft" })).toBeVisible();
-    await page.getByRole("button", { name: /Back to Briefs/ }).click();
-    await expect(page.locator(".admin-proposal-item", { hasText: `Vote results ${run}` })).toContainText("4 votes");
-  });
+  // Removed (engine 2, C): "a vote result opens for review with its positions
+  // and the vote it snapshotted". civic.vote_results is retired into briefs;
+  // /admin/vote-results/:id no longer exists (a converted record is reviewed
+  // as a brief, covered above).
 });

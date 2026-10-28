@@ -106,8 +106,10 @@ describe("A2: search finds only what is public", () => {
         recipients: [{ email: recipient }],
       },
     });
+    // An approved-but-unpublished record: a brief now (civic.vote_results was
+    // retired into briefs, engine 2, C).
     await insertProcess({
-      type: "civic.vote_results",
+      type: "civic.brief",
       status: "active",
       title: "Pending results",
       state: { publication_status: "approved", content: { admin_notes: word("resultsnotes"), comments: [] } },

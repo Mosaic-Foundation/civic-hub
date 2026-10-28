@@ -354,7 +354,7 @@ interface PluginCase {
 }
 
 const PLUGIN_CASES: PluginCase[] = [
-  { id: "vote", route: { method: "GET", path: () => "/votes/drafts/duration-limits", admin: true }, types: ["civic.vote", "civic.vote_results"] },
+  { id: "vote", route: { method: "GET", path: () => "/votes/drafts/duration-limits", admin: true }, types: ["civic.vote"] },
   { id: "proposal", route: { method: "GET", path: () => "/proposals" }, types: ["civic.proposal"] },
   { id: "project", route: { method: "GET", path: () => "/projects" }, types: ["civic.project"] },
   { id: "announcement", route: { method: "GET", path: () => "/announcements" }, types: ["civic.announcement"] },
@@ -388,7 +388,7 @@ let athensResident = "";
  * the extra pending fixture inserted below.
  */
 function fixtureState(type: string, pending = false): Record<string, unknown> {
-  if (type === "civic.brief" || type === "civic.vote_results") {
+  if (type === "civic.brief") {
     return { publication_status: pending ? "pending" : "published" };
   }
   if (type === "civic.meeting_summary") return { approval_status: pending ? "pending" : "published" };

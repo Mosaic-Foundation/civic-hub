@@ -69,11 +69,11 @@ afterAll(async () => {
 });
 
 describe("what the hub makes is public only once published", () => {
-  it("an unpublished brief, meeting summary and vote results record are not found, by a visitor or a resident", async () => {
+  it("an unpublished brief and meeting summary are not found, by a visitor or a resident", async () => {
     const ids = [
       await insert("civic.brief", "active", brief("pending")),
       await insert("civic.meeting_summary", "active", { approval_status: "pending", meeting_title: `Meeting ${run}`, blocks: [] }),
-      await insert("civic.vote_results", "active", { publication_status: "pending", admin_notes: `Draft notes ${run}` }),
+      // civic.vote_results is retired into briefs (engine 2, C): its records are briefs, covered above.
     ];
     for (const id of ids) {
       for (const token of [undefined, resident]) {

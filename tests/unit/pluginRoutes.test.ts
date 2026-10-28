@@ -9,6 +9,12 @@
  * Kept as a fixture test until the first package outside the nine lands: it is
  * the cheapest guard against a mount-order slip. A route added on purpose
  * after e92804c is listed in ADDED.
+ *
+ * Engine 2, C (2026-10-28): civic.vote_results is retired into briefs, so its
+ * four /admin/vote-results routes were removed from routes-before.json (they
+ * are gone on purpose). `GET /vote-results/:id` stays in it: the same route is
+ * now the civic.brief package's legacy redirect (301 to ../brief/:id,
+ * packages/civic.brief/legacyRoutes.ts), so old shared API links keep working.
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync } from "node:fs";

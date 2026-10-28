@@ -22,7 +22,6 @@
     "civic.vote": "vote",
     "civic.proposal": "proposal",
     "civic.project": "project",
-    "civic.vote_results": "vote",
     "civic.brief": "brief",
     "civic.announcement": "announcement",
     "civic.meeting_summary": "meeting_summary",
@@ -1294,14 +1293,6 @@
       }
     },
     {
-      "type": "civic.vote_results",
-      "plugin": "vote",
-      "label": "Outcome",
-      "plural": "Outcomes",
-      "name": "Vote results",
-      "icon": "outcome"
-    },
-    {
       "type": "civic.brief",
       "plugin": "brief",
       "label": "Outcome",
@@ -1378,7 +1369,6 @@
     "civic.vote": "/process/p_x",
     "civic.proposal": "/proposal/p_x",
     "civic.project": "/project/p_x",
-    "civic.vote_results": "/vote-results/p_x",
     "civic.brief": "/brief/p_x",
     "civic.announcement": "/announcement/p_x",
     "civic.meeting_summary": "/meeting-summary/p_x",

@@ -15,7 +15,7 @@ import { activityTypeIndex, toActivity } from "../../src/events/activitySerializ
 import { redactEvent, toRedactedActivity } from "../../src/events/publicRedaction.js";
 import { FEED_EVENT_TYPES, classifyActivity } from "../../src/shared/feedActivity.js";
 import { FEED_WIRE_FORMS, fromWireActivity, nextCursorOf } from "../../src/shared/feedWire.js";
-import { MANIFEST_LIST } from "../../src/shared/processManifests.js";
+import { LEGACY_TYPES, MANIFEST_LIST } from "../../src/shared/processManifests.js";
 
 const WIRE = { hostname: "athens.civic.social", process_hostname: "athens.civic.social", actor_hostname: "athens.civic.social" };
 
@@ -54,6 +54,8 @@ function payloads(): Array<Record<string, unknown>> {
     { announcement: { title: "Synced", source: { origin: "news" } } },
     { meeting_summary: {}, summary_id: "ms_1" },
     { results_id: "vr_1" },
+    // An old vote results event naming its retired type (engine 2, C): same card via legacyTypes.
+    { process: { type: "civic.vote_results" }, results_id: "vr_1" },
     { wordcloud_snapshot: {} },
     { action: "official_response", official_name: "Jo Official", process: { type: "civic.brief" } },
     { action: "something_else", process: { type: "civic.vote" } },
@@ -121,7 +123,9 @@ describe("feedWire: the feed's cards read back off /events", () => {
             // The types this event can have been about: those with a card
             // rule of their own for its event type, which make this card from
             // it. The stream reads it the same as each.
-            const types = MANIFEST_LIST.map((m) => m.descriptor.type).filter(
+            // Retired types count too (engine 2, C): an old results event
+            // that predates data.process.type reads as civic.vote_results.
+            const types = [...MANIFEST_LIST.map((m) => m.descriptor.type), ...LEGACY_TYPES.map((l) => l.type)].filter(
               (t) => classifyActivity(stamp({ ...seen, data: {} }, t)) !== null && isEqual(classifyActivity(stamp(seen, t)), card),
             );
             expect(types.length, `${label}: some type stores it`).toBeGreaterThan(0);

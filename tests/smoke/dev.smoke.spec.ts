@@ -373,6 +373,8 @@ test("the hub's numbers at /analytics: 404 or 401 with Public numbers off, 200 a
     expect(res.headers()["cache-control"]).toContain("no-store");
     const body = await res.json();
     expect(body.suppression).toEqual({ applied: true, below: 5, shown_as: "fewer than 5" });
+    // What "fewer than 5" means, said in every answer (engine 2, D14).
+    expect(body.note).toMatch(/fewer than 5/);
     expect(Object.keys(body.totals).sort()).toEqual(["active_residents", "new_residents", "outcomes", "participations", "processes_closed", "processes_created"]);
     expect(JSON.stringify(body)).not.toMatch(/user_[0-9a-f]{8}|@/);
   }
@@ -732,6 +734,32 @@ test("at desktop width with Navigation set to Sidebar, the sidebar replaces the 
     });
     if (back.ok()) navLayoutBefore = null;
   }
+});
+
+test("engine 2 on the live site: a retired vote-results address redirects to its brief; who is going answers no names signed out, read-only", async ({ request }) => {
+  // A vote's results from before briefs are briefs now (C): the address answers with a redirect, whatever the id.
+  const vr = await request.get(`${apiBase()}/vote-results/proc_smoke_missing`, { maxRedirects: 0 });
+  expect(vr.status()).toBe(301);
+  expect(vr.headers()["location"]).toBe("../brief/proc_smoke_missing");
+  // The Events plugin's names under the disclosure policy (A3): signed out, a count and no names.
+  const config = await (await request.get(`${apiBase()}/hub-config`)).json();
+  if (config.settings?.["plugin.events.enabled"] === "false") return;
+  const going = await request.get(`${apiBase()}/calendar/events/proc_smoke_missing/going`);
+  expect(going.status()).toBe(200);
+  expect(await going.json()).toEqual({ count: 0, names: null });
+});
+
+test("the Plugins page's Install, Remove and Update each have a \"?\" with its docs anchor", async ({ browser }) => {
+  const page = await open(browser);
+  await visitAs(page, admin);
+  await page.goto("/admin/settings/plugins");
+  const remove = page.getByRole("button", { name: "About Remove" }).first();
+  await remove.click();
+  await expect(page.getByRole("note").getByRole("link", { name: "More in the docs" })).toHaveAttribute(
+    "href",
+    /^https:\/\/docs\.civic\.social\/reference\/plugins#plugins-remove$/,
+  );
+  await page.close();
 });
 
 test("a \"?\" beside a setting opens its note, with a link to the docs", async ({ browser }) => {

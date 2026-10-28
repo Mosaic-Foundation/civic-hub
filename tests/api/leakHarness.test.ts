@@ -393,6 +393,8 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /calendar/drafts/": {},
   "GET /calendar/drafts/:id": {},
   "GET /calendar/events": {},
+  // Who is going (engine 2, A3): Athens naming a Floyd event must get nothing of Floyd's.
+  "GET /calendar/events/:id/going": {},
   "GET /calendar/hub.ics": {},
   // Since Audit 3 every drafting kind has the owner's list route.
   "GET /projects/drafts/": {},
@@ -416,8 +418,6 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /notifications/edits": {},
   "GET /admin/proposals": {},
   "GET /admin/proposals/:id": {},
-  "GET /admin/vote-results": {},
-  "GET /admin/vote-results/:id": {},
   "GET /admin/briefs": {},
   "GET /admin/briefs/:id": {},
   "GET /admin/meeting-summaries": {},
@@ -446,6 +446,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /admin/settings": {},
   "GET /admin/moderation/log": {},
   "GET /votes/:id/log": {},
+  // Retired type (engine 2, C): now the brief package's 301 to ../brief/:id; answers without reading a row.
   "GET /vote-results/:id": {},
   "GET /brief/": {},
   "GET /brief/:id": {},
@@ -675,8 +676,6 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /reviews/:reviewId/revise": { body: { title: X.title, description: X.description } },
   "POST /reviews/:reviewId/withdraw": { body: {} },
   "POST /reviews/:reviewId/reopen": { body: {} },
-  "PATCH /admin/vote-results/:id": { body: { content: { summary: X.body } } },
-  "POST /admin/vote-results/:id/approve": { body: {} },
   "PATCH /admin/briefs/:id": { body: { content: { headline: X.title } } },
   "POST /admin/briefs/:id/approve": { body: {} },
   "POST /admin/briefs/:id/regenerate": { body: {} },
@@ -734,7 +733,7 @@ describe("writes, as Athens, naming Floyd's ids", () => {
       { method: "POST", path: `/process/${A.vote}/links`, body: { to_id: B.vote, relation: "references" } },
       { method: "POST", path: "/admin/meeting-summaries/batch-approve", body: { ids: [B.meeting, B.brief] } },
       { method: "POST", path: "/admin/meeting-summaries/batch-delete", body: { ids: [B.meeting, B.brief] } },
-      { method: "POST", path: "/process", body: { definition: { type: "civic.vote_results", version: "0.1" }, title: X.title, state: { source_process_id: B.vote } } },
+      { method: "POST", path: "/process", body: { definition: { type: "civic.brief", version: "0.1" }, title: X.title, state: { source_process_id: B.vote } } },
     ];
     for (const c of bodyCases) {
       requests.push({ label: `admin ${c.method} ${c.path} (Floyd ids in the body)`, ...c, token: tokens.athensAdmin, echoed: [B.vote, B.meeting, B.brief] });

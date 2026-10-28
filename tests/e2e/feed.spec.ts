@@ -52,8 +52,8 @@ test.describe("Civic Feed", () => {
   });
 
   test("clicking a feed item navigates to detail", async ({ page }) => {
-    // Find any clickable feed item link
-    const feedLink = page.locator("a[href*='/process/'], a[href*='/announcement/'], a[href*='/vote-results/']").first();
+    // Find any clickable feed item link (an old vote results card's /vote-results/ link is left out: the UI redirects it to /brief/:id, engine 2, C)
+    const feedLink = page.locator("a[href*='/process/'], a[href*='/announcement/'], a[href*='/brief/']").first();
     if (await feedLink.isVisible()) {
       const href = await feedLink.getAttribute("href");
       await feedLink.click();

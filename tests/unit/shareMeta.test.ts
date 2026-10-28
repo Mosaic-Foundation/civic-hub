@@ -131,8 +131,9 @@ describe("buildShareMeta — refusals", () => {
   });
 });
 
-describe("buildShareMeta — brief and vote results carry their headline", () => {
-  for (const type of ["civic.brief", "civic.vote_results"]) {
+describe("buildShareMeta — brief (and a converted vote results record) carry their headline", () => {
+  // civic.vote_results is retired (engine 2, C): its records are briefs now, at the same id.
+  for (const type of ["civic.brief"]) {
     it(`${type}: headline as description, row title kept, unpublished refused`, () => {
       const published = proc({
         type,

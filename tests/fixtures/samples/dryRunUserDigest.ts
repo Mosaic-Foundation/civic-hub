@@ -43,7 +43,8 @@ export const DRY_RUN_USER_DIGEST_EVENTS: DigestEvent[] = [
       vote: { title: "Add More Secure Dumpster (Green Box) Sites" },
     },
   },
-  // 3. vote results (civic.vote_results → result_published)
+  // 3. vote results (civic.vote_results → result_published). A stored event of
+  // the retired type (engine 2, C): it still reads and counts as before via legacyTypes.
   {
     id: "evt_003",
     event_type: "civic.process.result_published",

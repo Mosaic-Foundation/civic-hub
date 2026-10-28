@@ -25,15 +25,10 @@ describe("feedMeta hooks", () => {
     });
   });
 
-  it("vote results: image, participation and comment count with their fallbacks", () => {
-    expect(meta("civic.vote_results", { title: "T", admin_notes: "N", comments: [1, 2] })).toEqual({
-      title: "T",
-      description: "N",
-      imageUrl: null,
-      imageAlt: null,
-      totalVotes: 0,
-      commentsCount: 2,
-    });
+  it("vote results: retired as a type (engine 2, C), so no handler maps its card", () => {
+    // A converted record is a brief now; an old event's card comes from the
+    // manifest's legacyTypes, not from a handler (see feedWire).
+    expect(meta("civic.vote_results", { title: "T", admin_notes: "N", comments: [1, 2] })).toBeUndefined();
   });
 
   it("meeting summary: block count and the latest start", () => {

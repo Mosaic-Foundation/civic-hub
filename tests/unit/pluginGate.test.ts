@@ -69,9 +69,9 @@ describe("process types and plugins", () => {
     });
   });
 
-  it("votes off takes their legacy results record with them", () => {
+  it("votes off disables only civic.vote (the legacy results type is retired; engine 2, C)", () => {
     runWithHub(ATHENS_HUB, off("vote"), () => {
-      expect(disabledProcessTypes().sort()).toEqual(["civic.vote", "civic.vote_results"]);
+      expect(disabledProcessTypes().sort()).toEqual(["civic.vote"]);
     });
   });
 });

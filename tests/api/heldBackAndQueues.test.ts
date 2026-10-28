@@ -1,7 +1,7 @@
 // Email and job reporting, 2026-10-07 (review #34, #36, M1; docs session #4, #5).
 //
 // On a demo hub (Athens, seeded `demo`):
-//   - approving a brief, and publishing vote results, to an official the
+//   - approving a brief to an official the
 //     mail guard holds back publishes (no 500), records the official as held
 //     back with the reason, and tells the admin in plain words;
 //   - a vote finishes when it closes and publishes its own results, with the
@@ -177,37 +177,10 @@ describe("held back is not failed (#34)", () => {
     expect(JSON.stringify(pub.body)).not.toContain(OFFICIAL);
   });
 
-  it("publishing vote results to the hub's brief recipients publishes, records them held back, no 500", async () => {
-    const vote = await createActiveVote(`Held back vote ${run}`);
-    ok(await call("POST", `/process/${vote}/action`, ATHENS, { type: "process.close", payload: { note: "Closed early by a test." } }, admin));
-    const id = `proc_heldback_vr_${run}`;
-    await insertProcess(id, "civic.vote_results", "active", {
-      type: "civic.vote_results",
-      source_process_id: vote,
-      publication_status: "pending",
-      generated_at: new Date().toISOString(),
-      approved_at: null,
-      published_at: null,
-      content: {
-        title: "Held back vote",
-        participation_count: 0,
-        position_breakdown: [],
-        comments: [],
-        admin_notes: "",
-      },
-      delivered_to: [],
-    });
-
-    const res = await call("POST", `/admin/vote-results/${id}/approve`, ATHENS, {}, admin);
-    ok(res);
-    expect(res.body.message).toContain(`Not emailed to ${OFFICIAL} because this hub is in demo mode.`);
-    expect(res.body.vote_results.publication_status).toBe("published");
-    expect(res.body.vote_results.held_back).toContainEqual({ email: OFFICIAL, reason: "this hub is in demo mode" });
-    expect(res.body.vote_results.delivered_to).not.toContain(OFFICIAL);
-    // The linked vote finished.
-    const [row] = (await localRest(`processes?select=status&id=eq.${vote}`)) as Array<{ status: string }>;
-    expect(row.status).toBe("finalized");
-  });
+  // Removed (engine 2, C): "publishing vote results to the hub's brief
+  // recipients" approved a civic.vote_results record through
+  // /admin/vote-results. That type is retired into briefs; the brief approval
+  // test above covers the same held-back-in-demo-mode path.
 });
 
 describe("a vote finishes on its own; its brief is separate (docs session #4)", () => {

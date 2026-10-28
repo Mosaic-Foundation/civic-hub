@@ -64,6 +64,7 @@ test.describe("Nav order", () => {
 test.describe("Not-found pages", () => {
   for (const path of [
     "/process/nonexistent-id-12345",
+    // Retired (engine 2, C): the UI sends it to /brief/:id, whose not-found page is checked here.
     "/vote-results/nonexistent-id-12345",
     "/wordcloud/nonexistent-id-12345",
   ]) {

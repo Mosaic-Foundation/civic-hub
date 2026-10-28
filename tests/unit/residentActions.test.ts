@@ -21,7 +21,6 @@ const EXPECTED: Record<string, string[]> = {
   // support and sentiment are resident actions now, as votes' are.
   "civic.proposal": ["process.support", "process.unsupport"],
   "civic.project": ["process.sentiment"],
-  "civic.vote_results": [],
   "civic.brief": [],
   "civic.announcement": [],
   "civic.meeting_summary": [],

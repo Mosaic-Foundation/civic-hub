@@ -37,10 +37,9 @@ describe("enabledProcessTypesAmong (search, link candidates)", () => {
       const types = enabledProcessTypesAmong(null)!;
       expect(types).not.toContain("civic.meeting_summary");
       expect(types).not.toContain("civic.vote");
-      expect(types).not.toContain("civic.vote_results");
       expect(types.sort()).toEqual(
         registeredProcessTypes()
-          .filter((t) => !["civic.meeting_summary", "civic.vote", "civic.vote_results"].includes(t))
+          .filter((t) => !["civic.meeting_summary", "civic.vote"].includes(t))
           .sort(),
       );
     });
@@ -49,7 +48,10 @@ describe("enabledProcessTypesAmong (search, link candidates)", () => {
   it("intersects a requested list, down to nothing", () => {
     runWithHub(ATHENS_HUB, off("vote"), () => {
       expect(enabledProcessTypesAmong(["civic.vote", "civic.announcement"])).toEqual(["civic.announcement"]);
-      expect(enabledProcessTypesAmong(["civic.vote_results"])).toEqual([]);
+      // Down to nothing: only votes were asked for, and votes are off.
+      expect(enabledProcessTypesAmong(["civic.vote"])).toEqual([]);
+      // The retired civic.vote_results used to go with votes; its records are briefs now (engine 2, C).
+      expect(enabledProcessTypesAmong(["civic.vote", "civic.brief"])).toEqual(["civic.brief"]);
     });
   });
 });
@@ -111,8 +113,14 @@ describe("UI gating (ui/src/config/pluginRules.ts)", () => {
 
   it("search chips: only types the hub shows", () => {
     const chips = [{ key: "vote" }, { key: "announcement" }, { key: "vote_results" }, { key: "meeting_summary" }];
-    const shown = searchChipsShown(chips, (t) => t !== "civic.vote" && t !== "civic.vote_results");
-    expect(shown.map((c) => c.key)).toEqual(["announcement", "meeting_summary"]);
+    const shown = searchChipsShown(chips, (t) => t !== "civic.vote");
+    // The Outcomes chip (vote_results) is the briefs' now (engine 2, C), so votes off leaves it.
+    expect(shown.map((c) => c.key)).toEqual(["announcement", "vote_results", "meeting_summary"]);
+    expect(searchChipsShown(chips, (t) => t !== "civic.brief").map((c) => c.key)).toEqual([
+      "vote",
+      "announcement",
+      "meeting_summary",
+    ]);
     expect(searchChipsShown(chips, () => true)).toHaveLength(4);
   });
 });
