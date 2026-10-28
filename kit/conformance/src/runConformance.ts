@@ -149,12 +149,14 @@ export function runConformance(options: ConformanceOptions): void {
         // Every resident's or creator's action that emits anything emits at
         // least one event the declaration counts (a support that also opens a
         // vote emits its threshold event and the vote's start).
+        // A withdrawal (taking back "going"; E17) is accounted for, and
+        // counted as nothing.
         const counted = new Set(
           decl!.participation === "elsewhere" || decl!.participation === "none"
-            ? [...decl!.creation, ...decl!.closing, ...decl!.outcome]
-            : [...decl!.participation, ...decl!.creation, ...decl!.closing, ...decl!.outcome],
+            ? [...decl!.creation, ...decl!.closing, ...decl!.outcome, ...(decl!.withdrawal ?? [])]
+            : [...decl!.participation, ...decl!.creation, ...decl!.closing, ...decl!.outcome, ...(decl!.withdrawal ?? [])],
         );
-        for (const a of d!.actions.filter((x) => x.callers.includes("resident") || x.callers.includes("creator"))) {
+        for (const a of d!.actions.filter((x) => x.callers.includes("resident") || x.callers.includes("creator") || (x.callers as readonly string[]).includes("official"))) {
           if (a.emits.length === 0) continue;
           expect(
             a.emits.some((e) => counted.has(e)),

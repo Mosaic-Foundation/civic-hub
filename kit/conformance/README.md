@@ -99,7 +99,8 @@ additive (refused); CI runs it too.
     type records their total) or `"none"`; it names the events that create,
     close and record the outcome of one of its processes; and every resident's
     or creator's action that emits anything emits at least one event counted
-    in one of those roles.
+    in one of those roles, or declared a `withdrawal` (taking back "going":
+    accounted for, and counted as nothing).
     The hub's analytics counts every type from this declaration alone.
 
 Types only the hub creates (briefs, meeting summaries, the retired vote

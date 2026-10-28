@@ -38,6 +38,13 @@ export interface ParticipationDeclaration {
   /** The events that record what one produced (a result published, a brief delivered). */
   outcome: readonly string[];
   /**
+   * Acts a resident or creator takes that are not taking part (engine 2,
+   * E17): taking back "going", a creator's change. Declared, so every act an
+   * action emits is accounted for (conformance step 10), and counted as
+   * nothing: neither participation nor any other role.
+   */
+  withdrawal?: readonly string[];
+  /**
    * For a type that summarizes another (a brief): the payload field of its
    * events naming the process it summarizes.
    */
@@ -133,6 +140,13 @@ export function participationProblem(
   for (const role of ["creation", "closing", "outcome"] as const) {
     const p = list(role, d[role]);
     if (p) return p;
+  }
+  if (d.withdrawal !== undefined) {
+    const p = list("withdrawal", d.withdrawal);
+    if (p) return p;
+    const counted = new Set([...(Array.isArray(d.participation) ? d.participation : []), ...(d.creation ?? []), ...(d.closing ?? []), ...(d.outcome ?? [])]);
+    const both = d.withdrawal.find((t) => counted.has(t));
+    if (both) return `participation.withdrawal: ${both} is also counted in another role`;
   }
   if (d.sourceTotals !== undefined) {
     if (typeof d.sourceField !== "string" || d.sourceField === "") return "participation.sourceTotals needs a sourceField";

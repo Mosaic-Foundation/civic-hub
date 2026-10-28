@@ -23,6 +23,13 @@ describe("participationProblem", () => {
     expect(participationProblem({ ...ok, closing: "x.thing.ended" }, facts)).toMatch(/must be a list/);
   });
 
+  it("accepts a withdrawal it emits, counted in no other role (E17)", () => {
+    const f = { ...facts, emits: [...facts.emits, "x.thing.undone"] };
+    expect(participationProblem({ ...ok, withdrawal: ["x.thing.undone"] }, f)).toBeNull();
+    expect(participationProblem({ ...ok, withdrawal: ["x.thing.done"] }, f)).toMatch(/also counted in another role/);
+    expect(participationProblem({ ...ok, withdrawal: ["x.other.undone"] }, f)).toMatch(/not an event type it emits/);
+  });
+
   it("refuses an unknown measure, and a measure fed by a role it lacks", () => {
     expect(participationProblem({ ...ok, measures: { bowling_alone: "participation" } }, facts)).toMatch(/not a measure/);
     expect(participationProblem({ ...ok, measures: { met_in_public: "outcome" } }, facts)).toMatch(/declares none/);
