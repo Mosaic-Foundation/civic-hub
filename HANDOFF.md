@@ -6,7 +6,10 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Engine 2: SDK v1's surface, one folder, vote results into the brief — 2026-10-28
 
-**State:** released to dev at the end of the session (the closing entry below says where it stands). Reports: `~/Documents/Mosaic/0 Management/Civic Social/Engine-2-Session-Report-2026-10-28.md`
+**State: on dev at `40519be`** (`release.sh dev --yes`: 11 migrations, the vote-results conversion and ten catalog
+entries); **dev mounts 0 of 9 packages until Adam approves the new entries in dev's console**, so dev's hubs show
+those plugins as unavailable and dev's Smoke fails until then. Dev's wire: 2,829 events identical after the migration
+(2 archived vote-results records converted; no vote with two briefs). Not on production. Reports: `~/Documents/Mosaic/0 Management/Civic Social/Engine-2-Session-Report-2026-10-28.md`
 and `Engine-2-Handoff-to-Management-2026-10-28.md`. ADR-017 (`decisions/017-sdk-v1-surface.md`, committed locally in
 the mono repo for Adam to push).
 

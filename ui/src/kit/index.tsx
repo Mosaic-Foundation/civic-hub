@@ -12,6 +12,8 @@
 
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 
+import { fromLocalInput, toLocalInput } from "./datetime";
+
 export { default as DraftShell } from "../components/DraftShell";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -70,22 +72,6 @@ export function TextArea({ className, ...rest }: TextareaHTMLAttributes<HTMLText
 /** A choice from a list. */
 export function Select({ className, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return <select className={["form-select", className].filter(Boolean).join(" ")} {...rest} />;
-}
-
-/** An ISO instant as a datetime-local value, in the reader's time zone ("" for none). */
-export function toLocalInput(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** A datetime-local value as an ISO instant (the reader's time zone), or null. */
-export function fromLocalInput(value: string): string | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 /**

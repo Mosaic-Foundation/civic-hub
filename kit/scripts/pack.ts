@@ -74,7 +74,8 @@ export function pack(out: string): { sdk: string; conformance: string } {
   const conf = join(stage, "conformance");
   for (const f of ["bin", "src", "cli.ts", "vitest.config.ts", "README.md"]) cpSync(join(ROOT, "kit/conformance", f), join(conf, f), { recursive: true });
   const confPkg = JSON.parse(readFileSync(join(ROOT, "kit/conformance/package.json"), "utf8"));
-  confPkg.dependencies = { ...pinned(confPkg.dependencies), "@civic-social/plugin-sdk": confPkg.dependencies["@civic-social/plugin-sdk"] };
+  // The suite needs the SDK packed beside it, at the version just packed.
+  confPkg.dependencies = { ...pinned(confPkg.dependencies), "@civic-social/plugin-sdk": sdkPkg.version };
   writeFileSync(join(conf, "package.json"), JSON.stringify(confPkg, null, 2) + "\n");
   cpSync(join(ROOT, "LICENSE"), join(conf, "LICENSE"));
 

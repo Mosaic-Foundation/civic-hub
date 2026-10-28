@@ -14,6 +14,5 @@ export {
   Select,
   TextArea,
   TextInput,
-  fromLocalInput,
-  toLocalInput,
 } from "../../ui/src/kit/index";
+export { fromLocalInput, toLocalInput } from "../../ui/src/kit/datetime";
