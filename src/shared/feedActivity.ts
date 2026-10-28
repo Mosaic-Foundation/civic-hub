@@ -53,7 +53,7 @@ export type ActivitySurface = "announcement" | "meeting_summary" | "activity";
  * pill color) via a total, exhaustively-checked switch — stable mappings, not
  * the brittle data-shape sniffing this module replaces.
  */
-export type ActivityKind =
+export type BuiltinActivityKind =
   | "vote-open"
   | "vote-closed" // a vote's own results, published when it closes (2026-10-07)
   | "vote-results" // legacy civic.vote_results records
@@ -68,8 +68,14 @@ export type ActivityKind =
   | "conversation"
   | "conversation-results" // legacy deliberation outcome delivered (close)
   | "brief" // universal civic.brief published — the final result of any process
-  | "brief-response" // an official responded to a published brief (anchored)
-  | "event"; // an event put on the hub's calendar (the Events plugin, 2026-10-27)
+  | "brief-response"; // an official responded to a published brief (anchored)
+
+/**
+ * A card kind: the hub's own, or one a package declares in its manifest's
+ * `feed.kinds` (engine 2, A5: the Events plugin's "event"). Consumers switch
+ * on the hub's own and read a declared one from DECLARED_FEED_KINDS.
+ */
+export type ActivityKind = BuiltinActivityKind | (string & {});
 
 /**
  * THE color decision (2026-08-28, Adam): every surface colors a card, row,
@@ -89,7 +95,7 @@ export type ActivityKind =
  * "official-response" is an ACT (the government answering a brief), not
  * a process — it keeps its gold everywhere.
  */
-export type ActivityColor =
+export type BuiltinActivityColor =
   | "vote"
   | "proposal"
   | "conversation"
@@ -99,8 +105,10 @@ export type ActivityColor =
   | "announcement-author"
   | "meeting"
   | "official-response"
-  | "event"
   | "generic";
+
+/** A colour key: the hub's own, or one a package declares with its card kind (A5). */
+export type ActivityColor = BuiltinActivityColor | (string & {});
 
 export interface Activity {
   surface: ActivitySurface;
@@ -214,11 +222,37 @@ export interface FeedBriefStyle {
   pill?: string;
 }
 
+/**
+ * A card kind a package adds (engine 2, A5): what its pill and card edge are
+ * coloured, what the theme calls the colour, and where the email digest puts
+ * it. Every surface reads these; no hub list names the kind.
+ */
+export interface FeedKindDeclaration {
+  /** The kind its `cards` rules name ("event"). Not one of the hub's own. */
+  kind: string;
+  /** Its colour family: a key of its own, the default text colour and wash, and the theme's label. */
+  color: { key: string; fg: string; bg: string; label: string };
+  /** The digest's section for it: a key, the heading, and the line under a card's title. */
+  digest: { section: string; heading: string; summary?: (data: Record<string, unknown>) => string | null };
+}
+
 /** A manifest's `feed`. */
 export interface FeedDeclaration {
   cards: readonly FeedCardRule[];
   brief?: FeedBriefStyle;
+  /** Card kinds of its own (A5). */
+  kinds?: readonly FeedKindDeclaration[];
 }
+
+/** Every card kind the configured packages declare, by kind, with the type that declared it. */
+export const DECLARED_FEED_KINDS: ReadonlyMap<string, FeedKindDeclaration & { type: string }> = new Map(
+  MANIFEST_LIST.flatMap((m) => (m.feed?.kinds ?? []).map((k) => [k.kind, { ...k, type: m.descriptor.type }] as const)),
+);
+
+/** Every colour family the configured packages declare (A5), in load order. */
+export const DECLARED_COLORS: ReadonlyArray<FeedKindDeclaration["color"]> = [
+  ...new Map([...DECLARED_FEED_KINDS.values()].map((k) => [k.color.key, k.color] as const)).values(),
+];
 
 interface TableRule extends FeedCardRule {
   type: string;

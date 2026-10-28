@@ -249,6 +249,14 @@ export function defineFeatureManifest<const M extends FeatureManifest>(manifest:
   return manifest;
 }
 
+/** The hub's own card kinds (src/shared/feedActivity.ts BuiltinActivityKind). */
+const BUILTIN_KINDS: ReadonlySet<string> = new Set([
+  "vote-open", "vote-closed", "vote-results", "meeting", "announcement", "announcement-author", "wordcloud",
+  "proposal", "proposal-closed", "project-created", "project-updated", "conversation", "conversation-results",
+  "brief", "brief-response",
+]);
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
 /** Why a manifest was refused at startup. */
 export class ManifestError extends Error {
   constructor(message: string) {
@@ -323,6 +331,21 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
     }
     if (!host.colors.includes(m.color as string)) {
       throw new ManifestError(`${where(m)}: color "${String(m.color)}" is not a theme colour (${host.colors.join(", ")})`);
+    }
+    // Card kinds of its own (engine 2, A5): not the hub's, a usable colour
+    // key and pair, a digest section and heading; and every card rule names
+    // a kind the hub has or this manifest declares.
+    for (const k of m.feed?.kinds ?? []) {
+      if (BUILTIN_KINDS.has(k.kind)) throw new ManifestError(`${where(m)}: feed kind "${k.kind}" is one of the hub's own`);
+      if (!/^[a-z][a-z0-9-]*$/.test(k.color?.key ?? "")) throw new ManifestError(`${where(m)}: feed kind "${k.kind}" needs a colour key of lowercase letters, digits and hyphens`);
+      if (!HEX.test(k.color.fg ?? "") || !HEX.test(k.color.bg ?? "")) throw new ManifestError(`${where(m)}: feed kind "${k.kind}" needs fg and bg as #rrggbb`);
+      if (!k.color.label || !k.digest?.section || !k.digest.heading) throw new ManifestError(`${where(m)}: feed kind "${k.kind}" needs a colour label and a digest section and heading`);
+    }
+    const ownKinds = new Set((m.feed?.kinds ?? []).map((k) => k.kind));
+    for (const rule of m.feed?.cards ?? []) {
+      if (typeof rule.card === "object" && !BUILTIN_KINDS.has(rule.card.kind) && !ownKinds.has(rule.card.kind)) {
+        throw new ManifestError(`${where(m)}: feed card kind "${rule.card.kind}" is neither the hub's nor declared in feed.kinds`);
+      }
     }
     if (typeof m.detailPath !== "function") throw new ManifestError(`${where(m)}: "detailPath" must be a function`);
     const path = m.detailPath("p_x");

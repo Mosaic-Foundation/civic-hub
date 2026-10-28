@@ -18,7 +18,7 @@
 
 import { API_BASE } from "../services/http";
 import type { ProcessTypeDisplay } from "../../../src/shared/typeDisplay";
-import { parseTheme, resolveTheme } from "../../../src/shared/theme";
+import { declaredTypeStylesheet, parseTheme, resolveTheme } from "../../../src/shared/theme";
 import type { DeadEndCode } from "../../../src/shared/deadEnd";
 import type { PluginSetupStatus } from "../../../src/shared/pluginSetup";
 
@@ -284,6 +284,18 @@ let appliedThemeVars: string[] = [];
 export function applyTheme(raw: string | undefined): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
+  // The packages' declared card colours (engine 2, A5), once: their tokens'
+  // defaults and the feed's edge and pill rules. A picked hue, set inline on
+  // the root below, still wins.
+  if (!document.getElementById("declared-type-colors")) {
+    const css = declaredTypeStylesheet();
+    if (css) {
+      const style = document.createElement("style");
+      style.id = "declared-type-colors";
+      style.textContent = css;
+      document.head.appendChild(style);
+    }
+  }
   for (const name of appliedThemeVars) root.style.removeProperty(name);
   const { vars } = resolveTheme(parseTheme(raw));
   for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);

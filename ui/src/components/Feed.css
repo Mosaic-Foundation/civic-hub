@@ -123,7 +123,6 @@
 .feed-post--type-announcement        { border-top-color: var(--type-announcement-fg); }
 .feed-post--type-announcement-author { border-top-color: var(--type-announcement-author-fg); }
 .feed-post--type-meeting             { border-top-color: var(--type-meeting-fg); }
-.feed-post--type-event               { border-top-color: var(--type-event-fg); }
 .feed-post--type-official-response   { border-top-color: var(--type-official-response-fg); }
 .feed-post--type-generic             { border-top-color: var(--type-generic-fg); }
 
@@ -272,7 +271,6 @@
 .feed-pill--type-announcement        { background: var(--type-announcement-bg);        color: var(--type-announcement-fg); }
 .feed-pill--type-announcement-author { background: var(--type-announcement-author-bg); color: var(--type-announcement-author-fg); }
 .feed-pill--type-meeting             { background: var(--type-meeting-bg);             color: var(--type-meeting-fg); }
-.feed-pill--type-event               { background: var(--type-event-bg);               color: var(--type-event-fg); }
 .feed-pill--type-official-response   { background: var(--type-official-response-bg);   color: var(--type-official-response-fg); }
 .feed-pill--type-generic             { background: var(--type-generic-bg);             color: var(--type-generic-fg); }
 

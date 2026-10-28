@@ -15,9 +15,11 @@ import {
   briefResponseContext,
   classifyActivity,
   voteResultLine,
+  DECLARED_COLORS,
+  DECLARED_FEED_KINDS,
   type Activity,
-  type ActivityColor,
   type ActivityKind,
+  type BuiltinActivityKind,
   type ClassifierEvent,
 } from "../../shared/feedActivity.js";
 import { sortDigestItems } from "./filter.js";
@@ -288,14 +290,6 @@ function digestTitleSummary(
     case "conversation-results":
       return { title: rawTitle ?? "Conversation results", summary: "The conversation has concluded — see the results." };
 
-    case "event": {
-      // The Events plugin's publish carries its time and place (data.process.event).
-      const ev = (event.data as { process?: { event?: { start_time?: unknown; location?: { name?: unknown } } } })?.process?.event;
-      const when = typeof ev?.start_time === "string" ? new Date(ev.start_time).toUTCString().replace(/:\d\d GMT$/, " UTC") : "";
-      const where = typeof ev?.location?.name === "string" ? ev.location.name : "";
-      return { title: rawTitle ?? "New event", summary: [when, where].filter(Boolean).join(" · ") || "A new event is on the calendar." };
-    }
-
     case "brief": {
       const brief = (event.data as { brief?: { title?: unknown; headline?: unknown } })
         ?.brief;
@@ -324,6 +318,13 @@ function digestTitleSummary(
         summary: `${briefResponseContext(data?.brief?.source_process_type)}.`,
       };
     }
+      default: {
+      // A card kind a package declares (A5): its title, and its own line
+      // under it, or a plain one.
+      const declared = DECLARED_FEED_KINDS.get(activity.kind);
+      const line = declared?.digest.summary?.((event.data ?? {}) as Record<string, unknown>) ?? null;
+      return { title: rawTitle ?? activity.pill, summary: line || "New on the hub." };
+    }
   }
 }
 
@@ -349,7 +350,7 @@ function buildSubject(
 
 // --- Sections ---------------------------------------------------------------
 
-type DigestSection =
+type BuiltinDigestSection =
   | "votes_open"
   | "vote_results"
   | "meeting_summaries"
@@ -358,11 +359,13 @@ type DigestSection =
   | "proposals"
   | "projects"
   | "conversations"
-  | "events"
   | "briefs";
 
+/** A section: the hub's own, or one a package's card kind declares (A5). */
+type DigestSection = BuiltinDigestSection | (string & {});
+
 /** Which email section each classifier kind renders under. */
-const SECTION_OF: Record<ActivityKind, DigestSection> = {
+const SECTION_OF: Record<BuiltinActivityKind, DigestSection> = {
   "vote-open": "votes_open",
   "vote-closed": "vote_results",
   "vote-results": "vote_results",
@@ -381,10 +384,14 @@ const SECTION_OF: Record<ActivityKind, DigestSection> = {
   // section — the "Completed — results" section carries both the brief
   // and, later, the government's reply to it.
   "brief-response": "briefs",
-  event: "events",
 };
 
-const SECTION_LABELS: Record<DigestSection, string> = {
+/** The section a card kind renders under: the hub's table, else the kind's own declaration (A5). */
+function sectionOf(kind: ActivityKind): DigestSection {
+  return SECTION_OF[kind as BuiltinActivityKind] ?? DECLARED_FEED_KINDS.get(kind)?.digest.section ?? "announcements";
+}
+
+const SECTION_LABELS: Record<string, string> = {
   votes_open: "New votes open",
   vote_results: "New vote results",
   meeting_summaries: "New meeting summaries",
@@ -393,8 +400,9 @@ const SECTION_LABELS: Record<DigestSection, string> = {
   proposals: "Proposals",
   projects: "Projects",
   conversations: "Conversations",
-  events: "New events",
   briefs: "Completed — results",
+  // Declared sections (A5), each with its heading.
+  ...Object.fromEntries([...DECLARED_FEED_KINDS.values()].map((k) => [k.digest.section, k.digest.heading])),
 };
 
 const SECTION_ORDER: DigestSection[] = [
@@ -406,7 +414,8 @@ const SECTION_ORDER: DigestSection[] = [
   "proposals",
   "projects",
   "conversations",
-  "events",
+  // Declared sections (A5), in load order, before the results.
+  ...new Set([...DECLARED_FEED_KINDS.values()].map((k) => k.digest.section)),
   "briefs",
 ];
 
@@ -419,7 +428,7 @@ const SECTION_ORDER: DigestSection[] = [
  * UI's theme.css; change BOTH together. Inlined as literals because
  * email clients don't honor CSS vars.
  */
-const PILL_COLORS: Record<ActivityColor, { bg: string; fg: string }> = {
+const PILL_COLORS: Record<string, { bg: string; fg: string }> = {
   vote: { bg: "#dce5f2", fg: "#1e3a5f" },
   proposal: { bg: "#eae7f0", fg: "#5f4b8b" },
   conversation: { bg: "#ddefef", fg: "#0f5e66" },
@@ -429,7 +438,8 @@ const PILL_COLORS: Record<ActivityColor, { bg: string; fg: string }> = {
   "announcement-author": { bg: "#e4ddf0", fg: "#3a2c5e" },
   meeting: { bg: "#d9ecd9", fg: "#0f4a26" },
   "official-response": { bg: "#fdf1e0", fg: "#8a5a13" },
-  event: { bg: "#f6e3ec", fg: "#8a2456" },
+  // Declared colours (A5), as their packages give them.
+  ...Object.fromEntries(DECLARED_COLORS.map((c) => [c.key, { bg: c.bg, fg: c.fg }])),
   generic: { bg: "#dce5f2", fg: "#1f3a66" },
 };
 
@@ -569,7 +579,7 @@ export function formatDigestText(
 function groupBySection(items: DigestItem[]): Map<DigestSection, DigestItem[]> {
   const out = new Map<DigestSection, DigestItem[]>();
   for (const item of items) {
-    const section = SECTION_OF[item.kind];
+    const section = sectionOf(item.kind);
     const list = out.get(section) ?? [];
     list.push(item);
     out.set(section, list);

@@ -18,7 +18,9 @@
 // STORAGE: `identity.theme` holds serializeTheme()'s JSON. A bare "#rrggbb"
 // (what part five stored) still parses, as { primary }.
 
-export const THEME_TYPE_KEYS = [
+import { DECLARED_COLORS } from "./feedActivity.js";
+
+export const BUILTIN_THEME_TYPE_KEYS = [
   "vote",
   "proposal",
   "conversation",
@@ -27,9 +29,14 @@ export const THEME_TYPE_KEYS = [
   "meeting",
   "brief",
   "wordcloud",
-  "event",
 ] as const;
-export type ThemeTypeKey = (typeof THEME_TYPE_KEYS)[number];
+/** A colour family: the hub's own, or one a package declares with its card kind (engine 2, A5). */
+export type ThemeTypeKey = (typeof BUILTIN_THEME_TYPE_KEYS)[number] | (string & {});
+/** Every colour family an admin may pick a hue for: the hub's own, then the packages' (A5). */
+export const THEME_TYPE_KEYS: readonly ThemeTypeKey[] = [
+  ...BUILTIN_THEME_TYPE_KEYS,
+  ...DECLARED_COLORS.map((c) => c.key).filter((k) => !(BUILTIN_THEME_TYPE_KEYS as readonly string[]).includes(k)),
+];
 
 export interface HubTheme {
   /** A preset id; its colours apply first, then the fields below. */
@@ -76,7 +83,8 @@ export const DEFAULT_THEME_COLORS = {
     meeting: "#2a7340",
     brief: "#8c4a2b",
     wordcloud: "#5c6b2a",
-    event: "#8a2456",
+    // The packages' declared colours (A5).
+    ...Object.fromEntries(DECLARED_COLORS.map((c) => [c.key, c.fg])),
   } as Record<ThemeTypeKey, string>,
 };
 
@@ -290,11 +298,29 @@ const TYPE_LABELS: Record<ThemeTypeKey, string> = {
   meeting: "Meeting summaries",
   brief: "Civic briefs",
   wordcloud: "Word clouds",
-  event: "Events",
+  ...Object.fromEntries(DECLARED_COLORS.map((c) => [c.key, c.label])),
 };
 
 export function themeTypeLabel(key: ThemeTypeKey): string {
-  return TYPE_LABELS[key];
+  return TYPE_LABELS[key] ?? key;
+}
+
+/**
+ * The stylesheet for the packages' declared colour families (A5): each
+ * family's default tokens (a theme's picked hue still wins, set inline on the
+ * root), and the feed card's edge and pill. The hub's own families are in
+ * theme.css and Feed.css; the UI adds this once at boot. Empty when no package
+ * declares one.
+ */
+export function declaredTypeStylesheet(): string {
+  return DECLARED_COLORS.filter((c) => /^[a-z][a-z0-9-]*$/.test(c.key) && isHexColor(c.fg) && isHexColor(c.bg))
+    .map(
+      (c) =>
+        `:root{--type-${c.key}-bg:${c.bg};--type-${c.key}-fg:${c.fg}}\n` +
+        `.feed-post--type-${c.key}{border-top-color:var(--type-${c.key}-fg)}\n` +
+        `.feed-pill--type-${c.key}{background:var(--type-${c.key}-bg);color:var(--type-${c.key}-fg)}\n`,
+    )
+    .join("");
 }
 
 /**

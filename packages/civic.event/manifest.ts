@@ -27,6 +27,14 @@ const EMITS = [EVENTS.published, EVENTS.updated, EVENTS.cancelled, EVENTS.going,
  * Not retry-safe: publish, edit, cancel and close also write the calendar's
  * row, going and not going an attendance row.
  */
+/** The digest's line under a new event's title: its time and place (data.process.event). */
+function digestLine(data: Record<string, unknown>): string | null {
+  const ev = (data as { process?: { event?: { start_time?: unknown; location?: { name?: unknown } } } }).process?.event;
+  const when = typeof ev?.start_time === "string" ? new Date(ev.start_time).toUTCString().replace(/:\d\d GMT$/, " UTC") : "";
+  const where = typeof ev?.location?.name === "string" ? ev.location.name : "";
+  return [when, where].filter(Boolean).join(" · ") || "A new event is on the calendar.";
+}
+
 const descriptor = defineDescriptor({
   type: TYPE,
   version: "0.1",
@@ -168,9 +176,18 @@ export const EVENT_MANIFEST = defineManifest({
     requires: ["startTime"],
   },
   // One card when an event goes on the calendar; none for a cancel or an RSVP.
+  // Its card kind is its own (engine 2, A5): a rose apart from meeting-green,
+  // and the digest's "New events" with the time and place under the title.
   feed: {
     cards: [
       { event: EVENTS.published, match: "event", card: { surface: "activity", kind: "event", color: "event", pill: "Event", href: "detail" } },
+    ],
+    kinds: [
+      {
+        kind: "event",
+        color: { key: "event", fg: "#8a2456", bg: "#f6e3ec", label: "Events" },
+        digest: { section: "events", heading: "New events", summary: digestLine },
+      },
     ],
   },
   // Who is going: names to signed-in members, the count to everyone.
