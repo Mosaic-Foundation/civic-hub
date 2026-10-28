@@ -12,9 +12,13 @@ export const EVENTS = {
   cancelled: "civic.event.cancelled",
   going: "civic.event.going",
   notGoing: "civic.event.not_going",
+  announced: "civic.event.announced",
 } as const;
 
-const EMITS = [EVENTS.published, EVENTS.updated, EVENTS.cancelled, EVENTS.going, EVENTS.notGoing, "civic.process.ended"];
+const EMITS = [EVENTS.published, EVENTS.updated, EVENTS.cancelled, EVENTS.going, EVENTS.notGoing, EVENTS.announced, "civic.process.ended"];
+
+/** The tables it keeps (its grant, its schema check, its declarations). */
+const TABLES = ["calendar_events", "calendar_attendance", "calendar_drafts", "calendar_announcements"];
 
 /**
  * An event on the hub's calendar. A resident drafts one and it goes through
@@ -22,7 +26,9 @@ const EMITS = [EVENTS.published, EVENTS.updated, EVENTS.cancelled, EVENTS.going,
  * it. While it is upcoming ("active") residents say they are going, its
  * creator or an admin edits or cancels it, and at its end time the hub marks
  * it past ("closed"). A cancelled event is closed too, and stays on the
- * calendar marked cancelled.
+ * calendar marked cancelled. Its creator or an admin may write to everyone
+ * going ("announce"); a change of time or place, or a cancellation, tells
+ * them on its own. An event may have a limit; at it, "going" is refused.
  *
  * Not retry-safe: publish, edit, cancel and close also write the calendar's
  * row, going and not going an attendance row.
@@ -86,6 +92,20 @@ const descriptor = defineDescriptor({
       input_schema: { type: "object", properties: {}, examples: [{}] },
     },
     {
+      name: "announce",
+      description: "Send a message to everyone going (by email, through the hub; logged on the event)",
+      callers: ["creator", "admin"],
+      from: ["active"],
+      to: null,
+      emits: [EVENTS.announced],
+      input_schema: {
+        type: "object",
+        properties: { subject: { type: "string" }, message: { type: "string" } },
+        required: ["subject", "message"],
+        examples: [{ subject: "Bring a chair", message: "We have fewer seats than people going. Bring a folding chair if you can." }],
+      },
+    },
+    {
       name: "close",
       description: "Mark the event past at its end time",
       callers: ["system"],
@@ -100,7 +120,7 @@ const descriptor = defineDescriptor({
   creation: { resident: { drafts: "/calendar/drafts", publish_at_once: ["official"] }, admin: false, system: false },
   deadline: { action: "close", source: "state.end_time" },
   brief: false,
-  tables: ["calendar_events", "calendar_attendance", "calendar_drafts"],
+  tables: TABLES,
   outside_services: [],
   examples: {
     draft: {
@@ -109,6 +129,7 @@ const descriptor = defineDescriptor({
       start_time: "2030-06-01T17:00:00Z",
       end_time: "2030-06-01T19:00:00Z",
       venue: "Community room",
+      capacity: 40,
     },
   },
   display: {
@@ -128,8 +149,13 @@ export const EVENT_MANIFEST = defineManifest({
   color: "event",
   detailPath: (id) => `/events/${id}`,
   requiredSchema: [
-    { table: "calendar_events", columns: ["process_id", "title", "start_time", "end_time", "location", "cancelled", "archived"], owner: TYPE },
+    {
+      table: "calendar_events",
+      columns: ["process_id", "title", "start_time", "end_time", "location", "cancelled", "archived", "image_url", "image_alt", "time_zone", "capacity"],
+      owner: TYPE,
+    },
     { table: "calendar_attendance", columns: ["process_id", "user_id"], owner: TYPE },
+    { table: "calendar_announcements", columns: ["id", "process_id", "kind", "sender", "subject", "body", "recipients", "sent", "held_back"], owner: TYPE },
   ],
   tables: [
     {
@@ -153,7 +179,16 @@ export const EVENT_MANIFEST = defineManifest({
       holds: "residents' unfinished event drafts",
       sample: { notContent: "a resident's unsubmitted event draft; the seed writes none" },
     },
+    {
+      name: "calendar_announcements",
+      rows: "export",
+      key: ["id"],
+      holds: "messages sent to the people going to each event, and what changed, with how many each reached",
+      sample: { child: ["process_id"], notParticipation: "a message to the people going, sent by the creator, an admin or the hub" },
+    },
   ],
+  // Its picture (Events 2, E1): the hub's upload route takes one for it.
+  uploads: { images: true },
   jobs: [],
   pluginSection: {
     order: 35,
@@ -176,6 +211,9 @@ export const EVENT_MANIFEST = defineManifest({
     [EVENTS.cancelled]: { type: "Update", object: ACTIVITY_OBJECT },
     [EVENTS.going]: { type: "Join", object: ACTIVITY_OBJECT },
     [EVENTS.notGoing]: { type: "Leave", object: ACTIVITY_OBJECT },
+    // To the people going, never public (restricted: the admins' audience on
+    // the wire); the message itself stays in the announcement log.
+    [EVENTS.announced]: { type: "Create", object: { kind: "note" } },
   },
   // The process object is an AS2 Event whenever the payload carries its time
   // (every event this type writes; the hub's own created and status events
@@ -189,8 +227,22 @@ export const EVENT_MANIFEST = defineManifest({
       endTime: "process.event.end_time",
       location: "process.event.location",
       "ical:status": "process.event.status",
+      // Events 0.3.0, each only on events that set it: its picture (AS2;
+      // Mobilizon reads it as the banner), its time zone and its limit, in
+      // the terms Mobilizon publishes them in.
+      image: "process.event.image",
+      timezone: "process.event.time_zone",
+      maximumAttendeeCapacity: "process.event.capacity",
+      remainingAttendeeCapacity: "process.event.remaining_capacity",
     },
     requires: ["startTime"],
+    contexts: {
+      mz: "https://mobilizon.org/ns#",
+      sc: "http://schema.org/",
+      timezone: { "@id": "mz:timezone", "@type": "sc:Text" },
+      maximumAttendeeCapacity: "sc:maximumAttendeeCapacity",
+      remainingAttendeeCapacity: "sc:remainingAttendeeCapacity",
+    },
   },
   // One card when an event goes on the calendar; none for a cancel or an RSVP.
   // Its card kind is its own (engine 2, A5): a rose apart from meeting-green,
@@ -213,6 +265,8 @@ export const EVENT_MANIFEST = defineManifest({
     [EVENTS.going]: ["attendance"],
     [EVENTS.notGoing]: ["attendance"],
     [EVENTS.cancelled]: ["cancellation"],
+    // Restricted, so off every public stream; nothing of it is public either way.
+    [EVENTS.announced]: [],
   },
   deadlineRefusal: { code: "event_past", message: "This event has ended." },
   // What the hub's analytics counts (ADR-016): saying you're going is taking
@@ -225,7 +279,9 @@ export const EVENT_MANIFEST = defineManifest({
     outcome: [],
     // Taking back "going", and a change to the event, are acts, not taking
     // part (engine 2, E17): accounted for, counted as nothing.
-    withdrawal: [EVENTS.notGoing, EVENTS.updated],
+    // A message to the people going (Events 2) is the organiser's act, not
+    // taking part, and is counted as nothing too.
+    withdrawal: [EVENTS.notGoing, EVENTS.updated, EVENTS.announced],
   },
   // Its own words for where an event is (A4): the hub's status stays active
   // or closed, which the descriptor and the wire serve.
@@ -239,8 +295,10 @@ export const EVENT_MANIFEST = defineManifest({
   },
   capabilities: {
     activities: { emit: EMITS, listen: [] },
-    state: { read: ["own-process"], write: ["own-process"], tables: ["calendar_events", "calendar_attendance", "calendar_drafts"] },
-    adapters: [],
+    state: { read: ["own-process"], write: ["own-process"], tables: TABLES },
+    // Its picture through the hub's store (E1); messages to the people going
+    // through the hub's mail (notify, E2).
+    adapters: ["objectStore", "mail"],
     network: { egress: [] },
     identity: { claims: ["participant-ref"] },
     ui: { surfaces: ["process-page", "create-page", "feed-card", "nav-section"] },

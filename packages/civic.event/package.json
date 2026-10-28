@@ -1,6 +1,6 @@
 {
   "name": "@civic-social/plugin-events",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Events: the hub's calendar. Residents propose events, say they're going, and anyone can subscribe; each event is an ActivityStreams Event on the hub's public stream. A Civic Hub plugin package (docs/BUILD-A-PLUGIN.md).",
