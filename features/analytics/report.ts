@@ -5,16 +5,22 @@
 
 import { readAll, hubDisplayNameSync, type FeatureHost, type ProcessTypeSummary } from "../../src/sdk/index.js";
 import { MEASURES } from "../../src/shared/participation.js";
-import { feeders, provenance, rolesOf } from "./plan.js";
+import { buildPlan, feeders, provenance, rolesOf } from "./plan.js";
 import { hubTimeZone, launchDay } from "./rollup.js";
 import { periodLabel, periodOf, previousPeriod, todayIn, type Period, type PeriodKind } from "./periods.js";
 import type { Count, MeasureRow, Report, TypeRow } from "./types.js";
 
 export type { Count, MeasureRow, Report, TypeRow };
 
+/** The rollup runs hourly; older than this (a missed run, or none yet), the current period is counted live (D11). */
+export const STALE_AFTER_MS = 90 * 60_000;
+
 /** Below admin, a count from 1 to SMALL - 1 is shown as SMALL_LABEL. */
 export const SMALL = 5;
 export const SMALL_LABEL = "fewer than 5";
+/** The rule in one sentence, carried by every report below admin (D14). */
+export const SMALL_NOTE =
+  "A count from 1 to 4 reads \"fewer than 5\", so no one can be picked out of a small number; it is not missing data. Zero reads 0, and the hub's admins see exact numbers.";
 
 
 export const DEFINITIONS = {
@@ -45,7 +51,7 @@ function sentence(template: string, prov: ReturnType<typeof provenance>): string
 /** The period of `kind` holding `at` (default today), in the hub's time zone. */
 export async function resolvePeriod(host: FeatureHost, kind: PeriodKind, at: string | null, now: Date): Promise<{ period: Period; today: string; launch: string }> {
   const today = todayIn(hubTimeZone(), now);
-  const launch = (await launchDay(host)) ?? today;
+  const launch = await launchDay(host);
   return { period: periodOf(kind, at ?? today, launch), today, launch };
 }
 
@@ -59,7 +65,7 @@ export async function buildReport(
   const roleOf = rolesOf(types);
   const db = host.db();
 
-  const days = await readAll<{ process_type: string; event_type: string; events: number }>((a, b) =>
+  let days = await readAll<{ process_type: string; event_type: string; events: number }>((a, b) =>
     db
       .from("analytics_daily")
       .select<{ process_type: string; event_type: string; events: number }>("process_type, event_type, events")
@@ -76,7 +82,29 @@ export async function buildReport(
     .eq("period_kind", period.kind)
     .eq("period_start", period.start)
     .limit(500);
-  const counts = new Map(stored.map((r) => [r.measure, r.value]));
+  let counts = new Map(stored.map((r) => [r.measure, r.value]));
+  let computedAt = stored.reduce<string | null>((a, r) => (a && a > r.computed_at ? a : r.computed_at), null);
+
+  // The current period counted live when the hourly rollup has not counted it
+  // lately (engine 2, D11: a hub with activity never reads zeros because the
+  // job had not run since its events). Read only: nothing is written; the job
+  // and "Recount now" still store the counts.
+  const toDate = period.end >= today;
+  const fresh = computedAt !== null && opts.now.getTime() - Date.parse(computedAt) < STALE_AFTER_MS;
+  let live = false;
+  if (toDate && !fresh) {
+    const tz = hubTimeZone();
+    const prev = previousPeriod(period, launch);
+    days = await host.eventLog().countByDay(tz, period.start, end);
+    const actors = await host.eventLog().countActors(
+      tz,
+      { from: period.start, to: end, prevFrom: prev?.start ?? null, prevTo: prev?.end ?? null },
+      buildPlan(types),
+    );
+    counts = new Map(actors.map((c) => [c.measure, c.value]));
+    computedAt = opts.now.toISOString();
+    live = true;
+  }
   const n = (measure: string) => counts.get(measure) ?? 0;
 
   // Additive counts by type and role, from the days.
@@ -133,13 +161,13 @@ export async function buildReport(
   });
 
   const prev = previousPeriod(period, launch);
-  const computedAt = stored.reduce<string | null>((a, r) => (a && a > r.computed_at ? a : r.computed_at), null);
   return {
     hub: hubDisplayNameSync(),
     period: { kind: period.kind, start: period.start, end, label: periodLabel(period), to_date: period.end >= today },
     previous_period: prev ? { start: prev.start, end: prev.end } : null,
     generated_at: opts.now.toISOString(),
     computed_at: computedAt,
+    live,
     totals: {
       new_residents: s(n("new_residents")),
       active_residents: s(n("active")),
@@ -156,5 +184,6 @@ export async function buildReport(
     },
     definitions: DEFINITIONS,
     suppression: { applied: !opts.exact, below: SMALL, shown_as: SMALL_LABEL },
+    ...(opts.exact ? {} : { note: SMALL_NOTE }),
   };
 }

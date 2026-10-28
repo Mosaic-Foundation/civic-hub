@@ -208,3 +208,8 @@
 .activity-page h3 {
   font-size: 1.05rem;
 }
+
+.activity-muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm, 0.875rem);
+}

@@ -29,10 +29,13 @@ export function hubTimeZone(): string {
   return resolveTimeZone(getSettingSync(KEYS.IDENTITY_TIMEZONE));
 }
 
-/** The hub's first rolled-up day: when "since launch" begins. */
-export async function launchDay(host: FeatureHost): Promise<string | null> {
-  const first = await host.db().from("analytics_daily").select<{ day: string }>("day").order("day", { ascending: true }).limit(1);
-  return first[0]?.day ?? null;
+/**
+ * When "since launch" begins (engine 2, D13): the day, in the hub's time
+ * zone, it first left demo, else the day it was created (not its first
+ * event, which on a hub made from a demo is a sample's).
+ */
+export async function launchDay(host: FeatureHost): Promise<string> {
+  return todayIn(hubTimeZone(), new Date(await host.launchedAt()));
 }
 
 const key = (r: { day: string; process_type: string; event_type: string }) => `${r.day}|${r.process_type}|${r.event_type}`;
@@ -102,7 +105,6 @@ export async function rollup(host: FeatureHost, now: Date, opts: { full?: boolea
   const today = todayIn(tz, now);
   const days = await rollDays(host, tz, today, opts.full ?? false);
   const launch = await launchDay(host);
-  if (!launch) return { days, periods: 0, launch: null };
 
   const any = opts.full ? 0 : await host.db().from("analytics_period").count();
   const periods: Period[] = [];

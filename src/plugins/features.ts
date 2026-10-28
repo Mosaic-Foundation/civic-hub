@@ -9,7 +9,7 @@
 
 import { FEATURE_PACKAGES } from "../../config/features.js";
 import { forHub, type TableName } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
+import { currentHub, currentHubId } from "../config/hubContext.js";
 import { requirePlugin } from "../middleware/pluginGate.js";
 import { MANIFEST_LIST } from "../shared/processManifests.js";
 import type { ParticipationDeclaration } from "../shared/participation.js";
@@ -93,6 +93,18 @@ function featureDb(pkg: FeaturePackage): GrantedDb {
   };
 }
 
+/** The hub in scope's launch: its first move out of demo, else its creation (D13). */
+async function launchedAt(): Promise<string> {
+  const rows = await forHub(currentHubId())
+    .from("hub_admin_audit_log")
+    .select<{ at: string; before: { mode?: string } | null; after: { mode?: string } | null }>("at, before, after")
+    .eq("action", "hub.mode")
+    .order("at", { ascending: true })
+    .limit(100);
+  const left = rows.find((r) => r.before?.mode === "demo" && r.after?.mode && r.after.mode !== "demo");
+  return left?.at ?? currentHub()?.created_at ?? new Date().toISOString();
+}
+
 interface LoadedFeature {
   pkg: FeaturePackage;
   server: FeatureServer;
@@ -103,7 +115,7 @@ let loaded: LoadedFeature[] | null = null;
 function load(): LoadedFeature[] {
   if (!loaded) {
     loaded = FEATURE_PACKAGES.map((pkg) => {
-      const host: FeatureHost = { featureId: pkg.manifest.feature, db: () => featureDb(pkg), eventLog: () => eventLogReader };
+      const host: FeatureHost = { featureId: pkg.manifest.feature, db: () => featureDb(pkg), eventLog: () => eventLogReader, launchedAt };
       return { pkg, server: pkg.server(host) };
     });
   }

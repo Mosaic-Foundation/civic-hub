@@ -34,6 +34,8 @@ export interface Report {
   generated_at: string;
   /** When the counts of residents were last computed (the job runs hourly); null before its first run. */
   computed_at: string | null;
+  /** Counted live for this read, because the hourly rollup had not counted the current period lately (D11). */
+  live: boolean;
   totals: {
     new_residents: Count;
     active_residents: Count;
@@ -48,6 +50,11 @@ export interface Report {
   /** What each total means, in a sentence. */
   definitions: Readonly<Record<string, string>>;
   suppression: { applied: boolean; below: number; shown_as: string };
+  /**
+   * Why a count reads "fewer than 5" (D14), in one sentence, so a small hub's
+   * numbers are not read as missing. Present when the rule applies.
+   */
+  note?: string;
 }
 
 

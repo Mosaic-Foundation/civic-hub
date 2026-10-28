@@ -112,6 +112,12 @@ export interface FeatureHost {
   db(): GrantedDb;
   /** The event log, read as counts. */
   eventLog(): EventLogReader;
+  /**
+   * When the hub in scope launched (engine 2, D13): the first time it left
+   * demo (its admin log's first `hub.mode` change from demo), else when it
+   * was created. ISO.
+   */
+  launchedAt(): Promise<string>;
 }
 
 export interface FeaturePackage {

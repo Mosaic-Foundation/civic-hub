@@ -202,6 +202,49 @@ describe("the counts, by hand", () => {
   });
 });
 
+describe("Adam's walk (engine 2)", () => {
+  it("D11: with no rollup of the current period, the report is counted live and shows the numbers, writing nothing", async () => {
+    await db.query("delete from analytics_period where hub_id = $1", [SLUG]);
+    await db.query("delete from analytics_daily where hub_id = $1", [SLUG]);
+    const res = await call("GET", "/admin/analytics?period=month", HOST, undefined, admin);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.live).toBe(true);
+    expect(res.body.totals.active_residents).toBe(6);
+    expect(res.body.totals.participations).toBeGreaterThan(0);
+    const stored = await db.query("select count(*)::int as n from analytics_period where hub_id = $1", [SLUG]);
+    expect(stored.rows[0].n).toBe(0);
+    // Recount stores them; the next read is the stored one.
+    await runJob();
+    const after = await call("GET", "/admin/analytics?period=month", HOST, undefined, admin);
+    expect(after.body.live).toBe(false);
+    expect(after.body.totals.active_residents).toBe(6);
+  });
+
+  it("D13: since launch starts on the day the hub launched (created, for a hub that never left demo), not its first event", async () => {
+    await db.query(
+      `insert into events (id, event_type, process_id, actor, data, hub_id, version, created_at) values ($1, 'civic.process.created', $2, 'system:old', '{}', $3, '0.1', now() - interval '400 days')`,
+      [`evt_an${randomBytes(6).toString("hex")}`, P.project, SLUG],
+    );
+    await runJob();
+    const res = await call("GET", "/admin/analytics?period=all", HOST, undefined, admin);
+    // The creation day in the hub's own time zone: the UTC day, or the one before it.
+    const created = await db.query(
+      "select to_char(created_at at time zone 'UTC', 'YYYY-MM-DD') as d, to_char((created_at - interval '1 day') at time zone 'UTC', 'YYYY-MM-DD') as before from hubs where id = $1",
+      [SLUG],
+    );
+    expect([created.rows[0].d, created.rows[0].before]).toContain(res.body.period.start);
+  });
+
+  it("D14: /analytics says, in a note, what \"fewer than 5\" means", async () => {
+    await setPublic(true);
+    const res = await call("GET", "/analytics", HOST);
+    expect(res.status).toBe(200);
+    expect(res.body.note).toMatch(/fewer than 5/);
+    expect(res.body.note).toMatch(/not missing/);
+    await setPublic(false);
+  });
+});
+
 describe("the job", () => {
   it("is idempotent: a second run leaves the same rows", async () => {
     const snapshot = async () =>

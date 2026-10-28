@@ -12,6 +12,8 @@ import { useHub } from "../../../ui/src/config/hub";
 import AdminTabs from "../../../ui/src/components/AdminTabs";
 import HelpButton from "../../../ui/src/components/HelpButton";
 import { localTimestamp } from "../../../ui/src/utils/dates";
+import { adminPutHubSettings } from "../../../ui/src/services/api";
+import { refreshHubConfig } from "../../../ui/src/config/hubConfig";
 import { addDays, type PeriodKind } from "../periods";
 import type { Count, Report } from "../types";
 import { downloadCsv, getActivity, issueKey, listKeys, recount, revokeKey, type ReportKey } from "./api";
@@ -120,7 +122,11 @@ export default function ActivityPage() {
           <p className="activity-period" data-testid="activity-period">
             <strong>{r.period.label}</strong>
             {r.period.to_date ? `, so far (to ${r.period.end})` : ` (${r.period.start} to ${r.period.end})`}.{" "}
-            {r.computed_at ? `Counted ${localTimestamp(r.computed_at)}; recounted every hour.` : "Not counted yet."}{" "}
+            {r.live
+              ? "Counted just now from the hub's record; stored by the hourly count."
+              : r.computed_at
+                ? `Counted ${localTimestamp(r.computed_at)}; recounted every hour.`
+                : "Not counted yet."}{" "}
             <button type="button" className="btn-secondary activity-inline-btn" disabled={busy !== null} onClick={() => act("Recount", async () => { await recount(); await report.reload(); })}>
               {busy === "Recount" ? "Counting…" : "Recount now"}
             </button>
@@ -217,8 +223,27 @@ export default function ActivityPage() {
           </>
         ) : (
           <>Off. Only the organisations below can read these numbers, with numbers from 1 to 4 shown as "fewer than 5".</>
-        )}{" "}
-        <Link to="/admin/settings/plugins#analytics">Change it in Plugins</Link>.
+        )}
+      </p>
+      {/* The switch itself, here as well as under Plugins (engine 2, D12). */}
+      <p>
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={busy !== null}
+          data-testid="activity-public-toggle"
+          onClick={() =>
+            act("Public numbers", async () => {
+              await adminPutHubSettings("plugins", { "plugin.analytics.public_numbers": !publicOn });
+              await refreshHubConfig();
+            })
+          }
+        >
+          {busy === "Public numbers" ? "Saving…" : publicOn ? "Make the numbers private" : "Make the numbers public"}
+        </button>{" "}
+        <span className="activity-muted">
+          Also under <Link to="/admin/settings/plugins#analytics">Plugins</Link>.
+        </span>
       </p>
 
       <ReportingKeys />

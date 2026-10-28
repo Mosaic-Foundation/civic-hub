@@ -99,6 +99,7 @@ describe("the CSV", () => {
       previous_period: null,
       generated_at: "",
       computed_at: null,
+      live: false,
       totals: { new_residents: 1, active_residents: 2, processes_created: 3, processes_closed: 4, participations: 5, outcomes: 6 },
       by_type: [{ type: "t", label: "T", plural: "=HYPERLINK(1)", processes_created: 0, processes_closed: 0, participations: 0, outcomes: 0, active_residents: 0 }],
       measures: [],

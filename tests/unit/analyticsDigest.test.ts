@@ -15,6 +15,9 @@ const untouchable: FeatureHost = {
   eventLog: () => {
     throw new Error("the line read the event log on a day it says nothing");
   },
+  launchedAt: () => {
+    throw new Error("the line read the hub's launch on a day it says nothing");
+  },
 };
 
 describe("the digest's Activity line", () => {
