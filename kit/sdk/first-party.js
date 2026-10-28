@@ -73,6 +73,7 @@ export const getUser = e.getUser;
 export const getVoteLog = e.getVoteLog;
 export const getVoteResultsRecipients = e.getVoteResultsRecipients;
 export const hasUserVoted = e.hasUserVoted;
+export const hubContext = e.hubContext;
 export const hubDisplayNameSync = e.hubDisplayNameSync;
 export const insertResponse = e.insertResponse;
 export const isPastDeadline = e.isPastDeadline;

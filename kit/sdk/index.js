@@ -18,6 +18,7 @@ export const closeThroughDispatcher = e.closeThroughDispatcher;
 export const emitEvent = e.emitEvent;
 export const generateId = e.generateId;
 export const getAuthUser = e.getAuthUser;
+export const hubContext = e.hubContext;
 export const isPastDeadline = e.isPastDeadline;
 export const namesFor = e.namesFor;
 export const notify = e.notify;

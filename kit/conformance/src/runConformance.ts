@@ -43,6 +43,8 @@
 //      is refused it.
 //  19. telling people (Events 2, E2): a package that calls notify() names
 //      `mail` in its grant.
+//  20. the hub in scope (Events 2, E3): its code names no time zone and no
+//      hub's address; hubContext() gives the hub's.
 // Tier 2 (sandboxed) has a slot and no runtime yet.
 //
 // Needs the local stack and a hub server started with CIVIC_POLIS_FAKE=on and
@@ -912,6 +914,21 @@ function sdkSurfaceSteps(d: ProcessTypeDescriptor, facts: HostFacts, touched: Ar
         .filter((f) => /\.tsx?$/.test(f))
         .some((f) => /\bnotify\s*\(/.test(readFileSync(join(dir, f), "utf8")));
       if (calls) expect(manifest?.capabilities.adapters, `${d.type}: it calls notify`).toContain("mail");
+    });
+  });
+
+  describe("20. the hub in scope", () => {
+    it("its own code names no time zone and no hub's address: it takes the hub's from hubContext() (one package, every hub)", () => {
+      const pkg = loadedPackages().find((p) => p.type === d.type);
+      if (!pkg) return;
+      const dir = resolve(HOST_ROOT, pkg.dir);
+      const zone = /\b(Africa|America|Antarctica|Asia|Atlantic|Australia|Europe|Indian|Pacific)\/[A-Z][A-Za-z_]+/;
+      const hubAddress = /\b[a-z0-9-]+\.(civic\.social|localhost)\b/;
+      for (const f of readdirSync(dir).filter((x) => /\.tsx?$/.test(x))) {
+        const src = readFileSync(join(dir, f), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+        expect(src.match(zone)?.[0], `${d.type}: ${f} names a time zone`).toBeUndefined();
+        expect(src.match(hubAddress)?.[0], `${d.type}: ${f} names a hub's address`).toBeUndefined();
+      }
     });
   });
 

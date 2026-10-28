@@ -324,6 +324,9 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.IDENTITY_LOGO_URL,
   KEYS.IDENTITY_HUB_KIND,
   KEYS.IDENTITY_JURISDICTION_TYPE,
+  // Events 2 (Adam, 2026-10-28): an event's page and form default to the
+  // hub's clock, and what time it is somewhere is no secret.
+  KEYS.IDENTITY_TIMEZONE,
 
   KEYS.NAV_LAYOUT,
   KEYS.NAV_SECTION_ORDER,

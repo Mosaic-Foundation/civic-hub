@@ -80,6 +80,7 @@ export {
   getVoteLog,
   getVoteResultsRecipients,
   hasUserVoted,
+  hubContext,
   hubDisplayNameSync,
   insertResponse,
   isPastDeadline,

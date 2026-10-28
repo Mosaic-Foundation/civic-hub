@@ -79,6 +79,10 @@ export { namesFor } from "../../src/sdk/index.js";
 export { notify } from "../../src/sdk/index.js";
 export type { Notice, NoticeReport } from "../../src/sdk/index.js";
 
+// --- The hub in scope (Events 2, E3): its name, the origin its pages are at, its time zone --------
+export { hubContext } from "../../src/sdk/index.js";
+export type { HubContext } from "../../src/sdk/index.js";
+
 // --- Its own records, on the database its host hands it (its granted tables only) ----------
 export { storeSlot, HubDbError, readAll, readProcessState, writeProcessState } from "../../src/sdk/index.js";
 export type { StoreSlot } from "../../src/sdk/index.js";

@@ -134,6 +134,10 @@ additive (refused); CI runs it too.
 19. **Telling people** (Events 2): a package that calls `notify()` names `mail`
     in its grant. The hub refuses `notify` for a type without it (a reach past
     the grant), and builds the message's link to the process's own page.
+20. **The hub in scope** (Events 2): a package's code (comments aside) names
+    no IANA time zone and no hub's address. One package serves every hub;
+    `hubContext()` gives the hub's name, the origin its pages are at, and its
+    zone, and `identity.timezone` is public at `/hub-config` for its pages.
 
 `kit/conformance/fixtures/sdk-tour` uses every one of 11 to 17 through the
 SDK alone; `kit/scripts/prove.ts` runs it from an empty folder.

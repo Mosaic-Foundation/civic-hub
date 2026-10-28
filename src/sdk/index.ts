@@ -150,6 +150,8 @@ export { enrichCreator, enrichCreators, PUBLIC_ADMIN_NAME } from "../services/cr
 export { namesFor } from "../services/disclosedNames.js";
 export { notify } from "../services/notices.js";
 export type { Notice, NoticeReport } from "../services/notices.js";
+export { hubContext } from "../services/pluginHubContext.js";
+export type { HubContext } from "../services/pluginHubContext.js";
 
 // --- src/controllers/processController.ts ------------------------------------------------
 export { actOnProcess, readAsPage, viewFor } from "../controllers/processController.js";
