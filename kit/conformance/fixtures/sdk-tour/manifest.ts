@@ -82,7 +82,12 @@ const descriptor = defineDescriptor({
       place: "Town hall",
     },
   },
-  display: { label: "SDK tour", plural: "SDK tours", icon: "map" },
+  display: {
+    label: "SDK tour",
+    plural: "SDK tours",
+    icon: "map",
+    section: { id: "sdk-tours", label: "Tours", path: "/sdk-tour", detail_paths: ["/sdk-tour/"], order: 90 },
+  },
 });
 
 const ACTIVITY_OBJECT = { kind: "civic", class: "civic:Process", id: "process", name: "title" } as const;
@@ -97,13 +102,38 @@ export const SDK_TOUR_MANIFEST = defineManifest({
     { table: "sdk_tour_places", columns: ["process_id", "place"], owner: TYPE },
   ],
   tables: [
-    { name: "sdk_tour_drafts", rows: "export", key: ["id"], holds: "residents' unfinished tour drafts" },
-    { name: "sdk_tour_marks", rows: "export", key: ["process_id", "user_id"], holds: "who marked each tour" },
-    { name: "sdk_tour_joins", rows: "export", key: ["process_id", "user_id"], holds: "who joined each tour" },
-    { name: "sdk_tour_places", rows: "export", key: ["process_id"], holds: "each tour's place as last edited" },
+    // B9: what each table is to sample content, from the folder alone.
+    { name: "sdk_tour_drafts", rows: "export", key: ["id"], holds: "residents' unfinished tour drafts", sample: { notContent: "an unsubmitted draft; the seed writes none" } },
+    {
+      name: "sdk_tour_marks",
+      rows: "export",
+      key: ["process_id", "user_id"],
+      holds: "who marked each tour",
+      sample: { child: ["process_id"], participation: { user: "user_id", kind: "mark", nouns: ["mark on a tour", "marks on tours"] } },
+    },
+    {
+      name: "sdk_tour_joins",
+      rows: "export",
+      key: ["process_id", "user_id"],
+      holds: "who joined each tour",
+      sample: { child: ["process_id"], participation: { user: "user_id", kind: "join", nouns: ["person on a tour", "people on tours"] } },
+    },
+    {
+      name: "sdk_tour_places",
+      rows: "export",
+      key: ["process_id"],
+      holds: "each tour's place as last edited",
+      sample: { child: ["process_id"], notParticipation: "written by the tour's own edits" },
+    },
   ],
   jobs: [],
-  pluginSection: { order: 90, name: "SDK tour", what: "A conformance fixture that uses every SDK v1 capability.", fields: [] },
+  pluginSection: {
+    order: 90,
+    name: "SDK tour",
+    what: "A conformance fixture that uses every SDK v1 capability.",
+    fields: [],
+    help: { text: "A fixture: every SDK v1 capability in one type.", page: "/reference/plugins", anchor: "plugins-sdk-tour", pending: true },
+  },
   activities: {
     [EVENTS.marked]: { type: "Add", object: ACTIVITY_OBJECT },
     [EVENTS.joined]: { type: "Join", object: ACTIVITY_OBJECT },

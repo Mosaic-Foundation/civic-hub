@@ -132,12 +132,41 @@ export const EVENT_MANIFEST = defineManifest({
     { table: "calendar_attendance", columns: ["process_id", "user_id"], owner: TYPE },
   ],
   tables: [
-    { name: "calendar_events", rows: "export", key: ["process_id"], holds: "the hub's calendar: each published event's title, time and place" },
-    { name: "calendar_attendance", rows: "export", key: ["process_id", "user_id"], holds: "who said they are going to each event" },
-    { name: "calendar_drafts", rows: "export", key: ["id"], holds: "residents' unfinished event drafts" },
+    {
+      name: "calendar_events",
+      rows: "export",
+      key: ["process_id"],
+      holds: "the hub's calendar: each published event's title, time and place",
+      sample: { child: ["process_id"], notParticipation: "the event's place on the calendar, written by the event itself" },
+    },
+    {
+      name: "calendar_attendance",
+      rows: "export",
+      key: ["process_id", "user_id"],
+      holds: "who said they are going to each event",
+      sample: { child: ["process_id"], participation: { user: "user_id", kind: "going", nouns: ["person going to an event", "people going to events"] } },
+    },
+    {
+      name: "calendar_drafts",
+      rows: "export",
+      key: ["id"],
+      holds: "residents' unfinished event drafts",
+      sample: { notContent: "a resident's unsubmitted event draft; the seed writes none" },
+    },
   ],
   jobs: [],
-  pluginSection: { order: 35, name: "Events", what: "A calendar: residents propose events, say they're going, and anyone can subscribe.", fields: [] },
+  pluginSection: {
+    order: 35,
+    name: "Events",
+    what: "A calendar: residents propose events, say they're going, and anyone can subscribe.",
+    fields: [],
+    help: {
+      text: "A calendar. People propose events, which go through review like proposals, and say they're going. Anyone can subscribe to the calendar in their own calendar app. Off hides the Events pages; nothing is deleted.",
+      page: "/reference/plugins",
+      anchor: "plugins-events",
+      pending: true,
+    },
+  },
   // On the wire each is an AS2 activity on the event, as Mobilizon and other
   // fediverse servers publish them: Create, Update (a cancellation carries
   // ical:status CANCELLED), Join and Leave.

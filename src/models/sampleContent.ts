@@ -14,7 +14,17 @@
 // fails when a table with hub_id is in neither list below, so a table added
 // later is classified on purpose rather than missed.
 //
+// A package classifies its own tables in its manifest (`tables[].sample`;
+// engine 2, B9): they join the lists below from there, so a new type adds no
+// line here.
+//
 // Pure: no database, no request.
+
+import { MANIFEST_LIST } from "../shared/processManifests.js";
+
+/** Every configured package's table declarations that say what they are to sample content. */
+const DECLARED = MANIFEST_LIST.flatMap((m) => m.tables.flatMap((t) => (t.sample ? [{ name: t.name, sample: t.sample }] : [])));
+const declaredChildren = DECLARED.flatMap((t) => ("child" in t.sample ? [{ name: t.name, sample: t.sample }] : []));
 
 /** The tables that carry `is_sample` themselves. */
 export const MARKED_TABLES = ["processes", "events", "users"] as const;
@@ -27,8 +37,6 @@ export const MARKED_TABLES = ["processes", "events", "users"] as const;
 export const PROCESS_CHILD_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   active_vote_keys: ["process_id"],
   brief_responses: ["brief_id"],
-  calendar_attendance: ["process_id"],
-  calendar_events: ["process_id"],
   community_inputs: ["process_id"],
   deliberation_submissions: ["process_id"],
   deliberation_votes: ["process_id"],
@@ -44,6 +52,7 @@ export const PROCESS_CHILD_COLUMNS: Readonly<Record<string, readonly string[]>> 
   vote_participation: ["process_id"],
   vote_records: ["process_id"],
   wordcloud_submissions: ["process_id"],
+  ...Object.fromEntries(declaredChildren.map((t) => [t.name, t.sample.child])),
 };
 
 /**
@@ -56,7 +65,6 @@ export const NOT_PROCESS_CONTENT: Readonly<Record<string, string>> = {
   analytics_period: "Activity's period counts, derived from the events and accounts; samples are not counted",
   analytics_report_keys: "reporting keys an admin issued; never seeded",
   analytics_report_reads: "reads made with a reporting key; never seeded",
-  calendar_drafts: "a resident's unsubmitted event draft; the seed writes none",
   ai_usage: "a record of paid model calls, for the daily budget",
   deliberation_drafts: "a resident's unsubmitted draft; the seed writes none",
   feedback_submissions: "product feedback to the hub, not about a process",
@@ -73,6 +81,7 @@ export const NOT_PROCESS_CONTENT: Readonly<Record<string, string>> = {
   sessions: "credentials; a sample user's sessions go with the user (ON DELETE CASCADE)",
   vote_drafts: "a resident's unsubmitted draft; the seed writes none",
   waitlist: "people asking to join",
+  ...Object.fromEntries(DECLARED.flatMap((t) => ("notContent" in t.sample ? [[t.name, t.sample.notContent]] : []))),
 };
 
 /**
@@ -138,11 +147,18 @@ export const PARTICIPATION_TABLES: ReadonlyArray<{
   { table: "deliberation_votes", processColumn: "process_id", userColumn: "user_id", kind: "reaction" },
   { table: "wordcloud_submissions", processColumn: "process_id", userColumn: "author_id", kind: "submission" },
   { table: "brief_responses", processColumn: "brief_id", userColumn: "responder_id", kind: "response" },
-  { table: "calendar_attendance", processColumn: "process_id", userColumn: "user_id", kind: "going" },
   { table: "process_reviews", processColumn: "process_id", userColumn: "creator_id", kind: "review", seededOnly: true },
+  // A package's own (B9): the first child column names the process.
+  ...declaredChildren.flatMap((t) =>
+    t.sample.participation
+      ? [{ table: t.name, processColumn: t.sample.child[0], userColumn: t.sample.participation.user, kind: t.sample.participation.kind }]
+      : [],
+  ),
 ];
 
-export type ParticipationKind =
+/** A kind of act: the hub's own, or one a package's table declares (B9). */
+export type ParticipationKind = BuiltinParticipationKind | (string & {});
+type BuiltinParticipationKind =
   | "comment"
   | "endorsement"
   | "ballot"
@@ -150,7 +166,6 @@ export type ParticipationKind =
   | "reaction"
   | "submission"
   | "response"
-  | "going"
   | "review";
 
 /**
@@ -159,13 +174,13 @@ export type ParticipationKind =
  */
 export const NOT_PARTICIPATION: Readonly<Record<string, string>> = {
   active_vote_keys: "a voter's key while a vote is open; their ballot is counted through vote_participation",
-  calendar_events: "the event's place on the calendar, written by the event itself",
   events: "the log of the actions counted here",
   process_links: "links between processes",
   project_updates: "written by the project's own author",
   projects: "the process's own row",
   proposals: "the process's own row",
   vote_records: "anonymous ballots; counted through vote_participation",
+  ...Object.fromEntries(declaredChildren.flatMap((t) => (t.sample.notParticipation ? [[t.name, t.sample.notParticipation]] : []))),
 };
 
 // --- Synthetic authors ------------------------------------------------------

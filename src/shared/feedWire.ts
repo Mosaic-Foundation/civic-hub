@@ -16,6 +16,8 @@
 //
 // Shared by the UI (Feed.tsx) and the tests; plain data and functions only.
 
+import { MANIFEST_LIST } from "./processManifests.js";
+
 /** The serialized form of each card-making event type. */
 export const FEED_WIRE_FORMS: ReadonlyArray<{ type: string; object: string; event: string }> = [
   { type: "Create", object: "civic:Process", event: "civic.process.created" },
@@ -27,8 +29,17 @@ export const FEED_WIRE_FORMS: ReadonlyArray<{ type: string; object: string; even
   { type: "Create", object: "hub:OfficialResponse", event: "civic.process.action_taken" },
   { type: "Create", object: "hub:ProcessAction", event: "civic.process.action_taken" },
   { type: "Announce", object: "civic:Outcome", event: "civic.outcome_delivered" },
-  // The Events plugin's publish: a Create of an AS2 Event (its wireObject).
-  { type: "Create", object: "Event", event: "civic.event.published" },
+  // A package whose object goes on the wire as a standard vocabulary object
+  // (its manifest's wireObject: the Events plugin's AS2 Event): each of its
+  // card events, as its activities mapping serializes it (engine 2, B9).
+  ...MANIFEST_LIST.flatMap((m) =>
+    m.wireObject
+      ? (m.feed?.cards ?? []).flatMap((c) => {
+          const type = m.activities[c.event]?.type;
+          return type ? [{ type, object: m.wireObject!.type, event: c.event }] : [];
+        })
+      : [],
+  ),
 ];
 
 const BY_PAIR: ReadonlyMap<string, string> = new Map(FEED_WIRE_FORMS.map((f) => [`${f.type} ${f.object}`, f.event]));

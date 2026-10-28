@@ -53,6 +53,22 @@ export interface TableDeclaration {
    * this hub: …" on the Install confirmation ("residents' one-word answers").
    */
   holds: string;
+  /**
+   * What its rows are to sample content (engine 2, B9; src/models/
+   * sampleContent.ts), so a new type's tables are classified from its folder:
+   *   { child: [columns] }: its rows belong to the process a column names;
+   *     with `participation`, a person wrote each (the column naming them,
+   *     the kind of act, and the nouns the removal warning counts it in);
+   *     otherwise `notParticipation` says who writes them;
+   *   { notContent: why }: its rows are never sample content.
+   */
+  sample?:
+    | {
+        child: readonly string[];
+        participation?: { user: string; kind: string; nouns: readonly [string, string] };
+        notParticipation?: string;
+      }
+    | { notContent: string };
 }
 
 /** The admin queues a type's unpublished records can wait in (src/services/adminQueues.ts). */
@@ -88,6 +104,13 @@ export interface PluginSection {
   what: string;
   /** Its settings beyond `plugin.<id>.enabled`, which every plugin has. */
   fields: readonly SettingFieldSpec[];
+  /**
+   * The "?" note on its Plugins panel (engine 2, B9): written into
+   * src/shared/helpRegistry.json as `plugins.<id>` by `npm run plugins:sync`,
+   * so a new type's note comes from its folder. `pending` until the docs
+   * publish the anchor (scripts/check-help-anchors.ts).
+   */
+  help?: { text: string; page: string; anchor: string; pending?: boolean };
 }
 
 export interface ProcessManifest {

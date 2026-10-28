@@ -73,7 +73,7 @@ function copiedName(dir: string, file: string): string {
   return `${ts}_pkg_${id}__${rest.join("_")}`;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const dirs = readConfiguredList();
   const names: string[] = [];
   for (const dir of dirs) {
@@ -144,6 +144,18 @@ function main(): void {
     }
   }
 
+  // Files the hub keeps that each type used to join by hand (engine 2, B9),
+  // now written from the manifests.
+  const manifests = await Promise.all(
+    dirs.map(async (d) => ((await import(join(ROOT, d, "manifest.ts"))) as { default: DerivedManifest }).default),
+  );
+  for (const [rel, body] of derivedFiles(manifests)) {
+    const abs = join(ROOT, rel);
+    if (readFileSync(abs, "utf8") === body) continue;
+    stale.push(rel);
+    if (!CHECK) writeFileSync(abs, body);
+  }
+
   if (CHECK) {
     if (stale.length > 0) fail(`stale, run \`npm run plugins:sync\`: ${stale.join(", ")}`);
     console.log(`plugins:sync: ${dirs.length} packages, everything current`);
@@ -152,4 +164,64 @@ function main(): void {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+/** What derivedFiles reads of a manifest. */
+interface DerivedManifest {
+  descriptor: { plugin: string };
+  detailPath(id: string): string;
+  pluginSection?: { help?: { text: string; page: string; anchor: string; pending?: boolean } };
+}
+
+/**
+ * Addresses that keep a share card though no configured type serves them any
+ * more: a retired type's published pages, which redirect (vote results to
+ * their brief; engine 2, C).
+ */
+const LEGACY_SHARE_PATHS = ["/vote-results"];
+
+/**
+ * The files written from the manifests (B9):
+ *   - vercel.json: a crawler's share-card rewrite (/api/og) for each type's
+ *     page path, and the legacy ones. The block is rewritten only when the
+ *     set of paths changes, keeping its order (new ones go last);
+ *   - src/shared/helpRegistry.json: `plugins.<id>` for each manifest that
+ *     declares its help note, in place, or after the last plugins.* key.
+ */
+export function derivedFiles(manifests: readonly DerivedManifest[], root = ROOT): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+
+  const vercelText = readFileSync(join(root, "vercel.json"), "utf8");
+  const vercel = JSON.parse(vercelText) as { rewrites: Array<{ source: string; destination: string; has?: unknown }> };
+  const og = vercel.rewrites.filter((r) => r.destination === "/api/og");
+  const wanted = new Set([...manifests.map((m) => `/${m.detailPath("x").split("/")[1]}`), ...LEGACY_SHARE_PATHS]);
+  const have = og.map((r) => r.source.replace(/\/:id\*$/, ""));
+  if (og.length > 0 && (have.length !== wanted.size || have.some((p) => !wanted.has(p)))) {
+    const first = vercel.rewrites.indexOf(og[0]);
+    const kept = og.filter((r) => wanted.has(r.source.replace(/\/:id\*$/, "")));
+    const added = [...wanted].filter((p) => !have.includes(p)).map((p) => ({ source: `${p}/:id*`, destination: "/api/og", has: og[0].has }));
+    const rest = vercel.rewrites.filter((r) => r.destination !== "/api/og");
+    rest.splice(first, 0, ...kept, ...added);
+    out.push(["vercel.json", JSON.stringify({ ...vercel, rewrites: rest }, null, 2) + "\n"]);
+  }
+
+  const helpText = readFileSync(join(root, "src/shared/helpRegistry.json"), "utf8");
+  const help = JSON.parse(helpText) as Record<string, unknown>;
+  let next: Record<string, unknown> = { ...help };
+  for (const m of manifests) {
+    const note = m.pluginSection?.help;
+    if (!note) continue;
+    const key = `plugins.${m.descriptor.plugin}`;
+    const entry = { text: note.text, page: note.page, anchor: note.anchor, ...(note.pending ? { pending: true } : {}) };
+    if (key in next) {
+      next[key] = entry;
+    } else {
+      const keys = Object.keys(next);
+      const after = keys.reduce((last, k, i) => (k.startsWith("plugins.") ? i : last), keys.length - 1);
+      next = Object.fromEntries([...keys.slice(0, after + 1).map((k) => [k, next[k]]), [key, entry], ...keys.slice(after + 1).map((k) => [k, next[k]])]);
+    }
+  }
+  const helpBody = JSON.stringify(next, null, 2) + "\n";
+  if (helpBody !== helpText) out.push(["src/shared/helpRegistry.json", helpBody]);
+  return out;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) void main();
