@@ -11,6 +11,7 @@ import { requireAdmin, requireAnnouncementPoster, requireResident } from "../mid
 import {
   handleHubImageUpload,
   handlePostImageUpload,
+  handleProcessImageUpload,
 } from "../controllers/uploadController.js";
 
 const router = Router();
@@ -44,5 +45,10 @@ router.post(
 // hub's own prefix in the bucket; the URL it returns is what the Identity
 // section then saves to identity.banner_url / identity.logo_url.
 router.post("/hub-image", requireAdmin, handleHubImageUpload);
+
+// An image a process type's residents attach (an event's picture; Events 2,
+// E1). The type must declare it in its manifest and be granted the object
+// store; the handler refuses any other type as not found.
+router.post("/process-image/:type", requireResident, handleProcessImageUpload);
 
 export default router;

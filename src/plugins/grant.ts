@@ -31,7 +31,7 @@
 
 import { CivicError } from "../errors/index.js";
 import { reportError } from "../utils/reportError.js";
-import type { PluginCapabilities } from "../shared/pluginGrant.js";
+import type { GrantableAdapter, PluginCapabilities } from "../shared/pluginGrant.js";
 import { PACKAGE_ENTRIES } from "../../config/plugins/manifests.js";
 import { hubGrantOf } from "./hubGrants.js";
 
@@ -65,6 +65,18 @@ export function registerGrant(processType: string, packageName: string, caps: Pl
 /** The grant of the package that owns a process type, or undefined for a type no package owns. */
 export function grantOfType(processType: string): Granted | undefined {
   return BY_TYPE.get(processType);
+}
+
+/**
+ * Whether the package that owns `processType` may use `adapter` on the hub in
+ * scope: in its grant, and in the grant that hub's admin approved (no record:
+ * its manifest decides). False for a type no package owns.
+ */
+export function typeMayUseAdapter(processType: string, adapter: GrantableAdapter): boolean {
+  const g = BY_TYPE.get(processType);
+  if (!g || !g.caps.adapters.includes(adapter)) return false;
+  const approved = hubGrantOf(g.packageName);
+  return !approved || approved.adapters.includes(adapter);
 }
 
 /** Refuse and report one reach past a grant. */

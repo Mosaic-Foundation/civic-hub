@@ -164,6 +164,13 @@ export interface ProcessManifest {
    * before plugin Events.
    */
   wireObject?: WireObjectRecipe;
+  /**
+   * Images its residents attach (Events 2, E1): the hub's upload route
+   * `POST /upload/process-image/:type` takes one for this type, through the
+   * post-image checks, under `<hub_id>/types/<type>/`. Needs `objectStore` in
+   * its grant. Absent: the route refuses the type.
+   */
+  uploads?: { images: true };
   /** Present when an admin publishes its records (see Publication). */
   publication?: Publication;
   /**
@@ -508,6 +515,9 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       }
     }
 
+    if (m.uploads !== undefined && (m.uploads?.images !== true || !m.capabilities?.adapters.includes("objectStore"))) {
+      throw new ManifestError(`${where(m)}: uploads: images must be true, and its grant must name the objectStore adapter`);
+    }
     if (m.wireObject !== undefined) {
       const problem = wireObjectProblem(m.wireObject);
       if (problem) throw new ManifestError(`${where(m)}: wireObject: ${problem}`);

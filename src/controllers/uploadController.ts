@@ -14,7 +14,7 @@
 // (header-only read, ~10 KB) as a guard against pathological uploads
 // that bypassed the client resize.
 
-import { PayloadTooLargeError, RateLimitedError, ValidationError } from "../errors/index.js";
+import { NotFoundError, PayloadTooLargeError, RateLimitedError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import type { Request, Response } from "express";
 import busboy from "busboy";
@@ -27,6 +27,9 @@ import {
   uploadPostImage,
 } from "../services/postImageStorage.js";
 import { currentHubId } from "../config/hubContext.js";
+import { getManifest } from "../processes/registry.js";
+import { typeMayUseAdapter } from "../plugins/grant.js";
+import { isProcessTypeEnabled } from "../services/pluginGate.js";
 
 // Image dimension caps. The lower bound rejects accidental favicons /
 // 1×1 tracking pixels; the upper bound caps storage cost and rendering
@@ -202,6 +205,27 @@ export const handleHubImageUpload = route(async (req, res) => {
     throw new ValidationError('kind must be "banner" or "logo".');
   }
   await uploadImage(req, res, HUB_IMAGE_LIMITS[kind]);
+});
+
+/**
+ * POST /upload/process-image/:type (Events 2, E1): an image a process type's
+ * residents attach (an event's picture). Open only to a type whose manifest
+ * declares `uploads: { images: true }`, whose grant (and the hub's approved
+ * grant) names `objectStore`, and whose plugin is on; anything else is 404,
+ * as an unknown route. The post-image checks; the key under
+ * `<hub_id>/types/<type>/`. The type stores the URL it is given.
+ */
+export const handleProcessImageUpload = route(async (req, res) => {
+  const type = String(req.params.type ?? "");
+  const manifest = getManifest(type);
+  if (
+    !manifest?.uploads?.images ||
+    !typeMayUseAdapter(type, "objectStore") ||
+    !isProcessTypeEnabled(type)
+  ) {
+    throw new NotFoundError("Not found");
+  }
+  await uploadImage(req, res, { ...POST_IMAGE_LIMITS, prefix: () => `${hubImagePrefix(currentHubId())}/types/${type}` });
 });
 
 async function uploadImage(

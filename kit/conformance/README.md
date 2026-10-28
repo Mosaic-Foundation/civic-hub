@@ -126,6 +126,11 @@ additive (refused); CI runs it too.
 17. **The hub's UI kit:** a package that draws its own pages imports its
     controls from `@civic-social/plugin-sdk/ui`, and no stylesheet of its
     sets `--color-primary-ink` text on a `--color-primary` fill.
+18. **Images its residents attach** (Events 2): a type whose manifest declares
+    `uploads: { images: true }` has `objectStore` in its grant, and the hub's
+    `POST /upload/process-image/:type` takes a resident's image under
+    `<hub>/types/<type>/`; signed out it is 401, not an image 400, the plugin
+    off 404. A type that declares nothing is refused the route (404).
 
 `kit/conformance/fixtures/sdk-tour` uses every one of 11 to 17 through the
 SDK alone; `kit/scripts/prove.ts` runs it from an empty folder.

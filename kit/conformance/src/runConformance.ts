@@ -38,6 +38,9 @@
 //      colour family, stylesheet and digest section; 16 an official may call
 //      what is open to officials, and publishes at once where declared; 17
 //      its own pages draw with the hub's UI kit.
+//  18. images its residents attach (Events 2, E1): a type that declares
+//      `uploads` takes one through the hub's upload route; one that does not
+//      is refused it.
 // Tier 2 (sandboxed) has a slot and no runtime yet.
 //
 // Needs the local stack and a hub server started with CIVIC_POLIS_FAKE=on and
@@ -48,7 +51,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { HOST_ROOT } from "@civic-social/plugin-sdk/host";
-import { call } from "./support/http.js";
+import { call, callUpload, pngOf } from "./support/http.js";
 import { accountIdOf, foreignIds } from "./support/accountIds.js";
 import { localRest, localStack } from "./support/localStack.js";
 import {
@@ -894,6 +897,32 @@ function sdkSurfaceSteps(d: ProcessTypeDescriptor, facts: HostFacts, touched: Ar
         expect((await act(BETA, id, a.name, payload, plain.token)).status).toBe(403);
         const ok = await act(BETA, id, a.name, payload, official.token);
         expect(ok.status, JSON.stringify(ok.body)).toBeLessThan(300);
+      }
+    });
+  });
+
+  describe("18. images its residents attach", () => {
+    it("a type that declares uploads takes an image from a resident under its own prefix; signed out, switched off or undeclared, it is refused", async () => {
+      const path = `/upload/process-image/${encodeURIComponent(d.type)}`;
+      const image = pngOf(400, 300);
+      const someone = await resident(BETA);
+      if (!manifest?.uploads?.images) {
+        // The route is not this type's: refused as an unknown route.
+        expect((await callUpload(path, BETA.host, image, "image/png", someone.token)).status).toBe(404);
+        return;
+      }
+      expect(manifest.capabilities.adapters, `${d.type}: uploads need the objectStore adapter in its grant`).toContain("objectStore");
+      const ok = await callUpload(path, BETA.host, image, "image/png", someone.token);
+      expect(ok.status, JSON.stringify(ok.body)).toBe(201);
+      expect(ok.body).toMatchObject({ width: 400, height: 300, mime: "image/png" });
+      expect(String(ok.body.url), "stored under the hub's prefix, in the type's own folder").toContain(`/${BETA.slug}/types/${d.type}/`);
+      expect((await callUpload(path, BETA.host, image, "image/png")).status, "signed out").toBe(401);
+      expect((await callUpload(path, BETA.host, Buffer.from("not an image"), "image/png", someone.token)).status, "not an image").toBe(400);
+      await setPlugin(BETA, d.plugin, false);
+      try {
+        expect((await callUpload(path, BETA.host, image, "image/png", someone.token)).status, "plugin off").toBe(404);
+      } finally {
+        await setPlugin(BETA, d.plugin, true);
       }
     });
   });
