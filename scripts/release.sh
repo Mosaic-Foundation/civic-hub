@@ -184,6 +184,18 @@ signatures() {
     });'
 }
 
+# The configured packages whose catalog entry is not approved on the target,
+# one "name@version status" per line (scripts/catalog-unapproved.ts; read-only).
+# E15: the push to production waits on this, not on a "y".
+catalog_unapproved() {
+  node --env-file="$DB_ENV" --import tsx scripts/catalog-unapproved.ts
+}
+
+# How many packages config/plugins.json lists.
+configured_count() {
+  node -p 'require("./config/plugins.json").packages.length'
+}
+
 # Wait up to $1 seconds for status ok with no gaps (and, given $2, that commit).
 # The schema report is re-checked every 30 seconds, so a migration applied a
 # moment ago can take that long to show.
@@ -301,12 +313,43 @@ else
   step "Migrations on dev"
 fi
 
+if [[ "$TARGET" == "prod" ]]; then DB_ENV="$RELEASE_PROD_DB_ENV"; else DB_ENV="$RELEASE_DEV_DB_ENV"; fi
+
 dry_run_migrations || stop "db-push.sh --dry-run failed (output above)."
 if (( COUNT > 0 )); then
   ok "$COUNT migration(s) to apply:"
   printf '%s\n' "$MIGRATIONS" | sed 's/^/        /'
 else
   ok "no migrations to apply"
+fi
+
+# E15: on production, every package this code runs must have an approved
+# catalog entry before the code goes out. A dry run says which do not: one
+# already in the catalog unapproved refuses; one whose entry arrives with
+# these migrations is approved after they apply (the real run waits for it).
+# RELEASE_CHECK_CATALOG=1 runs the same check on dev (how it is tested).
+if [[ "$TARGET" == "prod" || "${RELEASE_CHECK_CATALOG:-}" == "1" ]]; then
+  [[ -f "$DB_ENV" ]] || stop "No env file at $DB_ENV: the release cannot see which plugin catalog entries the target has approved." \
+    "Write CIVIC_TARGET_DATABASE_URL for production there (RUNBOOK-release.md), then run this again."
+  UNAPPROVED="$(catalog_unapproved)" || stop "Could not read the target's plugin catalog (output above)."
+  ARRIVING=""; REFUSED=""
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    pkgver="${line% *}"; status="${line##* }"; dir_ver="${pkgver##*@}"
+    if [[ "$status" == "missing" ]] && printf '%s\n' "$MIGRATIONS" | grep -q "_catalog_.*_${dir_ver//./_}\.sql"; then
+      ARRIVING+="$pkgver"$'\n'
+    else
+      REFUSED+="$line"$'\n'
+    fi
+  done <<<"$UNAPPROVED"
+  if [[ -n "$ARRIVING" ]]; then
+    note "Arriving with these migrations, to approve in the console before the code goes out:"
+    printf '%s' "$ARRIVING" | sed 's/^/        /'
+  fi
+  [[ -z "$REFUSED" ]] || stop "The $LABEL catalog does not approve every package this code runs:" \
+    "$(printf '%s' "$REFUSED" | sed 's/^/  /')" \
+    "Approve them in the console (Plugins), or add the missing entries (npm run catalog:add), then run this again."
+  ok "every package this code runs is approved there, or arrives with these migrations"
 fi
 
 if (( DRY_RUN )); then
@@ -334,6 +377,18 @@ else
     note "Approve each in the console (Plugins) before the code goes out; a package without an approved entry is not mounted."
     ask "Approved in the console, push the code?" || stop "You said no. The migrations are in; the code is not pushed." \
       "Approve the entries in the console (Plugins), then run this again: it finds no migrations and pushes."
+  fi
+  # E15: on production the answer is checked, not trusted.
+  if [[ "$TARGET" == "prod" ]]; then
+    while :; do
+      UNAPPROVED="$(catalog_unapproved)" || stop "Could not read production's plugin catalog (output above). The code is not pushed."
+      [[ -z "$UNAPPROVED" ]] && break
+      note "Not approved on production yet:"
+      printf '%s\n' "$UNAPPROVED" | sed 's/^/        /'
+      ask "Approve them in the console (Plugins). Check again?" || stop "You said no. The migrations are in; the code is not pushed." \
+        "Approve the entries in the console (Plugins), then run this again: it finds no migrations and pushes."
+    done
+    ok "every package this code runs is approved on production"
   fi
 fi
 
@@ -449,6 +504,17 @@ else
   step "Signed approvals"
   MOUNTS="$(mounts)"
   note "Plugin packages: $MOUNTS"
+  # E15: a deployment that mounts fewer packages than this code lists is a
+  # failure, not "ok" (0 mounted read as 0 unsigned on Oct 27). On dev with
+  # --yes a new entry is approved after the push, so it is said, not stopped.
+  MOUNTED_N="${MOUNTS%% mounted*}"; WANT_N="$(configured_count)"
+  if [[ "$MOUNTED_N" != "$WANT_N" ]]; then
+    if [[ "$TARGET" == "prod" ]]; then
+      stop "Production mounts $MOUNTED_N of $WANT_N plugin packages: $MOUNTS" \
+        "Its hubs see the missing ones as switched off. Approve and sign their entries in the console now, or roll the code back."
+    fi
+    note "dev mounts $MOUNTED_N of $WANT_N: approve the waiting entries in dev's console."
+  fi
   IFS='|' read -r SIG_MODE SIG_KEY SIG_UNSIGNED <<<"$(signatures)"
   if [[ -z "$SIG_KEY" ]]; then
     note "No catalog key on this deployment (CIVIC_CATALOG_SIGNING_KEY): approvals are checked by fingerprint only ($SIG_MODE)."
