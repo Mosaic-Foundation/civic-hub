@@ -6,13 +6,17 @@ import { ValidationError, applyEdit, type Draft, type DraftKind } from "@civic-s
 import { TYPE } from "./manifest.js";
 import {
   ADDRESS_FIELD_MAX,
+  ALT_MAX,
   EventInputError,
   TITLE_MAX,
   VENUE_MAX,
+  capacityOf,
   checkTimes,
+  imageOf,
   instant,
   locationFrom,
   onlineLink,
+  timeZoneOf,
 } from "./event.js";
 
 export type EventDraft = Draft<{
@@ -25,6 +29,11 @@ export type EventDraft = Draft<{
   postal_code: string | null;
   country: string | null;
   online_url: string | null;
+  /** 0.3.0 */
+  time_zone: string | null;
+  image_url: string | null;
+  image_alt: string | null;
+  capacity: number | null;
 }>;
 
 /** An EventInputError as the drafts route's 400. */
@@ -82,6 +91,20 @@ export const eventDraftKind: DraftKind<EventDraft> = {
         checked: true,
         coc: "The online link",
       },
+      // 0.3.0: its zone, its picture (from the hub's upload route) and its limit.
+      time_zone: {
+        read: (v: unknown) => nullable(v),
+        write: (v: unknown) => checked(() => timeZoneOf(v)),
+      },
+      image_url: {
+        read: (v: unknown) => nullable(v),
+        write: (v: unknown) => checked(() => imageOf(v, "")?.url ?? null),
+      },
+      image_alt: textField(ALT_MAX, "The picture's description"),
+      capacity: {
+        read: (v: unknown) => (typeof v === "number" ? v : null),
+        write: (v: unknown) => checked(() => capacityOf(v)),
+      },
     },
   },
   missing: (d) => {
@@ -96,7 +119,15 @@ export const eventDraftKind: DraftKind<EventDraft> = {
     return checked(() => {
       const times = checkTimes(d.start_time, d.end_time);
       const location = locationFrom(d);
-      const state = { ...times, location };
+      const image = imageOf(d.image_url, d.image_alt);
+      const state = {
+        ...times,
+        location,
+        // The handler fills in the hub's zone when the draft has none.
+        ...(d.time_zone ? { time_zone: timeZoneOf(d.time_zone) } : {}),
+        ...(image ? { image } : {}),
+        ...(d.capacity ? { capacity: capacityOf(d.capacity) } : {}),
+      };
       return { title: d.title.trim(), description: d.description.trim(), state, revise: { state } };
     });
   },
@@ -108,7 +139,15 @@ export const eventDraftKind: DraftKind<EventDraft> = {
     const changes = await applyEdit(processId, editor, {
       title: submission.title,
       description: submission.description,
-      state: { start_time: state.start_time, end_time: state.end_time, location: state.location },
+      // An edit may clear the picture or the limit: null, not left out.
+      state: {
+        start_time: state.start_time,
+        end_time: state.end_time,
+        location: state.location,
+        time_zone: state.time_zone ?? null,
+        image: state.image ?? null,
+        capacity: state.capacity ?? null,
+      },
     });
     return { process_id: processId, edited: true, changed_fields: changes.changed_fields };
   },

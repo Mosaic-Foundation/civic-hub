@@ -1,24 +1,34 @@
 // Events' handler: its actions, and how one reads.
 
 import {
+  ConflictError,
   ValidationError,
   afterActionCommits,
   closeThroughDispatcher,
   emitEvent,
+  hubContext,
   isPastDeadline,
+  notify,
   type Process,
   type ProcessAction,
   type ProcessHandler,
 } from "@civic-social/plugin-sdk";
-import EVENT_MANIFEST, { TYPE } from "./manifest.js";
+import EVENT_MANIFEST, { EVENTS, TYPE } from "./manifest.js";
 import { eventStore } from "./store.js";
 import {
   EventInputError,
+  MESSAGE_MAX,
   REASON_MAX,
+  SUBJECT_MAX,
+  capacityOf,
   checkLocation,
   checkTimes,
   eventBlock,
+  changeText,
+  imageOf,
   instant,
+  timeZoneOf,
+  whenText,
   type EventState,
 } from "./event.js";
 
@@ -36,12 +46,21 @@ function checked<T>(fn: () => T): T {
   }
 }
 
+/** The zone an event's times are given in: its own, else the hub's (events before 0.3.0). */
+function zoneOf(state: EventState): string {
+  return state.time_zone ?? hubContext().timeZone;
+}
+
 /** One of its events, carrying the event block every one of them carries (event.ts). */
 async function emit(
   process: Process,
   actor: string,
-  e: { event_type: string; extra?: Record<string, unknown>; at?: string },
+  e: { event_type: string; extra?: Record<string, unknown>; at?: string; restricted?: true },
 ) {
+  const state = stateOf(process);
+  // Places left, on an event with a limit only: what the wire's
+  // remainingAttendeeCapacity says.
+  const going = state.capacity ? await eventStore.get().goingCount(process.id) : undefined;
   await emitEvent({
     event_type: e.event_type,
     actor,
@@ -49,10 +68,35 @@ async function emit(
     jurisdiction: process.jurisdiction,
     processType: TYPE,
     action_url_path: `/events/${process.id}`,
-    data: { process: eventBlock(process.title, process.description, stateOf(process)), ...e.extra },
+    data: { process: eventBlock(process.title, process.description, state, going), ...e.extra },
     ...(e.at ? { timestamp: e.at } : {}),
+    ...(e.restricted ? { visibility: "restricted" as const } : {}),
   });
 }
+
+/**
+ * Tell the people going (Events 2, E2), and log it on the event: the hub
+ * sends, through its mail guard, to whoever has not unsubscribed. Run after
+ * the action commits, so a refused or retried action tells nobody; a failure
+ * to send is logged and never undoes what was done.
+ */
+async function tellGoing(
+  process: Process,
+  m: { kind: "announcement" | "change"; sender: string; subject: string; body: string },
+): Promise<void> {
+  const store = eventStore.get();
+  const accounts = (await store.goingAccounts(process.id)).filter((a) => a !== m.sender);
+  let report = { sent: 0, held_back: 0 };
+  if (accounts.length > 0) {
+    try {
+      report = await notify(process.id, accounts, { subject: m.subject, text: m.body });
+    } catch (err) {
+      console.error(`[events] telling the people going to ${process.id} failed:`, err);
+    }
+  }
+  await store.logAnnouncement({ process_id: process.id, ...m, recipients: accounts.length, sent: report.sent, held_back: report.held_back });
+}
+
 
 /**
  * Put the event's row on the calendar as it now is, once the action's
@@ -75,11 +119,25 @@ async function writeIndex(process: Process): Promise<void> {
     end_time: state.end_time,
     location: state.location,
     cancelled: Boolean(state.cancelled),
+    image_url: state.image?.url ?? null,
+    image_alt: state.image?.alt || null,
+    time_zone: state.time_zone ?? null,
+    capacity: state.capacity ?? null,
   });
 }
 
 async function attendance(process: Process) {
   return { attendance: { count: await eventStore.get().goingCount(process.id) } };
+}
+
+/** The announcement log, for a reader who is going or made it; null for anyone else. */
+async function announcementsFor(process: Process, actor?: string): Promise<unknown[] | null> {
+  if (!actor) return null;
+  if (actor !== process.createdBy && !(await eventStore.get().isGoing(process.id, actor))) return null;
+  const rows = await eventStore.get().announcements(process.id);
+  return rows.map(({ sender: _sender, recipients: _r, sent: _s, held_back: _h, ...row }) =>
+    actor === process.createdBy ? { ...row, recipients: _r, sent: _s, held_back: _h } : row,
+  );
 }
 
 const handler: ProcessHandler = {
@@ -93,7 +151,19 @@ const handler: ProcessHandler = {
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     return checked(() => {
       const times = checkTimes(instant(input.start_time, "The start"), instant(input.end_time, "The end"));
-      const state: EventState = { ...times, location: checkLocation(input.location), cancelled: null };
+      const state: EventState = {
+        ...times,
+        location: checkLocation(input.location),
+        cancelled: null,
+        // 0.3.0: its own zone (the hub's when the form sent none), its
+        // picture and its limit, each only when set.
+        time_zone: timeZoneOf(input.time_zone) ?? hubContext().timeZone,
+      };
+      const image = input.image as { url?: unknown; alt?: unknown } | null | undefined;
+      const picture = imageOf(image?.url, image?.alt);
+      if (picture) state.image = picture;
+      const capacity = capacityOf(input.capacity);
+      if (capacity) state.capacity = capacity;
       return state as unknown as Record<string, unknown>;
     });
   },
@@ -125,10 +195,24 @@ const handler: ProcessHandler = {
         process.status = "closed";
         await index(process);
         await emit(process, action.actor, { event_type: "civic.event.cancelled", extra: { cancellation: { reason } } });
+        // Its people going are told on their own (Events 2, 5).
+        const cancelled = structuredClone(process);
+        await afterActionCommits(() =>
+          tellGoing(cancelled, {
+            kind: "change",
+            sender: "system",
+            subject: `Cancelled: ${cancelled.title}`,
+            body: [`${cancelled.title} on ${whenText(state.start_time, state.end_time, zoneOf(state))} is cancelled.`, reason ? `Why: ${reason}` : ""]
+              .filter(Boolean)
+              .join("\n\n"),
+          }),
+        );
         return { status: "cancelled" };
       }
       case "going": {
-        if ((await eventStore.get().addGoing(process.id, action.actor)) === "already") return { status: "going", changed: false };
+        const added = await eventStore.get().addGoing(process.id, action.actor);
+        if (added === "full") throw new ConflictError(`This event is full: ${state.capacity} people are going.`, "event_full");
+        if (added === "already") return { status: "going", changed: false };
         await emit(process, action.actor, { event_type: "civic.event.going", extra: await attendance(process) });
         return { status: "going", changed: true };
       }
@@ -136,6 +220,20 @@ const handler: ProcessHandler = {
         if (!(await eventStore.get().removeGoing(process.id, action.actor))) return { status: "not_going", changed: false };
         await emit(process, action.actor, { event_type: "civic.event.not_going", extra: await attendance(process) });
         return { status: "not_going", changed: true };
+      }
+      case "announce": {
+        // To everyone going, from its creator or an admin (the descriptor's
+        // callers). The event records that one was sent and to how many; the
+        // words stay in the announcement log, for the people going.
+        const subject = typeof action.payload.subject === "string" ? action.payload.subject.trim() : "";
+        const message = typeof action.payload.message === "string" ? action.payload.message.trim() : "";
+        if (!subject || subject.length > SUBJECT_MAX) throw new ValidationError(`Give the message a subject of at most ${SUBJECT_MAX} characters.`, "subject_invalid");
+        if (!message || message.length > MESSAGE_MAX) throw new ValidationError(`Write a message of at most ${MESSAGE_MAX} characters.`, "message_invalid");
+        const recipients = (await eventStore.get().goingAccounts(process.id)).filter((a) => a !== action.actor).length;
+        await emit(process, action.actor, { event_type: EVENTS.announced, extra: { announcement: { recipients } }, restricted: true });
+        const snapshot = structuredClone(process);
+        await afterActionCommits(() => tellGoing(snapshot, { kind: "announcement", sender: action.actor, subject, body: message }));
+        return { status: "announced", recipients };
       }
       case "close": {
         // Only marks it past: an event has no result to publish.
@@ -156,7 +254,12 @@ const handler: ProcessHandler = {
     if (process.status !== "active") {
       return { editable: false, locked_fields: [], reason: "Only an upcoming event can be edited." };
     }
-    return { editable: true, locked_fields: [], admins_edit: true, state_fields: ["start_time", "end_time", "location"] };
+    return {
+      editable: true,
+      locked_fields: [],
+      admins_edit: true,
+      state_fields: ["start_time", "end_time", "location", "time_zone", "image", "capacity"],
+    };
   },
 
   async draftFromProcess(process: Process, editorId: string): Promise<string> {
@@ -172,16 +275,35 @@ const handler: ProcessHandler = {
   async onEdited(process: Process, changes, editor) {
     const edited = structuredClone(process);
     for (const key of ["title", "description"] as const) if (key in changes.current) edited[key] = String(changes.current[key]);
+    const before = structuredClone(stateOf(process));
     const state = stateOf(edited);
-    for (const key of ["start_time", "end_time", "location"] as const) {
+    for (const key of ["start_time", "end_time", "location", "time_zone", "image", "capacity"] as const) {
       if (key in changes.current) (state as unknown as Record<string, unknown>)[key] = changes.current[key];
     }
     await writeIndex(edited);
     await emit(edited, editor?.id ?? process.createdBy, { event_type: "civic.event.updated", extra: { edit: { changed_fields: changes.changed_fields } } });
+    // A new time or place: its people going are told what changed (Events 2, 5).
+    const changed = changeText(before, state);
+    if (changed) {
+      await tellGoing(edited, {
+        kind: "change",
+        sender: "system",
+        subject: `Changed: ${edited.title}`,
+        body: `${edited.title} has changed.\n\n${changed}`,
+      });
+    }
+  },
+
+  // The hub's "processes you support were edited" notice (in the hub, for
+  // whoever is not on email): an event someone is going to is one they support.
+  async listSupportedBy(userId: string): Promise<string[]> {
+    return eventStore.get().goingTo(userId);
   },
 
   async getReadModel(process: Process, actor?: string): Promise<Record<string, unknown>> {
     const state = stateOf(process);
+    const going = await eventStore.get().goingCount(process.id);
+    const capacity = state.capacity ?? null;
     return {
       id: process.id,
       type: TYPE,
@@ -192,10 +314,18 @@ const handler: ProcessHandler = {
       end_time: state.end_time,
       location: state.location,
       cancelled: state.cancelled,
-      going_count: await eventStore.get().goingCount(process.id),
+      time_zone: zoneOf(state),
+      image: state.image ?? null,
+      // Full is how many are going, not a status: one leaving opens a place.
+      capacity,
+      spots_left: capacity === null ? null : Math.max(0, capacity - going),
+      going_count: going,
       is_going: actor ? await eventStore.get().isGoing(process.id, actor) : false,
       // Whether the reader made it (never whose it is): its creator may edit or cancel it.
       is_creator: Boolean(actor) && actor === process.createdBy,
+      // What its people going were sent (Events 2, 5): to them and its
+      // creator only; admins read them at /calendar/events/:id/announcements.
+      announcements: await announcementsFor(process, actor),
       created_at: process.createdAt,
     };
   },
@@ -210,6 +340,7 @@ const handler: ProcessHandler = {
       start_time: state.start_time,
       end_time: state.end_time,
       cancelled: Boolean(state.cancelled),
+      image_url: state.image?.url ?? null,
       created_at: process.createdAt,
     };
   },
