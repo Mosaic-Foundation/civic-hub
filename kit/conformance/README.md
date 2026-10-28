@@ -237,6 +237,9 @@ local stack up (`./scripts/local-stack.sh start`):
 cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && npm run catalog:add -- packages/<dir>
 ```
 
+A new version of a package the hub already ships (Events 0.3.0 from an empty folder) takes that package's place in
+the test host for the run, as an update would, instead of mapping its type twice.
+
 It starts a throwaway hub with your package mounted unverified (`CIVIC_PLUGINS_UNVERIFIED`, development only),
 runs these steps against your type alone (`CIVIC_CONFORMANCE_TYPES`), and on green writes your catalog entry.
 

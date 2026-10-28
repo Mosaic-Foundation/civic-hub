@@ -147,7 +147,22 @@ async function main(): Promise<void> {
   const list = JSON.parse(readFileSync(original, "utf8")) as { packages: string[] };
   rmSync(copyDir, { recursive: true, force: true });
   cpSync(dir, copyDir, { recursive: true, filter: (src) => !/[/\\](node_modules|\.git)([/\\]|$)/.test(src) });
-  writeFileSync(listFile, JSON.stringify({ packages: [...list.packages, `packages/${slug}`] }, null, 2) + "\n");
+  // A new version of a package the host already ships (Events 2): the
+  // submitted copy takes the listed one's place, as an update would, rather
+  // than mapping the same type twice.
+  const nameOf = (d: string) => {
+    try {
+      return (JSON.parse(readFileSync(join(HOST_ROOT, d, "package.json"), "utf8")) as { name?: string }).name;
+    } catch {
+      return undefined;
+    }
+  };
+  const replaced = list.packages.filter((d) => nameOf(d) === pj.name);
+  if (replaced.length > 0) console.log(`civic-conformance: ${pj.name} replaces the host's own ${replaced.join(", ")} for this run`);
+  writeFileSync(
+    listFile,
+    JSON.stringify({ packages: [...list.packages.filter((d) => !replaced.includes(d)), `packages/${slug}`] }, null, 2) + "\n",
+  );
 
   const db = new pg.Client({ connectionString: st.dbUrl });
   await db.connect();
