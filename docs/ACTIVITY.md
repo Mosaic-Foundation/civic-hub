@@ -9,9 +9,11 @@ publishes them, they are marked pending.
 Admin → Activity shows how many residents took part in your hub, and in what, counted from the hub's own record.
 Every number is a count. None of them names anyone, and nothing on the page lists who did or did not take part.
 
-**Periods.** Choose a week (Monday to Sunday), a month, a quarter or Since launch, in your hub's time zone. The arrows
-step to the period before or after. The current period is counted so far. The numbers are recounted every hour.
-**Recount now** counts them again straight away.
+**Periods.** Choose a week (Monday to Sunday), a month, a quarter or Since launch, in your hub's time zone. Since
+launch starts on the day your hub first left demo, or the day it was created if it never was a demo. The arrows step
+to the period before or after. The current period is counted so far. The numbers are recounted every hour; when the
+hourly count has not run lately, the current period is counted from the record as you open the page ("Counted just
+now"), so a hub with activity never shows zeros. **Recount now** counts them again straight away and keeps them.
 
 **The totals.**
 - **Active residents:** people with an account on this hub who took part or started something in the period. Admins
@@ -43,14 +45,16 @@ Civic.Social's operator sees every hub's totals in the platform console.
 
 ## Public numbers {#plugin-analytics-public-numbers}
 
-Off by default. Turn it on in Hub settings → Plugins → Activity.
+Off by default. Turn it on with **Make the numbers public** on Admin → Activity, or in Hub settings → Plugins →
+Activity.
 
 When it is on:
 - anyone can read your hub's numbers at `/analytics` on your hub's address (`/analytics?period=quarter` for a quarter);
 - your About page shows **This hub in numbers**: this month and since launch.
 
 Below admins, a number from 1 to 4 is shown as "fewer than 5", so that a small count cannot point at a person. Zero is
-shown as zero. The numbers on Admin → Activity stay exact.
+shown as zero. The numbers on Admin → Activity stay exact. For a small hub many lines will read "fewer than 5" for a
+while: that is the rule at work, not missing data. `/analytics` says so in every answer, in its `note` field.
 
 ## Reporting keys {#activity-reporting-keys}
 

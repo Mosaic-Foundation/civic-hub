@@ -36,7 +36,7 @@ packages/<dir>/
 ### `index.ts`
 
 ```ts
-import type { PluginPackage } from "../../src/sdk/index.js";
+import type { PluginPackage } from "@civic-social/plugin-sdk/first-party";
 
 const wordcloudPackage: PluginPackage = {
   name: "@civic-social/plugin-wordcloud",
@@ -69,7 +69,7 @@ verdict (a package that is not mounted answers 404 on every hub). A drafts route
 ### `manifest.ts`
 
 A `ProcessManifest` (`src/processes/manifest.ts`; ADR-009), default-exported. It is plain data: it imports only
-`src/processes/manifest.ts` and `src/shared/`, because the UI reads it too. Beyond ADR-009's fields, a package's
+`@civic-social/plugin-sdk/manifest` and `src/shared/`, because the UI reads it too. Beyond ADR-009's fields, a package's
 manifest carries:
 
 - **`tables[].holds`**: what each table's rows are, in plain words ("residents' one-word answers"). The Install
@@ -117,19 +117,68 @@ hub's seams refusing what the grant does not name, plus a lint rule that keeps a
   not name, before anything is stored.
 - Each refusal throws `GrantRefusedError` (a 500 to the caller: the fault is the package's) and is reported through
   the errors adapter as `plugin.grant.table`, `plugin.grant.adapter` or `plugin.grant.event`.
-- **The import fence** (`civic/package-boundary`, eslint): a package imports `src/sdk/index.ts`, `src/shared/`, its
+- **The import fence** (`civic/package-boundary`, eslint): a package imports the SDK by name (above), `src/shared/`, its
   own files, the packages it `requires`, Node's built-ins and the npm packages its `package.json` lists as peer dependencies (`express`; the meeting summary's `cheerio`). Nothing else of the hub: no database
   client, no adapter, no hosting layer, no console.
 
 ### The SDK
 
-`src/sdk/index.ts` is everything a package may import from the hub's engine, by name: errors, the process contract,
-the one emission path, the hub's services a package calls, the request helpers, storage helpers over `host.db()`.
-Version 0 is what the hub's own packages use, so it is wide.
+A package imports the hub by the SDK's npm name, `@civic-social/plugin-sdk` (`kit/sdk`; ADR-015, ADR-017):
 
-Version 1, narrower, is the npm package `@civic-social/plugin-sdk` (`kit/sdk`; ADR-015): what a package written
-outside this repository imports. The shipped packages stay on version 0 for now (moving them changes all nine
-fingerprints).
+| Import | Who | What |
+|---|---|---|
+| `@civic-social/plugin-sdk` | a package on version 1 (Events, an outside package) | the narrow surface below |
+| `@civic-social/plugin-sdk/first-party` | this repository's own packages only (lint) | version 0, `src/sdk/index.ts`, every name listed: wide |
+| `@civic-social/plugin-sdk/manifest` | every package's `manifest.ts` | `defineDescriptor`, `defineManifest`, `DEADLINE_CLOSE_INPUT` |
+| `@civic-social/plugin-sdk/ui` | every package's `ui.tsx` | the UI module's types and the hub's UI kit |
+
+**Built, with no path into the engine** (ADR-017). Compiled, the name resolves through the SDK's `package.json`
+exports to its `.js` files, which read each name from the engine the hub installed before loading any package
+(`src/sdk/install.ts`). `npm run sdk:build` writes them; CI checks they are current. A change to `kit/sdk/*.ts` or
+to `src/sdk/index.ts`'s exports needs `npm run sdk:build` (and, for a compiled run, `npm install`).
+
+**What version 1 lets a package do** (engine 2; each has a conformance step):
+
+- **Edit a live process** (step 11): its handler's `editPolicy` returns `{ editable, locked_fields, admins_edit?,
+  state_fields? }`; `draftFromProcess`/`syncDraftFromProcess` fill a draft from the live process; its draft kind's
+  `applyLiveEdit` calls `applyEdit(processId, editor, { title, description, content?, state? })`. The hub runs the
+  Code of Conduct check on the draft first (a field with a `coc: "<label>"` is read too), writes at the row's
+  version, records `civic.process.updated`, then calls `onEdited(process, changes, editor)`.
+- **Run work after the action commits** (step 12): `afterActionCommits(fn)`. An action whose own-table writes all
+  wait for the commit may declare `retry_safe: true`.
+- **Show who did something** (step 13): `namesFor(req, process or its id, accounts)` answers names under the
+  process's disclosure policy (public: everyone; members: signed-in members; anonymous: admins only), never an
+  account; null when this reader is shown none.
+- **Declare its own statuses** (step 14): manifest `statuses: { declared: [{ id, label, hub }], of(process) }`.
+  Read models carry `type_status`; the descriptor and the wire keep the hub's status.
+- **Declare its own feed card** (step 15): manifest `feed.kinds: [{ kind, color: { key, fg, bg, label }, digest:
+  { section, heading, summary? } }]`; its `feed.cards` rules use the kind and colour key.
+- **Be called by an official** (step 16): the descriptor caller `official` (a resident holding a public office, as
+  the seam answers it), and `creation.resident.publish_at_once: ["official"]` for a type whose officials publish
+  without review.
+- **Look like the hub** (step 17): its pages draw with `@civic-social/plugin-sdk/ui` (`Button`, `Field`,
+  `TextInput`, `TextArea`, `Select`, `DateTimeInput`, `DraftShell`). Text on a `--color-primary` fill is
+  `--color-primary-text`, never `--color-primary-ink`.
+- **Declare a withdrawal** (step 10): `participation.withdrawal`, acts that are not taking part (taking back
+  "going"), counted as nothing.
+
+### One folder: what the manifest declares instead of the hub's lists
+
+A new type joins no file outside its folder (ADR-017; `tests/unit/typeFromFolder.test.ts`):
+
+- **`tables[].sample`**, what each table is to sample content: `{ child: [columns], participation: { user, kind,
+  nouns } }` (a person's act, counted in the removal warning in those nouns), `{ child, notParticipation: "why" }`,
+  or `{ notContent: "why" }`.
+- **`pluginSection.help: { text, page, anchor, pending? }`**, its Plugins panel's "?" note; `npm run plugins:sync`
+  writes it into `src/shared/helpRegistry.json`.
+- **`detailPath`** also gives its share-card route: `plugins:sync` keeps `vercel.json`'s `/api/og` block equal to
+  the types' page paths.
+- **`feed.kinds`** and **`statuses`**, above; a `wireObject` type's card events are read back by the feed from its
+  manifest.
+- **`legacyTypes`**: a retired type it carries (the brief carries vote results): their stored events keep their
+  disclosure, public fields, card and count.
+
+Run `npm run plugins:sync` after adding or changing a package; CI fails when what it writes is stale.
 
 `host.allows(adapter)` says whether the hub in scope lets the package use an adapter: in its grant, and in the grant
 that hub's admin approved (versions, below). A package asks before using what a newer version added, and does
@@ -207,4 +256,5 @@ deployment after its migrations are applied, before the code (`RUNBOOK-release.m
 - **Publishing** `@civic-social/plugin-sdk` and `@civic-social/plugin-conformance` to npm, and **loading from a
   registry** rather than a configured list.
 - **Narrowing a grant at install**, and an old version's behaviour pinned per hub.
-- **The shipped packages on SDK version 1.**
+- **The shipped packages on SDK version 1** (they import version 0 by name, and the hub's UI pages), and feature
+  packages on the SDK by name.

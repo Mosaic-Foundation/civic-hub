@@ -332,6 +332,26 @@ const handler: ProcessHandler = {
   one person's reference in what another person reads.
 - **Deadlines are the hub's to drive**: don't run your own timer.
 
+### What else a type can do (SDK v1)
+
+None of these is required; each has a step in the suite where you use it (`docs/PLUGIN-PACKAGE.md`, "The SDK").
+
+- **Let its creator (and admins) edit a live one**, words included: `editPolicy` on the handler, `applyLiveEdit` on
+  the draft kind calling `applyEdit`, and `coc: "<label>"` on any free-text draft field others will read. The hub
+  runs the Code of Conduct check on the edit.
+- **Write its own tables only once the action has won:** `afterActionCommits(() => …)`, then `retry_safe: true` on
+  the action.
+- **Show who took part** as the hub would: `namesFor(req, processId, accounts)` in a route of its own.
+- **Have words for its own statuses** (an event is scheduled, past or cancelled): manifest `statuses`.
+- **Have its own feed card colour and digest section:** manifest `feed.kinds`.
+- **Open an action to officials**, or let officials publish without review: the `official` caller,
+  `creation.resident.publish_at_once: ["official"]`.
+- **Say that an act is not taking part** (taking back "going"): `participation.withdrawal`.
+- **Class its tables for sample content** and give its Plugins panel a help note: `tables[].sample`,
+  `pluginSection.help`. Nothing outside your folder names your type.
+
+`kit/conformance/fixtures/sdk-tour` in the hub's repository uses every one of these.
+
 ## 5. Tie it together: `index.ts`
 
 ```ts
@@ -356,12 +376,15 @@ export default strawPollPackage;
 
 ## 6. Its page: `ui.tsx`
 
-The UI module lists your type's pages. They are your own React components, using the React the hub runs; the hub's
-own components are not part of the SDK yet. The straw poll's one page reads the poll and answers through the hub's
-routes for every process (`GET /api/process/:id/state`, `POST /api/process/:id/action`):
+The UI module lists your type's pages. They are your own React components, using the React the hub runs, drawn
+with the hub's UI kit so they look like the hub's own pages: `Button` (primary, secondary, danger), `Field`,
+`TextInput`, `TextArea`, `Select`, `DateTimeInput` (ISO in and out) and `DraftShell` (a drafting form's page, with
+the hub's slim phone header), all from `@civic-social/plugin-sdk/ui`. Keep your own CSS to layout; the suite's step
+17 refuses dark text on the hub's primary colour. The straw poll's one page reads the poll and answers through the
+hub's routes for every process (`GET /api/process/:id/state`, `POST /api/process/:id/action`):
 
 ```tsx
-import type { ProcessUi } from "@civic-social/plugin-sdk/ui";
+import { Button, type ProcessUi } from "@civic-social/plugin-sdk/ui";
 
 const strawPollUi: ProcessUi = {
   type: "example.straw_poll",
@@ -389,7 +412,12 @@ your type through every step its descriptor says applies:
 5. the deadline: one close, however many readers notice it at once, and the scheduler's close with nobody reading;
 6. archive and restore;
 7. the plugin switched off (refused everywhere) and back on (all there);
-8. every event it wrote is one it declared, published honestly, and nothing crosses to another hub.
+8. every event it wrote is one it declared, published honestly, and nothing crosses to another hub;
+9. (an outside service only) the hub's side of the service contract;
+10. what counts as its participation is declared;
+11. to 17., where your type uses them: an edit through the hub's edit path, a retry-safe action writing its events
+    once, names shown under your disclosure policy, your own statuses, your own feed card, the official caller, and
+    your pages on the hub's UI kit.
 
 At the end it puts everything back: the throwaway hubs and all their rows, your plugin's tables (`--keep` keeps
 them), its own list. A pass ends with `civic-conformance: … passed`. A failure names the step, what was expected and
