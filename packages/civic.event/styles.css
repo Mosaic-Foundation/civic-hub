@@ -203,3 +203,115 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Events 0.3.0 ------------------------------------------------------------ */
+
+.ev-facts-more,
+.ev-going-names {
+  grid-column: 2;
+}
+
+.ev-image {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: var(--radius-md, 8px);
+  margin: 8px 0 12px;
+  background: var(--color-surface);
+}
+
+.ev-image--preview {
+  max-height: 200px;
+}
+
+.ev-picture {
+  border: 0;
+  padding: 0;
+  margin: var(--space-md, 16px) 0;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.ev-row--three {
+  grid-template-columns: 1fr 1fr 8em;
+}
+
+/* Whether you're going: the state, ticked, with the other choice beside it. */
+.ev-rsvp {
+  display: inline-flex;
+  margin: var(--space-md, 16px) 0 0;
+}
+
+.ev-rsvp-choice {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ev-rsvp-choice:first-child {
+  border-radius: var(--radius-md, 8px) 0 0 var(--radius-md, 8px);
+}
+
+.ev-rsvp-choice:last-child {
+  border-radius: 0 var(--radius-md, 8px) var(--radius-md, 8px) 0;
+  border-left: 0;
+}
+
+.ev-rsvp-choice.is-chosen {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 600;
+  cursor: default;
+}
+
+.ev-rsvp-choice:not(.is-chosen):hover {
+  border-color: var(--color-border-hover);
+}
+
+.ev-calendar-links {
+  margin: 12px 0;
+  font-size: var(--font-size-sm);
+}
+
+.ev-section-heading {
+  font-size: var(--font-size-base);
+  margin: var(--space-lg, 24px) 0 8px;
+}
+
+.ev-announcement {
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-surface);
+}
+
+.ev-announcement-subject {
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.ev-announcement-body {
+  white-space: pre-line;
+  margin: 0 0 4px;
+}
+
+@media (max-width: 520px) {
+  .ev-row--three {
+    grid-template-columns: 1fr;
+  }
+
+  .ev-rsvp {
+    display: flex;
+  }
+
+  .ev-rsvp-choice {
+    flex: 1;
+  }
+}
