@@ -17,6 +17,10 @@ const ROW: CalendarRow = {
   location: { type: "Place", name: "Community room", address: { type: "PostalAddress", streetAddress: "1 Example Street" } },
   cancelled: false,
   archived: false,
+  image_url: null,
+  image_alt: null,
+  time_zone: null,
+  capacity: null,
 };
 
 const OPTS = {
@@ -24,6 +28,7 @@ const OPTS = {
   uidDomain: "hub.example",
   eventUrl: (id: string) => `https://hub.example/events/${id}`,
   now: "2030-05-01T12:00:00.000Z",
+  defaultTimeZone: "UTC",
 };
 
 /** The unfolded content lines. */
@@ -43,7 +48,10 @@ describe("the calendar as iCalendar", () => {
     expect(out).toContain("STATUS:CONFIRMED");
     expect(out).toContain("LOCATION:Community room\\, 1 Example Street");
     expect(out).toContain("URL:https://hub.example/events/proc_1");
-    expect(out).toContain("DESCRIPTION:Line one\\nLine two\\n\\nhttps://hub.example/events/proc_1");
+    expect(out).toContain(
+      "DESCRIPTION:Saturday\\, June 1\\, 2030\\, 5:00 PM – 7:30 PM UTC\\n\\nLine one\\nLine two\\n\\nhttps://hub.example/events/proc_1",
+    );
+    expect(out.some((l) => l.startsWith("X-WR-TIMEZONE"))).toBe(false);
     expect(out[out.length - 1]).toBe("END:VCALENDAR");
   });
 
@@ -66,6 +74,20 @@ describe("the calendar as iCalendar", () => {
       expect(physical).not.toContain("�");
     }
     expect(lines(ics).find((l) => l.startsWith("DESCRIPTION:"))).toContain("é".repeat(200));
+  });
+
+  it("one event's file (Add to my calendar): its zone named, its time in it, its picture; the instants still UTC", () => {
+    const row = { ...ROW, time_zone: "America/Chicago", image_url: "https://store.example/athens/types/civic.event/2030/05/x.webp" };
+    const out = lines(toIcs([row], { ...OPTS, timeZone: "America/Chicago", defaultTimeZone: "America/Chicago" }));
+    expect(out).toContain("X-WR-TIMEZONE:America/Chicago");
+    expect(out).toContain("DTSTART:20300601T170000Z");
+    expect(out).toContain("IMAGE;VALUE=URI;DISPLAY=BADGE:https://store.example/athens/types/civic.event/2030/05/x.webp");
+    expect(out.find((l) => l.startsWith("DESCRIPTION:"))).toContain("12:00 PM – 2:30 PM CDT");
+  });
+
+  it("in the hub's feed, an event before 0.3.0 reads in the hub's zone", () => {
+    const out = lines(toIcs([ROW], { ...OPTS, defaultTimeZone: "America/New_York" }));
+    expect(out.find((l) => l.startsWith("DESCRIPTION:"))).toContain("1:00 PM – 3:30 PM EDT");
   });
 
   it("is an empty calendar when nothing is on it", () => {

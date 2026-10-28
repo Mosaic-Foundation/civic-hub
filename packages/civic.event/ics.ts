@@ -1,7 +1,7 @@
 // The hub's calendar as iCalendar (RFC 5545), for any calendar app to
 // subscribe to. Pure: the route hands it the calendar's rows.
 
-import { locationLine } from "./event.js";
+import { locationLine, whenText } from "./event.js";
 import type { CalendarRow } from "./store.js";
 
 /** RFC 5545 §3.3.11: backslash, semicolon, comma and newlines escaped. */
@@ -41,6 +41,14 @@ export interface IcsOptions {
   eventUrl(processId: string): string;
   /** DTSTAMP: when the feed was generated. */
   now: string;
+  /**
+   * The zone a calendar app shows it in when it asks (X-WR-TIMEZONE): one
+   * event's own, for its "Add to my calendar" file. The times stay UTC, which
+   * every calendar app reads as the same instant.
+   */
+  timeZone?: string;
+  /** Each event's zone when it has none of its own (events before 0.3.0): the hub's. */
+  defaultTimeZone: string;
 }
 
 export function toIcs(rows: readonly CalendarRow[], opts: IcsOptions): string {
@@ -51,6 +59,7 @@ export function toIcs(rows: readonly CalendarRow[], opts: IcsOptions): string {
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(opts.name)}`,
+    ...(opts.timeZone ? [`X-WR-TIMEZONE:${opts.timeZone}`] : []),
   ];
   for (const row of rows) {
     const url = opts.eventUrl(row.process_id);
@@ -65,7 +74,10 @@ export function toIcs(rows: readonly CalendarRow[], opts: IcsOptions): string {
       `LOCATION:${escapeText(row.location.type === "Link" ? row.location.href : locationLine(row.location))}`,
       `URL:${url}`,
     );
-    const description = [row.description.trim(), url].filter(Boolean).join("\n\n");
+    // RFC 7986's IMAGE, which calendar apps that show one read.
+    if (row.image_url) lines.push(`IMAGE;VALUE=URI;DISPLAY=BADGE:${row.image_url}`);
+    const when = whenText(row.start_time, row.end_time, row.time_zone ?? opts.defaultTimeZone);
+    const description = [when, row.description.trim(), url].filter(Boolean).join("\n\n");
     lines.push(`DESCRIPTION:${escapeText(description)}`, "END:VEVENT");
   }
   lines.push("END:VCALENDAR");

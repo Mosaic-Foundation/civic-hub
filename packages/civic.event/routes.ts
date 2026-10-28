@@ -3,7 +3,7 @@
 // public: a published event is the public record.
 
 import { Router, type Request } from "express";
-import { namesFor, route } from "@civic-social/plugin-sdk";
+import { NotFoundError, hubContext, namesFor, requireAdmin, route } from "@civic-social/plugin-sdk";
 import { eventStore } from "./store.js";
 import { toIcs } from "./ics.js";
 
@@ -53,6 +53,7 @@ router.get(
       uidDomain: host,
       eventUrl: (id) => `${origin}/events/${id}`,
       now: new Date().toISOString(),
+      defaultTimeZone: hubContext().timeZone,
     });
     res.set("Content-Type", "text/calendar; charset=utf-8");
     res.set("Content-Disposition", 'inline; filename="hub.ics"');
@@ -60,5 +61,47 @@ router.get(
     res.send(body);
   }),
 );
+
+// GET /calendar/events/:id.ics: one event, for "Add to my calendar" (Events 2,
+// 6). The same UID as in hub.ics, so a calendar that has both keeps one; a
+// link back to its page; its own zone named for the app to show it in.
+router.get(
+  "/events/:id.ics",
+  route(async (req, res) => {
+    const { origin, host } = originOf(req);
+    const row = await eventStore.get().event(String(req.params.id));
+    if (!row) throw new NotFoundError("That event is not on the calendar.");
+    const zone = row.time_zone ?? hubContext().timeZone;
+    const body = toIcs([row], {
+      name: row.title,
+      uidDomain: host,
+      eventUrl: (id) => `${origin}/events/${id}`,
+      now: new Date().toISOString(),
+      timeZone: zone,
+      defaultTimeZone: zone,
+    });
+    res.set("Content-Type", "text/calendar; charset=utf-8");
+    res.set("Content-Disposition", `attachment; filename="${fileName(row.title)}.ics"`);
+    res.set("Cache-Control", "public, max-age=60");
+    res.send(body);
+  }),
+);
+
+// GET /calendar/events/:id/announcements: what the people going were sent,
+// for the hub's admins (Events 2, 5). The people going and its creator read
+// them on its page (the read model); nobody else does, and never who.
+router.get(
+  "/events/:id/announcements",
+  requireAdmin,
+  route(async (req, res) => {
+    const rows = await eventStore.get().announcements(String(req.params.id));
+    res.json({ announcements: rows.map(({ sender: _sender, ...row }) => row) });
+  }),
+);
+
+/** A file name from an event's title: letters, digits and dashes. */
+function fileName(title: string): string {
+  return title.normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 60).toLowerCase() || "event";
+}
 
 export default router;
