@@ -83,18 +83,21 @@ export function Select({ className, ...rest }: SelectHTMLAttributes<HTMLSelectEl
 export function DateTimeInput({
   value,
   onChange,
+  timeZone,
   className,
   ...rest
 }: Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type"> & {
   value: string | null | undefined;
   onChange: (iso: string | null) => void;
+  /** The IANA zone the time is entered in (an event's own); the reader's when absent. */
+  timeZone?: string;
 }) {
   return (
     <input
       type="datetime-local"
       className={["form-input", className].filter(Boolean).join(" ")}
-      value={toLocalInput(value)}
-      onChange={(e) => onChange(fromLocalInput(e.target.value))}
+      value={toLocalInput(value, timeZone)}
+      onChange={(e) => onChange(fromLocalInput(e.target.value, timeZone))}
       {...rest}
     />
   );
