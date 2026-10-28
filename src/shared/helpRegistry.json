@@ -146,6 +146,21 @@
     "anchor": "plugins-analytics",
     "pending": true
   },
+  "plugins.install": {
+    "text": "Install adds the plugin to this hub. Before you confirm, the hub shows what it will be able to do and what it will not.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-install"
+  },
+  "plugins.remove": {
+    "text": "Stop now switches the plugin off at once; nothing is deleted, and installing it again brings everything back. Wind down lets what is open run to its close first.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-remove"
+  },
+  "plugins.update": {
+    "text": "A newer version is running on this hub's server. Until you update, the plugin keeps to what you approved. Update says what changes first.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-update"
+  },
   "participation.threshold": {
     "text": "How many endorsements a proposed vote needs before it opens for ballots. Set it to 0 to skip this stage. Votes already gathering support keep their old number.",
     "page": "/reference/settings/participation",

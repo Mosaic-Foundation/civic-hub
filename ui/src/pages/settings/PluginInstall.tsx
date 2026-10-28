@@ -16,6 +16,7 @@
 
 import { useState } from "react";
 import Modal from "../../components/Modal";
+import HelpButton from "../../components/HelpButton";
 import { adminInstallPlugin, adminRemovePlugin, adminUpdatePlugin, type PluginInstall } from "../../services/api";
 import { formatDate } from "../../utils/dates";
 
@@ -55,7 +56,8 @@ function UpdateNotices({ install, onUpdate }: { install: PluginInstall; onUpdate
               : " It changes nothing in what it can do."}
             <button type="button" className="plugin-install-button" onClick={onUpdate}>
               Update…
-            </button>
+            </button>{" "}
+            <HelpButton k="plugins.update" label="Update" />
           </p>
         </div>
       )}
@@ -75,7 +77,8 @@ export function PluginInstallControls({ install, onChanged }: { install: PluginI
           <span className="plugin-install-label">Installed</span>, {versions(install)}.
           <button type="button" className="plugin-install-button" onClick={() => setAsking("remove")}>
             Remove…
-          </button>
+          </button>{" "}
+          <HelpButton k="plugins.remove" label="Remove" />
         </p>
       )}
       {install.state === "winding_down" && (
@@ -100,7 +103,8 @@ export function PluginInstallControls({ install, onChanged }: { install: PluginI
           you install it again.
           <button type="button" className="plugin-install-button" onClick={() => setAsking("install")}>
             Install…
-          </button>
+          </button>{" "}
+          <HelpButton k="plugins.install" label="Install" />
         </p>
       )}
       {install.state === "unavailable" && (

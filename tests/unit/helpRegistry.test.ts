@@ -25,6 +25,10 @@ const PARTS = [
   // Leaving demo (2026-10-15): Mode's readiness list and the switch's consequences.
   "mode.readiness",
   "mode.switch",
+  // The Plugins page's Install, Remove and Update (engine 2, E18).
+  "plugins.install",
+  "plugins.remove",
+  "plugins.update",
 ];
 
 // Settings with no field of their own: each plugin's switch sits under its
