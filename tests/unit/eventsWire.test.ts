@@ -52,7 +52,15 @@ const ONLINE_STATE: EventState = {
   location: { type: "Link", name: "Online", href: "https://meet.example/room" },
 };
 
-function eventOf(eventType: string, state: EventState, extra: Record<string, unknown> = {}): CivicEvent {
+/** An event of 0.3.0 with everything it may have: its zone, its picture, a limit. */
+const SEASON_STATE: EventState = {
+  ...PLACE_STATE,
+  time_zone: "America/Chicago",
+  image: { url: "https://store.example/hub/types/civic.event/2030/05/pic.webp", alt: "The community room set for dinner" },
+  capacity: 40,
+};
+
+function eventOf(eventType: string, state: EventState, extra: Record<string, unknown> = {}, going?: number): CivicEvent {
   return {
     id: "evt_ev1",
     version: "1.0",
@@ -64,7 +72,7 @@ function eventOf(eventType: string, state: EventState, extra: Record<string, unk
     action_url: "https://app.hub.example/events/proc_ev1",
     source: { hub_id: "hub", hub_url: "https://hub.example" },
     data: {
-      process: { ...eventBlock("Neighbours' evening", "An evening to meet the neighbours.", state), type: "civic.event" },
+      process: { ...eventBlock("Neighbours' evening", "An evening to meet the neighbours.", state, going), type: "civic.event" },
       ...extra,
     },
     meta: { visibility: "public" },
@@ -189,6 +197,49 @@ describe("the Events plugin on the wire", () => {
     const doc = toActivity(created);
     expect((doc.object as Record<string, unknown>).type).toBe("civic:Process");
     expect(doc["@context"]).toEqual([AS2, "https://civic.social/ns/civic", { hub: "https://www.civic.social/ns/civic-hub#" }]);
+  });
+
+  it("0.3.0: its picture as an AS2 Image, its zone and its limit in Mobilizon's terms, each declared in the @context", () => {
+    const doc = toActivity(eventOf("civic.event.going", SEASON_STATE, { attendance: { count: 13 } }, 13));
+    const object = doc.object as Record<string, unknown>;
+    expect(object.image).toEqual({
+      type: "Image",
+      url: "https://store.example/hub/types/civic.event/2030/05/pic.webp",
+      mediaType: "image/webp",
+      name: "The community room set for dinner",
+    });
+    expect(object.timezone).toBe("America/Chicago");
+    expect(object.maximumAttendeeCapacity).toBe(40);
+    expect(object.remainingAttendeeCapacity).toBe(27);
+    expect(doc["@context"]).toContainEqual({
+      mz: "https://mobilizon.org/ns#",
+      sc: "http://schema.org/",
+      timezone: { "@id": "mz:timezone", "@type": "sc:Text" },
+      maximumAttendeeCapacity: "sc:maximumAttendeeCapacity",
+      remainingAttendeeCapacity: "sc:remainingAttendeeCapacity",
+    });
+    expect(unresolved(doc)).toEqual([]);
+  });
+
+  it("0.3.0: an event with only a zone carries only the zone's term; one with none keeps the document it had", () => {
+    const zoned = toActivity(eventOf("civic.event.published", { ...PLACE_STATE, time_zone: "Europe/Paris" }));
+    expect(zoned["@context"]).toContainEqual({ mz: "https://mobilizon.org/ns#", sc: "http://schema.org/", timezone: { "@id": "mz:timezone", "@type": "sc:Text" } });
+    const object = zoned.object as Record<string, unknown>;
+    for (const absent of ["image", "maximumAttendeeCapacity", "remainingAttendeeCapacity"]) expect(object, absent).not.toHaveProperty(absent);
+    expect(unresolved(zoned)).toEqual([]);
+    const plain = toActivity(eventOf("civic.event.published", PLACE_STATE));
+    expect(plain["@context"]).toEqual([AS2, "https://civic.social/ns/civic", ICAL_CONTEXT, SCHEMA_ADDRESS_CONTEXT, { hub: "https://www.civic.social/ns/civic-hub#" }]);
+  });
+
+  it("an announcement to the people going: a Create of a Note on the Event, to the admins' audience, its words not on the wire", () => {
+    const e = { ...eventOf("civic.event.announced", SEASON_STATE, { announcement: { recipients: 12 } }), meta: { visibility: "restricted" as const } };
+    const doc = toActivity(e);
+    expect(doc.type).toBe("Create");
+    const object = doc.object as Record<string, unknown>;
+    expect(object.type).toBe("Note");
+    expect(object.inReplyTo).toBe("https://app.hub.example/process/proc_ev1");
+    expect(doc.to).not.toContain("https://www.w3.org/ns/activitystreams#Public");
+    expect(JSON.stringify(doc)).not.toMatch(/message|subject/);
   });
 
   it("serializes the past event's close as civic:End on the Event", () => {
