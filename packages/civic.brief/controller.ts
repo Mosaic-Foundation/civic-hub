@@ -18,7 +18,7 @@ import {
   latestAnchorAt,
   listResponsesForBrief,
   responderNames,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import { Request, Response } from "express";
 import type { OfficialIdentity } from "../../src/shared/officialTypes.js";
 import {

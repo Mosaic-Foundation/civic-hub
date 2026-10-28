@@ -21,3 +21,13 @@ export type ProcessPluginId = (typeof PROCESS_MANIFESTS)[number]["descriptor"]["
 
 /** Every table a process type owns, by name. */
 export type ProcessTableName = (typeof PROCESS_MANIFESTS)[number]["tables"][number]["name"];
+
+/**
+ * The retired types the configured manifests carry (engine 2, C), each with
+ * the type that carries it and that type's page path: what reads stored
+ * events by their data's process type (the wire's redaction, the feed,
+ * Activity) treats each as a manifest of its own.
+ */
+export const LEGACY_TYPES = MANIFEST_LIST.flatMap((m) =>
+  (m.legacyTypes ?? []).map((l) => ({ ...l, carriedBy: m.descriptor.type, detailPath: m.detailPath })),
+);

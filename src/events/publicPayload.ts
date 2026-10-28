@@ -24,7 +24,7 @@
 // process_type duplicates, and vote_results' results_id. The shape diff
 // (scripts/wire-shape-diff.ts) holds the served views to exactly that list.
 
-import { MANIFEST_LIST } from "../shared/processManifests.js";
+import { LEGACY_TYPES, MANIFEST_LIST } from "../shared/processManifests.js";
 import { DISCLOSURE_POLICIES, type DisclosurePolicy } from "../processes/manifest.js";
 import type { CivicEvent } from "../models/event.js";
 import { usesHubTerms } from "./activitySerializer.js";
@@ -58,9 +58,11 @@ const HOST_PUBLIC_PAYLOAD: Readonly<Record<string, readonly string[]>> = {
 };
 
 /** publicPayload of every manifest, keyed by process type. */
-const BY_TYPE: ReadonlyMap<string, Readonly<Record<string, readonly string[]>>> = new Map(
-  MANIFEST_LIST.map((m) => [m.descriptor.type, m.publicPayload]),
-);
+const BY_TYPE: ReadonlyMap<string, Readonly<Record<string, readonly string[]>>> = new Map([
+  ...MANIFEST_LIST.map((m) => [m.descriptor.type, m.publicPayload] as const),
+  // Retired types' stored events read as they did (engine 2, C).
+  ...LEGACY_TYPES.map((l) => [l.type, l.publicPayload] as const),
+]);
 
 /**
  * A type's OWN namespaced events (civic.proposal.*, civic.project.*) name
@@ -82,7 +84,7 @@ const OWN_EVENT_KEYS: ReadonlyMap<string, readonly string[]> = new Map(
  */
 const UNION_BY_EVENT: ReadonlyMap<string, readonly string[]> = (() => {
   const union = new Map<string, Set<string>>();
-  for (const m of MANIFEST_LIST) {
+  for (const m of [...MANIFEST_LIST, ...LEGACY_TYPES]) {
     for (const [eventType, keys] of Object.entries(m.publicPayload)) {
       const set = union.get(eventType) ?? new Set<string>();
       for (const k of keys) set.add(k);
@@ -99,9 +101,10 @@ const UNION_BY_EVENT: ReadonlyMap<string, readonly string[]> = (() => {
  * type is unknown (old rows that never stamped data.process.type), so an
  * undeclared row discloses nothing it did not already.
  */
-const DISCLOSURE_BY_TYPE: ReadonlyMap<string, DisclosurePolicy> = new Map(
-  MANIFEST_LIST.map((m) => [m.descriptor.type, m.disclosure]),
-);
+const DISCLOSURE_BY_TYPE: ReadonlyMap<string, DisclosurePolicy> = new Map([
+  ...MANIFEST_LIST.map((m) => [m.descriptor.type, m.disclosure] as const),
+  ...LEGACY_TYPES.map((l) => [l.type, l.disclosure] as const),
+]);
 
 /** Process types whose processes may override their disclosure policy. */
 const DISCLOSURE_OVERRIDABLE: ReadonlySet<string> = new Set(

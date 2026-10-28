@@ -7,7 +7,7 @@
 
 import type { BriefProcessState } from "./models.js";
 import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
-import { getSettingSync, KEYS } from "../../src/sdk/index.js";
+import { getSettingSync, KEYS } from "@civic-social/plugin-sdk/first-party";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
 const hubNoun = (n: number): string =>

@@ -13,7 +13,7 @@
 // Express or Supabase, so the whole behaviour is coverable in tests/unit
 // — the layer CI actually runs.
 
-import { ValidationError } from "../../src/sdk/index.js";
+import { ValidationError } from "@civic-social/plugin-sdk/first-party";
 import type { BriefProcessState } from "./models.js";
 
 /** Bounds for a response body — mirrors brief_responses_body_bounds. */

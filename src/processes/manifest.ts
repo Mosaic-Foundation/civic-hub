@@ -71,6 +71,19 @@ export interface TableDeclaration {
     | { notContent: string };
 }
 
+/** A retired type a manifest carries (`legacyTypes`; engine 2, C). */
+export interface LegacyTypeDeclaration {
+  /** The retired process type its old events name ("civic.vote_results"). */
+  type: string;
+  /** What Activity calls it. */
+  name: string;
+  plural: string;
+  disclosure: "anonymous" | "members" | "public";
+  publicPayload: Readonly<Record<string, readonly string[]>>;
+  feed?: FeedDeclaration;
+  participation: ParticipationDeclaration;
+}
+
 /** The admin queues a type's unpublished records can wait in (src/services/adminQueues.ts). */
 export type PublicationQueue = "briefs" | "meeting_summaries";
 
@@ -176,6 +189,14 @@ export interface ProcessManifest {
    * processes reads (src/shared/feedActivity.ts). Absent: it makes no cards.
    */
   feed?: FeedDeclaration;
+  /**
+   * Retired types this one carries (engine 2, C): their records became this
+   * type's (vote results became briefs), but their stored events keep the
+   * old type in their data, and must read exactly as they did: the wire's
+   * redaction (disclosure, publicPayload), the feed's card, and Activity's
+   * count. Each is read beside the manifests as if it were one.
+   */
+  legacyTypes?: readonly LegacyTypeDeclaration[];
   /**
    * Statuses of its own beyond the hub's (engine 2, A4): an event is
    * scheduled, past or cancelled. Each names the hub status it is a case of

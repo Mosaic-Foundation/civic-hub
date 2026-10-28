@@ -7,7 +7,7 @@
 // use it) the summary still carries the result's own figures: agreement,
 // groups and participation, with `narrative` saying why the text is missing.
 
-import type { DeliberationResult, DeliberationSummary } from "../../../src/sdk/index.js";
+import type { DeliberationResult, DeliberationSummary } from "@civic-social/plugin-sdk/first-party";
 import { SYSTEM_PROMPT, PROMPT_VERSION, buildUserPrompt } from "./prompt.js";
 
 /** The AI call the brief makes: one prompt in, the model's text out. */

@@ -6,7 +6,7 @@
 // handler already produced the BriefContent, so generation here is just
 // wrapping it in the process state.
 
-import { ConflictError, ValidationError } from "../../src/sdk/index.js";
+import { ConflictError, ValidationError } from "@civic-social/plugin-sdk/first-party";
 import type {
   BriefActionOutcome,
   BriefContent,

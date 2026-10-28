@@ -36,7 +36,7 @@
 // via emitEvent) as the single discriminator, falling back to the legacy
 // data-shape checks for historical events emitted before the field existed.
 
-import { MANIFEST_LIST } from "./processManifests.js";
+import { LEGACY_TYPES, MANIFEST_LIST } from "./processManifests.js";
 
 /**
  * Coarse content category — aligned 1:1 with the FeedFilter `?type=` keys so
@@ -261,12 +261,18 @@ interface TableRule extends FeedCardRule {
 
 const RULES: ReadonlyMap<string, readonly TableRule[]> = (() => {
   const byEvent = new Map<string, TableRule[]>();
-  for (const m of MANIFEST_LIST) {
-    for (const rule of m.feed?.cards ?? []) {
+  const add = (type: string, detail: (id: string) => string, rules: readonly FeedCardRule[]) => {
+    for (const rule of rules) {
       const list = byEvent.get(rule.event) ?? [];
-      list.push({ ...rule, type: m.descriptor.type, detail: m.detailPath });
+      list.push({ ...rule, type, detail });
       byEvent.set(rule.event, list);
     }
+  };
+  for (const m of MANIFEST_LIST) {
+    // A retired type's cards, for its stored events (engine 2, C), where its
+    // own manifest stood: just before the type that carries it.
+    for (const l of LEGACY_TYPES.filter((x) => x.carriedBy === m.descriptor.type)) add(l.type, l.detailPath, l.feed?.cards ?? []);
+    add(m.descriptor.type, m.detailPath, m.feed?.cards ?? []);
   }
   return byEvent;
 })();

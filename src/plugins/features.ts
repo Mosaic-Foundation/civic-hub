@@ -11,7 +11,7 @@ import { FEATURE_PACKAGES } from "../../config/features.js";
 import { forHub, type TableName } from "../db/forHub.js";
 import { currentHub, currentHubId } from "../config/hubContext.js";
 import { requirePlugin } from "../middleware/pluginGate.js";
-import { MANIFEST_LIST } from "../shared/processManifests.js";
+import { LEGACY_TYPES, MANIFEST_LIST } from "../shared/processManifests.js";
 import type { ParticipationDeclaration } from "../shared/participation.js";
 import type { PluginId } from "../models/hubSettings.js";
 import type { JobRunner } from "../jobs/types.js";
@@ -49,13 +49,22 @@ function daysBetween(from: string, to: string): number {
  */
 const ownName = (m: (typeof MANIFEST_LIST)[number]) => (m.descriptor.display as { name?: string }).name;
 
-const TYPES: readonly ProcessTypeSummary[] = MANIFEST_LIST.map((m) => ({
+const summaryOf = (m: (typeof MANIFEST_LIST)[number]): ProcessTypeSummary => ({
   type: m.descriptor.type,
   label: ownName(m) ?? m.descriptor.display.label,
   plural: ownName(m) ? (ownName(m)!.endsWith("s") ? ownName(m)! : `${ownName(m)}s`) : m.descriptor.display.plural,
   residentCreated: m.descriptor.creation.resident !== null,
   participation: (m.participation as ParticipationDeclaration | undefined) ?? null,
-}));
+});
+
+// A retired type's stored events are counted as they were (engine 2, C),
+// where its own manifest stood: just before the type that carries it.
+const TYPES: readonly ProcessTypeSummary[] = MANIFEST_LIST.flatMap((m) => [
+  ...LEGACY_TYPES.filter((l) => l.carriedBy === m.descriptor.type).map(
+    (l): ProcessTypeSummary => ({ type: l.type, label: l.name, plural: l.plural, residentCreated: false, participation: l.participation }),
+  ),
+  summaryOf(m),
+]);
 
 /** The event log as counts, for the hub in scope (event_counts_by_day, event_actor_counts). */
 export const eventLogReader: EventLogReader = {

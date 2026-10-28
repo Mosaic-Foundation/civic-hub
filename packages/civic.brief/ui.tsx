@@ -1,11 +1,24 @@
 // civic.brief: the published record of what residents decided, sent to
 // officials (manifest: ./manifest.ts).
 
-import { Link } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
+import hub from "../../ui/src/config/hub";
+import { getPublicBrief } from "../../ui/src/services/api";
+import { formatCount } from "../../ui/src/processes/feedText";
 import { AdminBriefs, BriefPage, Outcomes } from "../../ui/src/lazyPages";
 import { briefResponseContext } from "../../src/shared/feedActivity";
 import type { ProcessUi } from "../../ui/src/processes/types";
 import { formatShortDate } from "../../ui/src/utils/dates";
+
+/**
+ * A vote's results page from before briefs (the retired civic.vote_results,
+ * engine 2, C): its record is a brief now, at the same id, so its published
+ * address keeps answering by sending the reader there.
+ */
+function VoteResultsRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/brief/${id}`} replace />;
+}
 
 const briefUi: ProcessUi = {
   type: "civic.brief",
@@ -14,12 +27,44 @@ const briefUi: ProcessUi = {
     { path: "/admin/briefs", element: <AdminBriefs />, admin: true },
     { path: "/admin/briefs/:id", element: <AdminBriefs />, admin: true },
     // Public brief page — the permanent record of a completed process
-    // (the /brief path is reclaimed from the old Slice 8.5 redirect;
-    // existing published vote-results stay at /vote-results/:id).
+    // (the /brief path is reclaimed from the old Slice 8.5 redirect).
     { path: "/outcomes", element: <Outcomes /> },
     { path: "/brief/:id", element: <BriefPage /> },
+    // A vote's results from before briefs: now a brief at the same id.
+    { path: "/vote-results/:id", element: <VoteResultsRedirect /> },
   ],
   feed: {
+    // A vote's results published before briefs (the retired civic.vote_results'
+    // card; its record is a brief now, read as one).
+    "vote-results": {
+      card: ({ id, data, getTitle }) => {
+        const headline = typeof data.headline_result === "string" ? data.headline_result : "";
+        return {
+          title: getTitle(id) ?? "Vote results",
+          summary:
+            headline ||
+            (hub.governing_body_short ? `Delivered to the ${hub.governing_body_name || hub.governing_body_short}.` : ""),
+        };
+      },
+      meta: (id) =>
+        getPublicBrief(id).then((b) => ({
+          title: b.title,
+          imageUrl: b.image_url ?? null,
+          imageAlt: b.image_alt ?? null,
+          totalVotes: b.participation_count ?? 0,
+          commentsCount: b.comments?.length ?? 0,
+        })),
+      titleNeedsMeta: true,
+      engagement: (meta) => {
+        const n = meta.totalVotes ?? 0;
+        const m = meta.commentsCount ?? 0;
+        if (n === 0 && m === 0) return null;
+        const parts: string[] = [];
+        if (n > 0) parts.push(`${formatCount(n)} ${hub.noun(n)} voted`);
+        if (m > 0) parts.push(`${formatCount(m)} ${m === 1 ? "comment" : "comments"}`);
+        return parts.join(" · ");
+      },
+    },
     brief: {
       card: ({ id, data, getTitle }) => {
         // Rendered from the publish event alone (no metadata fetch): the

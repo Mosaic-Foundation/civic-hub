@@ -2,7 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "../../src/processes/manifest.js";
+import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
 
 /**
  * What a brief is (src/processes/descriptor.ts). The hub spawns one when a
@@ -94,6 +94,38 @@ export const BRIEF_MANIFEST = defineManifest({
   // /brief/:id answers 404 for an unpublished brief, admins included: the
   // admin reaches one through the Briefs tab (Adam, 2026-09-06).
   publication: { field: "publication_status", queue: "briefs", linkedBeforePublished: false },
+  // A vote's results from before briefs (civic.vote_results, retired in
+  // engine 2, C): its records are briefs now, at the same ids, and its stored
+  // events, which name the old type, read exactly as they did: public, the
+  // same public fields (its internal results_id dropped, Adam 2026-10-21),
+  // its own card, and its outcome counted.
+  legacyTypes: [
+    {
+      type: "civic.vote_results",
+      name: "Vote results",
+      plural: "Vote results",
+      disclosure: "public",
+      publicPayload: {
+        "civic.process.result_published": ["headline_result", "participation_count", "source_process_id"],
+        "civic.process.outcome_recorded": ["outcome_type", "outcome_description", "linked_process_id"],
+      },
+      feed: {
+        cards: [
+          {
+            event: "civic.process.result_published",
+            legacy: [{ field: "results_id", is: "string" }, { field: "brief_id", is: "string" }],
+            card: { surface: "activity", kind: "vote-results", color: "vote", pill: "Vote results", href: "action_url" },
+          },
+        ],
+      },
+      participation: {
+        participation: "none",
+        creation: ["civic.process.created"],
+        closing: [],
+        outcome: ["civic.process.result_published"],
+      },
+    },
+  ],
   summarizes: { stateField: "source_process_id" },
   feed: {
     cards: [

@@ -30,7 +30,8 @@ import {
  *  from inlining the mapping (and therefore drifting). */
 const TYPE_MAP: Record<SearchTypeKey, string> = {
   vote: "civic.vote",
-  vote_results: "civic.vote_results",
+  // The key outlived its type (engine 2, C): a vote's results are briefs now, and the chip finds outcomes.
+  vote_results: "civic.brief",
   announcement: "civic.announcement",
   meeting_summary: "civic.meeting_summary",
 };

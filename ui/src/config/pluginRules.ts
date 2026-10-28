@@ -36,7 +36,7 @@ export function safeReturnPath(raw: string | null | undefined): string | null {
 /** The process type behind each search type chip (src/modules/civic.search). */
 export const SEARCH_TYPE_PROCESS: Readonly<Record<string, string>> = {
   vote: "civic.vote",
-  vote_results: "civic.vote_results",
+  vote_results: "civic.brief",
   announcement: "civic.announcement",
   meeting_summary: "civic.meeting_summary",
 };

@@ -2,7 +2,7 @@
 // in plugin session 2: the brief owns the AI). The text is unchanged; it reads
 // the deliberation result the conversation handed its brief.
 
-import type { DeliberationResult } from "../../../src/sdk/index.js";
+import type { DeliberationResult } from "@civic-social/plugin-sdk/first-party";
 
 export const PROMPT_VERSION = "polis-summarization-v1";
 

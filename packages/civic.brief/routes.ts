@@ -1,7 +1,7 @@
 // Briefs — public read of published civic.brief pages (the universal results
 // record for any completed process). Reclaims the /brief path from the Slice
-// 8.5 legacy redirect: /brief now serves the NEW generic brief; existing
-// published vote-results stay at /vote-results/:id.
+// 8.5 legacy redirect: /brief now serves the generic brief, and the retired
+// vote results' records are briefs too (legacyRoutes.ts redirects them).
 
 import { Router } from "express";
 import {
@@ -9,7 +9,7 @@ import {
   handleListBriefs,
   handlePostBriefResponse,
 } from "./controller.js";
-import { requireOfficial } from "../../src/sdk/index.js";
+import { requireOfficial } from "@civic-social/plugin-sdk/first-party";
 
 const router = Router();
 

@@ -54,7 +54,6 @@ export const Outcomes = page(() => import("./pages/Outcomes"));
 export const BriefPage = page(() => import("./pages/Brief"));
 export const AnnouncementPage = page(() => import("./pages/Announcement"));
 export const MeetingSummary = page(() => import("./pages/MeetingSummary"));
-export const VoteResults = page(() => import("./pages/VoteResults"));
 export const WordCloud = page(() => import("./pages/WordCloud"));
 
 // Admin
@@ -66,7 +65,6 @@ export const AdminEdits = page(() => import("./pages/AdminEdits"), true);
 export const AdminFeedback = page(() => import("./pages/AdminFeedback"), true);
 export const ContactCivicSocial = page(() => import("./pages/ContactCivicSocial"), true);
 export const AdminBriefs = page(() => import("./pages/AdminBriefs"), true);
-export const AdminVoteResults = page(() => import("./pages/AdminVoteResults"), true);
 export const AdminMeetingSummaries = page(() => import("./pages/AdminMeetingSummaries"), true);
 
 // A resident's own settings and submissions

@@ -45,7 +45,7 @@ const TYPE_CHOICES: ReadonlyArray<{
 }> = [
   { key: "vote", label: "Votes", pillClass: "feed-pill--vote-open" },
   { key: "announcement", label: "Announcements", pillClass: "feed-pill--announcement" },
-  { key: "vote_results", label: "Vote results", pillClass: "feed-pill--vote-results" },
+  { key: "vote_results", label: "Outcomes", pillClass: "feed-pill--vote-results" },
   {
     key: "meeting_summary",
     label: "Meeting summaries",

@@ -124,8 +124,7 @@ export function checkDescriptor(handler: ProcessHandler, host: HostFacts): strin
   }
   if (d.creation.resident && !d.examples.draft) add(`residents draft it, but examples.draft is missing`);
   if (d.creation.admin && !d.examples.create) add(`admins create it, but examples.create is missing`);
-  if (!d.creation.resident && !d.creation.admin && !d.creation.system && d.type !== "civic.vote_results") {
-    // vote_results is the one retired type: no new ones are made.
+  if (!d.creation.resident && !d.creation.admin && !d.creation.system) {
     add(`nothing creates it: creation is resident null, admin false, system false`);
   }
 

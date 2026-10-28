@@ -10,7 +10,7 @@
 // as the conversation's brief always was: where the community agreed, where
 // opinions differed, the questions it raised.
 
-import type { BriefContent, BriefSection, DeliberationResult, DeliberationSummary } from "../../src/sdk/index.js";
+import type { BriefContent, BriefSection, DeliberationResult, DeliberationSummary } from "@civic-social/plugin-sdk/first-party";
 import { briefHost } from "./host.js";
 import { fakeDeliberationSummary, summarizeDeliberation, summaryWithoutNarrative, type LlmClient } from "./deliberation/summarize.js";
 

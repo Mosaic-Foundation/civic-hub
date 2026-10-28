@@ -32,7 +32,7 @@ export type BriefPublicationStatus = "pending" | "approved" | "published";
 export const IMAGE_ALT_MAX = 200;
 export const IMAGE_URL_MAX = 1000;
 
-import type { BriefContent, BriefSection } from "../../src/sdk/index.js";
+import type { BriefContent, BriefSection } from "@civic-social/plugin-sdk/first-party";
 
 export type { BriefContent, BriefSection };
 
