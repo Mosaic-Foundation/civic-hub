@@ -14,6 +14,7 @@
 // handler (the code that runs actions) is paired with it by the registry.
 
 import type { ProcessTypeDescriptor } from "./descriptorTypes.js";
+import type { ProcessStatus } from "../models/process.js";
 import type { SchemaRequirement } from "../db/schemaRequirement.js";
 import type { SettingFieldSpec } from "../shared/hubSettingsSections.js";
 import type { ThemeTypeKey } from "../shared/theme.js";
@@ -152,6 +153,18 @@ export interface ProcessManifest {
    * processes reads (src/shared/feedActivity.ts). Absent: it makes no cards.
    */
   feed?: FeedDeclaration;
+  /**
+   * Statuses of its own beyond the hub's (engine 2, A4): an event is
+   * scheduled, past or cancelled. Each names the hub status it is a case of
+   * (one of the descriptor's `states`); `of` says which one a process is in,
+   * from its hub status and its state. The hub's `status` is unchanged: it is
+   * what the descriptor, the lifecycle and the wire use. Read models carry the
+   * type's word as `type_status` ({ id, label }).
+   */
+  statuses?: {
+    declared: readonly { id: string; label: string; hub: ProcessStatus }[];
+    of: (process: { status: ProcessStatus; state: Record<string, unknown> }) => string;
+  };
   /**
    * The payload fields of each event type that are PUBLIC — what `hub:payload`
    * may carry on the wire for a member or public reader (Architecture 3,
@@ -331,6 +344,17 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
     }
     if (!host.colors.includes(m.color as string)) {
       throw new ManifestError(`${where(m)}: color "${String(m.color)}" is not a theme colour (${host.colors.join(", ")})`);
+    }
+    // Statuses of its own (A4): unique ids, labels, each a case of one of its states.
+    if (m.statuses) {
+      const ids = new Set<string>();
+      for (const st of m.statuses.declared) {
+        if (!/^[a-z][a-z_]*$/.test(st.id) || ids.has(st.id)) throw new ManifestError(`${where(m)}: status "${st.id}" must be a unique lowercase word`);
+        if (!st.label?.trim()) throw new ManifestError(`${where(m)}: status "${st.id}" needs a label`);
+        if (!(d.states as readonly string[]).includes(st.hub)) throw new ManifestError(`${where(m)}: status "${st.id}" maps to "${st.hub}", which is not one of its states`);
+        ids.add(st.id);
+      }
+      if (typeof m.statuses.of !== "function") throw new ManifestError(`${where(m)}: statuses.of must be a function`);
     }
     // Card kinds of its own (engine 2, A5): not the hub's, a usable colour
     // key and pair, a digest section and heading; and every card rule names

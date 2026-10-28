@@ -46,6 +46,7 @@ import {
   declaredAction,
   retrySafeActionsOf,
   getManifest,
+  typeStatusOf,
   isPublished,
   publicationOf,
 } from "../processes/registry.js";
@@ -762,6 +763,10 @@ export async function getProcessState(
   enriched.early_close = await earlyCloseOffer(handler, process);
   // Universal: every type's page shows the Sample badge (Phase 7).
   if (process.isSample) enriched.is_sample = true;
+  // A type's own status words (engine 2, A4): which declared status it is in,
+  // beside the hub's `status`, which stays what the descriptor and the wire serve.
+  const typeStatus = typeStatusOf(getManifest(process.definition.type), process);
+  if (typeStatus) enriched.type_status = typeStatus;
   return enriched;
 }
 

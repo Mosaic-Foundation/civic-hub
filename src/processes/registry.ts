@@ -27,7 +27,7 @@ import {
 import type { ProcessTypeDisplay } from "../shared/typeDisplay.js";
 
 export type { ProcessTypeDisplay };
-import type { Process } from "../models/process.js";
+import type { Process, ProcessStatus } from "../models/process.js";
 import type { PluginId } from "../models/hubSettings.js";
 import {
   describeSubmissionFields,
@@ -124,6 +124,27 @@ export function getManifests(): readonly ProcessManifest[] {
 }
 
 /** A registered type's manifest. */
+/**
+ * A process's own status word, where its type declares statuses (engine 2,
+ * A4): { id, label } of the one `of` names, or null. Never throws: an `of`
+ * that answers an undeclared id reads as none (conformance step 14 catches it).
+ */
+export function typeStatusOf(
+  manifest: ProcessManifest | undefined,
+  process: { status: ProcessStatus; state: unknown },
+): { id: string; label: string } | null {
+  const statuses = manifest?.statuses;
+  if (!statuses) return null;
+  let id: string;
+  try {
+    id = statuses.of({ status: process.status, state: (process.state ?? {}) as Record<string, unknown> });
+  } catch {
+    return null;
+  }
+  const found = statuses.declared.find((s) => s.id === id);
+  return found ? { id: found.id, label: found.label } : null;
+}
+
 export function getManifest(type: string): ProcessManifest | undefined {
   return MANIFESTS.find((m) => m.descriptor.type === type);
 }
