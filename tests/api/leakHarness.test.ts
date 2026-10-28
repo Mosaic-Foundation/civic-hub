@@ -396,6 +396,10 @@ const GET_PLAN: Record<string, Plan> = {
   // Who is going (engine 2, A3): Athens naming a Floyd event must get nothing of Floyd's.
   "GET /calendar/events/:id/going": {},
   "GET /calendar/hub.ics": {},
+  // Events 0.3.0: one event's calendar file, and its messages for admins; a
+  // Floyd event asked for on Athens is not Athens's (404, or none).
+  "GET /calendar/events/:id.ics": {},
+  "GET /calendar/events/:id/announcements": {},
   // Since Audit 3 every drafting kind has the owner's list route.
   "GET /projects/drafts/": {},
   "GET /projects/drafts/:id": {},

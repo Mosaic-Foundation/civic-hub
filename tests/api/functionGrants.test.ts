@@ -39,6 +39,8 @@ const AUTHENTICATED = [
   // An install, a removal or a wind-down with its settings (ADR-014).
   "apply_plugin_change",
   "ballot_by_receipt",
+  // Events 0.3.0: the trigger that refuses "going" past an event's limit (P0001).
+  "calendar_attendance_capacity",
   "cast_ballot",
   "claim_vote_key",
   "count_pending_reviews",
