@@ -9,7 +9,7 @@ import { voteDraftKind } from "./draftKind.js";
 
 const votePackage: PluginPackage = {
   name: "@civic-social/plugin-vote",
-  version: "0.1.1",
+  version: "0.2.0",
   displayName: "Votes",
   manifest,
   server() {

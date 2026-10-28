@@ -49,8 +49,10 @@ export function pack(out: string): { sdk: string; conformance: string } {
   for (const f of readdirSync(join(ROOT, "kit/sdk")).filter((f) => f.endsWith(".js") && f !== "first-party.js")) {
     cpSync(join(ROOT, "kit/sdk", f), join(sdk, f));
   }
-  // first-party is this repository's own (ADR-017): never packed.
-  for (const f of readdirSync(join(ROOT, "kit/sdk")).filter((f) => f.endsWith(".ts") && f !== "first-party.ts")) {
+  // first-party is this repository's own (ADR-017): the test host's copies of
+  // the hub's packages import it, so it rides along as source, pointed at the
+  // host; an outside package may not import it (src/fence.ts).
+  for (const f of readdirSync(join(ROOT, "kit/sdk")).filter((f) => f.endsWith(".ts"))) {
     let text = readFileSync(join(ROOT, "kit/sdk", f), "utf8").replaceAll('from "../../', 'from "./host/');
     if (f === "host.ts") text = text.replace('"../.."', '"host"');
     writeFileSync(join(sdk, f), text);
@@ -62,7 +64,7 @@ export function pack(out: string): { sdk: string; conformance: string } {
   for (const f of ["tsconfig.json", "LICENSE", "LICENSING.md"]) cpSync(join(ROOT, f), join(host, f));
   writeFileSync(join(host, "package.json"), JSON.stringify({ name: "civic-hub-test-host", private: true, type: "module" }, null, 2) + "\n");
   const sdkPkg = JSON.parse(readFileSync(join(ROOT, "kit/sdk/package.json"), "utf8"));
-  delete sdkPkg.exports["./first-party"];
+  sdkPkg.exports["./first-party"] = "./first-party.ts";
   sdkPkg.dependencies = pinned({ ...hubPkg.dependencies, pg: hubPkg.devDependencies.pg, tsx: hubPkg.devDependencies.tsx });
   writeFileSync(join(sdk, "package.json"), JSON.stringify(sdkPkg, null, 2) + "\n");
   cpSync(join(ROOT, "LICENSE"), join(sdk, "LICENSE"));

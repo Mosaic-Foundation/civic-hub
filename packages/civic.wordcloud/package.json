@@ -1,6 +1,6 @@
 {
   "name": "@civic-social/plugin-wordcloud",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Word clouds: one-word answers gathered into a cloud. A Civic Hub plugin package (docs/PLUGIN-PACKAGE.md).",

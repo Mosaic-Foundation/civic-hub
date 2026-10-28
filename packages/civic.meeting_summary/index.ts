@@ -11,7 +11,7 @@ import { meetingSummaryHost } from "./host.js";
 
 const meetingSummaryPackage: PluginPackage = {
   name: "@civic-social/plugin-meeting-summary",
-  version: "0.1.1",
+  version: "0.2.0",
   displayName: "Meeting summaries",
   manifest,
   server(host) {

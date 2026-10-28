@@ -189,7 +189,10 @@ const LEGACY_SHARE_PATHS = ["/vote-results"];
 export function derivedFiles(manifests: readonly DerivedManifest[], root = ROOT): Array<[string, string]> {
   const out: Array<[string, string]> = [];
 
-  const vercelText = readFileSync(join(root, "vercel.json"), "utf8");
+  // The hosting layer's file: a host without one (the packed test host,
+  // run-anywhere) has no share-card rewrites to keep in step.
+  const vercelPath = join(root, "vercel.json");
+  const vercelText = existsSync(vercelPath) ? readFileSync(vercelPath, "utf8") : '{"rewrites":[]}';
   const vercel = JSON.parse(vercelText) as { rewrites: Array<{ source: string; destination: string; has?: unknown }> };
   const og = vercel.rewrites.filter((r) => r.destination === "/api/og");
   const wanted = new Set([...manifests.map((m) => `/${m.detailPath("x").split("/")[1]}`), ...LEGACY_SHARE_PATHS]);

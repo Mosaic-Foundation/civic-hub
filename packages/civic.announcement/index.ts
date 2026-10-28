@@ -10,7 +10,7 @@ import { announcementHost } from "./host.js";
 
 const announcementPackage: PluginPackage = {
   name: "@civic-social/plugin-announcement",
-  version: "0.1.1",
+  version: "0.2.0",
   displayName: "Announcements",
   manifest,
   server(host) {
