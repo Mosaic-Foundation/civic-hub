@@ -7,7 +7,7 @@
 // manifest.js is generated from this file (`npm run sdk:build`).
 
 import type { ProcessManifest } from "../../src/processes/manifest.js";
-import type { ProcessTypeDescriptor } from "../../src/processes/descriptor.js";
+import type { ProcessTypeDescriptor } from "../../src/processes/descriptorTypes.js";
 import { DEADLINE_CLOSE_INPUT as CLOSE_INPUT } from "../../src/shared/deadlineClose.js";
 
 export type { ProcessManifest };
