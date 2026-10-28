@@ -6,7 +6,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Events 2: a season of events (Events 0.3.0) and four SDK v1 additions — 2026-10-28
 
-**State: RELEASE_STATE.** Branch `events-2` (from `8d7e473`), fast-forwarded into `multi-tenant`. Not on production.
+**State: on dev at `3f885c5` (`release.sh dev --yes`: 2 migrations, the package's and its catalog entry; health ok, no schema gaps); CI and E2E green on `3f885c5`; Adam approved Events 0.3.0 in dev's console (2026-10-28).** Branch `events-2` (from `8d7e473`), fast-forwarded into `multi-tenant`. Not on production.
 Reports: `~/Documents/Mosaic/0 Management/Civic Social/Events-2-Session-Report-2026-10-28.md` and
 `Events-2-Handoff-to-Management-2026-10-28.md`. No ADR (no convention changed; the SDK grew by four names, each
 with a conformance step, as ADR-017 provides).
@@ -41,8 +41,8 @@ transaction first), and a new version of a package the host ships replaces the h
 **Checks:** local, on the fixture set plus this session's runs: unit 1,983 (188 files) and UI 39; API both passes (service role 1,036 then the two hand lists fixed; minted tokens 1,038; the remaining failures were one 500 each under concurrent load in tests this slice does not touch, green on rerun, and the catalog-withdrawal test that needs an approved entry, green in CI); conformance in both passes and `catalog:add` (Events 32 passed, 1 skipped, 1 todo); `civic-conformance` on Events 0.3.0 from an empty folder outside the repository (green, after the two widenings); `prove.ts` (example, SDK tour, broken copy refused, non-additive copy refused); Playwright the CI way 213 passed, Events 26 of 26 after the preview fix (startPage's console handoff failed locally; unchanged here, see CI's E2E). CI on `events-2` (`13ccc4c`): build-and-test, both API passes, run-anywhere green. Wire snapshot (local): 1,032 events before; 1,028 byte-identical in all three views, 4 removed by the API suite's own tests (proposal and announcement events), none changed; new fields only on 0.3.0 events.
 
 **Left:**
-- **Adam: approve Events 0.3.0 in dev's console** (until then dev's hubs show Events as unavailable and dev's Smoke
-  fails). Production: the next release round.
+- **Dev's Smoke after the approval:** the run on the release deployment came before it; the next deployment's (or a
+  re-run) should be 9 of 9. Production: the next release round.
 - **Email notices follow the digest setting** (the one email setting people have): someone unsubscribed from the
   digest is not told an event they're going to was cancelled. A setting of its own for notices is the design pass's.
 - **The feed card's picture** is fetched per card (`/process/:id/state`); a lighter read could come later.
