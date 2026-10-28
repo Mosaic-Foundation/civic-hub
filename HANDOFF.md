@@ -4,6 +4,54 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Events 2: a season of events (Events 0.3.0) and four SDK v1 additions — 2026-10-28
+
+**State: RELEASE_STATE.** Branch `events-2` (from `8d7e473`), fast-forwarded into `multi-tenant`. Not on production.
+Reports: `~/Documents/Mosaic/0 Management/Civic Social/Events-2-Session-Report-2026-10-28.md` and
+`Events-2-Handoff-to-Management-2026-10-28.md`. No ADR (no convention changed; the SDK grew by four names, each
+with a conformance step, as ADR-017 provides).
+
+**Engine (Adam approved E1 to E4; each its own commit; the other eight packages' fingerprints unchanged):**
+- **E1** `POST /upload/process-image/:type` (`src/controllers/uploadController.ts`): a type that declares
+  `uploads: { images: true }` with `objectStore` in its grant (and its hub's approved grant) takes a resident's image
+  through the post-image checks, under `<hub>/types/<type>/`. Anything else 404. Conformance step 18.
+- **E2** `notify(processId, accounts, { subject, text })` (`src/services/notices.ts`): the hub holds the addresses,
+  skips other hubs' accounts, unverified addresses and the digest-unsubscribed, guards by mode, one message each,
+  links to the process's own page; `mail` must be in the type's grant. Step 19. (Differs from the first message:
+  takes the process, not an href, so a package can link nowhere else.)
+- **E3** `hubContext()` (`src/services/pluginHubContext.ts`): name, page origin, IANA zone; `identity.timezone` is a
+  public setting. Step 20 (a package names no zone and no hub address).
+- **E4** `wireObject.contexts` (declared JSON-LD terms on the documents whose object uses them; step 8 now holds every
+  object term to AS2 or the `@context`), and `DateTimeInput`'s `timeZone` (`ui/src/kit/datetime.ts`, DST-safe).
+
+**Events 0.3.0** (`packages/civic.event`): migration `20261028160000` (picture, zone and capacity columns,
+`calendar_announcements`, the capacity trigger raising P0001 `event_full`; additive, granted, applies twice); a
+picture (event page, feed card, AS2 `image`); start, end and duration linked in the event's zone (start fills the end
+an hour later, the same day); the zone (the hub's by default) on the page with the reader's own time, in the `.ics`
+(X-WR-TIMEZONE, times UTC) and on the wire (Mobilizon's `timezone`); capacity ("12 going · 28 places left", "Full ·
+40 going", `maximumAttendeeCapacity`/`remainingAttendeeCapacity` only when set); "Message the people going" (the
+`announce` action, a restricted `civic.event.announced`, the words in the log only) and automatic notices of a new
+time, place or cancellation; `GET /calendar/events/:id.ics`; the RSVP control (state ticked, the other choice beside
+it) and Cancel event with a confirmation. Catalog entry `20261028193657`, **required**.
+
+**Conformance, widened (Adam's rule: the suite grows with each plugin need):** steps 18 to 20, step 8's terms, and two
+CLI assumptions a real plugin broke: a migration must apply twice (the CLI tries each twice in a rolled-back
+transaction first), and a new version of a package the host ships replaces the host's copy for the run.
+
+**Checks:** local, on the fixture set plus this session's runs: unit 1,983 (188 files) and UI 39; API both passes (service role 1,036 then the two hand lists fixed; minted tokens 1,038; the remaining failures were one 500 each under concurrent load in tests this slice does not touch, green on rerun, and the catalog-withdrawal test that needs an approved entry, green in CI); conformance in both passes and `catalog:add` (Events 32 passed, 1 skipped, 1 todo); `civic-conformance` on Events 0.3.0 from an empty folder outside the repository (green, after the two widenings); `prove.ts` (example, SDK tour, broken copy refused, non-additive copy refused); Playwright the CI way 213 passed, Events 26 of 26 after the preview fix (startPage's console handoff failed locally; unchanged here, see CI's E2E). CI on `events-2` (`13ccc4c`): build-and-test, both API passes, run-anywhere green. Wire snapshot (local): 1,032 events before; 1,028 byte-identical in all three views, 4 removed by the API suite's own tests (proposal and announcement events), none changed; new fields only on 0.3.0 events.
+
+**Left:**
+- **Adam: approve Events 0.3.0 in dev's console** (until then dev's hubs show Events as unavailable and dev's Smoke
+  fails). Production: the next release round.
+- **Email notices follow the digest setting** (the one email setting people have): someone unsubscribed from the
+  digest is not told an event they're going to was cancelled. A setting of its own for notices is the design pass's.
+- **The feed card's picture** is fetched per card (`/process/:id/state`); a lighter read could come later.
+- The SDK tour fixture does not use 18 to 20 yet (Events does); `prove.ts` still proves 11 to 17 from an empty folder.
+- The Events nav and beta-review Playwright tests fail only against the Vite dev server (CORS on X-Forwarded-For);
+  CI's way passes (TESTING.md).
+
+---
+
 ## Engine 2: SDK v1's surface, one folder, vote results into the brief — 2026-10-28
 
 **State: on dev at `46d6772`, CI and E2E green** (`release.sh dev --yes` at `40519be`: 11 migrations, the vote-results conversion and ten catalog

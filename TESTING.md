@@ -87,6 +87,45 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Events 2: a season of events, and four SDK v1 additions (2026-10-28)
+
+**Events 0.3.0 (picture, end and duration, time zone, capacity, messages to the people going, change notices, one
+event's .ics, the RSVP control) and E1 to E4 in the engine, each with a conformance step.**
+- **Conformance, widened:** step 18 (a type that declares `uploads` takes a resident's image through
+  `/upload/process-image/:type` under `<hub>/types/<type>/`; 401 signed out, 400 not an image, 404 with the plugin
+  off; every type that declares nothing is refused, 404), step 19 (a package that calls `notify` has `mail` in its
+  grant), step 20 (a package's code names no IANA zone and no hub address), and step 8 (every term on a type's wire
+  object is AS2's or defined by the document's `@context`). They run for every type in `tests/api/conformance.test.ts`.
+- **Unit:** `eventsSeason.test.ts` (the duration parser and writer, the default end on the start's day in the
+  event's zone, what a change tells the people going, the zone, limit and picture checks), `eventsWire.test.ts`
+  (image, timezone and both capacity terms only where set, declared in the `@context`; an event without them keeps
+  the document it had; an announcement is a restricted Create of a Note, its words not on the wire),
+  `eventsIcs.test.ts` (one event's file: X-WR-TIMEZONE, the time in its zone, IMAGE, instants still UTC; an older
+  event reads in the hub's zone), `wireObject.test.ts` (contexts: undeclared, prefix missing, prefix not an IRI, an
+  AS2 term redeclared), `hubContext.test.ts`, and `ui/src/kit/datetime.test.ts` (a named zone, both sides of a change
+  of clocks, the repeated and the skipped hour, a year of round trips).
+- **API:** `notify.test.ts` (in-process, a configured fake outbox): one message per person, the hub's name and the
+  process's page; the unsubscribed, the unverified and another hub's account skipped; the demo hub's guard holds a
+  resident back; a type without `mail` refused as a reach past its grant. Runs in both modes.
+- **Playwright** (`events.spec.ts`, 26 at phone and desktop): a picture uploaded on the form; start fills the end an
+  hour later, a duration moves the end, an end moves the duration, a later start keeps the duration; Full at the
+  limit for someone not going; the creator messages the people going and one of them reads it (the creator sees "to
+  1, emailed 0, 1 held back by the hub's mode" on the demo hub); "Add to my calendar" downloads one VEVENT with its
+  UID, URL and zone; the RSVP control (state ticked, the other choice beside it, one line, 44 px) for the creator, and
+  an event in another zone with the reader's own time. **One zone for the run:** both hubs' `identity.timezone` and
+  the browser's are `America/Chicago` (the hubs' put back after); no fixture hub sets a zone, and
+  `auditSignIn.test.ts` leaves Athens on New York.
+- **Hand lists changed on purpose:** the route list (`pluginRoutes.test.ts`), the leak harness's GET and write plans,
+  the function grants (`calendar_attendance_capacity`), 57 tables and 45 hub tables, and the parity fixture
+  (calendar_announcements, civic.event.announced, the new requirements; diffed, additions only).
+- **Running Playwright against the Vite dev server:** the hub's own pages call `http://localhost:3000` across origins
+  and Playwright's `X-Forwarded-For` header fails CORS's preflight, so specs that open them (the Events nav and beta
+  review tests) fail there with "Failed to fetch"; the Events pages go through the same-origin `/api` proxy and pass.
+  Run the CI way (built UI, `vite preview`), above.
+- **Local work on a package before its catalog entry:** two API servers as CI starts them, with
+  `CIVIC_PLUGINS_UNVERIFIED=on`; `pluginPackages.test.ts`'s withdrawal test cannot pass that way (nothing is
+  unmounted) and passes once the entry is approved.
+
 ## Engine 2: SDK v1's surface, one folder, vote results into the brief (2026-10-28)
 
 **A new type is one folder; an SDK-only package can do what the built-in types do (ADR-017).**
