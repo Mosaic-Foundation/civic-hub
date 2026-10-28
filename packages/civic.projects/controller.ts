@@ -7,7 +7,7 @@ import {
   actOnProcess,
   readAsPage,
   viewFor,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import {
   listProjects,
   getProjectSummary,

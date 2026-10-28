@@ -14,7 +14,7 @@ import {
   type ProcessAction,
   type ProcessHandler,
   type FeedProcessMeta,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import {
   createWordcloudState,
   activateWordcloud,

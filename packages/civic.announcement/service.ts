@@ -3,7 +3,7 @@
 // No I/O beyond the injected emit callback. Persistence of state changes
 // is the host hub's responsibility (via processService.saveProcessState).
 
-import { ForbiddenError, ValidationError } from "../../src/sdk/index.js";
+import { ForbiddenError, ValidationError } from "@civic-social/plugin-sdk/first-party";
 import type {
   AnnouncementActionOutcome,
   AnnouncementContent,

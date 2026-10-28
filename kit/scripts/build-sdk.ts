@@ -18,6 +18,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import ts from "typescript";
 import { fileURLToPath } from "node:url";
 
 const SDK = join(dirname(fileURLToPath(import.meta.url)), "../sdk");
@@ -32,15 +33,54 @@ function bridged(from: string, names: string[]): string {
   return HEADER(from) + names.map((n) => `export const ${n} = e.${n};\n`).join("");
 }
 
+/**
+ * The value names a module exports (not its types), read by the TypeScript
+ * compiler from the source, without running it: running the engine loads the
+ * packages, which import the very file this writes.
+ */
+function valueExports(file: string): string[] {
+  const program = ts.createProgram([file], {
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    resolveJsonModule: true,
+    skipLibCheck: true,
+    noEmit: true,
+  });
+  const checker = program.getTypeChecker();
+  const source = program.getSourceFile(file);
+  const mod = source && checker.getSymbolAtLocation(source);
+  if (!mod) throw new Error(`sdk:build: cannot read the exports of ${file}`);
+  const typeOnly = (sym: ts.Symbol) =>
+    (sym.declarations ?? []).some(
+      (d) => (ts.isExportSpecifier(d) && (d.isTypeOnly || d.parent.parent.isTypeOnly)) || ts.isTypeAliasDeclaration(d) || ts.isInterfaceDeclaration(d),
+    );
+  return checker
+    .getExportsOfModule(mod)
+    .filter((sym) => {
+      if (typeOnly(sym)) return false;
+      const target = sym.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(sym) : sym;
+      return (target.flags & ts.SymbolFlags.Value) !== 0;
+    })
+    .map((sym) => sym.name)
+    .sort();
+}
+
 async function main(): Promise<void> {
-  // The engine as the hub loads it (its packages import the SDK while it is
-  // still being evaluated, so it is entered where the hub enters it).
-  await import("../../config/plugins/server.js");
-  const v1 = Object.keys(await import("@civic-social/plugin-sdk")).sort();
-  const v0 = Object.keys(await import("@civic-social/plugin-sdk/first-party")).sort();
+  const v1 = valueExports(join(SDK, "index.ts"));
+  const v0 = valueExports(join(SDK, "../../src/sdk/index.ts"));
   const manifest = await import("@civic-social/plugin-sdk/manifest");
 
   const files: Record<string, string> = {
+    // Every name listed, never `export *`: vitest copies a star re-export's
+    // names at evaluation, so a package imported while the engine is still
+    // loading (a test that imports one directly) read them undefined. A named
+    // re-export stays a live binding.
+    "first-party.ts":
+      readFileSync(join(SDK, "first-party.ts"), "utf8").split("\n// --- Written by")[0].trimEnd() +
+      "\n\n// --- Written by `npm run sdk:build` from src/sdk/index.ts. Do not edit below. ---\n" +
+      'export type * from "../../src/sdk/index.js";\n' +
+      `export {\n${v0.map((n) => `  ${n},`).join("\n")}\n} from "../../src/sdk/index.js";\n`,
     "index.js": bridged("index.ts", v1),
     "first-party.js": bridged("first-party.ts (src/sdk/index.ts)", v0),
     "manifest.js":

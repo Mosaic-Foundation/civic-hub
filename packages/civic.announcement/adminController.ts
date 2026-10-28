@@ -11,7 +11,7 @@ import {
   saveProcessState,
   emitEvent,
   getAuthUser,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import {
   getAdminReadModel,
   removeAnnouncement,

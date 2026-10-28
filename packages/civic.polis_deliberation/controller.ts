@@ -27,7 +27,7 @@ import {
   briefIdForSource,
   regenerateBrief,
   admitCodeOfConductCheck,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import { getPolisAdapter } from "./boot.js";
 import { conversationHost } from "./host.js";
 import {

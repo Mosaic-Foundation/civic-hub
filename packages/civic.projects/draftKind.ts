@@ -2,7 +2,7 @@
 // the routes, the controller, the claim against a double submit and the Code
 // of Conduct gate are the hub's, src/controllers/draftController.ts).
 
-import { applyEdit, lines, type Draft, type DraftKind, type ProposedLink } from "../../src/sdk/index.js";
+import { applyEdit, lines, type Draft, type DraftKind, type ProposedLink } from "@civic-social/plugin-sdk/first-party";
 
 export type ProjectDraft = Draft<{
   banner_image_url: string | null;

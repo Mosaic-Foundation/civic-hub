@@ -31,7 +31,7 @@ import {
   str,
   num,
   type FeedProcessMeta,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import { voteAssistantConfig } from "./assistantConfig.js";
 import {
   createVoteState,

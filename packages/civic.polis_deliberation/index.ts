@@ -6,7 +6,7 @@
 // names. Its summary is its brief's, which owns the AI (plugin session 2,
 // ADR-015; ADR-014 Decision 7).
 
-import type { PluginPackage } from "../../src/sdk/index.js";
+import type { PluginPackage } from "@civic-social/plugin-sdk/first-party";
 import manifest from "./manifest.js";
 import { bootDeliberation } from "./boot.js";
 import routes from "./routes.js";

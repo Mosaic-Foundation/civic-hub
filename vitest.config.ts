@@ -8,6 +8,11 @@ export default defineConfig({
   // suite import it (kit/; plugin session 2, ADR-015).
   resolve: {
     alias: [
+      // The repository's own packages' version 0 straight to the engine's
+      // SDK, as their relative import was (ADR-017): a test that imports a
+      // package directly enters the engine through it, and vitest leaves a
+      // re-exporting module empty until the cycle it starts completes.
+      { find: /^@civic-social\/plugin-sdk\/first-party$/, replacement: fileURLToPath(new URL("./src/sdk/index.ts", import.meta.url)) },
       { find: /^@civic-social\/plugin-sdk$/, replacement: `${SDK}index.ts` },
       { find: /^@civic-social\/plugin-sdk\/(.+)$/, replacement: `${SDK}$1.ts` },
     ],

@@ -2,7 +2,7 @@
 // `project_drafts` tables, on the hub in scope, through the database its host
 // hands it (its granted tables only).
 
-import { readAll, type GrantedDb } from "../../src/sdk/index.js";
+import { readAll, type GrantedDb } from "@civic-social/plugin-sdk/first-party";
 import type { ProjectRow, ProjectsStore } from "./store.js";
 import type { ProjectStatus, SentimentValue } from "./models.js";
 

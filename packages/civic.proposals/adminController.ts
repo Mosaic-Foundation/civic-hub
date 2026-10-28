@@ -6,7 +6,7 @@
 // lists proposals for admins and lets them archive (hide) ones that violate
 // guidelines.
 
-import { NotFoundError, route, enrichCreator, enrichCreators } from "../../src/sdk/index.js";
+import { NotFoundError, route, enrichCreator, enrichCreators } from "@civic-social/plugin-sdk/first-party";
 import {
   listEndorsedProposals,
   listProposals,

@@ -34,7 +34,7 @@ import {
   type JobOutcome,
   type JobRunner,
   type PluginAdapters,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import {
   approveMeetingSummary,
   effectiveQualityFlag,

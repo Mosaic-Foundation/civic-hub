@@ -11,7 +11,7 @@ import {
   appendConversation,
   saveReviewResult,
   applyGeneratedDraft,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import { proposalDraftKind } from "./draftKind.js";
 
 /**

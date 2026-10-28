@@ -6,7 +6,7 @@
 // has voted on everything (Polis answers null for both) and enforce one
 // statement per person. Every read and write is on the hub in scope.
 
-import type { GrantedDb } from "../../src/sdk/index.js";
+import type { GrantedDb } from "@civic-social/plugin-sdk/first-party";
 import { conversationHost } from "./host.js";
 
 function db(): GrantedDb {

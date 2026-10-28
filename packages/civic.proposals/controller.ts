@@ -14,7 +14,7 @@ import {
   viewFor,
   enrichCreators,
   getSampleProcessIds,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import {
   listProposals,
   getProposalSummary,

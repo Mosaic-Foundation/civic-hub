@@ -16,7 +16,7 @@ import {
   handleSupportProposal,
   handleUnsupportProposal,
 } from "./controller.js";
-import { requireResident } from "../../src/sdk/index.js";
+import { requireResident } from "@civic-social/plugin-sdk/first-party";
 
 const router = Router();
 

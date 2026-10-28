@@ -5,7 +5,7 @@
 // `project_drafts`; a project's updates and comments are civic.input's rows,
 // read through that module.
 
-import { storeSlot } from "../../src/sdk/index.js";
+import { storeSlot } from "@civic-social/plugin-sdk/first-party";
 import type { ProjectStatus, SentimentValue } from "./models.js";
 
 /** A stored project, as the `projects` table has it. */

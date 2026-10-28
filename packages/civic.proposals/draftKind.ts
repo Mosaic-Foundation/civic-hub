@@ -2,7 +2,7 @@
 // the routes, the controller, the claim against a double submit and the Code
 // of Conduct gate are the hub's, src/controllers/draftController.ts).
 
-import { ValidationError, type Draft, DAY_MS, lines, type DraftKind } from "../../src/sdk/index.js";
+import { ValidationError, type Draft, DAY_MS, lines, type DraftKind } from "@civic-social/plugin-sdk/first-party";
 
 const VALID_CATEGORIES = new Set(["issue", "idea", "project", "concern"]);
 /** The proposal_drafts.proposal_duration_ms column default (6 weeks). */

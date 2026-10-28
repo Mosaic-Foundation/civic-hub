@@ -19,7 +19,7 @@
 //
 // Pure functions only; the controller and the tests share them.
 
-import { ConflictError, resolveTimeZone } from "../../src/sdk/index.js";
+import { ConflictError, resolveTimeZone } from "@civic-social/plugin-sdk/first-party";
 import type { SummaryBlock, TranscriptSegment } from "./models.js";
 
 // The thresholds' defaults live in src/shared/, where the hub's job reports read them (engine 2, B10).

@@ -4,7 +4,7 @@
 // lives here beyond what the injected callbacks perform. The host hub is
 // responsible for persisting state changes after these functions return.
 
-import { ConflictError } from "../../src/sdk/index.js";
+import { ConflictError } from "@civic-social/plugin-sdk/first-party";
 import type {
   CreateMeetingSummaryInput,
   MeetingSummaryPatch,

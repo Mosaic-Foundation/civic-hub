@@ -6,7 +6,7 @@
 // evals / tests can diff them.
 
 import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
-import { getSettingSync, KEYS } from "../../src/sdk/index.js";
+import { getSettingSync, KEYS } from "@civic-social/plugin-sdk/first-party";
 
 /** The hub's word for the people who read its summaries ("residents", "neighbors", "members"). */
 function hubPeople(): string {

@@ -6,7 +6,7 @@
 //
 // GUARDRAIL: This module MUST NOT import from civic.vote.
 
-import { defaultJurisdiction, type CreateEventInput } from "../../src/sdk/index.js";
+import { defaultJurisdiction, type CreateEventInput } from "@civic-social/plugin-sdk/first-party";
 
 export type EmitEventFn = (input: CreateEventInput) => Promise<unknown>;
 

@@ -6,7 +6,7 @@
 //   - GET /wordcloud/:id/cloud — aggregated cloud data per prompt
 //   - GET /wordcloud/:id      — full read model with cloud data
 
-import { NotFoundError, route, getProcess, resolveCallerId } from "../../src/sdk/index.js";
+import { NotFoundError, route, getProcess, resolveCallerId } from "@civic-social/plugin-sdk/first-party";
 import {
   buildClouds,
   getSubmissionCount,

@@ -24,7 +24,7 @@ import {
   saveProcessState,
   getAuthUser,
   enrichCreator,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import { Request, Response } from "express";
 import {
   approveMeetingSummary,

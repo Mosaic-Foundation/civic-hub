@@ -1,7 +1,7 @@
 // The proposal plugin package (docs/PLUGIN-PACKAGE.md): its manifest, and what
 // the hub runs when it loads it.
 
-import type { PluginPackage } from "../../src/sdk/index.js";
+import type { PluginPackage } from "@civic-social/plugin-sdk/first-party";
 import manifest from "./manifest.js";
 import handler from "./handler.js";
 import routes from "./routes.js";

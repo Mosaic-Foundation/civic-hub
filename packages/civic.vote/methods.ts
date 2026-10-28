@@ -11,7 +11,7 @@
 //   2. Register it in VOTING_METHODS below
 //   3. No other file changes needed
 
-import { ValidationError } from "../../src/sdk/index.js";
+import { ValidationError } from "@civic-social/plugin-sdk/first-party";
 import type { VoteResult } from "./models.js";
 
 // --- Interface ---------------------------------------------------------------

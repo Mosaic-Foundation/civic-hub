@@ -3,7 +3,7 @@
 // its host hands it (its granted tables only), bound when the hub loads the
 // package (./index.ts). The tables are `proposals` and `proposal_supports`.
 
-import { storeSlot } from "../../src/sdk/index.js";
+import { storeSlot } from "@civic-social/plugin-sdk/first-party";
 import type { ProposalStatus } from "./models.js";
 
 /** A stored proposal, as the `proposals` table has it. */

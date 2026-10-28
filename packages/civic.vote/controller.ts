@@ -19,7 +19,7 @@ import {
   verifyReceipt,
   getProcess,
   getAuthUser,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 
 /**
  * GET /votes/:id/log

@@ -1,4 +1,4 @@
-import type { DeliberationResult, DeliberationSummary } from "../../src/sdk/index.js";
+import type { DeliberationResult, DeliberationSummary } from "@civic-social/plugin-sdk/first-party";
 
 // The summary is the brief's since plugin session 2 (the brief owns the AI);
 // a conversation closed before then keeps its own on its state.

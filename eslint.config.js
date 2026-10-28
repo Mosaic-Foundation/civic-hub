@@ -530,9 +530,19 @@ const packageBoundaryRule = {
       if (typeof spec !== "string") return;
       if (inPackage || inFeature) {
         if (!spec.startsWith(".")) {
+          // This repository's packages reach the hub by the SDK's name (ADR-017):
+          // their code through /first-party (version 0), their manifest through
+          // /manifest. Features still use src/sdk/index.ts relatively.
+          if (inPackage && !isManifest && spec === "@civic-social/plugin-sdk/first-party") return;
+          if (inPackage && isManifest && spec === "@civic-social/plugin-sdk/manifest") return;
           const bare = spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0];
           if (isManifest || !(spec.startsWith("node:") || peerDependencies(pkgDir).includes(bare))) {
-            context.report({ node, message: `"${spec}": a plugin package imports the hub through src/sdk/index.ts, and of other packages only node: built-ins and the peerDependencies its package.json lists (ADR-014).` });
+            context.report({
+              node,
+              message: inPackage
+                ? `"${spec}": a plugin package imports the hub as @civic-social/plugin-sdk/first-party (its manifest, /manifest), and of other packages only node: built-ins and the peerDependencies its package.json lists (ADR-014, ADR-017).`
+                : `"${spec}": a feature package imports the hub through src/sdk/index.ts, and of other packages only node: built-ins and the peerDependencies its package.json lists (ADR-014).`,
+            });
           }
           return;
         }
@@ -540,15 +550,18 @@ const packageBoundaryRule = {
         if (target.startsWith(`${pkgDir}/`)) return;
         if (target.startsWith("src/shared/")) return;
         if (isManifest) {
-          if (target === "src/processes/manifest") return;
+          if (target === "src/processes/manifest" && !inPackage) return;
           context.report({ node, message: `"${spec}": a manifest is plain data the UI reads; it imports only src/shared/ and src/processes/manifest.ts.` });
           return;
         }
-        if (target === "src/sdk/index" || target === "src/sdk") return;
+        // A package reaches the SDK by its name now (ADR-017); a feature still by path.
+        if ((target === "src/sdk/index" || target === "src/sdk") && !inPackage) return;
         if (inPackage && requiredDirs(pkgDir).some((d) => target.startsWith(`${d}/`))) return;
         context.report({
           node,
-          message: `"${spec}": a plugin package reaches the hub only through src/sdk/index.ts (add the name there), src/shared/, its own files and the packages it requires (ADR-014).`,
+          message: inPackage
+            ? `"${spec}": a plugin package reaches the hub only through @civic-social/plugin-sdk/first-party (add the name to src/sdk/index.ts), src/shared/, its own files and the packages it requires (ADR-014, ADR-017).`
+            : `"${spec}": a feature package reaches the hub only through src/sdk/index.ts (add the name there), src/shared/, its own files (ADR-014).`,
         });
         return;
       }

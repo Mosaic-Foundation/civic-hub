@@ -9,7 +9,7 @@
 // stay plain form fields. Everything reaches the form only via Apply on a
 // suggestion card, which marks assistant_helped (the public disclosure).
 
-import { getDraft, appendConversation, saveReviewResult, applyGeneratedDraft, type AssistantTypeConfig } from "../../src/sdk/index.js";
+import { getDraft, appendConversation, saveReviewResult, applyGeneratedDraft, type AssistantTypeConfig } from "@civic-social/plugin-sdk/first-party";
 import { deliberationDraftKind } from "./draftKind.js";
 
 const CONVERSATION_BEST_PRACTICES = `# Conversation Best Practices — Civic Hub

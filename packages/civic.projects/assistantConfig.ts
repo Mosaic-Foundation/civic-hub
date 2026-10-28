@@ -8,7 +8,7 @@ import {
   appendConversation,
   saveReviewResult,
   applyGeneratedDraft,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import { projectDraftKind } from "./draftKind.js";
 
 const PROJECT_BEST_PRACTICES = `# Project Best Practices — Civic Hub

@@ -2,7 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "../../src/processes/manifest.js";
+import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
 import { MEETING_CONNECTOR_OPTIONS } from "../../src/shared/connectorOptions.js";
 
 /**

@@ -13,7 +13,7 @@
 
 import { CHECK_MODES, DEFAULT_CHECK_MODE, checkModeOf, isCheckMode } from "../../src/shared/checkMode.js";
 import { filledOptions, overlongOption, VOTE_OPTION_MAX } from "../../src/shared/voteOptions.js";
-import { ConflictError, ValidationError } from "../../src/sdk/index.js";
+import { ConflictError, ValidationError } from "@civic-social/plugin-sdk/first-party";
 import type {
   VoteConfig,
   VoteProcessState,

@@ -26,7 +26,7 @@ import {
   getUser,
   extractUrls,
   warmPreviewsInBackground,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import { Request } from "express";
 import {
   emitPublicationEvents,

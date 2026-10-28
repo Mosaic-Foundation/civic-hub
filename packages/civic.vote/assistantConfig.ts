@@ -10,7 +10,7 @@ import {
   saveReviewResult,
   applyGeneratedDraft,
   updateDraft,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import { voteDraftKind, type VoteDraft } from "./draftKind.js";
 
 const VOTE_BEST_PRACTICES = `# Vote Best Practices — Civic Hub

@@ -25,7 +25,7 @@ import {
   type DeliberationResult,
   type DeliberationSummary,
   type FeedProcessMeta,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import type { PolisHostInterface } from "./hostInterface.js";
 import type { PolisAdapter } from "./adapter/types.js";
 import type { PolisDeliberationState } from "./types.js";

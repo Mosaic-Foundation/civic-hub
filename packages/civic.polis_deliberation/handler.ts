@@ -1,4 +1,4 @@
-import { ConflictError, ValidationError } from "../../src/sdk/index.js";
+import { ConflictError, ValidationError } from "@civic-social/plugin-sdk/first-party";
 import type { PolisAdapter } from "./adapter/types.js";
 import { POLIS_DELIBERATION_MANIFEST } from "./manifest.js";
 import type { PolisHostInterface } from "./hostInterface.js";

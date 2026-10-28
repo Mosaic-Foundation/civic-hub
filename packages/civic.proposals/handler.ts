@@ -30,7 +30,7 @@ import {
   setDraftStatus,
   getSettingSync,
   KEYS,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import { proposalsStore } from "./store.js";
 import {
   createProposal,

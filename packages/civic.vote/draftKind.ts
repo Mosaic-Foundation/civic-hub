@@ -12,7 +12,7 @@ import {
   DAY_MS,
   type Draft,
   type DraftKind,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import { CHECK_MODES, isCheckMode, type CheckMode } from "../../src/shared/checkMode.js";
 import { filledOptions, overlongOption, VOTE_OPTION_MAX } from "../../src/shared/voteOptions.js";
 import { sourceLineToContentLink } from "../../src/shared/sourceLine.js";

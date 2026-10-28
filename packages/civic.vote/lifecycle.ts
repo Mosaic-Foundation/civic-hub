@@ -8,7 +8,7 @@
 //
 // No skipping within a path. No reversal.
 
-import { ConflictError } from "../../src/sdk/index.js";
+import { ConflictError } from "@civic-social/plugin-sdk/first-party";
 import type { VoteStatus } from "./models.js";
 
 type ActivationMode = "direct" | "proposal_required";

@@ -2,7 +2,7 @@
 // tables, on the hub in scope, through the database its host hands it (its
 // granted tables only).
 
-import { HubDbError, readAll, type GrantedDb } from "../../src/sdk/index.js";
+import { HubDbError, readAll, type GrantedDb } from "@civic-social/plugin-sdk/first-party";
 import type { ProposalRow, ProposalsStore } from "./store.js";
 import type { ProposalStatus } from "./models.js";
 

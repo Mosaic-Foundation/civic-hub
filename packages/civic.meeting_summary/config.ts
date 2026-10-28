@@ -8,7 +8,7 @@
 // Kept apart from the 1,500-line controller so the rule can be tested without
 // a database or a model.
 
-import { getSettingSync, isPluginEnabledSync, KEYS } from "../../src/sdk/index.js";
+import { getSettingSync, isPluginEnabledSync, KEYS } from "@civic-social/plugin-sdk/first-party";
 import {
   CONNECTORS,
   PAGE_CONNECTOR_IDS,

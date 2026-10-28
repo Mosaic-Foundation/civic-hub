@@ -2,7 +2,7 @@
 // DraftKind: the routes, the controller, the claim against a double submit and
 // the Code of Conduct gate are the hub's, src/controllers/draftController.ts).
 
-import { DAY_MS, lines, ValidationError, type Draft, type DraftKind } from "../../src/sdk/index.js";
+import { DAY_MS, lines, ValidationError, type Draft, type DraftKind } from "@civic-social/plugin-sdk/first-party";
 import { assertPassesWordlist } from "../../src/shared/wordlist/index.js";
 import { parseSeedStatements } from "../../src/shared/seedStatements.js";
 

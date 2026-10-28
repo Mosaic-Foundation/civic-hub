@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireResident, requireAdmin } from "../../src/sdk/index.js";
+import { requireResident, requireAdmin } from "@civic-social/plugin-sdk/first-party";
 import * as ctrl from "./controller.js";
 
 const router = Router();

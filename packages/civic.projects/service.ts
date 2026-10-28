@@ -6,7 +6,7 @@ import {
   generateId,
   listVisibleInPhase,
   countVisibleOutsidePhase,
-} from "../../src/sdk/index.js";
+} from "@civic-social/plugin-sdk/first-party";
 import { projectsStore, type ProjectRow } from "./store.js";
 import type {
   Project,

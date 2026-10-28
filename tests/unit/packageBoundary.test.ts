@@ -23,9 +23,9 @@ async function errors(file: string, code: string): Promise<string[]> {
 }
 
 describe("civic/package-boundary", () => {
-  it("lets a package import the SDK, shared data, its own files, node: and express", async () => {
+  it("lets a package import the SDK by name, shared data, its own files, node: and express", async () => {
     for (const code of [
-      `import { emitEvent } from "../../src/sdk/index.js";`,
+      `import { emitEvent } from "@civic-social/plugin-sdk/first-party";`,
       `import { assertPassesWordlist } from "../../src/shared/wordlist/index.js";`,
       `import { x } from "./service.js";`,
       `import { createHash } from "node:crypto";`,
@@ -51,8 +51,13 @@ describe("civic/package-boundary", () => {
     }
   });
 
+  it("refuses the SDK by path now that it has a name (ADR-017)", async () => {
+    expect(await errors("packages/civic.wordcloud/x.ts", `import { emitEvent } from "../../src/sdk/index.js";`)).toHaveLength(1);
+    expect(await errors("packages/civic.wordcloud/manifest.ts", `import { defineManifest } from "../../src/processes/manifest.js";`)).toHaveLength(1);
+  });
+
   it("keeps a manifest plain: src/shared/ and the manifest contract only", async () => {
-    expect(await errors("packages/civic.wordcloud/manifest.ts", `import { defineManifest } from "../../src/processes/manifest.js";`)).toHaveLength(0);
+    expect(await errors("packages/civic.wordcloud/manifest.ts", `import { defineManifest } from "@civic-social/plugin-sdk/manifest";`)).toHaveLength(0);
     expect(await errors("packages/civic.wordcloud/manifest.ts", `import { emitEvent } from "../../src/sdk/index.js";`)).toHaveLength(1);
     expect(await errors("packages/civic.wordcloud/manifest.ts", `import { Router } from "express";`)).toHaveLength(1);
   });

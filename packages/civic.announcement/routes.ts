@@ -13,7 +13,7 @@ import {
   handleListAnnouncements,
   handleUpdateAnnouncement,
 } from "./controller.js";
-import { requireBoardOrAdmin } from "../../src/sdk/index.js";
+import { requireBoardOrAdmin } from "@civic-social/plugin-sdk/first-party";
 
 const router = Router();
 

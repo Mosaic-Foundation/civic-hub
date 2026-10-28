@@ -2,6 +2,6 @@
 // its database (its granted tables only), and the adapter the conversation
 // reaches Polis through.
 
-import { storeSlot, type PluginHost } from "../../src/sdk/index.js";
+import { storeSlot, type PluginHost } from "@civic-social/plugin-sdk/first-party";
 
 export const conversationHost = storeSlot<PluginHost>("civic.polis_deliberation host");
