@@ -193,7 +193,7 @@ export function toActivity(
   // are diffable by eye. JSON.stringify preserves insertion order, which is
   // what makes the output byte-stable.
   const activity: Record<string, unknown> = {
-    "@context": contextFor(usesHubTerms(object) || usesHubTerms(target), env.ns, vocabularyContexts(object)),
+    "@context": contextFor(usesHubTerms(object) || usesHubTerms(target), env.ns, vocabularyContexts(object, WIRE_OBJECTS.get(processTypeOf(data) ?? ""))),
     id: activityIdOf(event),
     type: mapping.type,
     actor: wire.actorIriOverride ?? actorIri(event.actor, env),
@@ -1041,7 +1041,7 @@ function contextFor(usesHubTerms: boolean, ns: string, vocabularies: readonly un
  * a structured `address` on its location. Shallow, like usesHubTerms: only a
  * wire object puts them there.
  */
-function vocabularyContexts(object: unknown): unknown[] {
+function vocabularyContexts(object: unknown, recipe?: WireObjectRecipe): unknown[] {
   if (!object || typeof object !== "object" || Array.isArray(object)) return [];
   const o = object as Record<string, unknown>;
   const out: unknown[] = [];
@@ -1050,6 +1050,30 @@ function vocabularyContexts(object: unknown): unknown[] {
   if (location && typeof location === "object" && !Array.isArray(location) && "address" in location) {
     out.push(SCHEMA_ADDRESS_CONTEXT);
   }
+  const declared = declaredTermsContext(o, recipe);
+  if (declared) out.push(declared);
+  return out;
+}
+
+/**
+ * The type's own declared terms its object uses (its recipe's `contexts`,
+ * Events 2, E4), with the prefixes they name, in declared order; null when it
+ * uses none, so an object without them keeps the document it always had.
+ */
+function declaredTermsContext(o: Record<string, unknown>, recipe?: WireObjectRecipe): Record<string, unknown> | null {
+  const contexts = recipe?.contexts;
+  if (!contexts || o.type !== recipe.type) return null;
+  const used = Object.keys(contexts).filter((key) => key in recipe.properties && key in o);
+  if (used.length === 0) return null;
+  const prefixes = new Set<string>();
+  for (const term of used) {
+    const def = contexts[term];
+    for (const iri of typeof def === "string" ? [def] : [def["@id"], def["@type"]]) {
+      if (iri && !/^https?:/.test(iri) && iri.includes(":")) prefixes.add(iri.split(":")[0]);
+    }
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, def] of Object.entries(contexts)) if (prefixes.has(key) || used.includes(key)) out[key] = def;
   return out;
 }
 

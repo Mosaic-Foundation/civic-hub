@@ -80,6 +80,7 @@ import {
   loadedPackages,
   toActivity,
   toRedactedActivity,
+  AS2_TERMS,
   withHubScope,
   type ActionDescriptor,
   type HostFacts,
@@ -651,6 +652,24 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
         for (const e of await eventsOf(id)) {
           expect(declared.has(e.event_type), `${id}: ${e.event_type} is not declared`).toBe(true);
           expect(facts.mappedEventTypes, `${e.event_type} has no wire mapping`).toContain(e.event_type);
+        }
+      }
+    });
+
+    it("every term on its wire object is AS2's or defined by the document's @context (Events 2, E4)", async () => {
+      for (const { id, hub } of touched) {
+        const events = (await eventRowsOf(id)).map(rowToEvent);
+        const docs = await withHubScope(await hubRow(hub.slug), {}, async () => events.map((e) => toActivity(e) as Record<string, unknown>));
+        for (const doc of docs) {
+          const object = doc.object as Record<string, unknown> | undefined;
+          if (!object || typeof object !== "object") continue;
+          const defined = new Set<string>();
+          for (const c of (doc["@context"] as unknown[]) ?? []) if (c && typeof c === "object") for (const k of Object.keys(c)) defined.add(k);
+          for (const key of Object.keys(object)) {
+            const prefix = key.includes(":") ? key.split(":")[0] : null;
+            const ok = AS2_TERMS.has(key) || defined.has(key) || (prefix !== null && (prefix === "civic" || defined.has(prefix)));
+            expect(ok, `${d.type}: ${doc.type} object's "${key}" is neither AS2's nor defined by its @context`).toBe(true);
+          }
         }
       }
     });

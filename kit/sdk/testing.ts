@@ -17,6 +17,7 @@ export { getAllHandlers, getManifest } from "../../src/processes/registry.js";
 export { rowToEvent } from "../../src/events/eventStore.js";
 export type { EventRow } from "../../src/events/eventStore.js";
 export { toActivity, mappedEventTypes } from "../../src/events/activitySerializer.js";
+export { AS2_TERMS } from "../../src/shared/as2Terms.js";
 export { toRedactedActivity } from "../../src/events/publicRedaction.js";
 export { publicPayloadKeys } from "../../src/events/publicPayload.js";
 export { withHubScope } from "../../src/config/hubContext.js";

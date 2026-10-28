@@ -65,7 +65,26 @@ describe("wireObjectProblem", () => {
     ["a hub property", { ...RECIPE, properties: { "hub:x": "process.event.x" } }],
     ["requires naming no property", { ...RECIPE, requires: ["summary"] }],
     ["empty requires", { ...RECIPE, requires: [] }],
+    ["a term that is not AS2's, undeclared", { ...RECIPE, properties: { ...RECIPE.properties, timezone: "process.event.time_zone" } }],
+    ["a declared term whose prefix is not", { ...RECIPE, properties: { ...RECIPE.properties, timezone: "process.event.time_zone" }, contexts: { timezone: "mz:timezone" } }],
+    ["a prefix that is not an IRI", { ...RECIPE, properties: { ...RECIPE.properties, timezone: "process.event.time_zone" }, contexts: { mz: "mobilizon", timezone: "mz:timezone" } }],
+    ["an AS2 term redeclared", { ...RECIPE, contexts: { startTime: "https://example.test/ns#start" } }],
   ])("refuses %s", (_label, recipe) => {
     expect(wireObjectProblem(recipe)).not.toBeNull();
+  });
+
+  it("accepts terms declared as their vocabulary publishes them (Events 2, E4)", () => {
+    expect(
+      wireObjectProblem({
+        ...RECIPE,
+        properties: { ...RECIPE.properties, timezone: "process.event.time_zone", maximumAttendeeCapacity: "process.event.capacity" },
+        contexts: {
+          mz: "https://mobilizon.org/ns#",
+          sc: "http://schema.org/",
+          timezone: { "@id": "mz:timezone", "@type": "sc:Text" },
+          maximumAttendeeCapacity: "sc:maximumAttendeeCapacity",
+        },
+      }),
+    ).toBeNull();
   });
 });

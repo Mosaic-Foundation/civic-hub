@@ -19,6 +19,7 @@ import type { SchemaRequirement } from "../db/schemaRequirement.js";
 import type { SettingFieldSpec } from "../shared/hubSettingsSections.js";
 import type { ThemeTypeKey } from "../shared/theme.js";
 import type { ActivityRecipe, WireObjectRecipe } from "../shared/activityRecipe.js";
+import { AS2_TERMS } from "../shared/as2Terms.js";
 import type { FeedDeclaration } from "../shared/feedActivity.js";
 import { grantProblem, type PluginCapabilities } from "../shared/pluginGrant.js";
 import { participationProblem, type ParticipationDeclaration } from "../shared/participation.js";
@@ -581,6 +582,27 @@ export function wireObjectProblem(w: unknown): string | null {
   }
   if (!Array.isArray(r.requires) || r.requires.length === 0 || r.requires.some((p) => !(p in r.properties!))) {
     return "requires must list one or more of its properties";
+  }
+  const contexts = r.contexts ?? {};
+  const prefixOf = (iri: string) => (/^[a-z][a-z0-9]*:/i.test(iri) && !/^https?:/.test(iri) ? iri.split(":")[0] : null);
+  for (const [key, def] of Object.entries(contexts)) {
+    const isTerm = key in r.properties;
+    if (!isTerm) {
+      if (typeof def !== "string" || !/^https?:\/\/\S+[#/]$/.test(def)) return `contexts.${key}: a prefix must be an IRI ending in # or /`;
+      continue;
+    }
+    if (AS2_TERMS.has(key)) return `contexts.${key}: an AS2 term needs no context`;
+    const iris = typeof def === "string" ? [def] : [def["@id"], ...(def["@type"] ? [def["@type"]] : [])];
+    for (const iri of iris) {
+      const p = typeof iri === "string" ? prefixOf(iri) : "?";
+      if (p && !(p in contexts)) return `contexts.${key}: its prefix ${p} is not declared`;
+    }
+  }
+  for (const prop of Object.keys(r.properties)) {
+    if (AS2_TERMS.has(prop) || prop in contexts) continue;
+    // ical: and the hub's own terms come with the serializer (VOCABULARY_TERMS).
+    if (/^ical:/.test(prop)) continue;
+    return `${prop} is not an AS2 term: declare it in contexts`;
   }
   return null;
 }

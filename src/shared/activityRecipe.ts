@@ -46,4 +46,13 @@ export interface WireObjectRecipe {
   properties: Readonly<Record<string, string>>;
   /** Wire properties that must all be present for the object to take `type`. */
   requires: readonly string[];
+  /**
+   * JSON-LD definitions for the lifted properties that are not AS2's
+   * (Events 2, E4), as the vocabulary that has them publishes them:
+   * prefixes (`mz: "https://mobilizon.org/ns#"`) and terms
+   * (`timezone: { "@id": "mz:timezone", "@type": "sc:Text" }`). The
+   * document's `@context` carries the terms an object uses, with their
+   * prefixes, and nothing on an object that uses none.
+   */
+  contexts?: Readonly<Record<string, string | { "@id": string; "@type"?: string }>>;
 }

@@ -85,6 +85,9 @@ additive (refused); CI runs it too.
    published ids survive a hub move (each row carries the hostname its ids
    were minted on, and serializing it for a hub moved elsewhere gives the same
    bytes; ADR-008), and nothing crosses to another hub.
+   Every term on its wire object is an AS2 term or one the document's
+   `@context` defines (a type declares its own in `wireObject.contexts`;
+   Events 2).
 9. **Tier 3 only:** the hub's side of the external-service contract (plugin
    architecture §10a), through the one adapter, with the service up, down,
    slow or erroring:
