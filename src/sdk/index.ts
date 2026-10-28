@@ -146,6 +146,9 @@ export { reportError } from "../utils/reportError.js";
 // --- src/services/creatorDisplay.ts ------------------------------------------------------
 export { enrichCreator, enrichCreators, PUBLIC_ADMIN_NAME } from "../services/creatorDisplay.js";
 
+// --- Who did something, under the disclosure policy (src/services/disclosedNames.ts; A3) ----
+export { namesFor } from "../services/disclosedNames.js";
+
 // --- src/controllers/processController.ts ------------------------------------------------
 export { actOnProcess, readAsPage, viewFor } from "../controllers/processController.js";
 

@@ -82,6 +82,7 @@ export const latestAnchorAt = e.latestAnchorAt;
 export const lines = e.lines;
 export const listResponsesForBrief = e.listResponsesForBrief;
 export const listVisibleInPhase = e.listVisibleInPhase;
+export const namesFor = e.namesFor;
 export const num = e.num;
 export const personFallbackName = e.personFallbackName;
 export const processJurisdiction = e.processJurisdiction;

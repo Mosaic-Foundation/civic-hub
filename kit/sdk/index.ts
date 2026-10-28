@@ -58,6 +58,14 @@ export type { Draft, DraftKind } from "../../src/sdk/index.js";
 // --- Deadlines: the hub drives them; a package closes through the hub's action path --------
 export { closeThroughDispatcher, isPastDeadline } from "../../src/sdk/index.js";
 
+// --- Work after the action commits (engine 2, A2): writes to its own tables that must not
+// happen when the action loses a race or fails, so the action itself stays retry-safe ---------
+export { afterActionCommits } from "../../src/sdk/index.js";
+
+// --- Who did something, as the hub would show it (A3): names under the process's disclosure
+// policy (names to members, nothing to the public, per ADR-010), never an account -------------
+export { namesFor } from "../../src/sdk/index.js";
+
 // --- Its own records, on the database its host hands it (its granted tables only) ----------
 export { storeSlot, HubDbError, readAll, readProcessState, writeProcessState } from "../../src/sdk/index.js";
 export type { StoreSlot } from "../../src/sdk/index.js";
