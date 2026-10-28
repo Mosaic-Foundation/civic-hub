@@ -3180,6 +3180,34 @@ h1.section-title {
   border-color: var(--color-border-hover, var(--color-border-strong));
 }
 
+/* What cannot be undone (the UI kit's Button variant="danger"; engine 2, A7). */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: var(--space-sm, 0.5rem) var(--space-md, 1rem);
+  border-radius: var(--radius-md, 8px);
+  font-family: inherit;
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  background: var(--color-surface);
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+}
+
+.btn-danger:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-primary:focus-visible,
 .btn-secondary:focus-visible {
   outline: 2px solid var(--color-focus);

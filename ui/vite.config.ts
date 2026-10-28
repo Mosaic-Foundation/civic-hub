@@ -13,7 +13,11 @@ export default defineConfig({
     dedupe: ['react', 'react-dom', 'react-router-dom', 'react-router'],
     // A package written on SDK v1 (ADR-015) names its manifest's helpers by
     // the SDK's npm name; in this repository that is kit/sdk.
-    alias: [{ find: /^@civic-social\/plugin-sdk\/manifest$/, replacement: resolve(import.meta.dirname, '../kit/sdk/manifest.ts') }],
+    alias: [
+      { find: /^@civic-social\/plugin-sdk\/manifest$/, replacement: resolve(import.meta.dirname, '../kit/sdk/manifest.ts') },
+      // The UI kit and the UI module's types (engine 2, A7).
+      { find: /^@civic-social\/plugin-sdk\/ui$/, replacement: resolve(import.meta.dirname, '../kit/sdk/ui.ts') },
+    ],
   },
   // The commit this bundle was built from, for error reports
   // (src/services/errorReporter.ts). Vercel sets it at build time.

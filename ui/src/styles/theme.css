@@ -37,8 +37,12 @@
 
   /* --- Color: primary / accents --- */
   --color-primary: var(--ds-color-action-primary);
+  /* Text ON a primary fill (a filled button, a chosen chip). */
   --color-primary-text: var(--ds-color-text-inverse);
   --color-primary-hover: var(--ds-color-action-primary-hover);
+  /* The darkest primary tone: text on a LIGHT primary tint, never on the
+     fill itself (that is --color-primary-text). Mistaking one for the other
+     drew black text on dark-blue buttons (engine 2, A7; buttonInk.test.ts). */
   --color-primary-ink: var(--ds-color-primary-950);
 
   /* Brand accent — used for identity labels, headings, wordmark. */

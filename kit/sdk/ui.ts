@@ -1,5 +1,19 @@
 // @civic-social/plugin-sdk/ui: the shape of a package's UI module (ui.tsx),
-// types only. The hub's own page components are not part of the SDK yet: a
-// package's pages are its own React components, using the React the hub runs.
+// and the hub's UI kit (engine 2, A7): its buttons, labelled fields, inputs,
+// selects, the date-time control, textareas and the drafting shell (DraftShell,
+// whose `phoneTitle` is the slim phone header). A package's pages draw with
+// these and look like the hub's own; they run on the React the hub runs.
 
 export type { ProcessUi, ProcessRoute } from "../../ui/src/processes/types";
+
+export {
+  Button,
+  DateTimeInput,
+  DraftShell,
+  Field,
+  Select,
+  TextArea,
+  TextInput,
+  fromLocalInput,
+  toLocalInput,
+} from "../../ui/src/kit/index";
