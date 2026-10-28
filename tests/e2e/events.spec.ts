@@ -12,6 +12,21 @@
  *      Events is a section in the navigation after Votes.
  *   5. The creator cancels an event: its page says so and the calendar marks
  *      it Cancelled.
+ *   Events 0.3.0 (Events 2):
+ *   6. A picture uploaded through the hub's route shows on the form and the
+ *      event's page.
+ *   7. The start fills the end an hour later; a duration moves the end; an
+ *      end moves the duration.
+ *   8. At its limit, someone not going sees "Full" with the count.
+ *   9. The creator messages the people going; one of them reads it on the
+ *      event's page.
+ *  10. "Add to my calendar" downloads the one event's .ics, linked back.
+ *  11. The RSVP control shows the state and the other choice, the creator
+ *      included; an event in another zone shows the reader's time too.
+ *
+ * Every time here is in one zone: both hubs' identity.timezone and the
+ * browser's are set to ZONE for the run (the hubs' put back after), so a
+ * typed "17:30" is 17:30 on the page whatever the machine's own zone.
  *
  * The demo hub is Athens, which publishes a resident's submission at once; the
  * beta hub is Floyd, which holds it for an admin (as feedStream.spec.ts does,
@@ -27,9 +42,15 @@
  * which refuses a time already over; its calendar row is moved back instead.
  */
 
+import { deflateSync, crc32 } from "node:zlib";
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import { localRest } from "../fixtures/adminSession.js";
+import { fromLocalInput } from "../../ui/src/kit/datetime";
 import { adminEmailFor, run, session, visitAs } from "./actors";
+
+/** The one zone of the run: the hubs' and the browser's. */
+const ZONE = "America/Chicago";
+test.use({ timezoneId: ZONE });
 
 const PHONE = { width: 375, height: 812 };
 const DESKTOP = { width: 1280, height: 900 };
@@ -62,9 +83,12 @@ function localTime(daysAhead: number, hour: number, minute = 0): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** The instant a local "YYYY-MM-DDTHH:MM" is in ZONE. */
+const isoOf = (local: string) => fromLocalInput(local, ZONE)!;
+
 /** The day heading and the clock time the page shows for a local time, formatted by the browser as the page does. */
 async function shown(page: Page, local: string): Promise<{ day: string; time: string }> {
-  const iso = new Date(local).toISOString();
+  const iso = isoOf(local);
   return page.evaluate((i) => {
     const d = new Date(i);
     return {
@@ -87,6 +111,7 @@ async function makeEvent(
   title: string,
   start: string,
   end: string,
+  more: Record<string, unknown> = {},
 ): Promise<Made> {
   const base = apiOf(hub);
   const h = headers(hub, token);
@@ -98,11 +123,12 @@ async function makeEvent(
     data: {
       title,
       description: "An evening to meet the neighbours.",
-      start_time: new Date(start).toISOString(),
-      end_time: new Date(end).toISOString(),
+      start_time: isoOf(start),
+      end_time: isoOf(end),
       venue: VENUE,
       street_address: ADDRESS,
       locality: TOWN,
+      ...more,
     },
   });
   expect(filled.ok(), await filled.text()).toBe(true);
@@ -114,6 +140,15 @@ async function makeEvent(
 }
 
 const tokens: Record<string, { admin: string; adminId: string }> = {};
+const zonesBefore: Record<string, string> = {};
+
+async function setZone(request: APIRequestContext, hub: string, zone: string) {
+  const res = await request.put(`${apiOf(hub)}/admin/hub/settings`, {
+    headers: headers(hub, tokens[hub]!.admin),
+    data: { section: "identity", values: { "identity.timezone": zone } },
+  });
+  expect(res.ok(), await res.text()).toBe(true);
+}
 
 test.beforeAll(async ({ request }) => {
   test.setTimeout(60_000);
@@ -122,8 +157,39 @@ test.beforeAll(async ({ request }) => {
     tokens[hub] = { admin: admin.token, adminId: admin.userId };
     const res = await request.post(`${apiOf(hub)}/admin/hub/plugins/events/install`, { headers: headers(hub, admin.token), data: {} });
     expect(res.ok(), await res.text()).toBe(true);
+    const [row] = (await localRest(`hub_settings?select=value&hub_id=eq.${hub}&key=eq.identity.timezone`)) as Array<{ value: string }>;
+    zonesBefore[hub] = row?.value ?? "";
+    await setZone(request, hub, ZONE);
   }
 });
+
+test.afterAll(async ({ request }) => {
+  for (const hub of [DEMO, BETA]) if (tokens[hub]) await setZone(request, hub, zonesBefore[hub] ?? "");
+});
+
+/** A real PNG of the given size, for the picture (the upload route reads its header). */
+function png(width: number, height: number): Buffer {
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(body) >>> 0);
+    return Buffer.concat([len, body, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(width * 3, 0x8a)]);
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(Buffer.concat(Array.from({ length: height }, () => row)))),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
 
 /**
  * A fresh resident of the demo hub to submit events as: each submission runs
@@ -229,14 +295,16 @@ for (const vp of VIEWPORTS) {
       await expect(count).toHaveText("1 person is going");
       // Who is going, as the hub discloses it (engine 2, A3): a member sees the name.
       await expect(page.getByTestId("going-names")).toHaveText(/\S/);
-      await expect(page.getByRole("button", { name: "I'm not going" })).toBeVisible();
+      // The state, ticked, and the other choice beside it (Events 2, 7).
+      await expect(page.getByRole("button", { name: "You're going" })).toHaveAttribute("aria-pressed", "true");
+      await expect(page.getByRole("button", { name: "Not going", exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: "I'm going", exact: true })).toHaveCount(0);
 
       // It is the hub's record, not the page's: a reload shows it too.
       await page.reload();
       await expect(count).toHaveText("1 person is going");
 
-      await page.getByRole("button", { name: "I'm not going" }).click();
+      await page.getByRole("button", { name: "Not going", exact: true }).click();
       await expect(count).toHaveText("0 people are going");
       await expect(page.getByRole("button", { name: "I'm going", exact: true })).toBeVisible();
     });
@@ -338,6 +406,147 @@ for (const vp of VIEWPORTS) {
       await expect(page.locator(".ev-facts")).toContainText("The library");
     });
 
+    test("a picture uploaded on the form shows on the form and on the event's page", async ({ page }) => {
+      await residentOn(DEMO, `picture-${vp.label}`, page);
+      const title = `Pictured supper ${vp.label} ${run}`;
+      await page.goto(`${originOf(DEMO)}/events/new`);
+      await page.getByRole("textbox", { name: "Name", exact: true }).fill(title);
+      await page.getByRole("textbox", { name: "Starts", exact: true }).fill(localTime(4, 18, 0));
+      await page.getByRole("textbox", { name: "Place", exact: true }).fill(VENUE);
+      await page.getByTestId("picture-input").setInputFiles({ name: "supper.png", mimeType: "image/png", buffer: png(640, 360) });
+      const preview = page.getByTestId("picture-preview");
+      await expect(preview).toBeVisible();
+      // Stored by the hub's route, in this type's own folder of the hub (E1).
+      await expect(preview).toHaveAttribute("src", new RegExp(`/${DEMO}/types/civic\\.event/`));
+      await page.getByRole("textbox", { name: "What the picture shows" }).fill("Long tables set for supper");
+      await page.getByRole("button", { name: "Submit" }).click();
+
+      await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+      const img = page.getByTestId("event-image");
+      await expect(img).toHaveAttribute("src", new RegExp(`/${DEMO}/types/civic\\.event/`));
+      await expect(img).toHaveAttribute("alt", "Long tables set for supper");
+    });
+
+    test("the start fills the end an hour later; a duration moves the end, and an end moves the duration", async ({ page }) => {
+      await residentOn(DEMO, `duration-${vp.label}`, page);
+      await page.goto(`${originOf(DEMO)}/events/new`);
+      const starts = page.getByRole("textbox", { name: "Starts", exact: true });
+      const ends = page.getByRole("textbox", { name: "Ends", exact: true });
+      const duration = page.getByRole("textbox", { name: "Duration", exact: true });
+
+      await starts.fill(localTime(5, 18, 0));
+      // The start's day, an hour later: not today.
+      await expect(ends).toHaveValue(localTime(5, 19, 0));
+      await expect(duration).toHaveValue("1 h");
+
+      await duration.fill("2 h 30 min");
+      await expect(ends).toHaveValue(localTime(5, 20, 30));
+
+      await ends.fill(localTime(5, 21, 15));
+      await expect(duration).toHaveValue("3 h 15 min");
+
+      // A later start keeps how long it runs.
+      await starts.fill(localTime(5, 19, 0));
+      await expect(ends).toHaveValue(localTime(5, 22, 15));
+    });
+
+    test("at its limit, someone not going sees Full with the count", async ({ request, page, browser }) => {
+      const event = await makeEvent(
+        request, DEMO, await maker(`full-${vp.label}`), `Small table ${vp.label} ${run}`, localTime(6, 12, 0), localTime(6, 13, 0), { capacity: 1 },
+      );
+      await residentOn(DEMO, `full-first-${vp.label}`, page);
+      await page.goto(`${originOf(DEMO)}/events/${event.id}`);
+      await expect(page.getByTestId("going-count")).toHaveText("0 going · 1 place left");
+      await page.getByRole("button", { name: "I'm going" }).click();
+      await expect(page.getByTestId("going-count")).toHaveText("Full · 1 going");
+      // The one going still sees their own state.
+      await expect(page.getByRole("button", { name: "You're going" })).toBeVisible();
+
+      const context = await browser.newContext({ viewport: vp.size, timezoneId: ZONE });
+      const other = await context.newPage();
+      await residentOn(DEMO, `full-second-${vp.label}`, other);
+      await other.goto(`${originOf(DEMO)}/events/${event.id}`);
+      const full = other.getByTestId("rsvp").getByRole("button");
+      await expect(full).toHaveText("Full · 1 going");
+      await expect(full).toBeDisabled();
+      await expect(other.getByRole("button", { name: "I'm going" })).toHaveCount(0);
+      await context.close();
+    });
+
+    test("the creator messages the people going, and one of them reads it on the event's page", async ({ request, page, browser }) => {
+      const label = `announce-${vp.label}`;
+      const token = await residentOn(DEMO, label, page);
+      const event = await makeEvent(request, DEMO, token, `Announced picnic ${vp.label} ${run}`, localTime(6, 15, 0), localTime(6, 17, 0));
+      const goer = await session(DEMO, `events-goer-${label}-${run}@example.test`);
+      // Subscribed to the hub's email, so the hub would write to them (E2).
+      await localRest(`users?id=eq.${goer.userId}`, { method: "PATCH", body: JSON.stringify({ digest_frequency_days: 7 }) });
+      const going = await request.post(`${apiOf(DEMO)}/process/${event.id}/action`, { headers: headers(DEMO, goer.token), data: { type: "going", payload: {} } });
+      expect(going.ok(), await going.text()).toBe(true);
+
+      await page.goto(`${originOf(DEMO)}/events/${event.id}`);
+      await page.getByRole("button", { name: "Message the people going" }).click();
+      const form = page.getByRole("form", { name: "Message the people going" });
+      await expect(form).toContainText("To the person going, by email from the hub.");
+      await form.getByRole("textbox", { name: "Subject" }).fill("Bring a blanket");
+      await form.getByRole("textbox", { name: "Message" }).fill("The grass will be damp. Bring a blanket to sit on.");
+      await form.getByRole("button", { name: "Send" }).click();
+      const log = page.getByTestId("announcements");
+      await expect(log).toContainText("Bring a blanket");
+      // Its creator sees how many it was for: on a demo hub the hub's mail
+      // guard holds a resident's copy back, and says so (E2).
+      await expect(log).toContainText("to 1, emailed 0, 1 held back by the hub's mode");
+
+      const context = await browser.newContext({ viewport: vp.size, timezoneId: ZONE });
+      const reader = await context.newPage();
+      await visitAs(reader, goer.token);
+      await reader.goto(`${originOf(DEMO)}/events/${event.id}`);
+      await expect(reader.getByTestId("announcements")).toContainText("The grass will be damp. Bring a blanket to sit on.");
+      await expect(reader.getByTestId("announcements")).not.toContainText("emailed");
+      await context.close();
+    });
+
+    test("Add to my calendar downloads the one event's calendar file, linked back to its page", async ({ request, page }) => {
+      const event = await makeEvent(
+        request, DEMO, await maker(`ics-${vp.label}`), `Calendar file ${vp.label} ${run}`, localTime(7, 9, 0), localTime(7, 10, 0),
+      );
+      await residentOn(DEMO, `ics-${vp.label}`, page);
+      await page.goto(`${originOf(DEMO)}/events/${event.id}`);
+      const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("add-to-calendar").click()]);
+      expect(download.suggestedFilename()).toMatch(/^calendar-file-.*\.ics$/);
+      const text = await download.createReadStream().then(async (stream) => {
+        const chunks: Buffer[] = [];
+        for await (const c of stream) chunks.push(c as Buffer);
+        return Buffer.concat(chunks).toString("utf8").replace(/\r\n /g, "");
+      });
+      expect(text.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+      expect(text).toContain(`UID:${event.id}@`);
+      expect(text).toMatch(new RegExp(`URL:https?://[^\\r\\n]+/events/${event.id}`));
+      expect(text).toContain(`X-WR-TIMEZONE:${ZONE}`);
+      expect(text).toContain(`DTSTART:${isoOf(localTime(7, 9, 0)).replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`);
+    });
+
+    test("the RSVP control shows the state and the other choice for the creator too; another zone's event shows the reader's time", async ({ request, page }) => {
+      const label = `rsvp-${vp.label}`;
+      const token = await residentOn(DEMO, label, page);
+      const event = await makeEvent(
+        request, DEMO, token, `Far away talk ${vp.label} ${run}`, localTime(9, 9, 0), localTime(9, 10, 0), { time_zone: "Asia/Tokyo" },
+      );
+      await page.goto(`${originOf(DEMO)}/events/${event.id}`);
+      await page.getByRole("button", { name: "I'm going" }).click();
+      const rsvp = page.getByTestId("rsvp");
+      await expect(rsvp.getByRole("button", { name: "You're going" })).toHaveAttribute("aria-pressed", "true");
+      await expect(rsvp.getByRole("button", { name: "Not going", exact: true })).toHaveAttribute("aria-pressed", "false");
+      // Both choices on one line, each a comfortable tap.
+      const [a, b] = await Promise.all([rsvp.getByRole("button").nth(0).boundingBox(), rsvp.getByRole("button").nth(1).boundingBox()]);
+      expect(Math.abs(a!.y - b!.y)).toBeLessThan(2);
+      expect(a!.height).toBeGreaterThanOrEqual(44);
+      // Given in its own zone, named; the reader's time beside it.
+      await expect(page.getByTestId("event-when")).toContainText("GMT+9");
+      await expect(page.getByTestId("event-when-mine")).toContainText("Your time:");
+      await expect(page.getByTestId("event-when-mine")).toContainText((await shown(page, localTime(9, 9, 0))).time);
+      await page.screenshot({ path: test.info().outputPath(`rsvp-${vp.label}.png`), fullPage: true });
+    });
+
     test("the creator cancels an event: its page says it was cancelled and the calendar marks it Cancelled", async ({ request, page }) => {
       const label = `cancel-${vp.label}`;
       const token = await residentOn(DEMO, label, page);
@@ -350,11 +559,13 @@ for (const vp of VIEWPORTS) {
       await expect(page.getByRole("heading", { level: 1, name: event.title })).toBeVisible();
       await expect(page.getByRole("button", { name: "Edit event", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Cancel event", exact: true }).click();
-      await page.getByRole("textbox", { name: "Why (shown on the event)" }).fill(reason);
-      await page.getByRole("button", { name: "Cancel the event", exact: true }).click();
+      // A confirmation, apart from the button (Events 2, 7).
+      await expect(page.getByText(`Cancel ${event.title}?`)).toBeVisible();
+      await page.getByRole("textbox", { name: "Why (shown on the event and in the message)" }).fill(reason);
+      await page.getByRole("button", { name: "Yes, cancel the event", exact: true }).click();
 
       await expect(page.getByRole("status").filter({ hasText: "This event was cancelled." })).toContainText(reason);
-      await expect(page.getByText("The event is cancelled. It stays on the calendar, marked cancelled.")).toBeVisible();
+      await expect(page.getByText("The event is cancelled. It stays on the calendar, marked cancelled")).toBeVisible();
       // Over: nothing more to say about going, or to change.
       await expect(page.getByRole("button", { name: "I'm going" })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Cancel event", exact: true })).toHaveCount(0);
