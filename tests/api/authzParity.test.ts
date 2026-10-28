@@ -38,7 +38,7 @@ process.env.SUPABASE_URL = stack.url;
 process.env.SUPABASE_SERVICE_ROLE_KEY = stack.key;
 
 const { actorFor } = await import("../../src/authz/actor.js");
-const { canActor, callerMayCall } = await import("../../src/authz/canActor.js");
+const { canActor, callerMayCall, subjectIsOfficial, publishesAtOnce } = await import("../../src/authz/canActor.js");
 const { withHubScope } = await import("../../src/config/hubContext.js");
 const { invalidateHubRoles } = await import("../../src/db/hubRolesStore.js");
 const { invalidateHubSettings } = await import("../../src/db/hubSettingsStore.js");
@@ -144,6 +144,15 @@ async function walk(hubId: string, people: Person[]): Promise<string[]> {
           note(`${who} /auth/me authorship`, old.resolveAuthorship(settings, p.row.email, managed, inferOfficialType), await authorshipOf(actor));
         }
 
+        // Who skips the review wait: an admin, as before, on every type; an
+        // official only where the type says so (A6, the deliberate addition).
+        for (const m of assurance === "code" ? MANIFEST_LIST : []) {
+          const at = await publishesAtOnce(actor, m.descriptor.creation.resident);
+          note(`${who} ${m.descriptor.type} publishes at once (admin)`, old.isAdminEmail(settings, p.row.email), at.admin);
+          const declaresOfficial = Boolean(m.descriptor.creation.resident?.publish_at_once?.includes("official"));
+          note(`${who} ${m.descriptor.type} publishes at once (official)`, !at.admin && declaresOfficial && (await subjectIsOfficial(p.row.id)), at.official);
+        }
+
         // Every action of every type, as the route (requireResident) lets it through.
         if (!p.row.is_resident || !p.row.full_name) continue;
         for (const m of MANIFEST_LIST) {
@@ -162,8 +171,13 @@ async function walk(hubId: string, people: Person[]): Promise<string[]> {
               // (civic.auth refuses demo sessions for privileged addresses).
               if (assurance === "code") note(`${label} caller`, oldCaller, newCaller);
               const callerNow = d.allowed ? d.caller! : "resident";
-              const oldMay = oldCaller !== "resident" || old.residentMayCall(declared, mine ? p.row.id : "user_someone_else", p.row.id);
-              if (assurance === "code") note(`${label} may call`, oldMay, callerMayCall(callerNow, declared, process, p.row.id));
+              // The one deliberate addition (engine 2, A6): an action a type
+              // opens to officials, for an account holding a managed office.
+              const isOfficial = await subjectIsOfficial(p.row.id);
+              const opensToOfficial = (declared.callers as readonly string[]).includes("official") && isOfficial;
+              const oldMay = oldCaller !== "resident" || old.residentMayCall(declared, mine ? p.row.id : "user_someone_else", p.row.id) || opensToOfficial;
+              const official = callerNow === "resident" && (declared.callers as readonly string[]).includes("official") && isOfficial;
+              if (assurance === "code") note(`${label} may call`, oldMay, callerMayCall(callerNow, declared, process, p.row.id, official));
               // process.see_unpublished: an admin finds a non-public process.
               if (assurance === "code" && declared === m.descriptor.actions[0] && !mine) {
                 note(`${who} see_unpublished`, old.isAdminEmail(settings, p.row.email), (await canActor(actor, "process.see_unpublished", { process })).allowed);

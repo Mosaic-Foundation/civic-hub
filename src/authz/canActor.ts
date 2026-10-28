@@ -194,11 +194,53 @@ export function callerMayCall(
   declared: { callers: readonly string[] } | undefined,
   process: Process,
   subject: string,
+  official = false,
 ): boolean {
   if (caller !== "resident") return true;
   if (!declared) return false;
   if (declared.callers.includes("resident")) return true;
+  // An action open to officials (engine 2, A6): a resident holding a public
+  // office, as subjectIsOfficial answers, before the call.
+  if (official && declared.callers.includes("official")) return true;
   return declared.callers.includes("creator") && subject !== "" && subject === process.createdBy;
+}
+
+/**
+ * Whether an account holds a public office: users.official_type and
+ * official_title, set by an admin (engine 2, A6). The managed role only, not
+ * the legacy author list, which authorizes announcements and nothing else.
+ * Asked for the descriptor's `official` caller and for a type whose officials
+ * publish at once.
+ */
+export async function subjectIsOfficial(subject: string | null | undefined): Promise<boolean> {
+  if (!subject) return false;
+  return (await lookupOfficialBySubject(subject)) !== null;
+}
+
+/**
+ * Whether a creator's submission skips the review wait: an administrator's
+ * always (canActor "hub.administer"), and an official's where the type's
+ * descriptor names officials in `creation.resident.publish_at_once` (Events).
+ */
+export async function publishesAtOnce(
+  actor: Actor,
+  creation: { publish_at_once?: readonly string[] } | null | undefined,
+): Promise<{ admin: boolean; official: boolean }> {
+  const admin = (await canActor(actor, "hub.administer")).allowed;
+  if (admin || actor.kind !== "account" || !creation?.publish_at_once?.includes("official")) return { admin, official: false };
+  return { admin, official: await subjectIsOfficial(actor.subject) };
+}
+
+/**
+ * Who may edit a live process through the hub's edit path (engine 2, A1): its
+ * creator; and a hub admin where the type's edit policy says admins edit too
+ * (Events: creators and admins edit everything, Adam, 2026-10-27). Every
+ * other type stays creator-only (Adam, 2026-09-03).
+ */
+export async function mayEdit(actor: Actor, process: Process, adminsEdit: boolean): Promise<boolean> {
+  if (actor.kind !== "account") return false;
+  if (actor.subject === process.createdBy) return true;
+  return adminsEdit && (await canActor(actor, "hub.administer")).allowed;
 }
 
 // --- offices and authorship ---------------------------------------------------

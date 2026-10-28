@@ -202,6 +202,20 @@ export async function updateProcessColumns(processId: string, updates: Record<st
   await db().from("processes").update(updates).eq("id", processId);
 }
 
+/**
+ * The same, only when the row is still at `version` (an edit that writes the
+ * type's state, engine 2 A1: never over an action that landed meanwhile).
+ * False when someone wrote since; nothing is written then.
+ */
+export async function updateProcessColumnsAtVersion(
+  processId: string,
+  version: number,
+  updates: Record<string, unknown>,
+): Promise<boolean> {
+  const rows = await db().from("processes").update(updates).eq("id", processId).eq("version", version).select<{ id: string }>("id");
+  return rows.length > 0;
+}
+
 /** Id, type, title, status, creator and state of these processes, for hydrating link peers. */
 export async function processPeerRows(ids: string[]): Promise<
   Array<{

@@ -7,6 +7,7 @@
 // returns it from server(host) (ADR-014); the hub mounts draftRouter(kind).
 
 import type { DraftSpec, BaseDraft } from "../modules/civic.drafts/index.js";
+import type { Editor } from "../services/processEdits.js";
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -38,7 +39,7 @@ export interface DraftKind<D extends BaseDraft = BaseDraft> {
   applyLiveEdit?(
     draft: D,
     processId: string,
-    editor: { id: string; email: string | null },
+    editor: Editor,
     submission: DraftSubmission,
   ): Promise<Record<string, unknown>>;
 }

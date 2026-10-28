@@ -33,8 +33,10 @@ import { getReviewByProcessId, setReviewDraftId } from "../modules/civic.review/
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { createEdges, getEdgesFor } from "./processLinks.js";
 import { getProcess } from "./processService.js";
-import { updateProcessColumns } from "./processRows.js";
+import { updateProcessColumns, updateProcessColumnsAtVersion } from "./processRows.js";
 import { stripMarkdown } from "../shared/markdown.js";
+import { mayEdit } from "../authz/canActor.js";
+import type { Actor } from "../authz/actor.js";
 
 /** The hub in scope. Edits are only ever applied inside one. */
 function db(): HubDb {
@@ -44,12 +46,20 @@ function db(): HubDb {
 export interface Editor {
   id: string;
   email: string | null;
+  /** The editor as the seam knows them (src/authz/): decides an admin's edit where a type allows one. */
+  actor?: Actor;
 }
 
 export interface EditInput {
   title?: string;
   description?: string;
   content?: Record<string, unknown>;
+  /**
+   * The type's own fields kept in `processes.state` (an event's time and
+   * place; engine 2, A1). Only the keys its edit policy names in
+   * `state_fields` are compared and written; others are ignored.
+   */
+  state?: Record<string, unknown>;
   links?: Array<{ to_id: string; relation: string }>;
 }
 
@@ -84,20 +94,25 @@ const NOT_EDITABLE: EditPolicy = {
   reason: "This kind of process cannot be edited after it is submitted.",
 };
 
-function isCreator(process: Process, editor: Editor): boolean {
-  return process.createdBy === editor.id;
-}
-
-/** Policy for a viewer: the handler's answer, gated by creator-or-admin. */
+/** Policy for a viewer: the handler's answer, gated by who may edit. */
 export async function getEditPolicy(process: Process, editor: Editor): Promise<EditPolicy> {
   const handler = getProcessHandler(process.definition.type);
   if (!handler?.editPolicy) return NOT_EDITABLE;
+  const policy = await handler.editPolicy(process);
   // Creator only (Adam, 2026-09-03: admins keep archive and moderation, but
-  // do not rewrite a resident's words). Admins are told about edits instead.
-  if (!isCreator(process, editor)) {
-    return { editable: false, locked_fields: [], reason: "Only the creator can edit this." };
+  // do not rewrite a resident's words), unless the type's policy says admins
+  // edit too (engine 2, A1: Events). The seam decides (mayEdit).
+  const allowed = editor.actor
+    ? await mayEdit(editor.actor, process, policy.admins_edit === true)
+    : editor.id === process.createdBy;
+  if (!allowed) {
+    return {
+      editable: false,
+      locked_fields: [],
+      reason: policy.admins_edit ? "Only the creator or an admin can edit this." : "Only the creator can edit this.",
+    };
   }
-  return handler.editPolicy(process);
+  return policy;
 }
 
 /**
@@ -219,6 +234,8 @@ export async function applyEdit(
   const currentLinks = edges
     .filter((e) => e.from_id === processId && e.created_by === process.createdBy)
     .map((e) => ({ to_id: e.to_id, relation: e.relation }));
+  const stateFields = new Set(policy.state_fields ?? []);
+  const currentState = (process.state ?? {}) as Record<string, unknown>;
   const changes = diffEdit(
     {
       title: process.title,
@@ -226,9 +243,19 @@ export async function applyEdit(
       content: (process.content ?? {}) as Record<string, unknown>,
       links: currentLinks,
     },
-    input,
+    { ...input, state: undefined },
     policy.locked_fields,
   );
+  // The type's declared state fields (A1), compared as content keys are.
+  const stateChanged: string[] = [];
+  for (const [key, value] of Object.entries(input.state ?? {})) {
+    if (!stateFields.has(key) || policy.locked_fields.includes(key)) continue;
+    if (JSON.stringify(currentState[key] ?? null) === JSON.stringify(value ?? null)) continue;
+    stateChanged.push(key);
+    changes.changed_fields.push(key);
+    changes.previous[key] = currentState[key] ?? null;
+    changes.current[key] = value ?? null;
+  }
   if (changes.changed_fields.length === 0 && changes.formatting_only_fields.length === 0) return changes;
 
   const now = new Date().toISOString();
@@ -237,13 +264,24 @@ export async function applyEdit(
   if ("description" in changes.current) updates.description = changes.current.description;
   // Formatting-only text changes are saved, just not recorded below.
   for (const [field, value] of Object.entries(changes.formatting_values)) updates[field] = value;
-  const contentChanged = changes.changed_fields.filter((f) => !["title", "description", "links"].includes(f));
+  const contentChanged = changes.changed_fields.filter((f) => !["title", "description", "links"].includes(f) && !stateChanged.includes(f));
+  if (stateChanged.length) {
+    const state = { ...currentState };
+    for (const key of stateChanged) state[key] = changes.current[key];
+    updates.state = state;
+  }
   if (contentChanged.length) {
     const content = { ...((process.content ?? {}) as Record<string, unknown>) };
     for (const key of contentChanged) content[key] = changes.current[key];
     updates.content = content;
   }
-  await updateProcessColumns(processId, updates);
+  if (stateChanged.length && typeof process.version === "number") {
+    if (!(await updateProcessColumnsAtVersion(processId, process.version, updates))) {
+      throw new EditError("This changed while you were editing it. Open it again and make your edit.", 409);
+    }
+  } else {
+    await updateProcessColumns(processId, updates);
+  }
 
   if (changes.changed_fields.includes("links")) {
     await db().from("process_links").delete().eq("from_id", processId).eq("created_by", process.createdBy);
@@ -267,7 +305,7 @@ export async function applyEdit(
   // Formatting-only: saved, but no event, no history entry, no notice.
   if (changes.changed_fields.length === 0) return changes;
 
-  const editorRole = "creator" as const;
+  const editorRole = editor.id === process.createdBy ? ("creator" as const) : ("admin" as const);
   await emitEvent({
     event_type: "civic.process.updated",
     actor: editor.id,

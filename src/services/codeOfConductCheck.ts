@@ -9,7 +9,7 @@
 // the result covers the draft as it then stands.
 
 import { AiLimitError, admitAiCall } from "./aiBudget.js";
-import { checkDraftStore, codeOfConductFields, codeOfConductHash, toDraftState } from "./codeOfConduct.js";
+import { checkDraftStore, codeOfConductFieldsFor, codeOfConductHash } from "./codeOfConduct.js";
 import { checkTextAgainstCoC } from "../modules/civic.assistant/service.js";
 import {
   getHubConfig,
@@ -46,7 +46,7 @@ export async function runCodeOfConductCheck(
   // lacks fields the store derives (a vote's `options` from custom_options),
   // and checking it would hash, and check, something else.
   const current = (await store.get(draft.id)) ?? draft;
-  const fields = codeOfConductFields(toDraftState(current));
+  const fields = codeOfConductFieldsFor(processType, current);
   const checkedHash = codeOfConductHash(fields);
   let suggestions: Suggestion[] = [];
   let unavailable = false;

@@ -1,6 +1,6 @@
 import { NotFoundError } from "../errors/index.js";
 import { route } from "../http/route.js";
-import { getAuthUser } from "../middleware/auth.js";
+import { getActor, getAuthUser } from "../middleware/auth.js";
 import { getEnabledProcess, getProcess } from "../services/processService.js";
 import { isProcessTypeEnabled } from "../services/pluginGate.js";
 import { getEditPolicy, listEdits, startEdit } from "../services/processEdits.js";
@@ -10,7 +10,7 @@ export const handleGetEditPolicy = route(async (req, res) => {
   const user = getAuthUser(res);
   const process = await getEnabledProcess(req.params.id as string);
   if (!process) throw new NotFoundError("Process not found");
-  res.json(await getEditPolicy(process, { id: user.id, email: user.email }));
+  res.json(await getEditPolicy(process, { id: user.id, email: user.email, actor: getActor(res) }));
 });
 
 /** POST /process/:id/edit — creator or admin. Reopens the draft; says where to go. */
@@ -18,7 +18,7 @@ export const handleStartEdit = route(async (req, res) => {
   const user = getAuthUser(res);
   const process = await getEnabledProcess(req.params.id as string);
   if (!process) throw new NotFoundError("Process not found");
-  res.json(await startEdit(process, { id: user.id, email: user.email }));
+  res.json(await startEdit(process, { id: user.id, email: user.email, actor: getActor(res) }));
 });
 
 /** GET /process/:id/edits — public. The visible history. */

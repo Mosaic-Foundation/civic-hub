@@ -11,11 +11,13 @@ import type { TypeDisplay } from "../shared/typeDisplay.js";
  *   resident: any signed-in resident;
  *   creator:  the resident who created the process (a project's Complete);
  *   admin:    a hub admin;
+ *   official: a resident holding a public office (users.official_type, set
+ *             by an admin; engine 2, A6), as the seam answers it;
  *   system:   the hub acting on its own (a deadline close, an approval's
  *             activation, a seed).
- * An admin may call anything a resident or creator may.
+ * An admin may call anything a resident, creator or official may.
  */
-export type DescriptorRole = "resident" | "creator" | "admin" | "system";
+export type DescriptorRole = "resident" | "creator" | "official" | "admin" | "system";
 
 /**
  * Plugin architecture §2. Tier 1: first-party code in the hub's process.
@@ -117,8 +119,13 @@ export interface ProcessTypeDescriptor<P extends string = string> {
   emits: readonly string[];
   /** How a process of this type comes into being. */
   creation: {
-    /** A resident drafts one: the API path of its drafts. Null: residents cannot create it. */
-    resident: { drafts: string } | null;
+    /**
+     * A resident drafts one: the API path of its drafts. Null: residents
+     * cannot create it. `publish_at_once`: who else skips the review wait
+     * beside an admin (engine 2, A6): "official" for a type whose officials
+     * publish directly (Events).
+     */
+    resident: { drafts: string; publish_at_once?: readonly "official"[] } | null;
     /** An admin creates one directly. */
     admin: boolean;
     /** The hub creates one itself (a brief on close, a meeting summary job). */

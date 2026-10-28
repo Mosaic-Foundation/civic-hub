@@ -273,6 +273,12 @@ export async function submitAsCreator(
      */
     creatorIsAdmin: boolean;
     /**
+     * Whether the creator is an official on a type whose officials publish at
+     * once (descriptor creation.resident.publish_at_once; engine 2, A6): the
+     * seam's answer (publishesAtOnce), asked by the controller.
+     */
+    creatorIsOfficialAtOnce?: boolean;
+    /**
      * The automated Code of Conduct check ran on exactly this text and found
      * nothing. False when it was not run, was unavailable (it fails open to
      * human review), or the text changed after it.
@@ -288,7 +294,7 @@ export async function submitAsCreator(
   // Text the check flagged, sent to the admins anyway, always waits for one:
   // an admin's own included, and on a demo hub too (Adam, 2026-10-12).
   const flagged = (input.coc_flags?.length ?? 0) > 0;
-  const autoApprove = !flagged && (isAdmin || demoPublish);
+  const autoApprove = !flagged && (isAdmin || opts.creatorIsOfficialAtOnce === true || demoPublish);
   const { review, process_id } = await submitForReview(input, {
     notify: !autoApprove,
     creatorIsAdmin: isAdmin,

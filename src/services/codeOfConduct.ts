@@ -75,6 +75,23 @@ export function codeOfConductFields(state: DraftState): CheckedField[] {
   ];
 }
 
+/**
+ * What the check reads on a type's draft: the fixed list, then the draft
+ * kind's own free-text fields (`coc` labels; A1), in the kind's order. A kind
+ * with none reads exactly the fixed list, so its stored hashes are unchanged.
+ */
+export function codeOfConductFieldsFor(processType: string, draft: AssistantDraft): CheckedField[] {
+  const base = codeOfConductFields(toDraftState(draft));
+  const spec = loadedPackages().find((p) => p.type === processType)?.server.drafts?.kind.spec;
+  const own = Object.entries(spec?.fields ?? {})
+    .filter(([, f]) => typeof f.coc === "string")
+    .map(([name, f]) => {
+      const v = (draft as unknown as Record<string, unknown>)[name];
+      return { label: f.coc as string, text: typeof v === "string" ? v : v == null ? "" : JSON.stringify(v) };
+    });
+  return own.length ? [...base, ...own] : base;
+}
+
 export function codeOfConductHash(fields: CheckedField[]): string {
   return createHash("sha256").update(JSON.stringify(fields)).digest("hex");
 }
@@ -86,7 +103,7 @@ export async function currentCodeOfConductHash(
 ): Promise<string | null> {
   const store = checkDraftStore(processType);
   const draft = store ? await store.get(draftId) : undefined;
-  return draft ? codeOfConductHash(codeOfConductFields(toDraftState(draft))) : null;
+  return draft ? codeOfConductHash(codeOfConductFieldsFor(processType, draft)) : null;
 }
 
 interface CheckedDraft {

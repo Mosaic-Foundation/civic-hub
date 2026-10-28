@@ -90,7 +90,7 @@ export function checkDescriptor(handler: ProcessHandler, host: HostFacts): strin
     for (const e of a.emits) {
       if (!declaredEmits.has(e)) add(`action ${a.name} emits ${e}, which the type's emits does not list`);
     }
-    if (a.callers.includes("resident") && !a.input_schema) {
+    if ((a.callers.includes("resident") || a.callers.includes("official")) && !a.input_schema) {
       add(`resident action ${a.name} has no input_schema (with examples) for callers and the conformance suite`);
     }
     if (a.input_schema && !Array.isArray(a.input_schema.examples)) {

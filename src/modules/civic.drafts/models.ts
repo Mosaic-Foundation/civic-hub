@@ -47,6 +47,13 @@ export interface DraftFieldSpec {
   write?: (value: unknown) => unknown;
   /** The Code of Conduct check reads it, so a change means the check must run again. */
   checked?: boolean;
+  /**
+   * Free text others will read that the hub's fixed list does not cover (an
+   * event's place; engine 2, A1): the check reads it under this label. The
+   * fixed list (title, description, sources, considerations, seed statements,
+   * options) needs no label.
+   */
+  coc?: string;
 }
 
 /**

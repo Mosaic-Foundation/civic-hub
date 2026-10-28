@@ -61,7 +61,7 @@ import {
 } from "../processes/spawnBrief.js";
 import { forHub, type HubDb } from "../db/forHub.js";
 import type { ActionCaller } from "../processes/types.js";
-import { callerMayCall } from "../authz/canActor.js";
+import { callerMayCall, subjectIsOfficial } from "../authz/canActor.js";
 import { currentHubId } from "../config/hubContext.js";
 import {
   resolveInitialStatus,
@@ -359,7 +359,8 @@ async function attemptAction(
   // everything else is an admin's or the hub's. Checked before the status, so
   // a refused caller learns nothing about where the process is.
   const declared = declaredAction(handler.type, action.type);
-  if (!callerMayCall(caller, declared, process, action.actor)) {
+  const official = caller === "resident" && Boolean(declared?.callers.includes("official")) && (await subjectIsOfficial(action.actor));
+  if (!callerMayCall(caller, declared, process, action.actor, official)) {
     throw new ActionNotAllowedError(action.type);
   }
   if (!declared) {

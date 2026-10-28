@@ -10,7 +10,8 @@
 
 import type { Request, RequestHandler, Response } from "express";
 import { getActor, getAuthUser } from "../middleware/auth.js";
-import { can } from "../authz/canActor.js";
+import { publishesAtOnce } from "../authz/canActor.js";
+import { getManifest } from "../processes/registry.js";
 import {
   claimDraftForSubmission,
   createDraft,
@@ -161,7 +162,7 @@ export function draftController<D extends BaseDraft>(kind: DraftKind<D>): DraftH
         const cocFlags = findings.length > 0 ? findings : undefined;
 
         if (editProcessId && kind.applyLiveEdit) {
-          res.status(200).json(await kind.applyLiveEdit(draft, editProcessId, { id: user.id, email: user.email }, submission));
+          res.status(200).json(await kind.applyLiveEdit(draft, editProcessId, { id: user.id, email: user.email, actor: getActor(res) }, submission));
           return;
         }
 
@@ -188,8 +189,9 @@ export function draftController<D extends BaseDraft>(kind: DraftKind<D>): DraftH
           return;
         }
 
-        // One creation path: always submit for review; admins (and, on a
-        // demo hub, a visitor whose check passed) are approved at once.
+        // One creation path: always submit for review; admins, officials where
+        // the type says so (A6), and on a demo hub a visitor whose check
+        // passed, are approved at once.
         const result = await submitAsCreator(
           {
             draft_id: draft.id,
@@ -204,7 +206,13 @@ export function draftController<D extends BaseDraft>(kind: DraftKind<D>): DraftH
             state: submission.state,
             ...(cocFlags ? { coc_flags: cocFlags, ...(note ? { note } : {}) } : {}),
           },
-          { cocPassed: coc.passed, creatorIsAdmin: await can(getActor(res), "hub.administer") },
+          {
+            cocPassed: coc.passed,
+            ...(await publishesAtOnce(getActor(res), getManifest(spec.processType)?.descriptor.creation.resident).then((at) => ({
+              creatorIsAdmin: at.admin,
+              creatorIsOfficialAtOnce: at.official,
+            }))),
+          },
         );
         res.status(201).json({
           ...result,

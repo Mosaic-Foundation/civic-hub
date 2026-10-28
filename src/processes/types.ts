@@ -24,6 +24,13 @@ export interface EditPolicy {
   editable: boolean;
   locked_fields: string[];
   reason?: string;
+  /**
+   * Admins edit too, not only the creator (engine 2, A1; the seam's mayEdit).
+   * Events says so (Adam, 2026-10-27); every other type is creator-only.
+   */
+  admins_edit?: boolean;
+  /** The type's own fields in `processes.state` an edit may change (an event's time and place). */
+  state_fields?: string[];
 }
 
 /** One applied edit — what changed, before and after, per field. */
