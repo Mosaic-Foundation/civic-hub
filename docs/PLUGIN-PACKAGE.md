@@ -162,6 +162,28 @@ to `src/sdk/index.ts`'s exports needs `npm run sdk:build` (and, for a compiled r
 - **Declare a withdrawal** (step 10): `participation.withdrawal`, acts that are not taking part (taking back
   "going"), counted as nothing.
 
+**Added by Events 2 (2026-10-28), each with a conformance step:**
+
+- **Take an image from its residents** (step 18): manifest `uploads: { images: true }` with `objectStore` in its
+  grant. Its pages post one file (`file`, multipart) to `POST /api/upload/process-image/<its type>`; the hub checks
+  it as it checks post images (JPEG, PNG, WebP or GIF, 200 to 4000 px, at most 4 MB), stores it under
+  `<hub>/types/<type>/` and answers `{ url, width, height, mime }`. The type keeps the URL (and should refuse one
+  outside its folder). A type that declares nothing is refused the route.
+- **Tell people** (step 19): `notify(processId, accounts, { subject, text })` with `mail` in its grant. The hub
+  looks up the addresses (the package never sees one), skips accounts of other hubs, unverified addresses and
+  people who unsubscribed from the hub's email, sends each one their own message through its mode guard (a demo
+  or beta hub holds back whom it may not write to), puts the hub's name in the subject and a link to the process's
+  own page, and answers `{ sent, held_back, skipped, failed }`. Call it after the action commits.
+- **Know the hub in scope** (step 20): `hubContext()` answers `{ name, baseUrl, timeZone }`, read per call;
+  `identity.timezone` is public at `/api/hub-config` for its pages. Its code names no time zone and no hub's
+  address.
+- **Use another vocabulary's terms on the wire** (step 8): `wireObject.contexts` declares the JSON-LD prefixes and
+  terms for every lifted property that is not AS2's (`{ mz: "https://mobilizon.org/ns#", timezone: { "@id":
+  "mz:timezone" } }`); the document's `@context` carries the ones its object uses. Every term on a wire object is
+  AS2's or defined there.
+- **Enter a time in another zone** (the UI kit): `DateTimeInput`'s `timeZone` (an IANA name) shows and reads the
+  wall clock of that zone, right across a change of clocks.
+
 ### One folder: what the manifest declares instead of the hub's lists
 
 A new type joins no file outside its folder (ADR-017; `tests/unit/typeFromFolder.test.ts`):

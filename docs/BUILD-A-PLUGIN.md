@@ -349,6 +349,13 @@ None of these is required; each has a step in the suite where you use it (`docs/
 - **Say that an act is not taking part** (taking back "going"): `participation.withdrawal`.
 - **Class its tables for sample content** and give its Plugins panel a help note: `tables[].sample`,
   `pluginSection.help`. Nothing outside your folder names your type.
+- **Take a picture from residents** (an event's): `uploads: { images: true }` and `objectStore` in its grant; its
+  page posts the file to `/api/upload/process-image/<type>` and keeps the URL it is given.
+- **Write to the people taking part** (an announcement, or what changed): `notify(processId, accounts, { subject,
+  text })` and `mail` in its grant. The hub holds the addresses and follows each person's email setting.
+- **Know the hub it is serving**: `hubContext()` (its name, the origin its pages are at, its time zone). Never write
+  a zone or a hub's address into your code.
+- **Use a term another fediverse server publishes** (Mobilizon's `timezone`): declare it in `wireObject.contexts`.
 
 `kit/conformance/fixtures/sdk-tour` in the hub's repository uses every one of these.
 
@@ -378,7 +385,8 @@ export default strawPollPackage;
 
 The UI module lists your type's pages. They are your own React components, using the React the hub runs, drawn
 with the hub's UI kit so they look like the hub's own pages: `Button` (primary, secondary, danger), `Field`,
-`TextInput`, `TextArea`, `Select`, `DateTimeInput` (ISO in and out) and `DraftShell` (a drafting form's page, with
+`TextInput`, `TextArea`, `Select`, `DateTimeInput` (ISO in and out; `timeZone` to enter a time in a zone other than
+the reader's) and `DraftShell` (a drafting form's page, with
 the hub's slim phone header), all from `@civic-social/plugin-sdk/ui`. Keep your own CSS to layout; the suite's step
 17 refuses dark text on the hub's primary colour. The straw poll's one page reads the poll and answers through the
 hub's routes for every process (`GET /api/process/:id/state`, `POST /api/process/:id/action`):
