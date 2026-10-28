@@ -182,7 +182,10 @@ A process type is a package (`docs/PLUGIN-PACKAGE.md`) whose handler is a
    - **Created by an admin:** set `creation.admin` and provide
      `examples.create` (the request body, and its path if it isn't
      `/process`).
-3. **Keep your storage under the hub's rules.** Every table you own goes in
+3. **Keep your storage under the hub's rules.** Every migration must apply twice (the CLI tries each twice in a
+   rolled-back transaction first, and refuses one that cannot): `IF NOT EXISTS`, `CREATE OR REPLACE TRIGGER`, and a
+   function created inside a `DO` block that checks `to_regprocedure(…) IS NULL` (`CREATE OR REPLACE FUNCTION` is not
+   additive). Every table you own goes in
    `tables` (with what it `holds`, in plain words) and in your grant's
    `state.tables`, carries `hub_id` with forced row-level security
    (`HUB_TABLES`), and appears in the export manifest. Reach it only through

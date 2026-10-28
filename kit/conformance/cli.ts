@@ -162,6 +162,26 @@ async function main(): Promise<void> {
     const existing = new Set(
       (await db.query<{ table_name: string }>("select table_name from information_schema.tables where table_schema = 'public' and table_name = any($1)", [tables])).rows.map((r) => r.table_name),
     );
+    // A migration must apply more than once (Events 2): the suite applies a
+    // package's migrations to a stack that may already have them (its own
+    // earlier run, or a hub that ships it), and drops only the tables it made.
+    // So each is applied twice in a transaction that is rolled back first, and
+    // one that cannot be is refused by name, before anything else runs.
+    for (const f of migrations) {
+      const sql = readFileSync(join(migrationsDir, f), "utf8");
+      try {
+        await db.query("BEGIN");
+        await db.query(sql);
+        await db.query(sql);
+      } catch (err) {
+        await db.query("ROLLBACK");
+        throw new Error(
+          `${f} does not apply twice: ${(err as Error).message}. Make each statement re-runnable (IF NOT EXISTS; ` +
+            "CREATE OR REPLACE TRIGGER; a function created inside DO $$ … IF to_regprocedure(…) IS NULL … $$).",
+        );
+      }
+      await db.query("ROLLBACK");
+    }
     for (const f of migrations) await db.query(readFileSync(join(migrationsDir, f), "utf8"));
     tablesMade = tables.filter((t) => !existing.has(t));
     await db.query("NOTIFY pgrst, 'reload schema'");
