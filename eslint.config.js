@@ -417,10 +417,7 @@ export const PACKAGE_REACH_NOT_YET = {
   "src/services/briefResponses.ts": "stores the brief's responses and types them (BriefResponseRecord)",
   "src/debug/autoSeed.ts": "seeds an announcement's published state and events (emitPublicationEvents, AnnouncementProcessState) for the development scenarios",
   "src/jobs/newsSync.ts": "posts each news item as an announcement: its result-published event (emitAnnouncementResultPublished) and its state types",
-  "src/jobs/describe.ts": "describes a meeting summary run's problems with the module's readiness thresholds (RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS)",
   "src/modules/civic.admin_digest/service.ts": "the admin digest sorts summaries waiting for review by their quality flag (effectiveQualityFlag)",
-  "src/modules/civic.news_sync/paraphrase.ts": "types its model call with the one the meeting summary pipeline defines (CallClaudeFn)",
-  "src/services/cronAlerts.ts": "words a meeting summary run's alert with its record grace period (RECORD_GRACE_DAYS)",
   "src/controllers/debugController.ts": "the development reset empties the proposals (clearProposals) along with the other modules' records",
   "src/controllers/inputController.ts": "checks that the proposal an input names exists (proposalExists) before it is accepted",
 };

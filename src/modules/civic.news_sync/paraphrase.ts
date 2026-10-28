@@ -10,7 +10,7 @@
 // Output is constrained to one sentence ≤ 200 chars and is captured
 // once at ingest. We never re-run paraphrase on the same row.
 
-import type { CallClaudeFn } from "../../../packages/civic.meeting_summary/api.js";
+import type { CallClaudeFn } from "../../shared/meetingSummaryRules.js";
 
 export interface ParaphraseInput {
   /** The announcement title from the RSS <title> element. */

@@ -274,22 +274,9 @@ export interface FetchYouTubeTranscriptFn {
   (videoUrl: string): Promise<TranscriptSegment[]>;
 }
 
-/**
- * Low-level Claude call used by both the extraction and the summarization
- * legs. `system` is optional; `documentBase64` is provided for the
- * summarization leg to pass the PDF as a native document block. Returns
- * the assistant's raw text output plus the model id actually used (echoed
- * by the API).
- */
-export interface CallClaudeFn {
-  (input: {
-    model: string;
-    system?: string;
-    userText: string;
-    documentBase64?: { data: string; mediaType: string; filename?: string };
-    maxTokens?: number;
-  }): Promise<{ text: string; model: string }>;
-}
+// The model call's shape lives in src/shared/, where the news sync reads it too (engine 2, B10).
+import type { CallClaudeFn } from "../../src/shared/meetingSummaryRules.js";
+export type { CallClaudeFn };
 
 // --- Configuration ---------------------------------------------------------
 

@@ -14,7 +14,7 @@ import { currentHub } from "../config/hubContext.js";
 import { getSettingSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { hubKindOf, participantNoun } from "../shared/hubKind.js";
-import { RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS } from "../../packages/civic.meeting_summary/readiness.js";
+import { RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS } from "../shared/meetingSummaryRules.js";
 
 export type JobRunStatus = "ok" | "flagged" | "failed";
 

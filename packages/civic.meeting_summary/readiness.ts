@@ -22,24 +22,8 @@
 import { ConflictError, resolveTimeZone } from "../../src/sdk/index.js";
 import type { SummaryBlock, TranscriptSegment } from "./models.js";
 
-/**
- * How long a meeting may wait for its missing record before the run reports
- * it, unless the hub sets `plugin.meeting_summary.record_grace_days` (the
- * cleanup slice, 2026-10-16). The first hub posts recordings within a day and
- * minutes within about four weeks; two weeks without a transcript for a
- * listed video means something is wrong (captions off, provider failing).
- */
-export const RECORD_GRACE_DAYS = 14;
-
-/**
- * A source quiet this long probably stopped working (Adam, 2026-10-07), unless
- * the hub sets `plugin.meeting_summary.source_quiet_days` (a body that meets
- * quarterly needs longer). A run that finds nothing is "nothing new", not a
- * failure (review M7); but in August 2026 the first hub's source page went
- * client-side and parsed to nothing for weeks. Once the newest meeting the hub
- * knows of is older than this, the job asks for a check (flagged, not failed).
- */
-export const SOURCE_QUIET_DAYS = 45;
+// The thresholds' defaults live in src/shared/, where the hub's job reports read them (engine 2, B10).
+export { RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS } from "../../src/shared/meetingSummaryRules.js";
 
 /**
  * A whole-number days setting, or its default when unset or not a whole

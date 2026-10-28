@@ -15,7 +15,7 @@ import { type BrokenPublication } from "./feedHealth.js";
 import { brokenLinkProblem } from "../jobs/describe.js";
 import { getAdminEmailsSync, hubDisplayNameSync } from "./hubSettings.js";
 import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
-import { RECORD_GRACE_DAYS } from "../../packages/civic.meeting_summary/api.js";
+import { RECORD_GRACE_DAYS } from "../shared/meetingSummaryRules.js";
 
 /**
  * How long a revision may wait for review before the cron mentions it.
