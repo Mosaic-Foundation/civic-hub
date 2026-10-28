@@ -230,7 +230,7 @@ const handler: ProcessHandler = {
         if (!subject || subject.length > SUBJECT_MAX) throw new ValidationError(`Give the message a subject of at most ${SUBJECT_MAX} characters.`, "subject_invalid");
         if (!message || message.length > MESSAGE_MAX) throw new ValidationError(`Write a message of at most ${MESSAGE_MAX} characters.`, "message_invalid");
         const recipients = (await eventStore.get().goingAccounts(process.id)).filter((a) => a !== action.actor).length;
-        await emit(process, action.actor, { event_type: EVENTS.announced, extra: { announcement: { recipients } }, restricted: true });
+        await emit(process, action.actor, { event_type: "civic.event.announced", extra: { announcement: { recipients } }, restricted: true });
         const snapshot = structuredClone(process);
         await afterActionCommits(() => tellGoing(snapshot, { kind: "announcement", sender: action.actor, subject, body: message }));
         return { status: "announced", recipients };

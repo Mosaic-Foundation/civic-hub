@@ -48,6 +48,10 @@ const ADDED: Record<string, string> = {
   "GET /calendar/events": "Events: the calendar, for its page",
   "GET /calendar/events/:id/going": "Events: how many are going, and who as the hub discloses it (engine 2, A3)",
   "GET /calendar/hub.ics": "Events: the calendar as iCalendar, to subscribe to",
+  // Events 2 (2026-10-28): a type's own images (E1), one event's calendar file, its messages for admins.
+  "POST /upload/process-image/:type": "an image a type's residents attach, for a type that declares uploads (E1)",
+  "GET /calendar/events/:id.ics": "Events: one event's calendar file (Add to my calendar)",
+  "GET /calendar/events/:id/announcements": "Events: what the people going were sent, for admins",
 };
 
 interface Layer {

@@ -38,6 +38,10 @@
  * And (2026-10-28, engine 2, C): civic.vote_results is retired into briefs, so
  * its entries leave PROCESS_TYPE_PLUGINS, process_types and detail_paths; only
  * those three entries were removed (diffed before writing).
+ * And (2026-10-28, Events 2, Events 0.3.0): calendar_announcements joins
+ * HUB_TABLES, the export (exported) and TABLE_KEYS; civic.event.announced is
+ * mapped; the requirements gain that table and calendar_events' image_url,
+ * image_alt, time_zone and capacity. Only those (diffed before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

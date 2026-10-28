@@ -38,6 +38,7 @@
     "analytics_report_keys",
     "analytics_report_reads",
     "brief_responses",
+    "calendar_announcements",
     "calendar_attendance",
     "calendar_drafts",
     "calendar_events",
@@ -110,6 +111,10 @@
     },
     {
       "table": "brief_responses",
+      "rows": "export"
+    },
+    {
+      "table": "calendar_announcements",
       "rows": "export"
     },
     {
@@ -279,6 +284,9 @@
     "brief_responses": [
       "id"
     ],
+    "calendar_announcements": [
+      "id"
+    ],
     "calendar_attendance": [
       "process_id",
       "user_id"
@@ -379,6 +387,7 @@
     ]
   },
   "mappedEventTypes": [
+    "civic.event.announced",
     "civic.event.cancelled",
     "civic.event.going",
     "civic.event.not_going",
@@ -780,6 +789,21 @@
       "owner": "features/analytics"
     },
     {
+      "table": "calendar_announcements",
+      "columns": [
+        "id",
+        "process_id",
+        "kind",
+        "sender",
+        "subject",
+        "body",
+        "recipients",
+        "sent",
+        "held_back"
+      ],
+      "owner": "civic.event"
+    },
+    {
       "table": "calendar_attendance",
       "columns": [
         "process_id",
@@ -796,7 +820,11 @@
         "end_time",
         "location",
         "cancelled",
-        "archived"
+        "archived",
+        "image_url",
+        "image_alt",
+        "time_zone",
+        "capacity"
       ],
       "owner": "civic.event"
     },

@@ -671,6 +671,9 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /admin/hub/plugins/:plugin/install": { skip: "the parameter names a plugin, not a row; acts on the caller's hub only (pluginPackages)" },
   "POST /admin/hub/plugins/:plugin/remove": { skip: "the parameter names a plugin, not a row; acts on the caller's hub only (pluginPackages)" },
   "POST /admin/hub/plugins/:plugin/update": { skip: "the parameter names a plugin, not a row; acts on the caller's hub only (pluginPackages, ADR-015)" },
+  // A type's own image (Events 2, E1): the parameter names a process type, and
+  // the image lands under the caller's hub's own prefix (conformance step 18).
+  "POST /upload/process-image/:type": { skip: "the parameter names a process type, not a row; stores under the caller's hub only (conformance 18)" },
   // Send to Civic.Social (feedback routing): Floyd's feedback is never Athens's to forward.
   "POST /admin/feedback/:id/forward": { body: { stream: "bug" } },
   "POST /reviews/:reviewId/revise": { body: { title: X.title, description: X.description } },

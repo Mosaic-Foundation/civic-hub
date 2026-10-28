@@ -70,7 +70,7 @@ const schema = schemaFromMigrations();
 const manifest = EXPORT_MANIFEST.map((e) => e.table);
 
 describe("export manifest", () => {
-  it("reads the schema it is checked against (56 tables, 44 with hub_id)", () => {
+  it("reads the schema it is checked against (57 tables, 45 with hub_id)", () => {
     // If this moves, a table was added or dropped: expected, but look at the
     // manifest in the same change. 35 since 2026-09-26: Phase 7's
     // hub_admin_audit_log (hub data, exported), after the super admin's
@@ -102,8 +102,10 @@ describe("export manifest", () => {
     // analytics_report_keys and analytics_report_reads (hub data, exported).
     // 56 since 20261027120000 (plugin Events): calendar_events,
     // calendar_attendance and calendar_drafts (hub data, exported).
-    expect(schema.tables.size).toBe(56);
-    expect(schema.withHubId.size).toBe(44);
+    // 57 since 20261028160000 (Events 0.3.0): calendar_announcements (hub
+    // data, exported: the messages the people going were sent).
+    expect(schema.tables.size).toBe(57);
+    expect(schema.withHubId.size).toBe(45);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);
   });
