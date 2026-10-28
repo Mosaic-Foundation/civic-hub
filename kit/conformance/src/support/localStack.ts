@@ -94,6 +94,19 @@ export async function mintSession(hubId: string, email: string): Promise<string>
         full_name: "Settings Test Admin",
       }),
     });
+  } else {
+    // An account an earlier test made through a real sign-in is a
+    // non-resident with no name; the session handed back is always a named
+    // resident's, whichever file ran first (vitest orders files by its timing
+    // cache, so a crashed run used to reorder the next into ~25 failures).
+    await rest(`users?id=eq.${encodeURIComponent(userId)}&is_resident=is.false`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_resident: true }),
+    });
+    await rest(`users?id=eq.${encodeURIComponent(userId)}&full_name=is.null`, {
+      method: "PATCH",
+      body: JSON.stringify({ full_name: "Settings Test Admin" }),
+    });
   }
 
   return insertSession(hubId, userId);
