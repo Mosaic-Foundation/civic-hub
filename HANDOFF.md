@@ -4,6 +4,52 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Engine 2: SDK v1's surface, one folder, vote results into the brief — 2026-10-28
+
+**State:** released to dev at the end of the session (the closing entry below says where it stands). Reports: `~/Documents/Mosaic/0 Management/Civic Social/Engine-2-Session-Report-2026-10-28.md`
+and `Engine-2-Handoff-to-Management-2026-10-28.md`. ADR-017 (`decisions/017-sdk-v1-surface.md`, committed locally in
+the mono repo for Adam to push).
+
+**What it is (each its own commit; ADR-017 has the whole surface):**
+- **A8, the SDK built:** `kit/sdk/*.js` carry no path into the engine. `src/sdk/install.ts`, the first import of
+  `config/plugins/server.ts`, installs it; the SDK installs as a copy (`.npmrc install-links`). The resolve hook is
+  gone. `npm run sdk:build` writes the `.js` and CI checks them. The hub's packages import `/first-party` (version
+  0) and `/manifest` by name. Proved on dev early (`edd427f`).
+- **A1 to A7:** edits through the hub's edit path with a type's state fields and admins where declared; the check
+  reads a kind's `coc` fields; `afterActionCommits`; `namesFor`; type statuses; card kinds; the `official` caller and
+  `publish_at_once`; the UI kit (`ui/src/kit/`), and the black-on-blue button fixed at the token (`-text`, not `-ink`).
+  Conformance steps 11 to 17; `kit/conformance/fixtures/sdk-tour` passes them from an empty folder.
+- **Events 0.2.0:** Edit event (all fields, creator or admin), who is going for members, officials publish at once,
+  scheduled/past/cancelled, its card kind and its tables' sample roles in its manifest, its pages on the kit and
+  DraftShell, retry-safe publish/cancel/close.
+- **B9:** `tables[].sample`, `pluginSection.help`, the share route and help note written by `plugins:sync`, the feed's
+  wire forms from `wireObject`; `typeFromFolder.test.ts`. **B10:** reach list 13 to 10.
+- **C:** migration `20261028100000` (non-additive, approved) converts vote results to briefs in place; the brief
+  carries `legacyTypes` so old events read as before; `/vote-results/:id` redirects; the package is deleted.
+- **D11 to D14:** Activity counted live when stale (nothing written), the public switch on the page, since launch
+  from leaving demo or creation, `/analytics`'s `note`.
+- **E15:** `release.sh prod` checks the catalog (`scripts/catalog-unapproved.ts`) before and after the approval
+  question, and stops when fewer packages are mounted than listed. **E16** `mintSession`; **E17** the withdrawal
+  role; **E18** help beside Install, Remove and Update.
+
+**Invariants:** the wire snapshot on local is identical (2,305 events, the four old vote-results events included,
+after the migration). HTTP, old code (`de4977a` on :3005) beside new on one database, 673 paths on three hubs: only
+`type_status` (additive) and the type lists (vote results gone, new versions, Events' descriptor). Parity test: the
+officials-on-Events addition only.
+
+**Catalog entries (pending, required):** Votes, Proposals, Projects, Announcements, Meeting summaries, Word clouds
+0.2.0; Briefs, Conversations 0.3.0; Events 0.2.0. Straw poll 0.1.3 (not auto-installed). Adam approves and signs them
+on dev, and on production at its release; then withdraws Vote results 0.1.1 in each console.
+
+**Before production (read-only, production's SQL editor):** the count of `civic.vote_results` rows by status, and any
+vote with both a brief and a vote-results record (the report has both queries). A second brief for one vote needs a
+decision before the release.
+
+**Left:** the Events follow-up features (a package session); the design pass (the kit's `DateTimeInput` is the one
+place to change the picker); feature packages on the SDK by name; the remaining ten reach-list files; an untyped
+old vote-results event (no process type in its data) now stamps as a brief in the feed's member and public views
+(the report's "found on the way").
+
 ## Plugin Events: the hub's calendar, the first package on SDK v1 in the hub's list — 2026-10-27
 
 **On dev at `86fb68c`, approved and mounted (10 of 10); not on production.** Branch `plugin-events` merged into

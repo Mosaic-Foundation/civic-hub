@@ -87,6 +87,62 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Engine 2: SDK v1's surface, one folder, vote results into the brief (2026-10-28)
+
+**A new type is one folder; an SDK-only package can do what the built-in types do (ADR-017).**
+- **The built SDK** (`tests/unit/sdkBuilt.test.ts`): `kit/sdk/*.js` carry no path into the engine and hand out the
+  engine's own values (identical to what the `.ts` export); `manifest.js` is standalone. CI runs
+  `npx tsx kit/scripts/build-sdk.ts --check` ("Plugin SDK built"); the compiled-server step starts `dist/` with no
+  resolve hook. **After changing `kit/sdk/*.ts` or `src/sdk/index.ts`'s exports, run `npm run sdk:build`**, and
+  `npm install` before a compiled run (the SDK installs as a copy). Under vitest `/first-party` resolves straight to
+  `src/sdk/index.ts` (a re-exporting module is empty mid-cycle there; `vitest.config.ts`).
+- **Conformance steps 11 to 17** (`kit/conformance/src/runConformance.ts`, `sdkSurfaceSteps`): edits through the
+  hub's edit path, a retry-safe action writing its events once, names under the disclosure policy (asked of the
+  engine in the suite's process), statuses, card kinds, the official caller and publishing at once, the UI kit
+  (static). Each is skipped, named, where a type does not use it. `kit/conformance/fixtures/sdk-tour` uses every
+  one through the SDK alone; `kit/scripts/prove.ts` runs it from an empty folder (it must pass, as the straw poll
+  must, and the broken copy must not).
+- **One folder** (`tests/unit/typeFromFolder.test.ts`): the SDK tour appended to the configured list (vi.doMock of
+  `config/plugins/manifests.js` after `vi.resetModules()`) reaches sample content, the removal nouns, the card
+  kinds and theme, the navigation, the share route and help note (`derivedFiles` in `plugins:sync`), and the
+  registry. `declaredFeedKinds`, `typeStatuses` test the declarations and their startup checks.
+- **Tripwires that count types stay hand lists** (pluginRoutes, navSections, processDescriptors, residentActions,
+  exportManifest, forHub, the parity fixture, the leak harness's plans, the nav and Activity specs): a new type
+  changes them on purpose.
+- **The seam** (`tests/api/authzParity.test.ts`): the one addition, an action open to officials and officials
+  publishing at once where a type declares it, is the only answer that differs from the frozen old rules.
+- **Edits** (Playwright `events.spec.ts`): the creator edits an event's name and place through Edit event; API
+  conformance step 11 on every type that edits (projects, Events).
+- **The button** (`tests/unit/buttonInk.test.ts`): no stylesheet in `ui/src`, `packages` or `features` sets
+  `--color-primary-ink` text on a `--color-primary` fill.
+- **Vote results** (`tests/api/voteResultsRetired.test.ts`): the migration converts a row in place and is
+  idempotent; `/vote-results/:id` answers 301 to `../brief/:id`. The wire snapshot stays identical (old
+  vote-results events read through the brief's `legacyTypes`).
+- **Activity** (`tests/api/analytics.test.ts`, "Adam's walk"): no rollup → counted live, nothing written, then
+  stored by the job; since launch from the hub's creation, not an event 400 days old; `/analytics`'s `note`.
+- **The release guard** (`tests/unit/releaseCatalogGuard.test.ts`; by hand: `RELEASE_CHECK_CATALOG=1
+  ./scripts/release.sh dev --dry-run` refused with Events 0.2.0 missing on dev, before its entry existed).
+- **Sign-in order** (`mintSession`): an Athens admin made by a real sign-in first (non-resident, no name) no longer
+  fails later files; reproduced by putting the account back in that state and running residentActions and
+  hubKinds (403 `residency_required` without the fix, green with it).
+- **Running Playwright locally as CI does:** build the UI, serve it with `CIVIC_PREVIEW_API=http://localhost:3000
+  npx vite preview --port 4173` from `ui/`, and run with `CI=true CIVIC_E2E_BASE_URL=http://localhost:4173
+  CIVIC_E2E_UI_ORIGIN=http://localhost:4173 CIVIC_E2E_API_BASE=http://localhost:4173/api
+  CIVIC_API_BASE=http://localhost:3000`. Against the Vite dev server some specs fail on a cold compile.
+- **The compiled server found what tsx hid:** engine files on the reach list imported package values statically, so a
+  package evaluated before the hub handed the SDK its engine ("no hub engine installed"). They now load packages with
+  `await import()` where used; the fence refuses a static value import of a package even on the list.
+- **Results, local (fixture set, servers without `CIVIC_PLUGINS_UNVERIFIED`, packages approved by hash):** unit
+  **1,948** (6 skipped); API service role **1,009 of 1,010** (the one: `auditConcurrency`'s simultaneous ballots got
+  Kong's "invalid response from the upstream server", the documented local flake; the file passed on rerun); API
+  minted tokens **1,010** (16 skipped); conformance (in the API suite) every type, steps 1 to 17; `prove.ts` the straw
+  poll and the SDK tour pass, the broken copy does not; Playwright as `e2e.yml` runs it **210 passed** after the
+  version pins (the start page needs the server's `CIVIC_UI_BASE_URL`, as `e2e.yml` sets it); the screenshot
+  comparison, old code (`de4977a`) photographed beside new on one database: **4 of 4 identical**; `dist/` starts with
+  9 of 9 mounted; wire snapshot identical; HTTP old beside new: `type_status` and the type lists only.
+
+---
+
 ## Plugin Events: the hub's calendar, the first package on SDK v1 in the hub's list (2026-10-27)
 
 **Events (`packages/civic.event`): residents propose events through review, say they're going, and anyone subscribes;
