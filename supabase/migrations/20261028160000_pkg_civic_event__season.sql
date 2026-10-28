@@ -48,9 +48,16 @@ COMMENT ON TABLE public.calendar_announcements IS
 
 SELECT public._civic_apply_hub_policy('public.calendar_announcements');
 
+-- Created only where it is not there yet: a migration applies more than once
+-- (the conformance suite applies a package's migrations to a stack that may
+-- have them), and CREATE OR REPLACE would change a function running code calls.
+DO $guard$
+BEGIN
+  IF to_regprocedure('public.calendar_attendance_capacity()') IS NULL THEN
+    EXECUTE $create$
 CREATE FUNCTION public.calendar_attendance_capacity() RETURNS trigger
   LANGUAGE plpgsql
-AS $$
+AS $fn$
 DECLARE
   cap integer;
   going integer;
@@ -74,9 +81,12 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$;
+$fn$
+    $create$;
+  END IF;
+END $guard$;
 
-CREATE TRIGGER calendar_attendance_capacity
+CREATE OR REPLACE TRIGGER calendar_attendance_capacity
   BEFORE INSERT ON public.calendar_attendance
   FOR EACH ROW
   EXECUTE FUNCTION public.calendar_attendance_capacity();
