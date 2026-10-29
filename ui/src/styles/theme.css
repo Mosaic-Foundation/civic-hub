@@ -27,7 +27,6 @@
 @import "@fontsource-variable/inter/wght.css";
 @import "./design-system/tokens.css";
 @import "./design-system/base.css";
-@import "./design-system/components.css";
 
 /* `.theme-scope` re-declares this whole layer on an element, so a theme's
    variables set on that element (Settings → Theme's live preview) flow

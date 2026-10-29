@@ -69,7 +69,7 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   line-height: var(--line-height-tight);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text);
 }
 
@@ -97,12 +97,12 @@ a {
   textarea,
   select,
   [contenteditable="true"] {
-    font-size: max(16px, 1em) !important;
+    font-size: max(var(--text-body-size), 100%) !important;
   }
 }
 
 /* A place a link can point at (#anchor): land below the sticky header,
    not under it (admin menu slice, 2026-10-13; ui/src/hooks/useAnchor.ts). */
 [data-anchor] {
-  scroll-margin-top: 96px;
+  scroll-margin-top: calc(var(--space-20) + var(--space-4));
 }
