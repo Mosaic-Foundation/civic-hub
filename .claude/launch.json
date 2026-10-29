@@ -13,6 +13,38 @@
       "runtimeArgs": ["run", "dev"],
       "port": 5173,
       "cwd": "ui"
+    },
+    {
+      "name": "local-api",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--import", "tsx", "src/index.ts"],
+      "port": 3000,
+      "env": {
+        "PORT": "3000",
+        "BASE_URL": "http://localhost:3000",
+        "SUPABASE_URL": "http://127.0.0.1:54321",
+        "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU",
+        "NODE_ENV": "development",
+        "CIVIC_ALLOW_SEED": "true",
+        "CIVIC_ADMIN_EMAILS": "admin@example.test",
+        "CIVIC_DEV_HUB": "athens",
+        "CIVIC_CONSOLE_HOSTNAME": "console.localhost",
+        "CIVIC_CONSOLE_ADMIN_EMAIL": "operator@example.test",
+        "CIVIC_START_HOSTNAME": "start.localhost",
+        "CIVIC_FAKE_ADAPTERS": "on",
+        "CIVIC_UI_BASE_URL": "http://localhost:4173",
+        "CIVIC_ANON_SECRET": "design-pass-local-snapshot",
+        "CRON_SECRET": "local-cron-secret",
+        "DIGEST_UNSUBSCRIBE_SECRET": "local-digest-unsubscribe-secret"
+      }
+    },
+    {
+      "name": "local-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "preview", "--port", "4173", "--strictPort"],
+      "port": 4173,
+      "cwd": "ui",
+      "env": { "CIVIC_PREVIEW_API": "http://localhost:3000" }
     }
   ]
 }
