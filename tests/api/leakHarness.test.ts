@@ -220,6 +220,7 @@ beforeAll(async () => {
   });
   const { buildUnsubscribeToken } = await import("../../src/modules/civic.digest/unsubscribe.js");
   B.unsubscribeToken = buildUnsubscribeToken(B.resident, DIGEST_SECRET);
+  B.noticesToken = buildUnsubscribeToken(B.resident, DIGEST_SECRET, "unsub_notices");
   const [ar] = (await localRest(`users?select=id&hub_id=eq.athens&email=eq.${MARKER_A}@example.test`)) as Array<{ id: string }>;
   A.resident = ar.id;
   // Athens's resident takes the digest, and has been around long enough for
@@ -513,7 +514,7 @@ async function appRoutes(): Promise<string[]> {
 function idsFor(plan: Plan): { floyd: string[]; athens: string[] } {
   if (plan.ids === "events") return { floyd: [B.event0, B.event1, B.event2].filter(Boolean), athens: [] };
   const floyd = Object.entries(B)
-    .filter(([k]) => !["previewUrl", "receipt", "resident", "unsubscribeToken"].includes(k) && !k.startsWith("event"))
+    .filter(([k]) => !["previewUrl", "receipt", "resident", "unsubscribeToken", "noticesToken"].includes(k) && !k.startsWith("event"))
     .map(([, v]) => v);
   return { floyd, athens: [A.vote] };
 }
@@ -530,7 +531,7 @@ function expand(route: string, plan: Plan): Array<{ path: string; echoed: string
   if (route === "GET /link-preview/") queries = ["", `?url=${encodeURIComponent(B.previewUrl)}`];
   if (route === "GET /unsubscribe/digest") queries = ["", "?token=not-a-real-token", `?token=${encodeURIComponent(B.unsubscribeToken)}`];
   if (route === "GET /unsubscribe/notices") {
-    queries = ["", "?token=not-a-real-token", `?token=${encodeURIComponent(buildUnsubscribeToken(B.resident, DIGEST_SECRET, "unsub_notices"))}`];
+    queries = ["", "?token=not-a-real-token", `?token=${encodeURIComponent(B.noticesToken)}`];
   }
   if (route === "GET /feed/") queries = ["", "?limit=200", `?process_id=${B.vote}`];
   if (route === "GET /feed/meta" || route === "GET /api/feed/meta") {
