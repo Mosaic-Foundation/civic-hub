@@ -46,7 +46,7 @@ import {
 import { isPrivilegedEmail, isPrivilegedEmailNow } from "../../services/privilegedAccounts.js";
 import { lookupOfficialByEmail } from "../../services/officials.js";
 import { currentHubId, currentHubIdOrNull } from "../../config/hubContext.js";
-import type { User, PendingVerification, Session, SessionAssurance } from "./models.js";
+import { APPEARANCES, type Appearance, type User, type PendingVerification, type Session, type SessionAssurance } from "./models.js";
 import { authStore } from "./store.js";
 
 export type { User, PendingVerification, Session, SessionAssurance } from "./models.js";
@@ -117,6 +117,9 @@ function rowToUser(row: Record<string, unknown>): User {
     last_digest_sent_at: row.last_digest_sent_at
       ? String(row.last_digest_sent_at)
       : null,
+    // Rows read before the design pass's migration: notices on, light.
+    notices_email: row.notices_email === undefined || row.notices_email === null ? true : Boolean(row.notices_email),
+    appearance: APPEARANCES.includes(row.appearance as Appearance) ? (row.appearance as Appearance) : "light",
     tos_version_accepted: row.tos_version_accepted
       ? String(row.tos_version_accepted)
       : null,
@@ -801,6 +804,20 @@ export async function setDigestFrequency(
 ): Promise<User> {
   const data = await authStore.get().updateUser(userId, { digest_frequency_days: frequencyDays });
 
+  if (!data) throw new NotFoundError("User not found", "user_not_found");
+  return rowToUser(data);
+}
+
+/** Turn a person's notices email on or off (design pass, decision 15). */
+export async function setNoticesEmail(userId: string, on: boolean): Promise<User> {
+  const data = await authStore.get().updateUser(userId, { notices_email: on });
+  if (!data) throw new NotFoundError("User not found", "user_not_found");
+  return rowToUser(data);
+}
+
+/** Set a person's look: light, dark or the device's (design pass, decision 9). */
+export async function setAppearance(userId: string, appearance: Appearance): Promise<User> {
+  const data = await authStore.get().updateUser(userId, { appearance });
   if (!data) throw new NotFoundError("User not found", "user_not_found");
   return rowToUser(data);
 }

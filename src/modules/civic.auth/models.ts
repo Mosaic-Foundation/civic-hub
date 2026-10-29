@@ -7,6 +7,10 @@
 // GUARDRAIL: This module MUST NOT import from civic.vote or civic.proposals.
 
 /** A civic hub user */
+/** A person's look (design pass, decision 9). */
+export type Appearance = "light" | "dark" | "system";
+export const APPEARANCES: readonly Appearance[] = ["light", "dark", "system"];
+
 export interface User {
   id: string;
   /**
@@ -26,6 +30,13 @@ export interface User {
    * `last_digest_sent_at + frequency_days <= now`.
    */
   digest_frequency_days: number | null;
+  /**
+   * "Notices about things I take part in" (design pass, decision 15): what
+   * notify() sends. On by default; apart from the digest.
+   */
+  notices_email: boolean;
+  /** The person's look: light (the default), dark, or the device's (decision 9). */
+  appearance: Appearance;
   /**
    * Cursor for the next digest's "since" window. null means "never
    * sent" — the cron uses the user's created_at as the since anchor,

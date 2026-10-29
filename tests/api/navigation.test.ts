@@ -1,8 +1,8 @@
 // The navigation slice (2026-10-14), against a running hub: the registry's
 // display for every type in GET /hub-config, the two Theme settings (public,
 // validated), and a plugin switched off leaving the stored Section order in
-// the same save, so it comes back at the end. New hubs are created with the
-// sidebar; existing ones read unset as Top tabs.
+// the same save, so it comes back at the end. New hubs are created with Top
+// tabs (design pass, 2026-10-29; the sidebar before); unset reads as Top tabs.
 //
 // Athens's settings are put back as they were (afterAll). Needs the local
 // stack seeded as in CI and a server (CIVIC_API_BASE).

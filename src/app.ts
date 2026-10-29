@@ -299,6 +299,9 @@ app.get("/", route((_req, res) => {
       "POST /waitlist": "Join the beta waitlist (public; honeypot-gated)",
       "GET /unsubscribe/digest?token=X": "Unsubscribe from the daily digest",
       "PATCH /user/settings/digest": "Toggle digest subscription (authed)",
+      "GET /unsubscribe/notices?token=X": "Stop notices about things you take part in",
+      "PATCH /user/settings/notices": "Notices about things I take part in, on or off (authed)",
+      "PATCH /user/settings/appearance": "Your look: light, dark or follow the device (authed)",
       // Generated from the job registry, so the docs cannot drift from the mounts.
       ...Object.fromEntries(
         JOBS.map((job) => [

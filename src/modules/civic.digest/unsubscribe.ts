@@ -8,17 +8,20 @@
 // unsubscribe link.
 //
 // Token layout: base64url(JSON) + "." + base64url(HMAC-SHA256).
-// Payload JSON: { uid: <user_id>, p: "unsub_digest" }
+// Payload JSON: { uid: <user_id>, p: "unsub_digest" | "unsub_notices" }
+// The purpose is signed: a digest link stops the digest only, a notice's link
+// stops notices only (design pass, decision 15, 2026-10-29).
 //
 // MUST NOT reach for the event store or DB. Pure functions + crypto.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-const PURPOSE = "unsub_digest";
+/** What a link stops: the digest (every link before 2026-10-29) or notices. */
+export type UnsubscribePurpose = "unsub_digest" | "unsub_notices";
 
 interface TokenPayload {
   uid: string;
-  p: typeof PURPOSE;
+  p: UnsubscribePurpose;
 }
 
 function b64urlEncode(input: Buffer | string): string {
@@ -45,14 +48,18 @@ function sign(payload: string, secret: string): string {
  * Issue a signed unsubscribe token for the given user. Throws if the
  * secret is unset — misconfiguration shouldn't ship invalid links.
  */
-export function buildUnsubscribeToken(userId: string, secret: string): string {
+export function buildUnsubscribeToken(
+  userId: string,
+  secret: string,
+  purpose: UnsubscribePurpose = "unsub_digest",
+): string {
   if (!secret || secret.length < 16) {
     throw new Error(
       "DIGEST_UNSUBSCRIBE_SECRET must be set and >= 16 characters to issue unsubscribe tokens.",
     );
   }
   if (!userId) throw new Error("buildUnsubscribeToken: userId is required");
-  const payload: TokenPayload = { uid: userId, p: PURPOSE };
+  const payload: TokenPayload = { uid: userId, p: purpose };
   const encoded = b64urlEncode(JSON.stringify(payload));
   const sig = sign(encoded, secret);
   return `${encoded}.${sig}`;
@@ -66,6 +73,7 @@ export function buildUnsubscribeToken(userId: string, secret: string): string {
 export function verifyUnsubscribeToken(
   token: string,
   secret: string,
+  purpose: UnsubscribePurpose = "unsub_digest",
 ): string | null {
   if (!token || !secret) return null;
   const parts = token.split(".");
@@ -84,7 +92,7 @@ export function verifyUnsubscribeToken(
   } catch {
     return null;
   }
-  if (!payload || payload.p !== PURPOSE) return null;
+  if (!payload || payload.p !== purpose) return null;
   if (typeof payload.uid !== "string" || payload.uid.length === 0) return null;
   return payload.uid;
 }
@@ -103,8 +111,12 @@ export function buildUnsubscribeUrl(params: {
   userId: string;
   apiBaseUrl: string;
   secret: string;
+  /** Notices' link (/unsubscribe/notices) or the digest's (the default). */
+  purpose?: UnsubscribePurpose;
 }): string {
-  const token = buildUnsubscribeToken(params.userId, params.secret);
+  const purpose = params.purpose ?? "unsub_digest";
+  const token = buildUnsubscribeToken(params.userId, params.secret, purpose);
   const base = params.apiBaseUrl.replace(/\/+$/, "");
-  return `${base}/api/unsubscribe/digest?token=${encodeURIComponent(token)}`;
+  const path = purpose === "unsub_notices" ? "notices" : "digest";
+  return `${base}/api/unsubscribe/${path}?token=${encodeURIComponent(token)}`;
 }

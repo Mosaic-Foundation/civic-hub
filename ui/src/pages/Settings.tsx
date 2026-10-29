@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/authState";
 import AuthModal from "../components/AuthModal";
-import { setDigestFrequency } from "../services/api";
+import { setDigestFrequency, setNoticesEmail } from "../services/api";
 import { useHub } from "../config/hub";
 import {
   deleteAccount as deleteAccountApi,
@@ -36,6 +36,8 @@ export default function Settings() {
   // state, but the person just clicked a link and wants confirmation.
   const [searchParams] = useSearchParams();
   const cameFromUnsubscribe = searchParams.get("digest") === "unsubscribed";
+  // A notice's own one-click link lands here (design pass, decision 15).
+  const cameFromNoticesOff = searchParams.get("notices") === "off";
   // What the link did, judged against THIS account once it loads. The link
   // is signed for the account the email went to; if the browser is signed
   // in as someone else (Adam, 2026-09-06: digest to a +alias, signed in as
@@ -48,6 +50,13 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // "Notices about things I take part in" (design pass, decision 15): what a
+  // package's notify() sends, apart from the digest. On by default.
+  const [notices, setNotices] = useState<boolean | "loading">("loading");
+  const [savingNotices, setSavingNotices] = useState(false);
+  const [noticesMessage, setNoticesMessage] = useState<string | null>(null);
+  const [noticesError, setNoticesError] = useState<string | null>(null);
 
   // "Hide AI drafting help" — server-persisted so it follows the user
   // across devices. Initialized from the freshly fetched user below.
@@ -83,6 +92,7 @@ export default function Settings() {
     getMe(token)
       .then(({ user: u }) => {
         setFrequency(u.digest_frequency_days);
+        setNotices(u.notices_email !== false);
         setHideDraftingHelp(u.hide_ai_drafting_help === true);
         setHidden(u.hidden_from_members === true);
         if (cameFromUnsubscribe) {
@@ -93,6 +103,25 @@ export default function Settings() {
         setError(`Could not load settings: ${err.message}`);
       });
   }, [loading, user, cameFromUnsubscribe]);
+
+  async function onNoticesChange(on: boolean) {
+    setSavingNotices(true);
+    setNoticesMessage(null);
+    setNoticesError(null);
+    try {
+      const res = await setNoticesEmail(on);
+      setNotices(res.notices_email);
+      setNoticesMessage(
+        res.notices_email
+          ? "Saved. You'll hear about changes to things you take part in."
+          : "Saved. No more notices; the digest is unchanged.",
+      );
+    } catch (err) {
+      setNoticesError(`Could not save: ${(err as Error).message}`);
+    } finally {
+      setSavingNotices(false);
+    }
+  }
 
   async function onHideDraftingHelpChange(hide: boolean) {
     const token = getStoredToken();
@@ -315,6 +344,31 @@ export default function Settings() {
           {message && <p className="settings-message">{message}</p>}
         </section>
         )}
+
+        <section className="settings-panel" id="notices" data-anchor="">
+          <h3>Notices</h3>
+          <p className="form-hint">
+            A short email when something you take part in changes: an event
+            you're going to moves or is cancelled, or its organiser writes to
+            the people going. This is apart from the digest.
+          </p>
+          {cameFromNoticesOff && notices === false && (
+            <p className="settings-message settings-unsubscribed" role="status">
+              Notices are off. Tick the box below whenever you want them back.
+            </p>
+          )}
+          <label className="settings-toggle-row">
+            <input
+              type="checkbox"
+              checked={notices === true}
+              onChange={(e) => onNoticesChange(e.target.checked)}
+              disabled={notices === "loading" || savingNotices}
+            />
+            <span>Notices about things I take part in</span>
+          </label>
+          {noticesMessage && <p className="settings-message">{noticesMessage}</p>}
+          {noticesError && <p className="form-error">{noticesError}</p>}
+        </section>
 
         <section className="settings-panel">
           <h3>AI drafting help</h3>

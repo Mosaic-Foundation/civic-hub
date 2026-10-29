@@ -4,9 +4,11 @@
 // (ADR-012), as heldBackAndQueues.test.ts does.
 //
 //   - one message per person, the hub's name in the subject, the process's
-//     own page as the link, and how to unsubscribe;
-//   - an unsubscribed person, an unverified address and another hub's account
-//     are skipped; the demo hub's guard holds back a resident (not a failure);
+//     own page as the link, and how to stop notices;
+//   - a person with notices off, an unverified address and another hub's
+//     account are skipped; someone unsubscribed from the digest only is not
+//     (design pass, decision 15); the demo hub's guard holds back a resident
+//     (not a failure);
 //   - a type whose grant does not name `mail` is refused, as a reach past it.
 //
 // The grant is a test's own (registerGrant), on one of Athens' processes, and
@@ -45,7 +47,7 @@ async function accountOf(hub: string, email: string, patch: Record<string, unkno
   return row.id;
 }
 
-let ids: Record<"admin" | "resident" | "unsubscribed" | "unverified" | "elsewhere", string>;
+let ids: Record<"admin" | "resident" | "noticesOff" | "digestOff" | "unverified" | "elsewhere", string>;
 let target: { id: string; type: string };
 let restoreGrant: () => void = () => {};
 
@@ -63,7 +65,9 @@ beforeAll(async () => {
     // Athens' admin: a demo hub still writes to its admins.
     admin: await accountOf("athens", "admin+athens@example.test"),
     resident: await accountOf("athens", `notify-resident-${run}@example.test`),
-    unsubscribed: await accountOf("athens", `notify-unsub-${run}@example.test`, { digest_frequency_days: null }),
+    noticesOff: await accountOf("athens", `notify-unsub-${run}@example.test`, { notices_email: false }),
+    // Unsubscribed from the digest, notices still on: a notice still reaches them.
+    digestOff: await accountOf("athens", `notify-digest-off-${run}@example.test`, { digest_frequency_days: null }),
     unverified: await accountOf("athens", `notify-unverified-${run}@example.test`, { email_verified: false }),
     elsewhere: await accountOf("floyd", `notify-floyd-${run}@example.test`),
   };
@@ -77,7 +81,7 @@ afterAll(async () => {
 });
 
 describe("notify(): the hub tells the accounts a package names", () => {
-  it("one message each to whom it may write; skips the unsubscribed, the unverified and other hubs' accounts", async () => {
+  it("one message each to whom it may write; skips notices off, the unverified and other hubs' accounts, not the digest's unsubscribed", async () => {
     const { installAdapters } = await import("../../src/adapters/index.js");
     const { fakeMail } = await import("../../src/adapters/fakes/mail.js");
     const mail = fakeMail({ configured: true });
@@ -88,13 +92,18 @@ describe("notify(): the hub tells the accounts a package names", () => {
 
     const report = await inHub(() => notify(target.id, Object.values(ids), { subject: "The room has changed", text: "We meet upstairs now." }));
 
-    expect(report).toEqual({ sent: 1, held_back: 1, skipped: 3, failed: 0 });
+    // The resident and the digest-only unsubscribed are held back by the demo
+    // hub's guard: reached, not skipped.
+    expect(report).toEqual({ sent: 1, held_back: 2, skipped: 3, failed: 0 });
     expect(mail.outbox.map((m) => m.to)).toEqual(["admin+athens@example.test"]);
     const [m] = mail.outbox;
     expect(m.subject).toMatch(/: The room has changed$/);
     expect(m.text).toContain("We meet upstairs now.");
     expect(m.text).toContain(`/${target.id}`);
-    expect(m.text).toMatch(/unsubscribe in your settings: https?:\/\/[^\s]+\/settings/);
+    // Its own way to stop notices (a one-click link, or Settings without the
+    // signing secret), and the digest named as a setting apart.
+    expect(m.text).toMatch(/turn them off: https?:\/\/[^\s]+/);
+    expect(m.text).toMatch(/the digest is a setting of its own: https?:\/\/[^\s]+\/settings/);
   });
 
   it("refuses a type whose grant does not name mail", async () => {

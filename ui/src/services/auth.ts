@@ -28,6 +28,10 @@ export interface AuthUser {
    * Defaults to 1 (daily) on account creation.
    */
   digest_frequency_days: number | null;
+  /** "Notices about things I take part in" (design pass, decision 15); on by default. */
+  notices_email?: boolean;
+  /** The person's look (decision 9); light by default. */
+  appearance?: "light" | "dark" | "system";
   /**
    * Slice 11 — most recent legal-document version this user accepted
    * (e.g. "1.0"). null means the user has never accepted; the UI shows

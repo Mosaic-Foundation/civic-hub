@@ -1892,6 +1892,18 @@ export function setDigestFrequency(
   });
 }
 
+/** Notices about things I take part in, on or off (design pass, decision 15). */
+export function setNoticesEmail(on: boolean): Promise<{ notices_email: boolean }> {
+  return request("PATCH", "/user/settings/notices", { notices_email: on });
+}
+
+/** The person's look: light, dark or the device's (design pass, decision 9). */
+export function setAppearance(
+  appearance: "light" | "dark" | "system",
+): Promise<{ appearance: "light" | "dark" | "system" }> {
+  return request("PATCH", "/user/settings/appearance", { appearance });
+}
+
 // --- Slice 9: image upload + link previews ---
 
 export interface UploadedImage {

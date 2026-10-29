@@ -1,12 +1,20 @@
-// Digest — two HTTP surfaces:
+// Digest and a person's email and look settings — HTTP surfaces:
 //
 //   GET /unsubscribe/digest?token=…
 //     No auth. Verifies the HMAC-signed token, flips
 //     digest_frequency_days to null, redirects to the settings page.
 //
+//   GET /unsubscribe/notices?token=…
+//     The same for a notice's link: notices_email off, the digest as it was
+//     (design pass, decision 15, 2026-10-29).
+//
 //   PATCH /user/settings/digest
 //     Authed (requireAuth). Flips the subscription flag for the
 //     currently authenticated user (the settings-page toggle).
+//
+//   PATCH /user/settings/notices, PATCH /user/settings/appearance
+//     Authed. "Notices about things I take part in" on or off; the person's
+//     look (decisions 15 and 9).
 //
 // The digest email itself is the "digest" job, src/jobs/digest.ts.
 
@@ -14,7 +22,9 @@ import { env } from "../config/env.js";
 import { ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { verifyUnsubscribeToken } from "../modules/civic.digest/index.js";
-import { setDigestFrequency, getUser } from "../modules/civic.auth/index.js";
+import { setAppearance, setDigestFrequency, setNoticesEmail, getUser } from "../modules/civic.auth/index.js";
+import { APPEARANCES, type Appearance } from "../modules/civic.auth/models.js";
+import type { UnsubscribePurpose } from "../modules/civic.digest/unsubscribe.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { hubDisplayNameSync } from "../services/hubSettings.js";
@@ -63,8 +73,19 @@ function escapeHtml(s: string): string {
 }
 
 // An HTML page for a person clicking a link in an email, so its refusals are
-// rendered pages, not JSON; route() still answers anything unforeseen.
-export const handleUnsubscribeDigest = route(async (req, res) => {
+// rendered pages, not JSON; route() still answers anything unforeseen. One
+// handler per purpose: what the token was signed for is all it can stop.
+const UNSUBSCRIBE: Record<UnsubscribePurpose, { log: string; apply: (userId: string) => Promise<unknown>; landing: string }> = {
+  unsub_digest: { log: "digest", apply: (id) => setDigestFrequency(id, null), landing: "digest=unsubscribed" },
+  unsub_notices: { log: "notices", apply: (id) => setNoticesEmail(id, false), landing: "notices=off" },
+};
+
+export const handleUnsubscribeDigest = unsubscribeHandler("unsub_digest");
+export const handleUnsubscribeNotices = unsubscribeHandler("unsub_notices");
+
+function unsubscribeHandler(purpose: UnsubscribePurpose) {
+  const what = UNSUBSCRIBE[purpose];
+  return route(async (req, res) => {
   const token = typeof req.query.token === "string" ? req.query.token : "";
   const secret = env.DIGEST_UNSUBSCRIBE_SECRET;
 
@@ -80,7 +101,7 @@ export const handleUnsubscribeDigest = route(async (req, res) => {
     return;
   }
 
-  const userId = verifyUnsubscribeToken(token, secret);
+  const userId = verifyUnsubscribeToken(token, secret, purpose);
   if (!userId) {
     res.status(400).type("html").send(
       renderUnsubscribePage({
@@ -111,18 +132,18 @@ export const handleUnsubscribeDigest = route(async (req, res) => {
       return;
     }
 
-    await setDigestFrequency(userId, null);
-    console.log(`[digest] unsubscribed user=${userId}`);
+    await what.apply(userId);
+    console.log(`[${what.log}] unsubscribed user=${userId}`);
 
     // Land in Settings, where the frequency control shows "Unsubscribed"
     // selected and can be changed on the spot — not on a bare confirmation
     // page a step away from it (Adam, 2026-09-06: "I don't see where it
     // says unsubscribed"). The query flag lets Settings say what just
     // happened, signed in or not.
-    res.redirect(302, `${uiBaseUrl()}/settings?digest=unsubscribed`);
+    res.redirect(302, `${uiBaseUrl()}/settings?${what.landing}`);
   } catch (err) {
     // Logged for the operator; the page below says nothing of the cause.
-    console.error(`[digest] unsubscribe failed for user=${userId}:`, err instanceof Error ? err.message : err);
+    console.error(`[${what.log}] unsubscribe failed for user=${userId}:`, err instanceof Error ? err.message : err);
     res.status(500).type("html").send(
       renderUnsubscribePage({
         title: "Unsubscribe failed",
@@ -133,7 +154,8 @@ export const handleUnsubscribeDigest = route(async (req, res) => {
       }),
     );
   }
-});
+  });
+}
 
 // --- PATCH /user/settings/digest -------------------------------------------
 
@@ -180,4 +202,26 @@ export const handlePatchDigestSubscription = route(async (req, res) => {
   res.json({
     digest_frequency_days: updated.digest_frequency_days,
   });
+});
+
+// --- PATCH /user/settings/notices, /user/settings/appearance ---------------
+
+/** { notices_email: boolean } → { notices_email } (design pass, decision 15). */
+export const handlePatchNotices = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const on = (req.body ?? {}).notices_email;
+  if (typeof on !== "boolean") throw new ValidationError("Body must be { notices_email: boolean }.");
+  const updated = await setNoticesEmail(user.id, on);
+  res.json({ notices_email: updated.notices_email });
+});
+
+/** { appearance: "light" | "dark" | "system" } → { appearance } (decision 9). */
+export const handlePatchAppearance = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const appearance = (req.body ?? {}).appearance;
+  if (!APPEARANCES.includes(appearance as Appearance)) {
+    throw new ValidationError('Body must be { appearance: "light" | "dark" | "system" }.');
+  }
+  const updated = await setAppearance(user.id, appearance as Appearance);
+  res.json({ appearance: updated.appearance });
 });

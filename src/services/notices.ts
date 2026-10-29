@@ -7,10 +7,11 @@
 // may.
 //
 // Whom it skips: accounts that are not this hub's, people with no verified
-// address, and people who unsubscribed from the hub's email
-// (`digest_frequency_days` null: Settings' "Email digest", the one email
-// setting a person has today; a setting of its own for notices is the design
-// pass's to add). The message is about one process of the package's type,
+// address, and people who turned notices off (`notices_email` false:
+// Settings' "Notices about things I take part in", or a notice's own
+// one-click link; design pass, decision 15, 2026-10-29). Unsubscribing from
+// the digest no longer stops a notice that an event someone is going to was
+// cancelled. The message is about one process of the package's type,
 // and links to that process's page: the hub builds the link, so a package can
 // link nowhere else. The type's grant must name `mail` (and the hub's
 // approved grant too): the Plugins page then says it sends email.
@@ -19,7 +20,9 @@ import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { inChunks } from "../db/inChunks.js";
 import { sendEmail } from "../utils/email.js";
-import { uiBaseUrl } from "../utils/baseUrl.js";
+import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
+import { env } from "../config/env.js";
+import { buildUnsubscribeUrl } from "../modules/civic.digest/index.js";
 import { hubDisplayNameSync } from "./hubSettings.js";
 import { NotFoundError, ValidationError } from "../errors/index.js";
 import { processHeads } from "./processRows.js";
@@ -69,12 +72,12 @@ export async function notify(processId: string, accounts: readonly string[], not
   const report: NoticeReport = { sent: 0, held_back: 0, skipped: 0, failed: 0 };
   if (ids.length === 0) return report;
 
-  type Person = { id: string; email: string | null; email_verified: boolean | null; digest_frequency_days: number | null };
+  type Person = { id: string; email: string | null; email_verified: boolean | null; notices_email: boolean | null };
   const db = forHub(currentHubId());
   const people = await inChunks(ids, (chunk) =>
-    db.from("users").select<Person>("id, email, email_verified, digest_frequency_days").in("id", chunk),
+    db.from("users").select<Person>("id, email, email_verified, notices_email").in("id", chunk),
   );
-  const reachable = people.filter((p) => p.email && p.email_verified && p.digest_frequency_days !== null);
+  const reachable = people.filter((p) => p.email && p.email_verified && p.notices_email !== false);
   report.skipped = ids.length - reachable.length;
 
   const base = uiBaseUrl();
@@ -82,18 +85,34 @@ export async function notify(processId: string, accounts: readonly string[], not
   const settings = `${base}/settings`;
   const hub = hubDisplayNameSync();
   const fullSubject = `${hub}: ${subject}`;
-  const footer = `You get this because of what you did on ${hub}. To stop the hub's email, unsubscribe in your settings: ${settings}`;
-  const bodyText = `${text}\n\n${link}\n\n${footer}`;
-  const bodyHtml =
-    `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>` +
-    `<p><a href="${escapeHtml(link)}">${escapeHtml(link)}</a></p>` +
-    `<p style="color:#666;font-size:13px">You get this because of what you did on ${escapeHtml(hub)}. ` +
-    `To stop the hub's email, <a href="${escapeHtml(settings)}">unsubscribe in your settings</a>.</p>`;
+  // Each person's own one-click link stops notices only; without the signing
+  // secret (a local hub), the settings page does it.
+  const secret = env.DIGEST_UNSUBSCRIBE_SECRET;
+  const stopLink = (userId: string) =>
+    secret && secret.length >= 16
+      ? buildUnsubscribeUrl({ userId, apiBaseUrl: baseUrl(), secret, purpose: "unsub_notices" })
+      : `${settings}#notices`;
+  const message = (userId: string) => {
+    const stop = stopLink(userId);
+    const footer =
+      `You get this because of what you did on ${hub}. To stop notices like this one, ` +
+      `turn them off: ${stop} (the digest is a setting of its own: ${settings})`;
+    return {
+      text: `${text}\n\n${link}\n\n${footer}`,
+      html:
+        `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>` +
+        `<p><a href="${escapeHtml(link)}">${escapeHtml(link)}</a></p>` +
+        `<p style="color:#666;font-size:13px">You get this because of what you did on ${escapeHtml(hub)}. ` +
+        `<a href="${escapeHtml(stop)}">Stop notices like this one</a>. ` +
+        `The digest is a setting of its own, in <a href="${escapeHtml(settings)}">your settings</a>.</p>`,
+    };
+  };
 
   for (let i = 0; i < reachable.length; i += PARALLEL) {
     await Promise.all(
       reachable.slice(i, i + PARALLEL).map(async (p) => {
-        const r = await sendEmail({ to: p.email!, subject: fullSubject, html: bodyHtml, text: bodyText });
+        const body = message(p.id);
+        const r = await sendEmail({ to: p.email!, subject: fullSubject, html: body.html, text: body.text });
         if (r.sent) report.sent += 1;
         else if (r.held_back) report.held_back += 1;
         else if (r.error && /not configured/i.test(r.error)) {
