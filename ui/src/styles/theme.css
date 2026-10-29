@@ -1,68 +1,143 @@
 /*
- * Civic Hub — theme tokens.
+ * Civic Hub — the token layer (design pass, 2026-10-29; ADR-018).
  *
- * Bridge layer: imports the shared Civic.Social design system and maps
- * its --ds-* tokens to the --color-* / --font-* / --space-* names that
- * civic-hub component CSS already references. This avoids a mass rename
- * of every component stylesheet while still pulling all visual decisions
- * from the single source of truth in shared/design-system.
+ * Every colour, font, size and spacing the hub draws is a custom property
+ * named here. Pages, the kit and every plugin read these names and nothing
+ * else (scripts/check-tokens.ts and conformance hold them to it), so a hub's
+ * look is a token set: an admin's theme (identity.theme, derived to tokens by
+ * src/shared/theme.ts and set inline on the root) or a dark set swaps the
+ * values and every page follows.
  *
- * Hub-specific tokens (post-type pill colors, layout widths) that don't
- * exist in the design system stay defined locally at the bottom.
+ * Two layers:
+ *   - the palette (design-system/tokens.css): --ds-* scales — ink, paper,
+ *     primary, accent, the status hues. A theme re-derives these.
+ *   - the roles (this file): what a value is FOR — the page, a card, muted
+ *     text, a filled button's label, a table's hover row, a page title. Pages
+ *     use roles, never --ds-* steps, so a dark set can map a role to a
+ *     different step without touching a page.
+ *
+ * Names that older stylesheets already use (--color-*, --space-xs…xl,
+ * --pill-*, --type-*) keep their meaning; the new role names sit beside them.
  */
 
+@import "@fontsource-variable/inter/wght.css";
 @import "./design-system/tokens.css";
 @import "./design-system/base.css";
 @import "./design-system/components.css";
+@import "./tokens/looks.css";
 
 /* `.theme-scope` re-declares this whole layer on an element, so a theme's
    variables set on that element (Settings → Theme's live preview) flow
    through every token below it. At :root it is the same declaration. */
 :root,
 .theme-scope {
-  /* --- Color: surfaces --- */
+  /* --- Colour: surfaces ------------------------------------------------- */
   --color-bg: var(--ds-color-bg-page);
   --color-surface: var(--ds-color-bg-surface);
   --color-surface-alt: var(--ds-color-bg-surface-alt);
   --color-surface-muted: var(--ds-color-bg-muted);
+  /* A well inside a card: a table's head, a code block, an empty state. */
+  --color-surface-sunken: var(--ds-color-paper-100);
+  /* A row or item under the pointer. */
+  --color-surface-hover: var(--ds-color-paper-100);
+  /* Every other row of a striped table; transparent where a look has none. */
+  --color-surface-stripe: transparent;
+  /* Popovers, menus, dialogs. */
+  --color-surface-raised: var(--ds-color-paper-0);
+  /* Behind a dialog. */
+  --color-scrim: rgba(12, 23, 38, 0.45);
+
   --color-border: var(--ds-color-border-default);
+  /* A hairline: card edges, table rules, dividers inside a card. */
+  --color-border-subtle: var(--ds-color-border-subtle);
   --color-border-strong: var(--ds-color-border-strong);
-  --color-border-hover: var(--ds-color-ink-400);
+  --color-border-hover: var(--ds-color-ink-500);
+  /* A control's own edge (an input, a checkbox): 3:1 on the surface, so the
+     control can be found (WCAG 1.4.11). Decorative edges use the lighter
+     ones above. */
+  --color-border-control: var(--ds-color-ink-400);
 
-  /* --- Color: text --- */
+  /* --- Colour: text ----------------------------------------------------- */
   --color-text: var(--ds-color-text-default);
+  /* The strongest text: a figure, a page title. */
+  --color-text-strong: var(--ds-color-ink-950);
   --color-text-muted: var(--ds-color-text-muted);
-  --color-text-subtle: var(--ds-color-text-subtle);
+  /* The lightest text that is still text (dates, hints, placeholders): AA on
+     every surface (tests/unit/contrast.test.ts). */
+  --color-text-subtle: #66768f;
+  /* Decoration only, never words: a disabled control's edge, a separator dot. */
   --color-text-faint: var(--ds-color-ink-300);
+  /* Text on a dark fill (a primary button, the admin bar). */
+  --color-text-inverse: var(--ds-color-text-inverse);
 
-  /* --- Color: primary / accents --- */
+  /* --- Colour: primary (the admin's choice) ---------------------------- */
   --color-primary: var(--ds-color-action-primary);
   /* Text ON a primary fill (a filled button, a chosen chip). */
   --color-primary-text: var(--ds-color-text-inverse);
   --color-primary-hover: var(--ds-color-action-primary-hover);
+  --color-primary-active: var(--ds-color-action-primary-active);
   /* The darkest primary tone: text on a LIGHT primary tint, never on the
      fill itself (that is --color-primary-text). Mistaking one for the other
      drew black text on dark-blue buttons (engine 2, A7; buttonInk.test.ts). */
   --color-primary-ink: var(--ds-color-primary-950);
+  --color-primary-wash: var(--ds-color-primary-50);
+  --color-primary-bg: var(--ds-color-primary-50);
+  --color-primary-tint: var(--ds-color-primary-100);
+  --color-primary-border: var(--ds-color-primary-200);
 
   /* Brand accent — used for identity labels, headings, wordmark. */
   --color-brand: var(--ds-color-primary-700);
 
-  /* --- Color: links --- */
+  /* --- Colour: accent (actions that invite: "Raise something", chips) -- */
+  --color-accent: var(--ds-color-action-accent);
+  --color-accent-hover: var(--ds-color-action-accent-hover);
+  /* Text ON an accent fill. */
+  --color-accent-text: var(--ds-color-text-inverse);
+  /* Accent-coloured words on a light surface or the accent wash. */
+  --color-accent-ink: var(--ds-color-accent-800);
+  --color-accent-wash: var(--ds-color-accent-50);
+  --color-accent-tint: var(--ds-color-accent-100);
+  /* Older names for the same thing. */
+  --color-action-accent: var(--color-accent);
+  --color-action-accent-hover: var(--color-accent-hover);
+  --civic-rust: var(--ds-color-accent-600);
+
+  /* --- Colour: links and focus ----------------------------------------- */
   --color-link: var(--ds-color-text-link);
-
-  /* --- Color: focus ring --- */
+  --color-link-hover: var(--ds-color-text-link-hover);
   --color-focus: var(--ds-color-border-focus);
+  --focus-ring: var(--ds-shadow-focus);
 
-  /* --- Color: status --- */
+  /* --- Colour: status --------------------------------------------------- */
   --color-success: var(--ds-color-success-700);
   --color-success-bg: var(--ds-color-success-100);
   --color-error: var(--ds-color-danger-700);
   --color-error-bg: var(--ds-color-danger-100);
-  --color-warning: var(--ds-color-warning-700);
+  --color-error-hover: var(--ds-color-danger-700);
+  /* Darker than the palette's 700 so it reads on its own wash (AA). */
+  --color-warning: #7a5a12;
   --color-warning-bg: var(--ds-color-warning-100);
+  --color-info: var(--ds-color-info-700);
+  --color-info-bg: var(--ds-color-info-100);
+  /* A count that wants attention (new in a queue). */
+  --color-badge-bg: var(--ds-color-danger-700);
+  --color-badge-text: var(--ds-color-paper-0);
 
-  /* --- Color: post-type pills (hub-specific) --- */
+  /* --- Chrome: the hub header, the admin bar, the left column ---------- */
+  --color-header-bg: var(--color-bg);
+  --color-header-border: var(--color-border);
+  --color-column-bg: var(--color-surface);
+  --color-column-border: var(--color-border);
+  /* The admin bar: a different tone from the hub's own pages, so an admin
+     always knows they are in admin (decision 4). */
+  --color-admin-bar-bg: var(--ds-color-ink-900);
+  --color-admin-bar-text: var(--ds-color-ink-200);
+  --color-admin-bar-text-active: var(--ds-color-paper-0);
+  --color-admin-bar-title: var(--ds-color-paper-0);
+  --color-admin-bar-indicator: var(--ds-color-accent-400);
+  --color-admin-bar-hover: rgba(255, 255, 255, 0.08);
+
+  /* --- Colour: post-type pills (hub-specific) --- */
   --pill-vote-bg: var(--ds-color-primary-100);       --pill-vote-fg: var(--ds-color-primary-800);
   --pill-results-bg: var(--ds-color-primary-200);     --pill-results-fg: var(--ds-color-primary-950);
   --pill-vote-results-bg: var(--ds-color-primary-100); --pill-vote-results-fg: var(--ds-color-primary-700);
@@ -82,8 +157,8 @@
   --pill-conversation-results-bg: #e6e9f3;            --pill-conversation-results-fg: #3f4a86;
   --pill-project-bg: #e3f2fd;                         --pill-project-fg: #1565c0;
   --pill-wordcloud-bg: #e0f2f1;                       --pill-wordcloud-fg: #00695c;
-  --pill-brief-bg: var(--ds-color-primary-100, #dce5f2);
-  --pill-brief-fg: var(--ds-color-primary-700, #1f3a66);
+  --pill-brief-bg: var(--ds-color-primary-100);
+  --pill-brief-fg: var(--ds-color-primary-700);
   /* Official response to a brief — a warm gold, distinct from every
      process-type hue so "the government spoke" reads at a glance.
      Mirrored as literals in civic.digest/service.ts PILL_COLORS. */
@@ -126,19 +201,24 @@
   /* Outcomes (briefs, vote results) wear the hub's terracotta — the one
      accent the detail pages had been leaving on the table (Adam,
      2026-09-03: "a little boring… add some of that terracotta"). */
-  --type-brief-bg: var(--ds-color-accent-100, #f4e1d2);
-  --type-brief-fg: var(--ds-color-accent-800, #8c4a2b);
-  --type-brief-rule: var(--ds-color-accent-600, #c37b51);
-  --type-brief-wash: var(--ds-color-accent-50, #faf0e7);
-  --type-generic-bg: var(--ds-color-primary-100, #dce5f2);
-  --type-generic-fg: var(--ds-color-primary-700, #1f3a66);
+  --type-brief-bg: var(--ds-color-accent-100);
+  --type-brief-fg: var(--ds-color-accent-800);
+  --type-brief-rule: var(--ds-color-accent-600);
+  --type-brief-wash: var(--ds-color-accent-50);
+  --type-generic-bg: var(--ds-color-primary-100);
+  --type-generic-fg: var(--ds-color-primary-700);
 
-  /* --- Typography --- */
+  /* --- Typography ------------------------------------------------------- */
+  /* One family, Inter, bundled (latin and the other subsets load only when a
+     page uses their characters); the system's sans until it arrives. */
   --font-body: var(--ds-font-family-sans);
   --font-heading: var(--ds-font-family-display);
+  --font-mono: var(--ds-font-family-mono);
 
+  --font-size-2xs: 0.6875rem; /* 11: a count badge, never body text */
   --font-size-xs: var(--ds-font-size-xs);
   --font-size-sm: var(--ds-font-size-sm);
+  --font-size-md: 0.9375rem; /* 15 */
   --font-size-base: var(--ds-font-size-base);
   --font-size-lg: var(--ds-font-size-lg);
   --font-size-xl: var(--ds-font-size-xl);
@@ -146,39 +226,154 @@
   --font-size-3xl: var(--ds-font-size-3xl);
   --font-size-4xl: var(--ds-font-size-4xl);
 
+  --font-weight-regular: var(--ds-font-weight-regular);
+  --font-weight-medium: var(--ds-font-weight-medium);
+  --font-weight-semibold: var(--ds-font-weight-semibold);
+  --font-weight-bold: var(--ds-font-weight-bold);
+
   --line-height-tight: var(--ds-line-height-tight);
+  --line-height-snug: var(--ds-line-height-snug);
   --line-height-normal: var(--ds-line-height-normal);
   --line-height-relaxed: var(--ds-line-height-relaxed);
   --line-height-base: var(--ds-line-height-normal);
 
-  /* --- Spacing scale --- */
-  --space-xs: var(--ds-space-1);
-  --space-sm: var(--ds-space-2);
-  --space-md: var(--ds-space-4);
-  --space-lg: var(--ds-space-6);
-  --space-xl: var(--ds-space-8);
+  --letter-spacing-tight: var(--ds-letter-spacing-tight);
+  --letter-spacing-normal: var(--ds-letter-spacing-normal);
+  --letter-spacing-wide: var(--ds-letter-spacing-wide);
 
-  /* --- Radii --- */
+  /* The type roles: what a piece of text is, not how big. A page uses these;
+     the scale above is for the roles' own definitions and rare cases. Body
+     stays 16px so a phone never zooms into a form field. */
+  --text-display-size: var(--font-size-3xl);   /* a page's title */
+  --text-display-weight: var(--font-weight-bold);
+  --text-title-size: var(--font-size-xl);      /* a section of a page */
+  --text-title-weight: var(--font-weight-semibold);
+  --text-heading-size: var(--font-size-lg);    /* a card's or a list item's title */
+  --text-heading-weight: var(--font-weight-semibold);
+  --text-body-size: var(--font-size-base);
+  --text-small-size: var(--font-size-sm);      /* secondary lines, table cells */
+  --text-caption-size: var(--font-size-xs);    /* meta: dates, counts, labels */
+  --text-eyebrow-size: var(--font-size-xs);    /* a small capitals label over a heading */
+  --text-eyebrow-spacing: 0.06em;
+  --text-figure-size: var(--font-size-3xl);    /* the number on a stat card */
+  --text-figure-weight: var(--font-weight-semibold);
+  --text-label-size: var(--font-size-sm);      /* a form field's label */
+  --text-label-weight: var(--font-weight-medium);
+
+  /* --- Spacing: a 4px scale ---------------------------------------------
+     Numbered by quarter-rem: --space-4 is 16px. The named sizes are the
+     older aliases. */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 0.125rem; /* 2 */
+  --space-1: var(--ds-space-1);   /* 4 */
+  --space-1-5: 0.375rem;          /* 6 */
+  --space-2: var(--ds-space-2);   /* 8 */
+  --space-2-5: 0.625rem;          /* 10 */
+  --space-3: var(--ds-space-3);   /* 12 */
+  --space-4: var(--ds-space-4);   /* 16 */
+  --space-5: var(--ds-space-5);   /* 20 */
+  --space-6: var(--ds-space-6);   /* 24 */
+  --space-8: var(--ds-space-8);   /* 32 */
+  --space-10: var(--ds-space-10); /* 40 */
+  --space-12: var(--ds-space-12); /* 48 */
+  --space-16: var(--ds-space-16); /* 64 */
+  --space-20: var(--ds-space-20); /* 80 */
+
+  --space-xs: var(--space-1);
+  --space-sm: var(--space-2);
+  --space-md: var(--space-4);
+  --space-lg: var(--space-6);
+  --space-xl: var(--space-8);
+  --space-2xl: var(--space-12);
+
+  /* --- Sizes: controls and icons ---------------------------------------- */
+  --control-height: 2.5rem;       /* 40: inputs, buttons */
+  --control-height-sm: 2rem;      /* 32: chips, small buttons */
+  --control-height-lg: 3rem;      /* 48 */
+  --tap-target: 2.75rem;          /* 44: the least a phone finger needs */
+  --icon-size-sm: 1rem;
+  --icon-size: 1.25rem;
+  --icon-size-lg: 1.5rem;
+  --avatar-size: 2rem;
+  --avatar-size-lg: 2.5rem;
+  --border-width: 1px;
+  --border-width-strong: 2px;
+  --indicator-width: 2px;         /* a tab's underline, a column item's edge */
+
+  /* --- Radii ------------------------------------------------------------ */
+  --radius-xs: 2px;
   --radius-sm: var(--ds-radius-sm);
   --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
+  --radius-xl: var(--ds-radius-xl);
   --radius-pill: var(--ds-radius-pill);
+  --radius-full: var(--ds-radius-pill);
 
-  /* --- Elevation --- */
+  /* --- Elevation -------------------------------------------------------- */
+  --shadow-sm: var(--ds-shadow-sm);
+  --shadow-md: var(--ds-shadow-md);
+  --shadow-lg: var(--ds-shadow-lg);
   --shadow-card: var(--ds-shadow-sm);
   --shadow-popover: var(--ds-shadow-lg);
 
-  /* --- Layout (hub-specific) --- */
-  /* Names component CSS used with a literal fallback and nothing defined,
-     so they could never follow the palette (found 2026-09-24 building the
-     Theme section: "Raise something" stayed terracotta on every theme). */
-  --color-action-accent: var(--ds-color-action-accent);
-  --color-action-accent-hover: var(--ds-color-action-accent-hover);
-  --color-link-hover: var(--ds-color-text-link-hover);
-  --color-primary-wash: var(--ds-color-primary-50);
-  --color-primary-bg: var(--ds-color-primary-50);
-  --color-primary-border: var(--ds-color-primary-200);
-  --civic-rust: var(--ds-color-accent-600);
+  /* --- Depth: cards and tables (decision 3) ----------------------------
+     How a card and a table separate from the page. A look sets these; a
+     page never draws its own edge or shadow. */
+  --card-bg: var(--color-surface);
+  --card-border: var(--border-width) solid var(--color-border);
+  --card-radius: var(--radius-md);
+  --card-shadow: none;
+  --card-shadow-hover: none;
+  --card-padding: var(--space-4);
+  --table-head-bg: var(--color-surface-sunken);
+  --table-head-text: var(--color-text);
+  --table-rule: var(--border-width) solid var(--color-border);
+  --table-row-hover: transparent;
+  --table-stripe: var(--color-surface-stripe);
+  --table-cell-padding-y: var(--space-2);
+  --table-cell-padding-x: var(--space-4);
 
+  /* --- The feed card's kind colour (decision 2) -------------------------
+     Where a card wears its kind's colour: an edge (top or left) and the
+     chip. A look moves the colour between them. */
+  --feed-card-edge-top: 4px;
+  --feed-card-edge-left: 0;
+  --feed-card-dot: none;
+  --feed-card-gap: var(--space-4);
+  --feed-tab-indicator: 4px;
+  --feed-card-padding-x: var(--space-6);
+  --feed-title-size: var(--font-size-2xl);
+  --feed-pill-case: uppercase;
+  --feed-pill-spacing: 0.05em;
+  --feed-thumb-size: 9rem;
+  --feed-thumb-size-phone: 11.25rem;
+
+  /* --- Motion ------------------------------------------------------------ */
+  --duration-fast: var(--ds-duration-fast);
+  --duration-base: var(--ds-duration-base);
+  --ease-default: var(--ds-ease-default);
+
+  /* --- Layers ------------------------------------------------------------ */
+  --z-sticky: var(--ds-z-sticky);
+  --z-overlay: var(--ds-z-overlay);
+  --z-modal: var(--ds-z-modal);
+  --z-toast: var(--ds-z-toast);
+
+  /* --- Layout (hub-specific) -------------------------------------------- */
   --max-width-shell: 1100px;
   --max-width-feed: 640px;
+  /* The width every page's content takes, plugin pages included (decision 8).
+     In the left-column layout a page fills the main column instead. */
+  --width-content: var(--max-width-shell);
+  --width-prose: 720px;
+  --width-sidebar: 248px;
+  /* The narrowest a tile in an auto-filling grid may get. */
+  --grid-min-stat: 10rem;
+  --grid-min-field: 12rem;
+  --grid-min-wide-stat: 14rem;
+  --grid-min-card: 16rem;
+  --media-max-height: 16rem;
+  --gutter: var(--space-4);
+  --gutter-wide: var(--space-8);
 }

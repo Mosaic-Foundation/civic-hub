@@ -105,33 +105,33 @@ h1, h2, h3, h4, h5, h6 {
   text-wrap: balance;
 }
 
+/* The heading levels follow the hub's type roles (theme.css; design pass,
+   2026-10-29): a page's title, a section, a card's heading, then body sizes.
+   A page sets a size of its own only through a role token. */
 h1 {
-  font-size: var(--ds-font-size-5xl);
-  font-weight: var(--ds-font-weight-bold);
+  font-size: var(--text-display-size);
+  font-weight: var(--text-display-weight);
 }
 
 h2 {
-  font-size: var(--ds-font-size-4xl);
+  font-size: var(--text-title-size);
+  line-height: var(--ds-line-height-snug);
 }
 
 h3 {
-  font-size: var(--ds-font-size-3xl);
+  font-size: var(--text-heading-size);
+  line-height: var(--ds-line-height-snug);
 }
 
 h4 {
-  font-size: var(--ds-font-size-2xl);
+  font-size: var(--text-body-size);
   line-height: var(--ds-line-height-snug);
 }
 
-h5 {
-  font-size: var(--ds-font-size-xl);
-  line-height: var(--ds-line-height-snug);
-}
-
+h5,
 h6 {
-  font-size: var(--ds-font-size-lg);
+  font-size: var(--text-small-size);
   line-height: var(--ds-line-height-snug);
-  font-weight: var(--ds-font-weight-medium);
 }
 
 /* Body text */

@@ -125,12 +125,13 @@
   /* -------------------------------------------------------------------------
      TYPOGRAPHY
      -------------------------------------------------------------------------
-     Libre Franklin (headings) + Inter (body/UI). Both are already in the
-     ecosystem — keep them. Apps are responsible for loading the actual font
-     files (fontsource or Google Fonts); this stack provides safe fallbacks.
+     One family, Inter, for headings and body (design pass, 2026-10-29). The
+     hub bundles it as "Inter Variable" (@fontsource-variable/inter, imported
+     by theme.css); the names below match that family exactly, then fall back
+     to the system's sans. Libre Franklin and Manrope are gone.
      ------------------------------------------------------------------------- */
-  --ds-font-family-display: "Libre Franklin", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --ds-font-family-sans:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ds-font-family-display: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ds-font-family-sans:    "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --ds-font-family-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   /* Type scale — modular, slightly tighter than Tailwind default for civic density */
