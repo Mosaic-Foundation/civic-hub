@@ -376,7 +376,7 @@ export default function ModeSection() {
                       placeholder="6-digit code"
                       aria-label="Confirmation code"
                       disabled={saving}
-                      style={{ maxWidth: "160px" }}
+                      style={{ maxWidth: "16ch" }}
                     />
                     <button
                       type="button"

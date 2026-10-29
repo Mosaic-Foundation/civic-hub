@@ -160,7 +160,7 @@ export default function PeopleSection() {
               placeholder="6-digit code"
               aria-label="Confirmation code"
               disabled={savingPeople}
-              style={{ maxWidth: "160px" }}
+              style={{ maxWidth: "16ch" }}
             />
             <button
               type="button"
@@ -289,7 +289,7 @@ function EmailListEditor({
             placeholder="name@example.com"
             aria-label={`${label} ${i + 1}`}
             disabled={disabled}
-            style={{ maxWidth: "360px" }}
+            style={{ maxWidth: "36ch" }}
           />
           <button
             type="button"

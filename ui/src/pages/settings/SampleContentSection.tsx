@@ -167,7 +167,7 @@ export default function SampleContentSection() {
                     placeholder="6-digit code"
                     aria-label="Confirmation code"
                     disabled={busy}
-                    style={{ maxWidth: "160px" }}
+                    style={{ maxWidth: "16ch" }}
                   />
                   <button
                     type="button"

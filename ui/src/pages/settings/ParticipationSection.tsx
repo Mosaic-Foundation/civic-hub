@@ -125,7 +125,7 @@ export default function ParticipationSection() {
           value={threshold}
           onChange={(e) => setThreshold(Math.max(0, parseInt(e.target.value) || 0))}
           disabled={!loaded || savingThreshold}
-          style={{ maxWidth: "120px" }}
+          style={{ maxWidth: "12ch" }}
         />
         <div className="admin-settings-actions">
           <button
@@ -162,7 +162,7 @@ export default function ParticipationSection() {
           value={identityMode}
           onChange={(e) => setIdentityMode(e.target.value as CommentIdentityMode)}
           disabled={!loaded || savingIdentityMode}
-          style={{ maxWidth: "360px" }}
+          style={{ maxWidth: "36ch" }}
         >
           <option value="real_name">
             Real name required — no anonymous comments

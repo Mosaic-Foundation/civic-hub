@@ -83,7 +83,7 @@ export function EmailField({ f, k, label, hint, placeholder }: Common) {
         onChange={(e) => f.set(k, e.target.value)}
         placeholder={placeholderFor(f, k, placeholder)}
         disabled={f.disabled}
-        style={{ maxWidth: "420px" }}
+        style={{ maxWidth: "44ch" }}
       />
     </div>
   );
@@ -287,7 +287,7 @@ export function HourField({ f, k, label, hint }: Common) {
         value={f.value(k)}
         onChange={(e) => f.set(k, e.target.value)}
         disabled={f.disabled}
-        style={{ maxWidth: "320px" }}
+        style={{ maxWidth: "32ch" }}
       >
         {hours.map((h) => (
           <option key={h} value={String(h)}>
@@ -347,7 +347,7 @@ export function TimeZoneField({ f, k, label, hint }: Common) {
         value={value}
         onChange={(e) => f.set(k, e.target.value)}
         disabled={f.disabled}
-        style={{ maxWidth: "320px" }}
+        style={{ maxWidth: "32ch" }}
       >
         <option value="">Not set (UTC)</option>
         {zoneList(value).map((z) => (
@@ -374,7 +374,7 @@ export function UrlField({ f, k, label, hint, placeholder }: Common) {
         onChange={(e) => f.set(k, e.target.value)}
         placeholder={placeholderFor(f, k, placeholder ?? "https://")}
         disabled={f.disabled}
-        style={{ maxWidth: "520px" }}
+        style={{ maxWidth: "54ch" }}
       />
     </div>
   );
@@ -400,7 +400,7 @@ export function ChoiceField({
         value={f.value(k)}
         onChange={(e) => f.set(k, e.target.value)}
         disabled={f.disabled}
-        style={{ maxWidth: "320px" }}
+        style={{ maxWidth: "32ch" }}
       >
         {emptyLabel !== undefined && <option value="">{emptyLabel}</option>}
         {options.map((o) => (
@@ -462,7 +462,7 @@ export function ProcessField({
         value={value}
         onChange={(e) => f.set(k, e.target.value)}
         disabled={f.disabled || items === null}
-        style={{ maxWidth: "420px" }}
+        style={{ maxWidth: "44ch" }}
       >
         <option value="">{items === null ? "Loading…" : emptyLabel}</option>
         {missing && <option value={value}>Not found ({value})</option>}
@@ -495,7 +495,7 @@ export function DateField({ f, k, label, hint }: Common) {
         value={f.value(k)}
         onChange={(e) => f.set(k, e.target.value)}
         disabled={f.disabled}
-        style={{ maxWidth: "200px" }}
+        style={{ maxWidth: "20ch" }}
       />
     </div>
   );
@@ -521,7 +521,7 @@ export function NumberField({ f, k, label, hint, placeholder, unit }: Common & {
           onChange={(e) => f.set(k, e.target.value)}
           placeholder={placeholder}
           disabled={f.disabled}
-          style={{ maxWidth: "120px" }}
+          style={{ maxWidth: "12ch" }}
         />
         {unit && <span className="form-hint"> {unit}</span>}
       </span>
