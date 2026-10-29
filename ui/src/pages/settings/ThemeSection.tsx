@@ -296,12 +296,12 @@ const LAYOUTS: ReadonlyArray<{ id: "sidebar" | "top_tabs"; title: string; body: 
   {
     id: "sidebar",
     title: "Sidebar",
-    body: "The hub's sections in a column on the left of the screen, always in view. New hubs start with this.",
+    body: "The hub's sections in a column on the left of the screen, always in view.",
   },
   {
     id: "top_tabs",
     title: "Top tabs",
-    body: "The hub's name and menu along the top, and the sections as tabs under the banner.",
+    body: "The hub's name and menu along the top, and the sections as tabs under the banner. New hubs start with this.",
   },
 ];
 

@@ -54,7 +54,7 @@ export const KEYS = {
   // Where the hub's sections are drawn, and in what order (navigation slice,
   // 2026-10-14, Adam). `nav.layout` is "sidebar" or "top_tabs"; unset is
   // top_tabs, so a hub made before the slice is unchanged until its admin
-  // chooses, and a new hub is created with "sidebar"
+  // chooses, and a new hub is created with "top_tabs" (design pass, 2026-10-29)
   // (src/control/hubs.ts). Phones get the bottom bar under either.
   // `nav.section_order` is a JSON array of section ids (Feed is always
   // first and never listed); unset is the registry's default order. One
