@@ -4,6 +4,116 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The design pass: one token system, the kit, admin as its own place, dark mode — 2026-10-28/29
+
+**State:**
+- **Dev:** `c76a5bc`, via `release.sh dev --yes`: 2 migrations, `users.notices_email`/`appearance` and the
+  Events 0.3.1 catalog entry. Health is ok with no schema gaps.
+- **Dev mounts 8 of 9 packages** until Adam approves Events 0.3.1 in dev's console (required), so dev's Smoke
+  fails its package-count check until then.
+- **Not on production.**
+- **ADR-018** (`decisions/018-design-tokens-and-theming.md`) is committed locally in the mono repo for Adam to
+  push.
+- **Reports:** `~/Documents/Mosaic/0 Management/Civic Social/Design-Pass-Session-Report-2026-10-29.md` and
+  `Design-Pass-Handoff-to-Management-2026-10-29.md`. The A/B stop report and the screenshots
+  (`Design-Pass-Options/`) are beside them.
+
+**What it is (Adam's sixteen decisions; Daylight chosen at the A/B stop, with the kind's colour bar kept on
+top of cards):**
+- **Tokens (1, 11):**
+  - `theme.css` is the role layer: surfaces, text, primary, accent, chrome, status, `--card-*`/`--table-*`
+    depth, type roles and a 4px spacing scale. Pages, the kit and packages read roles only.
+  - Inter is bundled and named exactly; the headings follow the type roles.
+  - The ratchet (`scripts/check-tokens.ts` in `npm run lint`): every hub stylesheet is at none. Two files
+    remain, the console and the start page, which are out of scope.
+  - Conformance step 21 holds a package to none.
+- **Colour and depth (2, 3):**
+  - The Daylight palette: a near-white warm page, white header and cards with hairline edges, a coral accent,
+    quiet small-caps table heads with tinted alternate rows.
+  - Kinds' colours as a bar on top of cards and as dots.
+  - Activity: a filled headline stat, accent bars and kind dots; every tile now the same height (the base
+    `li + li` margin pushed the others down).
+- **Admin (4):**
+  - One admin bar under the hub header (`AdminBar.tsx`, `useAdminNav.ts`); `AdminTabs` is gone.
+  - The selected tab is a lighter field with a thick accent rule.
+  - Admin pages have Activity's treatment: page heads, chips, accent cards, kit tables.
+  - Hub settings is one calm place: section cards, one density, one rail.
+- **Left column (5):**
+  - The header (name, search, account, Share) now runs across the top in this layout too, which reverses the
+    10-14 "no top bar".
+  - The column is navigation only: sections, one Admin entry, and Feedback/Welcome/About at its foot.
+  - Inside admin it becomes the admin list, with Hub settings' sections nested under it through a portal
+    (`context/columnSlot.ts`).
+  - It is sticky at the window's height, so it no longer ends early.
+- **Default layout (6):** new hubs get `top_tabs`; existing hubs keep what they stored.
+- **Controls (7):**
+  - The kit (`kit/kit.css`) is the one control set, with a `:where()` baseline.
+  - New components: Checkbox, RadioCards, ChipGroup, Card, Stat, StatGrid, Table, PageHead and ImageUpload.
+  - `DateTimeInput` gains the hub's own month-and-time picker; the field stays native for typing, its value
+    and screen readers.
+  - All of these are exported through SDK `/ui`.
+- **Width (8):** DraftShell and every plugin page take `--width-content`.
+- **Dark (9):**
+  - `tokens/dark.css` holds the full dark set. The person chooses Light, Dark or Follow this device in Your
+    settings; it is stored on the account (`users.appearance`), light by default.
+  - A signed-out reader follows the device and may choose in the footer.
+  - `public/appearance.js` sets the mode before the first paint.
+  - The hub's theme is now a stylesheet, not inline: primary, accent and font hold in both modes, page and
+    kind colours in light only.
+- **Appearance (10):**
+  - Settings → Theme is now Appearance (the address is unchanged).
+  - It adds the background's warmth, a font from four (Inter; Inter with Source Serif headings; Atkinson
+    Hyperlegible; the device's own), and the logo with a link to Identity.
+  - These are stored in `identity.theme` and derived by `theme.ts`.
+- **Packages (12):**
+  - Only Events changed: 0.3.1, its stylesheet on tokens and the content width.
+  - The other eight draw their pages from `ui/src/pages/`, so the theme reaches them.
+  - What they still import: their `ui.tsx` imports the hub's lazy pages, `services/api`, `pluginFields` and
+    `processes/types` (the liftability slice).
+- **Style guide (13):** `docs/PLUGIN-STYLE.md`, linked from BUILD-A-PLUGIN. The docs site mirror is the docs
+  refresh's job.
+- **Remove dialog (14):**
+  - Wind down comes first and is chosen, in the plugin's own words.
+  - A plugin whose items never close may wind down too: nothing new, the existing stay, until Stop now. The
+    close job switches off only plugins with deadlines.
+- **Notices (15):**
+  - `users.notices_email`, on by default; `notify()` reads it instead of the digest.
+  - Each notice carries its own one-click `/unsubscribe/notices` link, a token signed for notices only.
+  - Settings has a Notices panel.
+- **Polls vs votes (16):** left as is; nothing in the pass argued for a change.
+
+**Invariants:**
+- **The wire:**
+  - Local snapshot before and after the presentation work: 4,675 events, all identical.
+  - No file that makes the wire changed in the slice: `src/events`, the feed's wire forms, authz,
+    `src/processes`, the vote package.
+- **Ballot code:** untouched.
+- **`authzParity`:** green in both passes. Its fixture user carries the two new fields (type only).
+- **New routes:** `GET /unsubscribe/notices`, `PATCH /user/settings/notices`, `PATCH /user/settings/appearance`.
+
+**Checks (local, on a reset stack):**
+- Unit 2,146; UI 39; lint, the ratchet, both type-checks, `sdk:build --check`.
+- Contrast: 137 pairs across light and dark, all AA.
+- API service role: 1,050 passed, 1 failed, the known `auditConcurrency` flake, which passes alone (10/10).
+  API minted tokens: 1,051 passed.
+- `catalog:add` green for Events 0.3.1 (33 passed, step 21 included).
+- Playwright and the screenshot comparison: see the session report.
+
+**Left:**
+- **Adam:**
+  - Approve Events 0.3.1 in dev's console. Then dev's Smoke is 9 of 9.
+  - Push ADR-018 in the mono repo.
+- **Production:** the next release round. Its order: the migration and catalog entry, then approve Events 0.3.1
+  in production's console.
+- **The docs site** mirrors PLUGIN-STYLE.md under Developers.
+- **Out of scope:**
+  - The console and the start page (330 and 26 values of their own) can take the kit later.
+  - Emails and the generated favicon cannot read CSS variables.
+- **Three columns:** proposed as its own session. It needs `--width-aside`, a third frame in `App.tsx`, and the
+  feed's centre width (about 600px) settled.
+
+---
+
 ## Events 2: a season of events (Events 0.3.0) and four SDK v1 additions — 2026-10-28
 
 **State: on dev at `3f885c5` (`release.sh dev --yes`: 2 migrations, the package's and its catalog entry; health ok, no schema gaps); CI and E2E green on `3f885c5`; Adam approved Events 0.3.0 in dev's console (2026-10-28).** Branch `events-2` (from `8d7e473`), fast-forwarded into `multi-tenant`. Not on production.
