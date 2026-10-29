@@ -1,0 +1,654 @@
+/*
+ * The hub's UI kit, its one control set and its surfaces (design pass,
+ * decisions 3 and 7, 2026-10-29). The kit's components (kit/index.tsx) render
+ * these classes; a hub page may use the classes directly. Every value is a
+ * token (styles/theme.css), so a hub's theme, a look and dark mode reach every
+ * control here and every plugin page drawn with the kit.
+ *
+ * Loaded last (styles/hubStyles.ts), so a control looks the same on every
+ * page. The baseline rules at the top are :where() (no specificity): a form
+ * element nobody styled still gets the hub's look, never the browser's.
+ */
+
+/* --- Baseline: no browser default left on any form --------------------- */
+
+:where(input:not([type]), input[type="text"], input[type="email"], input[type="url"], input[type="search"],
+  input[type="tel"], input[type="password"], input[type="number"], input[type="date"], input[type="time"],
+  input[type="datetime-local"], input[type="month"], textarea, select) {
+  font: inherit;
+  font-size: var(--text-body-size);
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-control);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  min-height: var(--control-height);
+  transition: border-color var(--duration-fast) var(--ease-default), box-shadow var(--duration-fast) var(--ease-default);
+}
+
+:where(textarea) {
+  line-height: var(--line-height-normal);
+}
+
+:where(input, textarea, select)::placeholder {
+  color: var(--color-text-subtle);
+  opacity: 1;
+}
+
+:where(input, textarea, select):hover:not(:disabled):not(:focus) {
+  border-color: var(--color-border-hover);
+}
+
+:where(input, textarea, select):focus,
+:where(input, textarea, select):focus-visible {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: var(--focus-ring);
+}
+
+:where(input, textarea, select):disabled {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+/* A select draws its own chevron (two gradients, so it follows the tokens). */
+:where(select) {
+  appearance: none;
+  padding-right: var(--space-8);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%),
+    linear-gradient(135deg, var(--color-text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - var(--space-4)) 50%,
+    calc(100% - var(--space-3)) 50%;
+  background-size: var(--space-1-5) var(--space-1-5), var(--space-1-5) var(--space-1-5);
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+/* Checkboxes and radios: the hub's own box and dot. The tick is a rotated
+   border (a token colour), not an image. */
+:where(input[type="checkbox"], input[type="radio"]) {
+  appearance: none;
+  flex: none;
+  display: inline-grid;
+  place-content: center;
+  width: var(--space-5);
+  height: var(--space-5);
+  margin: 0;
+  border: var(--border-width-strong) solid var(--color-border-control);
+  background: var(--color-surface);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background var(--duration-fast) var(--ease-default), border-color var(--duration-fast) var(--ease-default);
+}
+
+:where(input[type="checkbox"]) {
+  border-radius: var(--radius-sm);
+}
+
+:where(input[type="radio"]) {
+  border-radius: var(--radius-pill);
+}
+
+:where(input[type="checkbox"])::before {
+  content: "";
+  width: var(--space-1-5);
+  height: var(--space-2-5);
+  margin-top: calc(-1 * var(--space-0-5));
+  border: solid var(--color-primary-text);
+  border-width: 0 var(--border-width-strong) var(--border-width-strong) 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform var(--duration-fast) var(--ease-default);
+}
+
+:where(input[type="radio"])::before {
+  content: "";
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-text);
+  transform: scale(0);
+  transition: transform var(--duration-fast) var(--ease-default);
+}
+
+:where(input[type="checkbox"], input[type="radio"]):checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+:where(input[type="checkbox"], input[type="radio"]):checked::before {
+  transform: rotate(45deg) scale(1);
+}
+
+:where(input[type="radio"]):checked::before {
+  transform: scale(1);
+}
+
+:where(input[type="checkbox"], input[type="radio"]):focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--border-width-strong);
+  box-shadow: none;
+}
+
+:where(input[type="checkbox"], input[type="radio"]):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* A colour well (Settings → Theme): a swatch, not the browser's button. */
+:where(input[type="color"]) {
+  appearance: none;
+  width: var(--control-height);
+  height: var(--control-height);
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+:where(input[type="color"])::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+:where(input[type="color"])::-webkit-color-swatch {
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+
+:where(input[type="color"])::-moz-color-swatch {
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+
+/* --- Buttons ------------------------------------------------------------ */
+
+.btn-primary,
+.btn-secondary,
+.btn-accent,
+.btn-danger,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default), border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
+}
+
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-accent:hover,
+.btn-danger:hover,
+.btn-ghost:hover {
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: var(--color-primary-text);
+}
+
+/* The inviting action ("Raise something", "Going"): the accent. */
+.btn-accent {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.btn-accent:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  color: var(--color-accent-text);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+  color: var(--color-text);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* What cannot be undone (the UI kit's Button variant="danger"; engine 2, A7). */
+.btn-danger {
+  background: var(--color-surface);
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.btn-sm {
+  min-height: var(--control-height-sm);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-caption-size);
+}
+
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-accent:focus-visible,
+.btn-danger:focus-visible,
+.btn-ghost:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--border-width-strong);
+  box-shadow: none;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-accent:disabled,
+.btn-danger:disabled,
+.btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Fields ------------------------------------------------------------- */
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.form-label {
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
+  color: var(--color-text);
+}
+
+.form-label .required {
+  color: var(--color-error);
+}
+
+.form-label .optional {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-subtle);
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+}
+
+.form-textarea {
+  resize: vertical;
+}
+
+.form-hint {
+  margin: 0;
+  font-size: var(--text-caption-size);
+  color: var(--color-text-subtle);
+}
+
+.form-error {
+  margin: 0;
+  font-size: var(--text-small-size);
+  color: var(--color-error);
+}
+
+/* A checkbox or radio with its words (kit Checkbox, Radio). */
+.kit-check {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-2-5);
+  font-size: var(--text-body-size);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.kit-check > input {
+  margin-top: var(--space-0-5);
+}
+
+.kit-check-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+}
+
+.kit-check-hint {
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
+}
+
+/* Radio cards: one choice from a few, each with a line about it (kit
+   RadioCards; Settings → Theme → Navigation). */
+.kit-choices {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.kit-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-default), background var(--duration-fast) var(--ease-default);
+}
+
+.kit-choice:hover {
+  border-color: var(--color-border-hover);
+}
+
+.kit-choice:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-wash);
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-primary);
+}
+
+.kit-choice:has(input:focus-visible) {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--border-width-strong);
+}
+
+.kit-choice > input {
+  margin-top: var(--space-0-5);
+}
+
+.kit-choice-title {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.kit-choice-body {
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
+}
+
+/* --- Chips: a segmented choice (a period, a filter) --------------------- */
+
+.kit-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+}
+
+.kit-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default);
+}
+
+.kit-chip:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+.kit-chip.is-on,
+.kit-chip[aria-pressed="true"] {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.kit-chip:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--border-width);
+}
+
+.kit-chip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* --- Surfaces: a card, a stat, a table ---------------------------------- */
+
+.kit-card {
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: var(--card-padding);
+}
+
+.kit-card--link {
+  transition: box-shadow var(--duration-base) var(--ease-default), border-color var(--duration-base) var(--ease-default);
+}
+
+.kit-card--link:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.kit-card-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-heading-size);
+  font-weight: var(--text-heading-weight);
+  color: var(--color-text-strong);
+}
+
+/* A number and what it counts: the number strong and large, the label quiet
+   (decision 3: "strong contrast between a number and its label"). */
+.kit-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-stat), 1fr));
+  gap: var(--space-3);
+}
+
+.kit-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.kit-stat-n {
+  font-size: var(--text-figure-size);
+  font-weight: var(--text-figure-weight);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-strong);
+}
+
+.kit-stat-label {
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
+}
+
+.kit-table-wrap {
+  overflow-x: auto;
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+
+.kit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small-size);
+}
+
+.kit-table th,
+.kit-table td {
+  padding: var(--table-cell-padding-y) var(--table-cell-padding-x);
+  border-bottom: var(--table-rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.kit-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.kit-table thead th {
+  background: var(--table-head-bg);
+  color: var(--table-head-text);
+  font-size: var(--text-caption-size);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--text-eyebrow-spacing);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.kit-table tbody tr:nth-child(even) {
+  background: var(--table-stripe);
+}
+
+.kit-table tbody tr:hover {
+  background: var(--table-row-hover);
+}
+
+.kit-table tbody th {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.kit-table td.is-number,
+.kit-table th.is-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Page heads ---------------------------------------------------------- */
+
+.kit-page-head {
+  margin: 0 0 var(--space-6);
+}
+
+.kit-page-head .kit-page-lede {
+  margin-bottom: 0;
+}
+
+.kit-page-title {
+  margin: 0;
+  font-size: var(--text-display-size);
+  font-weight: var(--text-display-weight);
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-strong);
+}
+
+.kit-page-lede {
+  margin: var(--space-2) 0 var(--space-6);
+  max-width: var(--width-prose);
+  font-size: var(--text-body-size);
+  color: var(--color-text-muted);
+}
+
+.kit-section-title {
+  margin: var(--space-10) 0 var(--space-3);
+  font-size: var(--text-title-size);
+  font-weight: var(--text-title-weight);
+  color: var(--color-text-strong);
+}
+
+.kit-eyebrow {
+  font-size: var(--text-eyebrow-size);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--text-eyebrow-spacing);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+/* --- A picture upload (kit ImageUpload) ---------------------------------- */
+
+.kit-upload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width-strong) dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+}
+
+.kit-upload.is-over {
+  border-color: var(--color-primary);
+  background: var(--color-primary-wash);
+}
+
+.kit-upload.has-image {
+  border-style: solid;
+  border-width: var(--border-width);
+  background: var(--color-surface);
+}
+
+.kit-upload-preview {
+  width: 100%;
+  max-height: var(--media-max-height);
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.kit-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The file input stays in the page for its label and keyboard, out of sight. */
+.kit-upload-input {
+  position: absolute;
+  width: var(--space-px);
+  height: var(--space-px);
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.kit-upload-hint {
+  font-size: var(--text-small-size);
+  color: var(--color-text-subtle);
+}

@@ -21,14 +21,19 @@ describe("styles/hubStyles.ts", () => {
       relative(src, join(here, m[1]!)),
     );
     const all = cssFiles(src).filter(
-      // The console and the start page are other apps; the design system is
-      // @imported by theme.css.
-      (f) => !f.startsWith("console/") && !f.startsWith("start/") && !f.startsWith("styles/design-system/"),
+      // The console and the start page are other apps; the design system and
+      // the token sets are @imported by theme.css.
+      (f) =>
+        !f.startsWith("console/") &&
+        !f.startsWith("start/") &&
+        !f.startsWith("styles/design-system/") &&
+        !f.startsWith("styles/tokens/"),
     );
     expect([...listed].sort()).toEqual([...all].sort());
     expect(new Set(listed).size).toBe(listed.length);
-    // The base first and the app's own rules last, as before.
+    // The base first, the app's own rules next to last and the kit last, so a
+    // control looks the same on every page (design pass, 2026-10-29).
     expect(listed.slice(0, 2)).toEqual(["styles/theme.css", "index.css"]);
-    expect(listed.at(-1)).toBe("App.css");
+    expect(listed.slice(-2)).toEqual(["App.css", "kit/kit.css"]);
   });
 });

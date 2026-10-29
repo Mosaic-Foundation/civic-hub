@@ -4,9 +4,12 @@
 // resolve by that order (App.css's ".page h1" over a page's own h1 rule, for
 // one), so the hub looks as it did: the page code is split, its CSS is not.
 //
-// No web fonts are bundled: the design tokens name "Inter" and "Libre
-// Franklin", which the hub never shipped under those names, so it renders in
-// the system's fonts (a decision left for a design pass, HANDOFF 2026-10-25).
+// One web font, Inter, bundled as "Inter Variable" and @imported by theme.css,
+// whose tokens name that family (design pass, 2026-10-29; it settles the
+// Inter / Libre Franklin mismatch left from HANDOFF 2026-10-25).
+//
+// The kit (kit/kit.css) loads last: one control set on every page (design
+// pass, 2026-10-29).
 //
 // A new stylesheet goes in this list too (src/styles/hubStyles.test.ts fails
 // otherwise), where its rules should rank: later wins.
@@ -101,3 +104,4 @@ import "../components/SharePrompt.css";
 import "../components/BetaBanner.css";
 import "../components/BetaWelcomeDialog.css";
 import "../App.css";
+import "../kit/kit.css";
