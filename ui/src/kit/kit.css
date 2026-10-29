@@ -459,6 +459,20 @@
   padding: var(--card-padding);
 }
 
+/* A card with a coloured bar on top: a kind's colour, a measure's, set by the
+   page as --card-accent (a token, e.g. var(--type-vote-fg)). */
+.kit-card--accent {
+  border-top: var(--card-accent-width) solid var(--card-accent, var(--color-primary));
+}
+
+/* The base stylesheet spaces every li after the first (li + li); in the kit's
+   grids that pushed every tile but the first down, so the first looked taller
+   (Activity, Adam 2026-10-29). Grid gaps do the spacing here. */
+.kit-stats > li + li,
+.kit-choices > * + * {
+  margin-top: 0;
+}
+
 .kit-card--link {
   transition: box-shadow var(--duration-base) var(--ease-default), border-color var(--duration-base) var(--ease-default);
 }
@@ -503,6 +517,28 @@
 .kit-stat-label {
   font-size: var(--text-small-size);
   color: var(--color-text-muted);
+}
+
+/* The headline number: the primary fill, its words on it. */
+.kit-stat--featured {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.kit-stat--featured .kit-stat-n,
+.kit-stat--featured .kit-stat-label {
+  color: var(--color-primary-text);
+}
+
+/* A colour family's dot beside a word (a kind in a table's row). */
+.kit-dot {
+  display: inline-block;
+  width: var(--space-2);
+  height: var(--space-2);
+  margin-right: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--dot, var(--color-border-strong));
+  vertical-align: middle;
 }
 
 .kit-table-wrap {

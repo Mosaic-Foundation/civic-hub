@@ -4,13 +4,14 @@
 // how each measure is counted, repeat participation, the CSV, Public numbers
 // and the reporting keys with their read log.
 
-import { useState, type FormEvent } from "react";
+import { useState, type CSSProperties, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useApi } from "../../../ui/src/hooks/useApi";
 import { useAuth } from "../../../ui/src/context/authState";
 import { useHub } from "../../../ui/src/config/hub";
 import HelpButton from "../../../ui/src/components/HelpButton";
 import { localTimestamp } from "../../../ui/src/utils/dates";
+import { typeColorSlug } from "../../../ui/src/processes/display";
 import { adminPutHubSettings } from "../../../ui/src/services/api";
 import { refreshHubConfig } from "../../../ui/src/config/hubConfig";
 import { addDays, type PeriodKind } from "../periods";
@@ -25,14 +26,24 @@ const KINDS: Array<{ id: PeriodKind; label: string }> = [
   { id: "all", label: "Since launch" },
 ];
 
-const TOTALS: Array<{ key: keyof Report["totals"]; label: string }> = [
+// Colour does work here (Adam, 2026-10-29: "it looks very boring"): the
+// headline number on the primary fill, the others each with a bar in one of
+// the kinds' colours; the funders' measures in the colour of what they count.
+const TOTALS: Array<{ key: keyof Report["totals"]; label: string; accent?: string }> = [
   { key: "active_residents", label: "Active residents" },
-  { key: "new_residents", label: "New residents" },
-  { key: "participations", label: "Participations" },
-  { key: "processes_created", label: "Processes created" },
-  { key: "processes_closed", label: "Processes closed" },
-  { key: "outcomes", label: "Results and briefs" },
+  { key: "new_residents", label: "New residents", accent: "meeting" },
+  { key: "participations", label: "Participations", accent: "vote" },
+  { key: "processes_created", label: "Processes created", accent: "proposal" },
+  { key: "processes_closed", label: "Processes closed", accent: "conversation" },
+  { key: "outcomes", label: "Results and briefs", accent: "brief" },
 ];
+
+const MEASURE_ACCENTS = ["meeting", "project", "brief"];
+
+/** A card's top bar in a colour family's dark tone (theme.css, --type-<slug>-fg). */
+function accent(slug: string): CSSProperties {
+  return { "--card-accent": `var(--type-${slug}-fg)` } as CSSProperties;
+}
 
 const show = (v: Count) => (typeof v === "number" ? v.toLocaleString() : v);
 
@@ -134,7 +145,13 @@ export default function ActivityPage() {
 
           <ul className="kit-stats activity-tiles">
             {TOTALS.map((t) => (
-              <li key={t.key} className="kit-card kit-stat activity-tile" title={r.definitions[t.key]} data-testid={`activity-total-${t.key}`}>
+              <li
+                key={t.key}
+                className={`kit-card kit-stat activity-tile ${t.accent ? "kit-card--accent" : "kit-stat--featured"}`}
+                style={t.accent ? accent(t.accent) : undefined}
+                title={r.definitions[t.key]}
+                data-testid={`activity-total-${t.key}`}
+              >
                 <span className="kit-stat-n activity-n">{show(r.totals[t.key])}</span>
                 <span className="kit-stat-label activity-label">{t.label}</span>
               </li>
@@ -157,7 +174,10 @@ export default function ActivityPage() {
               <tbody>
                 {r.by_type.map((t) => (
                   <tr key={t.type}>
-                    <th scope="row">{t.plural}</th>
+                    <th scope="row">
+                      <span className="kit-dot" style={{ "--dot": `var(--type-${typeColorSlug(t.type)}-fg)` } as CSSProperties} />
+                      {t.plural}
+                    </th>
                     <td className="is-number">{show(t.active_residents)}</td>
                     <td className="is-number">{show(t.participations)}</td>
                     <td className="is-number">{show(t.processes_created)}</td>
@@ -175,8 +195,13 @@ export default function ActivityPage() {
             happened, not how anyone felt about it, and they count only people who took part here.
           </p>
           <ul className="activity-measures" data-testid="activity-measures">
-            {r.measures.map((m) => (
-              <li key={m.id} className="kit-card activity-measure" data-testid={`activity-measure-${m.id}`}>
+            {r.measures.map((m, i) => (
+              <li
+                key={m.id}
+                className="kit-card kit-card--accent activity-measure"
+                style={accent(MEASURE_ACCENTS[i % MEASURE_ACCENTS.length]!)}
+                data-testid={`activity-measure-${m.id}`}
+              >
                 <h3>{m.label}</h3>
                 <p className="activity-measure-figures">
                   <span><span className="kit-stat-n activity-n">{show(m.residents.value)}</span> {m.residents.label}</span>
@@ -192,11 +217,11 @@ export default function ActivityPage() {
 
           <h2 className="kit-section-title">Coming back</h2>
           <ul className="kit-stats activity-tiles activity-tiles-two">
-            <li className="kit-card kit-stat activity-tile" title={r.definitions.residents_in_more_than_one_type}>
+            <li className="kit-card kit-card--accent kit-stat activity-tile" style={accent("project")} title={r.definitions.residents_in_more_than_one_type}>
               <span className="kit-stat-n activity-n">{show(r.retention.residents_in_more_than_one_type)}</span>
               <span className="kit-stat-label activity-label">took part in more than one kind</span>
             </li>
-            <li className="kit-card kit-stat activity-tile" title={r.definitions.returning_from_previous_period}>
+            <li className="kit-card kit-card--accent kit-stat activity-tile" style={accent("wordcloud")} title={r.definitions.returning_from_previous_period}>
               <span className="kit-stat-n activity-n">{r.previous_period ? show(r.retention.returning_from_previous_period) : "—"}</span>
               <span className="kit-stat-label activity-label">
                 {r.previous_period ? "also took part in the period before" : "no period before this one"}
