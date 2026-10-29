@@ -314,7 +314,7 @@ export default function AdminMeetingSummaries() {
           >
             &larr; Back to Meeting summaries
           </button>
-          <h1>
+          <h1 className="kit-page-title">
             Review: {selected.meeting_title} — {localShortDateOfDay(selected.meeting_date)}
           </h1>
           <p className="admin-subtitle">
@@ -347,11 +347,10 @@ export default function AdminMeetingSummaries() {
 
           {reviewFlag && (
             <div
-              className="meeting-ai-banner meeting-flag-banner"
+              className="meeting-ai-banner meeting-flag-banner meeting-ai-banner--error"
               role="alert"
-              style={{ borderLeftColor: "#b91c1c" }}
             >
-              <strong style={{ color: "#b91c1c" }}>{reviewFlag.message}.</strong>{" "}
+              <strong>{reviewFlag.message}.</strong>{" "}
               {reviewFlag.kind === "timestamps_missing"
                 ? "The video's transcript had timings, but the summary came back without them, twice."
                 : "The video's transcript could not be used, so the blocks do not link into the recording."}
@@ -366,16 +365,15 @@ export default function AdminMeetingSummaries() {
 
           {selected.pending_revision && (
             <div
-              className="meeting-ai-banner"
-              style={{ borderLeftColor: "#2563eb" }}
+              className="meeting-ai-banner meeting-ai-banner--info"
             >
-              <strong style={{ color: "#2563eb" }}>
+              <strong>
                 A revised summary is waiting for review.
               </strong>{" "}
               {selected.pending_revision.reason} The published version below is
               still live and unchanged — accepting swaps in the revision,
               discarding keeps what is published.
-              <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem" }}>
+              <div className="meeting-revision-actions">
                 <button
                   type="button"
                   className="btn-primary"
@@ -393,7 +391,7 @@ export default function AdminMeetingSummaries() {
                   Discard
                 </button>
               </div>
-              <p style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>
+              <p className="meeting-revision-note">
                 Revision generated{" "}
                 {localShortDateOfDay(selected.pending_revision.generated_at)} ·{" "}
                 {selected.pending_revision.blocks.length} blocks (published
@@ -402,7 +400,7 @@ export default function AdminMeetingSummaries() {
               {/* What the revision was built from. The orange box and the
                   Source list below describe the PUBLISHED version, which may
                   predate the minutes the revision used. */}
-              <p style={{ marginTop: "0.25rem", fontSize: "0.85rem" }}>
+              <p className="meeting-revision-note meeting-revision-note--tight">
                 Revision built from{" "}
                 {selected.pending_revision.source_minutes_url ? (
                   <a href={selected.pending_revision.source_minutes_url} target="_blank" rel="noopener noreferrer">
@@ -422,12 +420,12 @@ export default function AdminMeetingSummaries() {
           )}
 
           {selected.source_type === "agenda" && (
-            <div className="meeting-ai-banner" style={{ borderLeftColor: "#d97706" }}>
+            <div className="meeting-ai-banner meeting-ai-banner--warn">
               {/* A linked video whose transcript was never used (the 2026-09-22
                   case) is not a recording-based summary, whatever the link says. */}
               {selected.source_video_url && selected.quality_flag?.kind !== "transcript_unavailable" ? (
                 <>
-                  <strong style={{ color: "#d97706" }}>
+                  <strong>
                     {selected.pending_revision ? "Published version: recording-based summary." : "Recording-based summary."}
                   </strong>{" "}
                   {selected.pending_revision ? (
@@ -449,7 +447,7 @@ export default function AdminMeetingSummaries() {
                 </>
               ) : (
                 <>
-                  <strong style={{ color: "#d97706" }}>
+                  <strong>
                     {selected.pending_revision ? "Published version: agenda-based summary." : "Agenda-based summary."}
                   </strong>{" "}
                   {selected.pending_revision ? (
@@ -472,8 +470,8 @@ export default function AdminMeetingSummaries() {
           )}
 
           {selected.source_type === "recording" && (
-            <div className="meeting-ai-banner" style={{ borderLeftColor: "#d97706" }}>
-              <strong style={{ color: "#d97706" }}>
+            <div className="meeting-ai-banner meeting-ai-banner--warn">
+              <strong>
                 {selected.pending_revision ? "Published version: recording-based summary." : "Recording-based summary."}
               </strong>{" "}
               {selected.pending_revision ? (
@@ -782,7 +780,7 @@ export default function AdminMeetingSummaries() {
           {confirmingApprove && (
             <p
               className="form-hint"
-              style={{ marginTop: "var(--space-sm)" }}
+              style={{ marginTop: "var(--space-2)" }}
             >
               {reviewFlag && (
                 <>
@@ -799,7 +797,7 @@ export default function AdminMeetingSummaries() {
           {/* Foot-of-page back link — review forms can run long, and
               scrolling all the way back to the top to leave the page is
               friction admins don't need. */}
-          <div style={{ marginTop: "var(--space-xl)" }}>
+          <div style={{ marginTop: "var(--space-8)" }}>
             <button
               className="admin-back-link"
               onClick={backToList}
@@ -816,19 +814,19 @@ export default function AdminMeetingSummaries() {
   return (
     <div className="page admin-meeting-summaries-page">
       <div className="admin-meeting-summaries-body">
-        <h1>Meeting summaries</h1>
-        <p className="admin-subtitle">
+        <h1 className="kit-page-title">Meeting summaries</h1>
+        <p className="admin-subtitle kit-page-lede">
           AI-generated summaries of {hub.governing_body_name ? `${hub.governing_body_name} meetings` : "meetings"}.
           Review topic blocks and approve to publish to the public feed.
         </p>
 
-        <div className="admin-brief-filters">
+        <div className="admin-brief-filters kit-chips">
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.id}
               type="button"
-              className={`admin-brief-filter${
-                statusFilter === f.id ? " is-active" : ""
+              className={`admin-brief-filter kit-chip${
+                statusFilter === f.id ? " is-active is-on" : ""
               }`}
               onClick={() => setStatusFilter(f.id)}
             >
@@ -937,7 +935,7 @@ export default function AdminMeetingSummaries() {
           {filtered.map((s) => (
             <li
               key={s.id}
-              className="admin-proposal-item"
+              className="admin-proposal-item kit-card kit-card--accent"
             >
               <div className="admin-proposal-header">
                 <input

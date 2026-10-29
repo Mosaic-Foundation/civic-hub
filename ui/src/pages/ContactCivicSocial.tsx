@@ -42,7 +42,7 @@ export default function ContactCivicSocial() {
   return (
     <div className="page admin-page" id="contact-civic-social">
       <div className="feedback-body">
-        <h1 className="contact-civic-social-title">
+        <h1 className="contact-civic-social-title kit-page-title">
           Contact Civic.Social
           <HelpButton k="admin.contact_civic_social" label="Contact Civic.Social" />
         </h1>
@@ -59,7 +59,7 @@ export default function ContactCivicSocial() {
           </>
         ) : (
           <>
-            <p className="feedback-subtitle">
+            <p className="feedback-subtitle kit-page-lede">
               Write to Civic.Social, which maintains the software this hub runs on: a question about running the hub,
               a problem, or a request. This is separate from your residents' feedback.
             </p>

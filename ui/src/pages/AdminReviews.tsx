@@ -1,6 +1,6 @@
 import { ApiError } from "../utils/httpError";
 import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useAction } from "../hooks/useAction";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
@@ -253,7 +253,7 @@ export default function AdminReviews() {
           {error && <p className="error-text">{error}</p>}
           {action.error && <p className="error-text" role="alert">{action.error}</p>}
           {actionMessage && (
-            <p style={{ color: "var(--success-color, #2e7d32)" }}>
+            <p style={{ color: "var(--color-success)" }}>
               {actionMessage}
             </p>
           )}
@@ -272,7 +272,7 @@ export default function AdminReviews() {
                 }}
                 sample={Boolean(proc?.is_sample)}
               >
-                <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)" }}>
+                <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "var(--text-small-size)" }}>
                   Submitted by <strong>{detail.review.creator_name}</strong> (
                   {detail.review.creator_email}) on{" "}
                   {formatShortDateTime(detail.review.created_at)}
@@ -391,7 +391,7 @@ export default function AdminReviews() {
                   {showChangesForm && (
                     <div className="review-note-area">
                       <h3>Request changes</h3>
-                      <p style={{ fontSize: "var(--font-size-sm)", color: "var(--color-text-muted)" }}>
+                      <p style={{ fontSize: "var(--text-small-size)", color: "var(--color-text-muted)" }}>
                         Describe the changes needed. You can suggest specific
                         wording — the creator will apply edits and resubmit.
                       </p>
@@ -425,7 +425,7 @@ export default function AdminReviews() {
                   {showDeclineForm && (
                     <div className="review-note-area">
                       <h3>Decline submission</h3>
-                      <p style={{ fontSize: "var(--font-size-sm)", color: "var(--color-text-muted)" }}>
+                      <p style={{ fontSize: "var(--text-small-size)", color: "var(--color-text-muted)" }}>
                         Provide a reason. The creator will be notified.
                       </p>
                       <textarea
@@ -468,8 +468,8 @@ export default function AdminReviews() {
   return (
     <div className="admin-reviews-page">
       <div className="admin-reviews-body">
-        <h1>Processes</h1>
-        <p style={{ color: "var(--color-text-muted)" }}>
+        <h1 className="kit-page-title">Processes</h1>
+        <p className="kit-page-lede">
           Submissions waiting for review before going live.
         </p>
         {flash && (
@@ -478,12 +478,12 @@ export default function AdminReviews() {
           </p>
         )}
 
-        <div className="admin-review-filters">
+        <div className="admin-review-filters kit-chips">
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.id}
-              className={`admin-review-filter${
-                statusFilter === f.id ? " is-active" : ""
+              className={`admin-review-filter kit-chip${
+                statusFilter === f.id ? " is-active is-on" : ""
               }`}
               onClick={() => setStatusFilter(f.id)}
             >
@@ -519,8 +519,8 @@ export default function AdminReviews() {
         {filtered.map((r) => (
           <div
             key={r.id}
-            className="process-card"
-            style={{ cursor: "pointer" }}
+            className="process-card kit-card kit-card--accent kit-card--link"
+            style={{ cursor: "pointer", "--card-accent": `var(--type-${typeColorSlug(r.process_type ?? "")}-fg)` } as CSSProperties}
             onClick={() => navigate(`/admin/reviews/${r.id}`)}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -537,7 +537,7 @@ export default function AdminReviews() {
                 </span>
               </span>
             </div>
-            <p style={{ margin: "var(--space-xs) 0 0", color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)" }}>
+            <p style={{ margin: "var(--space-1) 0 0", color: "var(--color-text-muted)", fontSize: "var(--text-small-size)" }}>
               By {r.creator_name} · {formatShortDateTime(r.updated_at)}
             </p>
           </div>

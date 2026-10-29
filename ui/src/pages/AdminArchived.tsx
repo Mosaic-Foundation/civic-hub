@@ -7,13 +7,13 @@
 // recoverable. Gated client-side via AuthContext.isAdmin and server-side by
 // requireAdmin on /admin/archived.
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useApi } from "../hooks/useApi";
 import { useAuth } from "../context/authState";
 import { adminListArchived, adminRestoreProcess } from "../services/api";
 import type { ArchivedProcess } from "../services/api";
 import "./AdminArchived.css";
-import { typeName } from "../processes/display";
+import { typeColorSlug, typeName } from "../processes/display";
 import { localTimestamp } from "../utils/dates";
 
 // From the type's manifest; an unknown type reads as its id made legible.
@@ -70,8 +70,8 @@ export default function AdminArchived() {
 
   return (
     <div className="page admin-page">
-      <h1>Archived</h1>
-      <p className="admin-page-description">
+      <h1 className="kit-page-title">Archived</h1>
+      <p className="admin-page-description kit-page-lede">
         Items you've archived — meeting summaries, announcements, and other
         processes. Archived items are hidden from the public list, the feed,
         and the daily digest, but nothing is permanently deleted. Restore an
@@ -88,7 +88,8 @@ export default function AdminArchived() {
           later.
         </p>
       ) : (
-        <table className="admin-archived-table">
+        <div className="kit-table-wrap">
+        <table className="admin-archived-table kit-table">
           <thead>
             <tr>
               <th scope="col">Item</th>
@@ -104,7 +105,10 @@ export default function AdminArchived() {
             {items.map((item) => (
               <tr key={item.id}>
                 <td>{item.title}</td>
-                <td>{typeLabel(item.type)}</td>
+                <td>
+                  <span className="kit-dot" style={{ "--dot": `var(--type-${typeColorSlug(item.type)}-fg)` } as CSSProperties} />
+                  {typeLabel(item.type)}
+                </td>
                 <td>{localTimestamp(item.archived_at)}</td>
                 <td className="admin-archived-reason">{item.reason ?? "—"}</td>
                 <td className="admin-archived-actions">
@@ -115,7 +119,7 @@ export default function AdminArchived() {
                       </span>
                       <button
                         type="button"
-                        className="admin-archived-restore-confirm"
+                        className="btn-primary btn-sm admin-archived-restore-confirm"
                         onClick={() => handleRestore(item.id)}
                         disabled={restoringId === item.id}
                       >
@@ -123,7 +127,7 @@ export default function AdminArchived() {
                       </button>
                       <button
                         type="button"
-                        className="admin-archived-cancel"
+                        className="btn-secondary btn-sm admin-archived-cancel"
                         onClick={() => setConfirmId(null)}
                         disabled={restoringId === item.id}
                       >
@@ -133,7 +137,7 @@ export default function AdminArchived() {
                   ) : (
                     <button
                       type="button"
-                      className="admin-archived-restore-btn"
+                      className="btn-secondary btn-sm admin-archived-restore-btn"
                       onClick={() => setConfirmId(item.id)}
                     >
                       Restore
@@ -144,6 +148,7 @@ export default function AdminArchived() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

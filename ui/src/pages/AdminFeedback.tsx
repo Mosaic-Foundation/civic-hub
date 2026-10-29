@@ -105,8 +105,8 @@ export default function AdminFeedback() {
 
   return (
     <div className="page admin-page">
-      <h1>Feedback</h1>
-      <p className="admin-page-description">
+      <h1 className="kit-page-title">Feedback</h1>
+      <p className="admin-page-description kit-page-lede">
         Everything people have sent through the feedback form, newest
         first. Topic suggestions are people nominating subjects the Hub
         should take up: filter to them when you're deciding what to launch
@@ -120,7 +120,7 @@ export default function AdminFeedback() {
       </p>
 
       <div
-        className="admin-feedback-filters"
+        className="admin-feedback-filters kit-chips"
         role="group"
         aria-label="Filter by category"
       >
@@ -128,8 +128,8 @@ export default function AdminFeedback() {
           <button
             key={f.value}
             type="button"
-            className={`admin-feedback-filter${
-              filter === f.value ? " is-active" : ""
+            className={`admin-feedback-filter kit-chip${
+              filter === f.value ? " is-active is-on" : ""
             }`}
             aria-pressed={filter === f.value}
             onClick={() => setFilter(f.value)}
@@ -157,7 +157,7 @@ export default function AdminFeedback() {
           <ul className="admin-feedback-list">
             {items.map((item) => (
               // id anchors the deep link from the daily admin digest.
-              <li key={item.id} id={item.id} className="admin-feedback-item">
+              <li key={item.id} id={item.id} className="admin-feedback-item kit-card">
                 <div className="admin-feedback-meta">
                   <span
                     className={`admin-feedback-category cat-${item.category}`}

@@ -62,15 +62,15 @@ export function PublicationList<R extends { id: string; publication_status: Publ
   return (
     <div className="page admin-briefs-page">
       <div className="admin-briefs-body">
-        <h1>{heading}</h1>
-        <p className="admin-subtitle">{intro}</p>
+        <h1 className="kit-page-title">{heading}</h1>
+        <p className="admin-subtitle kit-page-lede">{intro}</p>
 
-        <div className="admin-brief-filters">
+        <div className="admin-brief-filters kit-chips">
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.id}
               type="button"
-              className={`admin-brief-filter${statusFilter === f.id ? " is-active" : ""}`}
+              className={`admin-brief-filter kit-chip${statusFilter === f.id ? " is-active is-on" : ""}`}
               onClick={() => setStatusFilter(f.id)}
             >
               {f.label}
@@ -89,7 +89,7 @@ export function PublicationList<R extends { id: string; publication_status: Publ
 
         <ul className="admin-proposal-list">
           {filtered.map((record) => (
-            <li key={record.id} className="admin-proposal-item" onClick={() => onOpen(record.id)}>
+            <li key={record.id} className="admin-proposal-item kit-card kit-card--accent" onClick={() => onOpen(record.id)}>
               {row(record)}
             </li>
           ))}
@@ -129,8 +129,8 @@ export function PublicationReview({
         <button className="admin-back-link" onClick={onBack} type="button">
           &larr; {backLabel}
         </button>
-        <h1>Review: {title}</h1>
-        <p className="admin-subtitle">{subtitle}</p>
+        <h1 className="kit-page-title">Review: {title}</h1>
+        <p className="admin-subtitle kit-page-lede">{subtitle}</p>
 
         {actionMessage && <p className="admin-action-message">{actionMessage}</p>}
         {error && <p className="form-error">{error}</p>}

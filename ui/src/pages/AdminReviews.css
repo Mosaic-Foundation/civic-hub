@@ -3,114 +3,101 @@
 }
 
 .admin-reviews-body {
-  padding: var(--space-md) var(--space-lg) var(--space-xl);
-}
-
-.admin-reviews-body h1 {
-  margin: 0 0 var(--space-xs);
+  padding: var(--space-4) var(--space-6) var(--space-8);
 }
 
 .admin-review-filters {
   display: flex;
-  gap: var(--space-sm);
-  margin: var(--space-md) 0 var(--space-lg);
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-6);
   flex-wrap: wrap;
+  align-items: center;
 }
 
 /* Space out the stacked review cards in the list view (they render as bare
    .process-card divs, not inside a gapped .process-list). */
 .admin-reviews-body > .process-card {
-  margin-bottom: var(--space-sm);
-}
-
-.admin-review-filter {
-  padding: var(--space-xs) var(--space-md);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-
-.admin-review-filter:hover {
-  color: var(--color-text);
-  border-color: var(--color-border-hover);
-}
-
-.admin-review-filter.is-active {
-  color: var(--color-primary-text);
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  margin-bottom: var(--space-2);
 }
 
 .admin-review-filter:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--border-width-strong);
 }
 
-/* Status chips */
+/* Status chips: small pills in status colours */
+.review-status-pending_review,
+.review-status-changes_requested,
+.review-status-approved,
+.review-status-declined,
+.review-status-withdrawn {
+  display: inline-block;
+  padding: var(--space-0-5) var(--space-2-5);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-caption-size);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
 .review-status-pending_review {
-  background: #fff3e0;
-  color: #e65100;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .review-status-changes_requested {
-  background: #fce4ec;
-  color: #c62828;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .review-status-approved {
-  background: var(--success-bg, #e8f5e9);
-  color: var(--success-color, #2e7d32);
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .review-status-declined {
-  background: #efebe9;
-  color: #4e342e;
+  background: var(--color-error-bg);
+  color: var(--color-error);
 }
 
 .review-status-withdrawn {
-  background: #eceff1;
-  color: #546e7a;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
 /* Review thread */
 .review-thread {
-  margin: var(--space-lg) 0;
+  margin: var(--space-6) 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 .review-turn {
-  padding: var(--space-md);
-  background: var(--color-surface-alt);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  background: var(--color-surface-sunken);
+  border: var(--card-border);
+  border-radius: var(--radius-md);
 }
 
 .review-turn-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-xs);
-  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-1);
+  font-size: var(--text-small-size);
   color: var(--color-text-muted);
 }
 
 .review-turn-actor {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text);
 }
 
 .review-turn-note {
-  margin-top: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   background: var(--color-surface);
-  border-left: 3px solid var(--color-primary);
+  border-left: var(--card-accent-width) solid var(--color-primary);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   white-space: pre-wrap;
 }
@@ -118,19 +105,29 @@
 /* Admin action buttons */
 .review-actions {
   display: flex;
-  gap: var(--space-sm);
-  margin-top: var(--space-lg);
+  gap: var(--space-2);
+  margin-top: var(--space-6);
   flex-wrap: wrap;
 }
 
 .review-action-btn {
-  padding: var(--space-sm) var(--space-lg);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: background var(--duration-fast) var(--ease-default), opacity var(--duration-fast) var(--ease-default);
+}
+
+.review-action-btn:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--border-width-strong);
 }
 
 .review-action-btn:disabled {
@@ -139,88 +136,91 @@
 }
 
 .review-action-btn--approve {
-  background: var(--success-color, #2e7d32);
-  color: #fff;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .review-action-btn--changes {
-  background: #e65100;
-  color: #fff;
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
 }
 
 .review-action-btn--decline {
-  background: #c62828;
-  color: #fff;
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: var(--color-surface);
 }
 
 .review-action-btn--secondary {
   background: var(--color-surface);
   color: var(--color-text);
-  border: 1px solid var(--color-border);
+  border-color: var(--color-border-strong);
 }
 
 /* Note textarea */
 .review-note-area {
-  margin-top: var(--space-md);
+  margin-top: var(--space-4);
 }
 
 .review-note-area textarea {
   width: 100%;
-  min-height: 80px;
-  padding: var(--space-sm);
-  border: 1px solid var(--color-border);
+  min-height: var(--space-20);
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
+  font-family: inherit;
+  font-size: var(--text-small-size);
   resize: vertical;
 }
 
 .review-note-area textarea:focus {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--border-width-strong);
   border-color: var(--color-primary);
 }
 
 /* Process preview */
 .review-process-preview {
-  margin: var(--space-md) 0;
-  padding: var(--space-md);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  margin: var(--space-4) 0;
+  padding: var(--card-padding);
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
 }
 
 .review-process-preview h3 {
-  margin: 0 0 var(--space-xs);
+  margin: 0 0 var(--space-1);
 }
 
 .review-process-preview p {
-  margin: 0 0 var(--space-sm);
+  margin: 0 0 var(--space-2);
   color: var(--color-text-muted);
 }
 
 .review-type-badge {
   display: inline-block;
-  padding: 2px var(--space-xs);
-  font-size: var(--font-size-xs, 0.75rem);
-  border-radius: var(--radius-sm);
+  padding: var(--space-0-5) var(--space-2);
+  font-size: var(--text-caption-size);
+  border-radius: var(--radius-pill);
   background: var(--color-surface-alt);
   color: var(--color-text-muted);
-  margin-right: var(--space-xs);
+  margin-right: var(--space-1);
 }
 
 /* --- Conversation submission details (seeds, sources, window) --- */
 
 .review-conversation-details {
-  margin-top: var(--space-md);
-  padding-top: var(--space-sm);
-  border-top: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
+  margin-top: var(--space-4);
+  padding-top: var(--space-2);
+  border-top: var(--border-width) solid var(--color-border);
+  font-size: var(--text-small-size);
 }
 
 .review-conversation-list {
-  margin: var(--space-xs) 0 var(--space-sm);
-  padding-left: var(--space-lg);
+  margin: var(--space-1) 0 var(--space-2);
+  padding-left: var(--space-6);
 }
 
 .review-conversation-list a {
@@ -231,16 +231,16 @@
 .admin-review-type-filter {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-1);
   margin-left: auto;
-  font-size: var(--font-size-sm);
+  font-size: var(--text-small-size);
   color: var(--color-text-muted);
 }
 
 .admin-review-type-filter select {
   font: inherit;
-  padding: 0.3rem 0.5rem;
-  border: 1px solid var(--color-border);
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -248,34 +248,34 @@
 
 /* The colored type pill sits inline before the card title. */
 .process-card .process-type-pill {
-  margin-right: var(--space-xs);
+  margin-right: var(--space-1);
   vertical-align: middle;
 }
 
 /* A submission the Code of Conduct check flagged, sent to the admins. */
 .review-coc-flags {
-  margin: var(--space-md) 0;
-  padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--color-error);
-  border-left-width: 4px;
+  margin: var(--space-4) 0;
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-error);
+  border-left-width: var(--card-accent-width);
   border-radius: var(--radius-md);
   background: var(--color-error-bg);
 }
 
 .review-coc-flags h2 {
-  font-size: var(--font-size-base);
-  margin: 0 0 var(--space-xs);
+  font-size: var(--text-heading-size);
+  margin: 0 0 var(--space-1);
   color: var(--color-error);
 }
 
 .review-coc-flags p,
 .review-coc-flags li {
-  font-size: var(--font-size-sm);
+  font-size: var(--text-small-size);
 }
 
 .review-coc-flags ul {
-  margin: var(--space-xs) 0 0;
-  padding-left: 1.25rem;
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
 }
 
 .review-coc-quote {
@@ -292,16 +292,16 @@
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: var(--space-xs);
+  gap: var(--space-1);
 }
 
 /* "Approved: … is live." on the list, after acting on a review. */
 .admin-review-flash {
-  margin: var(--space-sm) 0 var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  border-left: 4px solid var(--color-success);
+  margin: var(--space-2) 0 var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-left: var(--card-accent-width) solid var(--color-success);
   border-radius: var(--radius-sm);
   background: var(--color-success-bg);
   color: var(--color-text);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-small-size);
 }

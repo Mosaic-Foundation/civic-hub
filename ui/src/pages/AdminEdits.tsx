@@ -51,8 +51,8 @@ export default function AdminEdits() {
 
   return (
     <div className="page admin-page">
-      <h1>Edits</h1>
-      <p className="admin-edits-intro">
+      <h1 className="kit-page-title">Edits</h1>
+      <p className="admin-edits-intro kit-page-lede">
         Changes creators have made to live processes in the last 90 days. Edits go live at once
         after the Code of Conduct check; every version stays on the page under "See what changed".
         Nothing here needs approval.
@@ -63,7 +63,8 @@ export default function AdminEdits() {
       {items.length === 0 ? (
         <p className="admin-edits-empty">Nothing has been edited yet.</p>
       ) : (
-        <table className="admin-edits-table">
+        <div className="kit-table-wrap">
+        <table className="admin-edits-table kit-table">
           <thead>
             <tr>
               <th>Process</th>
@@ -89,6 +90,7 @@ export default function AdminEdits() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

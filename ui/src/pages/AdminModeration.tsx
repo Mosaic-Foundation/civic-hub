@@ -73,8 +73,8 @@ export default function AdminModeration() {
 
   return (
     <div className="page admin-page">
-      <h1>Moderation log</h1>
-      <p className="admin-page-description">
+      <h1 className="kit-page-title">Moderation log</h1>
+      <p className="admin-page-description kit-page-lede">
         Every moderation action — comment hides, announcement removals,
         and their restorations — is recorded here. Newest first. The
         underlying events live on the audit trail with
@@ -88,7 +88,8 @@ export default function AdminModeration() {
           an announcement, the action shows up here.
         </p>
       ) : (
-        <table className="admin-moderation-table">
+        <div className="kit-table-wrap">
+        <table className="admin-moderation-table kit-table">
           <thead>
             <tr>
               <th scope="col">When</th>
@@ -124,6 +125,7 @@ export default function AdminModeration() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

@@ -3,24 +3,24 @@
 }
 
 .admin-meeting-summaries-body {
-  padding: var(--space-md) var(--space-lg) var(--space-xl);
+  padding: var(--space-4) var(--space-6) var(--space-8);
 }
 
 .admin-meeting-summaries-body h1 {
-  margin: 0 0 var(--space-xs);
+  margin: 0 0 var(--space-1);
 }
 
 /* Prominent AI-generated disclaimer banner shown above the review form.
    Theme-accent color so it can't be mistaken for body copy. */
 .meeting-ai-banner {
-  margin: var(--space-md) 0 var(--space-lg);
-  padding: var(--space-md);
-  background: var(--color-surface-muted);
-  border-left: 3px solid var(--color-primary);
-  border-radius: var(--radius-sm);
+  margin: var(--space-4) 0 var(--space-6);
+  padding: var(--space-4);
+  background: var(--color-surface-sunken);
+  border-left: var(--card-accent-width) solid var(--color-primary);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
   color: var(--color-text);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
+  font-size: var(--text-small-size);
+  line-height: var(--line-height-normal);
 }
 
 .meeting-ai-banner strong {
@@ -29,20 +29,20 @@
 
 .meeting-source-list {
   margin: 0;
-  padding-left: 1.1rem;
-  line-height: var(--line-height-base);
+  padding-left: var(--space-4);
+  line-height: var(--line-height-normal);
   color: var(--color-text);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-small-size);
   word-break: break-word;
 }
 
 .meeting-source-list li {
-  margin-bottom: var(--space-xs);
+  margin-bottom: var(--space-1);
 }
 
 .meeting-source-list ul {
-  margin: var(--space-xs) 0 0;
-  padding-left: 1.1rem;
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
 }
 
 /* Topic-block editor rows. Each block renders as a card-ish panel with
@@ -50,37 +50,37 @@
 .meeting-block-list {
   list-style: none;
   padding: 0;
-  margin: 0 0 var(--space-md);
+  margin: 0 0 var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 .meeting-block-row {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-md);
-  background: var(--color-surface);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  background: var(--card-bg);
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-2);
   position: relative;
 }
 
 .meeting-block-actions {
   position: absolute;
-  top: var(--space-sm);
-  right: var(--space-sm);
+  top: var(--space-2);
+  right: var(--space-2);
   display: flex;
-  gap: var(--space-xs);
+  gap: var(--space-1);
 }
 
 .meeting-block-actions button {
   background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-sm);
-  padding: 2px 8px;
-  font-size: var(--font-size-sm);
+  padding: var(--space-0-5) var(--space-2);
+  font-size: var(--text-small-size);
   cursor: pointer;
   color: var(--color-text-muted);
 }
@@ -96,31 +96,31 @@
 }
 
 .meeting-block-delete {
-  color: #b91c1c !important;
+  color: var(--color-error) !important;
 }
 
 .meeting-block-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: var(--font-size-sm);
+  gap: var(--space-1);
+  font-size: var(--text-small-size);
   color: var(--color-text-muted);
 }
 
 .meeting-block-field span {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text);
 }
 
 .meeting-block-field-inline {
-  max-width: 320px;
+  max-width: 40ch;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .meeting-block-watch-link {
-  font-size: var(--font-size-sm);
+  font-size: var(--text-small-size);
   color: var(--color-primary);
   text-decoration: none;
   align-self: flex-start;
@@ -135,19 +135,19 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  margin-bottom: var(--space-md);
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
   background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-md);
 }
 
 .batch-select-all {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  font-size: var(--font-size-sm);
+  gap: var(--space-1);
+  font-size: var(--text-small-size);
   color: var(--color-text);
   cursor: pointer;
   white-space: nowrap;
@@ -156,29 +156,29 @@
 .batch-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .batch-confirm-label {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text);
 }
 
 .batch-delete-button {
-  background: #b91c1c;
-  color: #fff;
+  background: var(--color-error);
+  color: var(--color-surface);
   border: none;
-  border-radius: var(--radius-sm);
-  padding: 6px 14px;
-  font-size: var(--font-size-sm);
+  border-radius: var(--radius-md);
+  padding: var(--space-1-5) var(--space-4);
+  font-size: var(--text-small-size);
   cursor: pointer;
-  font-weight: 500;
+  font-weight: var(--font-weight-semibold);
 }
 
 .batch-delete-button:hover:not(:disabled) {
-  background: #991b1b;
+  background: var(--color-error-hover);
 }
 
 .batch-delete-button:disabled {
@@ -188,8 +188,8 @@
 
 .batch-checkbox {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   cursor: pointer;
 }
 
@@ -203,12 +203,12 @@
 }
 
 .badge-agenda {
-  background: #fef3c7;
-  color: #92400e;
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-xs, 0.75rem);
-  font-weight: 600;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  padding: var(--space-px) var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-caption-size);
+  font-weight: var(--font-weight-semibold);
 }
 
 /* A summary that must be checked before publishing (quality_flag). */
@@ -219,14 +219,14 @@
 
 .meeting-flag-detail {
   color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-small-size);
 }
 
 .batch-backdate-label {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  font-size: var(--font-size-sm);
+  gap: var(--space-1);
+  font-size: var(--text-small-size);
   color: var(--color-text-muted);
   cursor: pointer;
   white-space: nowrap;
@@ -234,7 +234,56 @@
 
 /* Under "Source of the published version" while a revision waits. */
 .meeting-source-note {
-  margin: 0 0 var(--space-xs, 0.25rem);
-  font-size: var(--font-size-sm, 0.875rem);
-  color: var(--color-text-muted, #6b7280);
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
+}
+
+/* Banner variants: the left rule and the lead words take a status colour. */
+.meeting-ai-banner--error {
+  border-left-color: var(--color-error);
+}
+
+.meeting-ai-banner--error strong {
+  color: var(--color-error);
+}
+
+.meeting-ai-banner--info {
+  border-left-color: var(--color-info);
+}
+
+.meeting-ai-banner--info strong {
+  color: var(--color-info);
+}
+
+.meeting-ai-banner--warn {
+  border-left-color: var(--color-warning);
+}
+
+.meeting-ai-banner--warn strong {
+  color: var(--color-warning);
+}
+
+.meeting-revision-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.meeting-revision-note {
+  margin-top: var(--space-2);
+  font-size: var(--text-small-size);
+}
+
+.meeting-revision-note--tight {
+  margin-top: var(--space-1);
+}
+
+/* A summary in the list is a Daylight card with the meeting colour on top. */
+.admin-meeting-summaries-body .admin-proposal-item {
+  --card-accent: var(--type-meeting-fg);
+}
+
+.admin-meeting-summaries-body .admin-proposal-list > li + li {
+  margin-top: var(--space-3);
 }
