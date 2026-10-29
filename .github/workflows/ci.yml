@@ -60,7 +60,11 @@ jobs:
       # service-role database client, and each such file says why with a
       # `@civic-raw-client-importer:` tag (eslint.config.js). Everything else
       # reaches data through forHub(). Added 2026-09-24 (multi-tenant 2b).
-      - name: Lint (raw-client rule)
+      # `npm run lint` also runs the token ratchet (scripts/check-tokens.ts,
+      # config/token-baseline.json): no file in ui/src, features/*/ui or
+      # packages sets more colours, fonts or sizes of its own than its
+      # baseline (design pass, 2026-10-29).
+      - name: Lint (raw-client rule, token ratchet)
         run: npm run lint
       # The configured plugin packages, written out as static imports and
       # migration copies (ADR-014): stale when a package or config/plugins.json

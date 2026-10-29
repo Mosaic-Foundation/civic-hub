@@ -1,0 +1,462 @@
+{
+  "packages/civic.event/styles.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 55
+  },
+  "ui/src/App.css": {
+    "colour": 138,
+    "font": 1,
+    "length": 473
+  },
+  "ui/src/components/AdminArchiveButton.css": {
+    "colour": 4,
+    "font": 0,
+    "length": 1
+  },
+  "ui/src/components/AdminMenu.css": {
+    "colour": 2,
+    "font": 0,
+    "length": 21
+  },
+  "ui/src/components/AssistantPanel.css": {
+    "colour": 5,
+    "font": 0,
+    "length": 15
+  },
+  "ui/src/components/BetaBanner.css": {
+    "colour": 11,
+    "font": 0,
+    "length": 11
+  },
+  "ui/src/components/BetaWelcomeDialog.css": {
+    "colour": 7,
+    "font": 0,
+    "length": 3
+  },
+  "ui/src/components/BottomBar.css": {
+    "colour": 2,
+    "font": 0,
+    "length": 12
+  },
+  "ui/src/components/BriefPointer.css": {
+    "colour": 11,
+    "font": 0,
+    "length": 15
+  },
+  "ui/src/components/BriefRegenerate.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 10
+  },
+  "ui/src/components/CloseEarly.css": {
+    "colour": 6,
+    "font": 0,
+    "length": 20
+  },
+  "ui/src/components/CocFindings.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 1
+  },
+  "ui/src/components/Creator.css": {
+    "colour": 4,
+    "font": 1,
+    "length": 10
+  },
+  "ui/src/components/DetailActions.css": {
+    "colour": 1,
+    "font": 0,
+    "length": 5
+  },
+  "ui/src/components/DraftShell.css": {
+    "colour": 10,
+    "font": 0,
+    "length": 15
+  },
+  "ui/src/components/DraftingForm.css": {
+    "colour": 11,
+    "font": 0,
+    "length": 24
+  },
+  "ui/src/components/EditHistory.css": {
+    "colour": 21,
+    "font": 0,
+    "length": 28
+  },
+  "ui/src/components/FeedFilter.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 4
+  },
+  "ui/src/components/FeedVotesTabs.css": {
+    "colour": 2,
+    "font": 0,
+    "length": 5
+  },
+  "ui/src/components/HelpButton.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 10
+  },
+  "ui/src/components/IntroPopup.css": {
+    "colour": 1,
+    "font": 0,
+    "length": 4
+  },
+  "ui/src/components/LegalPage.css": {
+    "colour": 11,
+    "font": 1,
+    "length": 10
+  },
+  "ui/src/components/LinkPreviewCard.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 4
+  },
+  "ui/src/components/MarkdownTextarea.css": {
+    "colour": 13,
+    "font": 0,
+    "length": 21
+  },
+  "ui/src/components/MemberStack.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 6
+  },
+  "ui/src/components/Modal.css": {
+    "colour": 2,
+    "font": 0,
+    "length": 20
+  },
+  "ui/src/components/MoreSheet.css": {
+    "colour": 1,
+    "font": 0,
+    "length": 14
+  },
+  "ui/src/components/Nav.css": {
+    "colour": 13,
+    "font": 0,
+    "length": 43
+  },
+  "ui/src/components/PluginOff.tsx": {
+    "colour": 0,
+    "font": 0,
+    "length": 2
+  },
+  "ui/src/components/PostFeaturedImage.css": {
+    "colour": 5,
+    "font": 0,
+    "length": 9
+  },
+  "ui/src/components/PostImagePicker.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 4
+  },
+  "ui/src/components/ProcessHeader.css": {
+    "colour": 2,
+    "font": 0,
+    "length": 11
+  },
+  "ui/src/components/ProcessLinkField.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 9
+  },
+  "ui/src/components/ProcessLinkPicker.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 18
+  },
+  "ui/src/components/ProcessPicker.css": {
+    "colour": 4,
+    "font": 0,
+    "length": 10
+  },
+  "ui/src/components/RelatedProcesses.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 16
+  },
+  "ui/src/components/ResultBars.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 8
+  },
+  "ui/src/components/RichText.css": {
+    "colour": 3,
+    "font": 0,
+    "length": 8
+  },
+  "ui/src/components/SampleBadge.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 4
+  },
+  "ui/src/components/SearchBar.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 7
+  },
+  "ui/src/components/SeedStatementRows.css": {
+    "colour": 1,
+    "font": 0,
+    "length": 8
+  },
+  "ui/src/components/ShareBanner.css": {
+    "colour": 7,
+    "font": 0,
+    "length": 18
+  },
+  "ui/src/components/ShareButton.css": {
+    "colour": 8,
+    "font": 0,
+    "length": 21
+  },
+  "ui/src/components/SharePanel.css": {
+    "colour": 1,
+    "font": 0,
+    "length": 10
+  },
+  "ui/src/components/SharePrompt.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 5
+  },
+  "ui/src/components/SourceLinks.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 1
+  },
+  "ui/src/components/SubmissionPreview.css": {
+    "colour": 3,
+    "font": 0,
+    "length": 17
+  },
+  "ui/src/components/VoteDraftingForm.css": {
+    "colour": 2,
+    "font": 0,
+    "length": 12
+  },
+  "ui/src/components/WaitlistForm.css": {
+    "colour": 8,
+    "font": 0,
+    "length": 6
+  },
+  "ui/src/components/WelcomeBanner.css": {
+    "colour": 9,
+    "font": 0,
+    "length": 3
+  },
+  "ui/src/components/WordcloudTeaser.css": {
+    "colour": 4,
+    "font": 0,
+    "length": 9
+  },
+  "ui/src/components/deliberation/ClusterCard.css": {
+    "colour": 8,
+    "font": 0,
+    "length": 11
+  },
+  "ui/src/components/deliberation/ClusterView.css": {
+    "colour": 8,
+    "font": 0,
+    "length": 18
+  },
+  "ui/src/components/deliberation/CompletedDeliberation.css": {
+    "colour": 22,
+    "font": 0,
+    "length": 41
+  },
+  "ui/src/components/deliberation/DeliberationPanel.css": {
+    "colour": 17,
+    "font": 0,
+    "length": 23
+  },
+  "ui/src/components/deliberation/StatementCard.css": {
+    "colour": 19,
+    "font": 0,
+    "length": 13
+  },
+  "ui/src/components/deliberation/StatementSubmission.css": {
+    "colour": 11,
+    "font": 0,
+    "length": 19
+  },
+  "ui/src/console/console.css": {
+    "colour": 34,
+    "font": 3,
+    "length": 293
+  },
+  "ui/src/index.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 3
+  },
+  "ui/src/pages/AdminArchived.css": {
+    "colour": 7,
+    "font": 0,
+    "length": 0
+  },
+  "ui/src/pages/AdminEdits.css": {
+    "colour": 3,
+    "font": 0,
+    "length": 6
+  },
+  "ui/src/pages/AdminFeedback.css": {
+    "colour": 15,
+    "font": 0,
+    "length": 13
+  },
+  "ui/src/pages/AdminMeetingSummaries.css": {
+    "colour": 7,
+    "font": 0,
+    "length": 15
+  },
+  "ui/src/pages/AdminMeetingSummaries.tsx": {
+    "colour": 9,
+    "font": 0,
+    "length": 6
+  },
+  "ui/src/pages/AdminReviews.css": {
+    "colour": 16,
+    "font": 0,
+    "length": 8
+  },
+  "ui/src/pages/AdminReviews.tsx": {
+    "colour": 1,
+    "font": 0,
+    "length": 0
+  },
+  "ui/src/pages/AdminVoteResults.css": {
+    "colour": 12,
+    "font": 0,
+    "length": 5
+  },
+  "ui/src/pages/Announcement.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 2
+  },
+  "ui/src/pages/Brief.css": {
+    "colour": 14,
+    "font": 0,
+    "length": 2
+  },
+  "ui/src/pages/CreateWordCloud.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 1
+  },
+  "ui/src/pages/Deliberations.css": {
+    "colour": 11,
+    "font": 0,
+    "length": 17
+  },
+  "ui/src/pages/Feedback.css": {
+    "colour": 15,
+    "font": 0,
+    "length": 12
+  },
+  "ui/src/pages/MeetingSummary.css": {
+    "colour": 17,
+    "font": 0,
+    "length": 49
+  },
+  "ui/src/pages/Members.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 10
+  },
+  "ui/src/pages/MySubmissions.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 2
+  },
+  "ui/src/pages/MySubmissions.tsx": {
+    "colour": 1,
+    "font": 0,
+    "length": 1
+  },
+  "ui/src/pages/Outcomes.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 8
+  },
+  "ui/src/pages/PostAnnouncement.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 3
+  },
+  "ui/src/pages/ProjectDetail.css": {
+    "colour": 25,
+    "font": 0,
+    "length": 35
+  },
+  "ui/src/pages/ProjectDraft.css": {
+    "colour": 2,
+    "font": 0,
+    "length": 0
+  },
+  "ui/src/pages/Projects.css": {
+    "colour": 2,
+    "font": 0,
+    "length": 2
+  },
+  "ui/src/pages/Propose.css": {
+    "colour": 14,
+    "font": 0,
+    "length": 0
+  },
+  "ui/src/pages/ProposeDraft.css": {
+    "colour": 7,
+    "font": 0,
+    "length": 3
+  },
+  "ui/src/pages/ProposeDraftVote.css": {
+    "colour": 1,
+    "font": 0,
+    "length": 1
+  },
+  "ui/src/pages/Search.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 11
+  },
+  "ui/src/pages/Settings.css": {
+    "colour": 9,
+    "font": 0,
+    "length": 13
+  },
+  "ui/src/pages/VoteResults.css": {
+    "colour": 6,
+    "font": 0,
+    "length": 7
+  },
+  "ui/src/pages/Welcome.css": {
+    "colour": 6,
+    "font": 0,
+    "length": 0
+  },
+  "ui/src/pages/WordCloud.css": {
+    "colour": 57,
+    "font": 0,
+    "length": 98
+  },
+  "ui/src/start/start.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 26
+  },
+  "ui/src/styles/design-system/base.css": {
+    "colour": 0,
+    "font": 0,
+    "length": 5
+  },
+  "ui/src/styles/design-system/components.css": {
+    "colour": 21,
+    "font": 0,
+    "length": 16
+  }
+}

@@ -45,6 +45,9 @@
 //      `mail` in its grant.
 //  20. the hub in scope (Events 2, E3): its code names no time zone and no
 //      hub's address; hubContext() gives the hub's.
+//  21. its own look (design pass, 2026-10-29): its .css and .tsx set no
+//      colour, font or size of their own, only the hub's tokens (switched
+//      off until Events' stylesheet is clean: OWN_LOOK_STEP_ON below).
 // Tier 2 (sandboxed) has a slot and no runtime yet.
 //
 // Needs the local stack and a hub server started with CIVIC_POLIS_FAKE=on and
@@ -52,7 +55,7 @@
 // needs to make it pass.
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { HOST_ROOT } from "@civic-social/plugin-sdk/host";
 import { call, callUpload, pngOf } from "./support/http.js";
@@ -89,6 +92,7 @@ import {
   type ProcessTypeDescriptor,
 } from "@civic-social/plugin-sdk/testing";
 import { hostFacts } from "./hostFacts.js";
+import { scanDir } from "./tokenScan.js";
 import {
   BETA,
   DEMO,
@@ -974,6 +978,43 @@ function sdkSurfaceSteps(d: ProcessTypeDescriptor, facts: HostFacts, touched: Ar
       } finally {
         await setPlugin(BETA, d.plugin, true);
       }
+    });
+  });
+
+  ownLookStep(d);
+}
+
+/**
+ * Step 21 is switched off until the design pass cleans
+ * packages/civic.event/styles.css (55 lengths of its own today), and is
+ * switched on in that same commit. Off, it is reported as skipped, by name.
+ */
+const OWN_LOOK_STEP_ON = false;
+
+/**
+ * Step 21 (design pass, 2026-10-29; ADR-018 to come): a package sets no
+ * colour, font or spacing of its own. Its .css and .tsx files (inline
+ * `style={{ ... }}` included) are held to the hub's token rules
+ * (./tokenScan.ts) with none allowed: the hub's own files have a per-file
+ * ratchet (scripts/check-tokens.ts); a package has none. Its card hue,
+ * `feed.kinds[].color` in manifest.ts, is not its own colour but a theme key
+ * (step 15), and manifest.ts is not a stylesheet: it is not scanned.
+ */
+function ownLookStep(d: ProcessTypeDescriptor): void {
+  describe("21. no colour, font or spacing of its own", () => {
+    if (!OWN_LOOK_STEP_ON) {
+      it.skip("switched off until the design pass cleans Events' styles.css (OWN_LOOK_STEP_ON)", () => {});
+      return;
+    }
+    it("its .css and .tsx use the hub's tokens for every colour, font and size (its card hue is declared in manifest.ts, and not scanned)", () => {
+      const pkg = loadedPackages().find((p) => p.type === d.type);
+      if (!pkg) return;
+      const dir = resolve(HOST_ROOT, pkg.dir);
+      const found: string[] = [];
+      for (const [file, findings] of scanDir(dir)) {
+        for (const f of findings) found.push(`${relative(dir, file)}:${f.line} ${f.category} ${f.property}: ${f.text}`);
+      }
+      expect(found, `${d.type}: values of its own where a token belongs (var(--...); kit/conformance/README.md, step 21)`).toEqual([]);
     });
   });
 }

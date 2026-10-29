@@ -36,6 +36,8 @@ additive (refused); CI runs it too.
 - `src/support/`: HTTP to the test host, the local stack's PostgREST and sessions,
   the console, putting a run's hubs away. The repository's own tests share them.
 - `cli.ts`: the `civic-conformance` command; `src/fence.ts`, what a package may import.
+- `src/tokenScan.ts`: step 21's rules for colours, fonts and sizes of a package's own; the hub's
+  token ratchet (`scripts/check-tokens.ts`) runs the same code.
 - `fixtures/`: the broken copy and the non-additive copy the proof needs.
 - The static checks themselves are in `src/processes/descriptorCheck.ts`,
   and are also run by `tests/unit/processDescriptors.test.ts` on every push.
@@ -141,6 +143,24 @@ additive (refused); CI runs it too.
     no IANA time zone and no hub's address. One package serves every hub;
     `hubContext()` gives the hub's name, the origin its pages are at, and its
     zone, and `identity.timezone` is public at `/hub-config` for its pages.
+21. **No colour, font or spacing of its own** (design pass, 2026-10-29): a
+    package's `.css` and `.tsx` files (inline `style={{ ... }}` included) use
+    the hub's tokens, `var(--...)`, for every colour, font family and size,
+    with none of their own allowed:
+    - colour: no hex, no `rgb()`/`hsl()`/`oklch()` with its channels written
+      out (`rgba(var(--x), .5)` is fine), no named colour (`transparent` and
+      `currentColor` are fine);
+    - font: `font-family` (and `font`) is a `var(...)` or `inherit`;
+    - length: no `px`, `rem`, `em` or `pt` but `0`, `1px` and `2px`;
+      percentages, viewport units, `fr`, `ch` and unitless numbers are fine,
+      and so are `@media`/`@container` breakpoints;
+    - a `var(--x, 12px)` fallback and a `--gap: 12px` of its own both count.
+
+    Its card hue (`feed.kinds[].color` in `manifest.ts`) is a theme key, not a
+    colour of its own (step 15), and `manifest.ts` is not scanned. The rules
+    are `src/tokenScan.ts`, the same code the hub's own ratchet runs
+    (`scripts/check-tokens.ts`). Switched off (`OWN_LOOK_STEP_ON`) until the
+    design pass cleans Events' `styles.css`; reported as skipped until then.
 
 `kit/conformance/fixtures/sdk-tour` uses every one of 11 to 17 through the
 SDK alone; `kit/scripts/prove.ts` runs it from an empty folder.
