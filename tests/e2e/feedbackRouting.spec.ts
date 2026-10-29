@@ -219,8 +219,9 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
       await page.getByRole("navigation", { name: "Sections", exact: true }).locator('[data-nav-id="more"]').click();
       await page.getByTestId("more-sheet").getByRole("link", { name: "Contact Civic.Social" }).click();
     } else {
-      // A new hub's desktop: the sidebar's Admin group.
-      await page.getByRole("navigation", { name: "Hub", exact: true }).getByRole("link", { name: "Contact Civic.Social" }).click();
+      // A new hub's desktop has top navigation (design pass, decision 6): the Admin menu.
+      await page.getByRole("button", { name: "Admin", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Contact Civic.Social" }).click();
     }
     await expect(page).toHaveURL(/\/admin\/contact-civic-social$/);
     await expect(page.getByText(ADMIN)).toBeVisible();

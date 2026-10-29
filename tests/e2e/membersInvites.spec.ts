@@ -131,19 +131,13 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     await signedIn.setViewportSize(viewport);
     await visit(signedIn, memberToken);
     await signedIn.goto(`${HUB}/`);
-    if (name === "phone") {
-      // The account menu offers Share this hub, not Members (Adam, 2026-10-14).
-      await signedIn.getByRole("button", { name: "Account menu" }).click();
-      await expect(signedIn.getByRole("menuitem", { name: "Share this hub" })).toBeVisible();
-      await expect(signedIn.getByRole("menuitem", { name: "Members" })).toHaveCount(0);
-      await signedIn.keyboard.press("Escape");
-    } else {
-      // A new hub's desktop has the sidebar (navigation slice, 2026-10-14):
-      // Members is a section there, with its count, and Share this hub a link.
-      const side = signedIn.getByRole("navigation", { name: "Hub", exact: true });
-      await expect(side.locator('[data-nav-id="members"] .nav-item-count')).toHaveText("6");
-      await expect(side.getByRole("button", { name: "Share this hub" })).toBeVisible();
-    }
+    // The account menu offers Share this hub, not Members (Adam, 2026-10-14),
+    // on a phone and on a new hub's desktop, which has top navigation
+    // (design pass, decision 6).
+    await signedIn.getByRole("button", { name: /^Account menu/ }).click();
+    await expect(signedIn.getByRole("menuitem", { name: "Share this hub" })).toBeVisible();
+    await expect(signedIn.getByRole("menuitem", { name: "Members" })).toHaveCount(0);
+    await signedIn.keyboard.press("Escape");
     await signedIn.getByTestId("member-stack").getByRole("link", { name: "6 members" }).click();
     await expect(signedIn).toHaveURL(/\/members$/);
     await signedInContext.close();

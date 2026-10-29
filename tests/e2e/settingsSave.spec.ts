@@ -51,7 +51,7 @@ test("an unsaved change keeps Save in view, and leaving asks first", async ({ pa
     asked = d.message();
     await d.dismiss();
   });
-  await page.getByRole("link", { name: "Feed", exact: true }).first().click();
+  await page.getByRole("link", { name: "Back to the hub" }).first().click();
   expect(asked).toMatch(/unsaved changes/);
   await expect(page).toHaveURL(/\/admin\/settings\/copy/);
   await expect(field).toHaveValue(/\(edited\)$/);

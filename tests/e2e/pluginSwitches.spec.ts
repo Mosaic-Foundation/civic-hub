@@ -117,8 +117,9 @@ test.describe("Plugin switches", () => {
       await dialog.getByRole("button", { name: "Stop now", exact: true }).click();
       await expect(card.getByText("Not installed.", { exact: true })).toBeVisible();
 
+      // Admin is its own place: the way out is "Back to the hub" (design pass).
       const tabs = page.getByRole("navigation", { name: "Primary content" });
-      await tabs.getByRole("link", { name: "Feed", exact: true }).click();
+      await page.getByRole("link", { name: "Back to the hub" }).click();
       await expect(page).toHaveURL(/\/$/);
       await expect(tabs.getByRole("link", { name: "Projects", exact: true })).toHaveCount(0);
       expect(await page.evaluate(() => (window as unknown as { __sameDocument?: boolean }).__sameDocument)).toBe(true);
@@ -129,7 +130,7 @@ test.describe("Plugin switches", () => {
       await card.getByRole("button", { name: "Install…" }).click();
       await page.getByRole("dialog", { name: "Install Projects?" }).getByRole("button", { name: "Install", exact: true }).click();
       await expect(card.getByText("Installed", { exact: true }).first()).toBeVisible();
-      await tabs.getByRole("link", { name: "Feed", exact: true }).click();
+      await page.getByRole("link", { name: "Back to the hub" }).click();
       await expect(tabs.getByRole("link", { name: "Projects", exact: true })).toHaveCount(1);
       expect(await page.evaluate(() => (window as unknown as { __sameDocument?: boolean }).__sameDocument)).toBe(true);
     }
