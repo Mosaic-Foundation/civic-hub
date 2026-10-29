@@ -25,24 +25,26 @@ export default function AboutNumbers() {
   return (
     <section className="about-numbers" aria-labelledby="about-numbers" data-testid="about-numbers">
       <h2 id="about-numbers">This hub in numbers</h2>
-      <table className="activity-table">
-        <thead>
-          <tr>
-            <th scope="col"><span className="visually-hidden">What</span></th>
-            <th scope="col">{month.data.period.label}</th>
-            <th scope="col">{all.data.period.label}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(([label, m, a]) => (
-            <tr key={label}>
-              <th scope="row">{label}</th>
-              <td>{show(m)}</td>
-              <td>{show(a)}</td>
+      <div className="kit-table-wrap">
+        <table className="kit-table activity-table">
+          <thead>
+            <tr>
+              <th scope="col"><span className="visually-hidden">What</span></th>
+              <th scope="col">{month.data.period.label}</th>
+              <th scope="col">{all.data.period.label}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map(([label, m, a]) => (
+              <tr key={label}>
+                <th scope="row">{label}</th>
+                <td>{show(m)}</td>
+                <td>{show(a)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <p className="form-hint">
         Counted from this hub's public record. No number names anyone; from 1 to 4 reads "fewer than 5". The same
         numbers, with how each is counted, are at <a href="/api/analytics">/analytics</a>.

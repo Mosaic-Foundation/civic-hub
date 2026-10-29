@@ -9,7 +9,6 @@ import { Link } from "react-router-dom";
 import { useApi } from "../../../ui/src/hooks/useApi";
 import { useAuth } from "../../../ui/src/context/authState";
 import { useHub } from "../../../ui/src/config/hub";
-import AdminTabs from "../../../ui/src/components/AdminTabs";
 import HelpButton from "../../../ui/src/components/HelpButton";
 import { localTimestamp } from "../../../ui/src/utils/dates";
 import { adminPutHubSettings } from "../../../ui/src/services/api";
@@ -51,7 +50,7 @@ export default function ActivityPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
-  if (authLoading) return <div className="page admin-page"><AdminTabs /><p>Loading…</p></div>;
+  if (authLoading) return <div className="page admin-page"><p>Loading…</p></div>;
   if (!isAdmin) return <div className="page admin-page"><p>Admin access required.</p></div>;
 
   const r = report.data;
@@ -71,38 +70,39 @@ export default function ActivityPage() {
 
   return (
     <div className="page admin-page activity-page" data-testid="activity-page">
-      <AdminTabs />
-      <h1>
+      <h1 className="kit-page-title">
         Activity <HelpButton k="plugins.analytics" label="Activity" />
       </h1>
-      <p className="admin-page-description">
+      <p className="kit-page-lede">
         How many residents took part, and in what, counted from this hub's record. Every number is a count; none of
         them names anyone. Residents who take part in person and are not recorded here are not counted.
       </p>
 
       <div className="activity-toolbar" role="group" aria-label="Period">
-        {KINDS.map((k) => (
-          <button
-            key={k.id}
-            type="button"
-            className={`activity-chip${kind === k.id ? " is-on" : ""}`}
-            aria-pressed={kind === k.id}
-            onClick={() => {
-              setKind(k.id);
-              setAt(null);
-            }}
-          >
-            {k.label}
-          </button>
-        ))}
+        <span className="kit-chips">
+          {KINDS.map((k) => (
+            <button
+              key={k.id}
+              type="button"
+              className={`kit-chip activity-chip${kind === k.id ? " is-on" : ""}`}
+              aria-pressed={kind === k.id}
+              onClick={() => {
+                setKind(k.id);
+                setAt(null);
+              }}
+            >
+              {k.label}
+            </button>
+          ))}
+        </span>
         {r && kind !== "all" && (
-          <span className="activity-step">
-            <button type="button" className="activity-chip" aria-label="Previous period" onClick={() => setAt(stepped(r, -1))}>
+          <span className="kit-chips activity-step">
+            <button type="button" className="kit-chip activity-chip" aria-label="Previous period" onClick={() => setAt(stepped(r, -1))}>
               ←
             </button>
             <button
               type="button"
-              className="activity-chip"
+              className="kit-chip activity-chip"
               aria-label="Next period"
               disabled={r.period.to_date}
               onClick={() => setAt(stepped(r, 1))}
@@ -127,60 +127,60 @@ export default function ActivityPage() {
               : r.computed_at
                 ? `Counted ${localTimestamp(r.computed_at)}; recounted every hour.`
                 : "Not counted yet."}{" "}
-            <button type="button" className="btn-secondary activity-inline-btn" disabled={busy !== null} onClick={() => act("Recount", async () => { await recount(); await report.reload(); })}>
+            <button type="button" className="btn-secondary btn-sm activity-inline-btn" disabled={busy !== null} onClick={() => act("Recount", async () => { await recount(); await report.reload(); })}>
               {busy === "Recount" ? "Counting…" : "Recount now"}
             </button>
           </p>
 
-          <ul className="activity-tiles">
+          <ul className="kit-stats activity-tiles">
             {TOTALS.map((t) => (
-              <li key={t.key} className="activity-tile" title={r.definitions[t.key]} data-testid={`activity-total-${t.key}`}>
-                <span className="activity-n">{show(r.totals[t.key])}</span>
-                <span className="activity-label">{t.label}</span>
+              <li key={t.key} className="kit-card kit-stat activity-tile" title={r.definitions[t.key]} data-testid={`activity-total-${t.key}`}>
+                <span className="kit-stat-n activity-n">{show(r.totals[t.key])}</span>
+                <span className="kit-stat-label activity-label">{t.label}</span>
               </li>
             ))}
           </ul>
 
-          <h2>By kind</h2>
-          <div className="activity-table-wrap">
-            <table className="activity-table" data-testid="activity-by-type">
+          <h2 className="kit-section-title">By kind</h2>
+          <div className="kit-table-wrap activity-table-wrap">
+            <table className="kit-table activity-table" data-testid="activity-by-type">
               <thead>
                 <tr>
                   <th scope="col">Kind</th>
-                  <th scope="col">Active residents</th>
-                  <th scope="col">Participations</th>
-                  <th scope="col">Created</th>
-                  <th scope="col">Closed</th>
-                  <th scope="col">Results and briefs</th>
+                  <th scope="col" className="is-number">Active residents</th>
+                  <th scope="col" className="is-number">Participations</th>
+                  <th scope="col" className="is-number">Created</th>
+                  <th scope="col" className="is-number">Closed</th>
+                  <th scope="col" className="is-number">Results and briefs</th>
                 </tr>
               </thead>
               <tbody>
                 {r.by_type.map((t) => (
                   <tr key={t.type}>
                     <th scope="row">{t.plural}</th>
-                    <td>{show(t.active_residents)}</td>
-                    <td>{show(t.participations)}</td>
-                    <td>{show(t.processes_created)}</td>
-                    <td>{show(t.processes_closed)}</td>
-                    <td>{show(t.outcomes)}</td>
+                    <td className="is-number">{show(t.active_residents)}</td>
+                    <td className="is-number">{show(t.participations)}</td>
+                    <td className="is-number">{show(t.processes_created)}</td>
+                    <td className="is-number">{show(t.processes_closed)}</td>
+                    <td className="is-number">{show(t.outcomes)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <h2>For funders</h2>
+          <h2 className="kit-section-title">For funders</h2>
           <p className="admin-page-description">
             Three things civic surveys ask people to remember, counted instead from what this hub recorded. They say what
             happened, not how anyone felt about it, and they count only people who took part here.
           </p>
           <ul className="activity-measures" data-testid="activity-measures">
             {r.measures.map((m) => (
-              <li key={m.id} className="activity-measure" data-testid={`activity-measure-${m.id}`}>
+              <li key={m.id} className="kit-card activity-measure" data-testid={`activity-measure-${m.id}`}>
                 <h3>{m.label}</h3>
                 <p className="activity-measure-figures">
-                  <span><span className="activity-n">{show(m.residents.value)}</span> {m.residents.label}</span>
-                  <span><span className="activity-n">{show(m.records.value)}</span> {m.records.label}</span>
+                  <span><span className="kit-stat-n activity-n">{show(m.residents.value)}</span> {m.residents.label}</span>
+                  <span><span className="kit-stat-n activity-n">{show(m.records.value)}</span> {m.records.label}</span>
                 </p>
                 <details>
                   <summary>How this is counted</summary>
@@ -190,15 +190,15 @@ export default function ActivityPage() {
             ))}
           </ul>
 
-          <h2>Coming back</h2>
-          <ul className="activity-tiles activity-tiles-two">
-            <li className="activity-tile" title={r.definitions.residents_in_more_than_one_type}>
-              <span className="activity-n">{show(r.retention.residents_in_more_than_one_type)}</span>
-              <span className="activity-label">took part in more than one kind</span>
+          <h2 className="kit-section-title">Coming back</h2>
+          <ul className="kit-stats activity-tiles activity-tiles-two">
+            <li className="kit-card kit-stat activity-tile" title={r.definitions.residents_in_more_than_one_type}>
+              <span className="kit-stat-n activity-n">{show(r.retention.residents_in_more_than_one_type)}</span>
+              <span className="kit-stat-label activity-label">took part in more than one kind</span>
             </li>
-            <li className="activity-tile" title={r.definitions.returning_from_previous_period}>
-              <span className="activity-n">{r.previous_period ? show(r.retention.returning_from_previous_period) : "—"}</span>
-              <span className="activity-label">
+            <li className="kit-card kit-stat activity-tile" title={r.definitions.returning_from_previous_period}>
+              <span className="kit-stat-n activity-n">{r.previous_period ? show(r.retention.returning_from_previous_period) : "—"}</span>
+              <span className="kit-stat-label activity-label">
                 {r.previous_period ? "also took part in the period before" : "no period before this one"}
               </span>
             </li>
@@ -212,7 +212,7 @@ export default function ActivityPage() {
         </>
       )}
 
-      <h2 id="public-numbers">
+      <h2 className="kit-section-title" id="public-numbers">
         Public numbers <HelpButton k="plugin.analytics.public_numbers" label="Public numbers" />
       </h2>
       <p data-testid="activity-public-status">
@@ -284,7 +284,7 @@ function ReportingKeys() {
   const live = keys.data?.keys ?? [];
   return (
     <section className="activity-keys" aria-labelledby="reporting-keys">
-      <h2 id="reporting-keys">Reporting keys</h2>
+      <h2 className="kit-section-title" id="reporting-keys">Reporting keys</h2>
       <p className="admin-page-description">
         A key lets a named outside organisation, such as a funder or a researcher, read these numbers even while Public
         numbers is off. Every read is recorded below. Revoke a key and it reads nothing.
@@ -298,10 +298,10 @@ function ReportingKeys() {
             They send it as <code>Authorization: Bearer …</code> when they read <code>/analytics</code>.
           </p>
           <code className="activity-key">{issued.key}</code>
-          <button type="button" className="btn-secondary activity-inline-btn" onClick={() => void navigator.clipboard?.writeText(issued.key)}>
+          <button type="button" className="btn-secondary btn-sm activity-inline-btn" onClick={() => void navigator.clipboard?.writeText(issued.key)}>
             Copy
           </button>{" "}
-          <button type="button" className="btn-secondary activity-inline-btn" onClick={() => setIssued(null)}>
+          <button type="button" className="btn-secondary btn-sm activity-inline-btn" onClick={() => setIssued(null)}>
             Done
           </button>
         </div>
@@ -324,8 +324,8 @@ function ReportingKeys() {
       </form>
 
       {live.length > 0 && (
-        <div className="activity-table-wrap">
-          <table className="activity-table" data-testid="activity-keys">
+        <div className="kit-table-wrap activity-table-wrap">
+          <table className="kit-table activity-table" data-testid="activity-keys">
             <thead>
               <tr>
                 <th scope="col">Organisation</th>
@@ -350,10 +350,10 @@ function ReportingKeys() {
                     ) : confirm === k.id ? (
                       <>
                         <button type="button" className="admin-cancel-button" onClick={() => void onRevoke(k.id)}>Revoke it</button>{" "}
-                        <button type="button" className="btn-secondary activity-inline-btn" onClick={() => setConfirm(null)}>Keep</button>
+                        <button type="button" className="btn-secondary btn-sm activity-inline-btn" onClick={() => setConfirm(null)}>Keep</button>
                       </>
                     ) : (
-                      <button type="button" className="btn-secondary activity-inline-btn" onClick={() => setConfirm(k.id)}>Revoke</button>
+                      <button type="button" className="btn-secondary btn-sm activity-inline-btn" onClick={() => setConfirm(k.id)}>Revoke</button>
                     )}
                   </td>
                 </tr>
@@ -367,8 +367,8 @@ function ReportingKeys() {
       {(keys.data?.reads ?? []).length === 0 ? (
         <p className="admin-page-description">No organisation has read the numbers with a key yet.</p>
       ) : (
-        <div className="activity-table-wrap">
-          <table className="activity-table" data-testid="activity-reads">
+        <div className="kit-table-wrap activity-table-wrap">
+          <table className="kit-table activity-table" data-testid="activity-reads">
             <thead>
               <tr>
                 <th scope="col">When</th>
