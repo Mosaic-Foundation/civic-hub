@@ -7,10 +7,13 @@ Updated after every Claude Code session. Records what was built, what's incomple
 ## The design pass: one token system, the kit, admin as its own place, dark mode — 2026-10-28/29
 
 **State:**
-- **Dev:** `c76a5bc`, via `release.sh dev --yes`: 2 migrations, `users.notices_email`/`appearance` and the
-  Events 0.3.1 catalog entry. Health is ok with no schema gaps.
-- **Dev mounts 8 of 9 packages** until Adam approves Events 0.3.1 in dev's console (required), so dev's Smoke
-  fails its package-count check until then.
+- **Dev:** `977093d`, via `release.sh dev --yes`. Three catalog/settings migrations in all:
+  `users.notices_email`/`appearance`, Events 0.3.1, Events 0.3.2. Health is ok with no schema gaps.
+- **Events 0.3.1** was approved in dev's console on 10-29 (dev then mounted 9 of 9, Smoke 30 of 30 on `61e8eed`).
+- **Events 0.3.2** (after Adam's walkthrough): the form reads Starts, Duration, Ends, still linked both ways,
+  and an end at or before the start says "Ends must be after it starts." on the field. Dev mounts 8 of 9 until
+  Adam approves 0.3.2 in dev's console (required); Smoke's package count fails until then.
+- **Adam's walkthrough** of the checklist on dev: everything else as it should be.
 - **Not on production.**
 - **ADR-018** (`decisions/018-design-tokens-and-theming.md`) is committed locally in the mono repo for Adam to
   push.
