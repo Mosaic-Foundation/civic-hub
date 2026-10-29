@@ -520,7 +520,8 @@ test("admin settings: an unsaved change keeps Save in view, and leaving asks fir
     asked = d.message();
     await d.dismiss();
   });
-  await page.getByRole("link", { name: "Feed", exact: true }).first().click();
+  // Admin is its own place: the way out is "Back to the hub" (design pass).
+  await page.getByRole("link", { name: "Back to the hub" }).first().click();
   expect(asked).toMatch(/unsaved changes/);
   await expect(page).toHaveURL(/\/admin\/settings\/copy/);
 
@@ -704,7 +705,7 @@ test("a feed item carries its type's pill; the phone's bar and More (closing fro
   await page.close();
 });
 
-test("at desktop width with Navigation set to Sidebar, the sidebar replaces the header and tabs", async ({ browser, request }) => {
+test("at desktop width with Navigation set to Sidebar, the column under the header replaces the tabs", async ({ browser, request }) => {
   const config = await (await request.get(`${apiBase()}/hub-config`)).json();
   navLayoutBefore = (config.settings?.["nav.layout"] as string | undefined) ?? "";
   const set = await request.put(`${apiBase()}/admin/hub/settings`, {
@@ -720,11 +721,12 @@ test("at desktop width with Navigation set to Sidebar, the sidebar replaces the 
     const side = page.getByRole("navigation", { name: "Hub", exact: true });
     // No wait for other instances: a save bumps the hub's settings version and
     // every instance reloads on its next request (20261018000000).
+    // The header stays across the top; the column only navigates (design pass).
     await expect(side).toBeVisible();
-    await expect(page.locator(".civic-nav")).toBeHidden();
+    await expect(page.locator(".civic-nav")).toBeVisible();
+    await expect(page.locator(".feed-votes-tabs")).toBeHidden();
     await expect(side.locator('[aria-current="page"]')).toContainText("Votes");
-    await expect(side.getByText("Admin", { exact: true })).toBeVisible();
-    await expect(side.getByText(/Signed in as/)).toBeVisible();
+    await expect(side.locator('[data-nav-id="admin"]')).toBeVisible();
     await page.close();
   } finally {
     // Put back here, not only in afterAll, which a cut-off run never reaches.
