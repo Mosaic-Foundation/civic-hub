@@ -1564,3 +1564,76 @@
 .mode-readiness-accept input {
   margin-top: var(--space-0-5);
 }
+
+/* --- Appearance: background warmth, font, logo (design pass, decision 10) --- */
+
+.theme-warmth {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.theme-warmth-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: var(--space-1-5) var(--space-3) var(--space-1-5) var(--space-1-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-small-size);
+  cursor: pointer;
+}
+
+.theme-warmth-choice.is-selected {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.theme-warmth-choice:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--border-width-strong);
+}
+
+.theme-warmth-swatch {
+  width: var(--icon-size-lg);
+  height: var(--icon-size-lg);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+
+/* Each font's name drawn in that font, so the choice shows itself. */
+.theme-font-sample--inter {
+  font-family: var(--font-family-inter);
+}
+
+.theme-font-sample--serif {
+  font-family: var(--font-family-serif);
+}
+
+.theme-font-sample--atkinson {
+  font-family: var(--font-family-atkinson);
+}
+
+.theme-font-sample--system {
+  font-family: var(--font-family-system);
+}
+
+.theme-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.theme-logo-image {
+  width: var(--space-12);
+  height: var(--space-12);
+  object-fit: contain;
+  border: var(--border-width) solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}

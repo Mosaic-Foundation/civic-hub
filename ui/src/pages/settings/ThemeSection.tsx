@@ -1,7 +1,9 @@
-// Theme — a hub's colours. Presets, three base colours and one hue per
-// process type; every other shade is derived (src/shared/theme.ts), and any
-// choice that would hurt readability is adjusted and reported, never saved
-// as picked.
+// Appearance (Theme until the design pass, 2026-10-29) — a hub's look.
+// Presets, the base colours, the background's warmth, a font from a short
+// list (decision 10) and one hue per process type; every other shade is
+// derived (src/shared/theme.ts), and any choice that would hurt readability
+// is adjusted and reported, never saved as picked. Stored as identity.theme:
+// the admin's choices, which theme.ts turns into the hub's token overrides.
 //
 // The live preview is a `.theme-scope` box carrying previewVars(): the same
 // variables the page would get, re-declared inside the box, so what it shows
@@ -10,6 +12,7 @@
 import { useId, useMemo, useRef } from "react";
 import {
   DEFAULT_THEME_COLORS,
+  THEME_FONTS,
   THEME_PRESETS,
   THEME_TYPE_KEYS,
   parseTheme,
@@ -25,6 +28,9 @@ import { navSections, type NavSection } from "../../config/navigation";
 import { BAR_SECTION_COUNT, parseSectionOrder } from "../../../../src/shared/navSections";
 import HelpButton from "../../components/HelpButton";
 import SectionForm, { type FormApi } from "./SectionForm";
+import { Link } from "react-router-dom";
+import { RadioCards } from "../../kit";
+import { useHub } from "../../config/hub";
 
 const KEY = "identity.theme";
 
@@ -32,13 +38,15 @@ export default function ThemeSection() {
   return (
     <SectionForm
       section="theme"
-      title="Theme"
+      title="Appearance"
       intro={
         <p className="form-hint">
-          The colours of the whole site. Start from a preset, then change the
-          base colours or any process type&apos;s colour. Every lighter and
-          darker shade is worked out for you, and a colour that would make text
-          hard to read is adjusted just enough to pass, with the change shown.
+          How the whole hub looks, for everyone, and every plugin&apos;s pages
+          with it. Start from a preset, then change the colours, the
+          background&apos;s warmth or the font. Every lighter and darker shade
+          is worked out for you, and a colour that would make text hard to read
+          is adjusted just enough to pass, with the change shown. Each person
+          can still choose light or dark for themselves.
         </p>
       }
       savedMessage="Saved. The site wears it now; visitors see it on their next page load."
@@ -110,6 +118,51 @@ function ThemeEditor({ f }: { f: FormApi }) {
           })}
         </div>
       </div>
+
+      <div className="settings-field">
+        <span className="form-label settings-field-label" id="theme-warmth-label">
+          Background
+        </span>
+        <p className="form-hint">From cool white to warm paper. Cards stay white on it.</p>
+        <div className="theme-warmth" role="radiogroup" aria-labelledby="theme-warmth-label">
+          {WARMTH.map((w) => {
+            const current = (theme.background ?? baseOf("background")).toLowerCase();
+            const on = current === w.hex;
+            return (
+              <button
+                key={w.hex}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                className={`theme-warmth-choice${on ? " is-selected" : ""}`}
+                onClick={() => update({ ...theme, background: w.hex === DEFAULT_THEME_COLORS.background ? undefined : w.hex })}
+                disabled={f.disabled}
+              >
+                <span className="theme-warmth-swatch" style={{ background: w.hex }} aria-hidden="true" />
+                {w.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="settings-field">
+        <span className="form-label settings-field-label">Font</span>
+        <RadioCards
+          name="theme-font"
+          label="Font"
+          value={theme.font ?? "inter"}
+          onChange={(v) => update({ ...theme, font: v === "inter" ? undefined : v })}
+          options={THEME_FONTS.map((fo) => ({
+            value: fo.id,
+            title: <span className={`theme-font-sample theme-font-sample--${fo.heading}`}>{fo.label}</span>,
+            body: fo.hint,
+            disabled: f.disabled,
+          }))}
+        />
+      </div>
+
+      <LogoField />
 
       <div className="settings-field">
         <span className="form-label settings-field-label">Base colours</span>
@@ -185,6 +238,32 @@ function ThemeEditor({ f }: { f: FormApi }) {
         <ThemePreview theme={theme} />
       </div>
     </>
+  );
+}
+
+/** The background's warmth, cool to warm; Warm is the default (Daylight). */
+const WARMTH = [
+  { label: "Cool", hex: "#f8f9fb" },
+  { label: "Neutral", hex: "#fafaf9" },
+  { label: "Warm", hex: DEFAULT_THEME_COLORS.background },
+  { label: "Warmer", hex: "#f8f4ec" },
+] as const;
+
+/** The hub's logo, shown where its look is set; it is changed under Identity. */
+function LogoField() {
+  const hub = useHub();
+  return (
+    <div className="settings-field">
+      <span className="form-label settings-field-label">Logo</span>
+      <div className="theme-logo">
+        {hub.logo_url ? (
+          <img src={hub.logo_url} alt="" className="theme-logo-image" />
+        ) : (
+          <span className="form-hint">No logo yet.</span>
+        )}
+        <Link to="/admin/settings/identity#identity.logo_url">Change it under Identity</Link>
+      </div>
+    </div>
   );
 }
 

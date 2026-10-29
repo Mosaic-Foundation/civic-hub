@@ -169,3 +169,18 @@ describe("previewVars", () => {
     }
   });
 });
+
+describe("a hub's font (design pass, decision 10)", () => {
+  it("points the body and heading tokens at a font token; Inter sets nothing", async () => {
+    const { resolveTheme, serializeTheme, parseTheme, validateThemeValue } = await import("../../src/shared/theme");
+    expect(resolveTheme({}).vars["--font-body"]).toBeUndefined();
+    expect(resolveTheme({ font: "inter" }).vars["--font-heading"]).toBeUndefined();
+    const serif = resolveTheme({ font: "serif" }).vars;
+    expect(serif["--font-body"]).toBe("var(--font-family-inter)");
+    expect(serif["--font-heading"]).toBe("var(--font-family-serif)");
+    expect(resolveTheme({ font: "atkinson" }).vars["--font-body"]).toBe("var(--font-family-atkinson)");
+    expect(parseTheme(serializeTheme({ font: "system" }))).toEqual({ font: "system" });
+    expect(serializeTheme({ font: "inter" })).toBe("");
+    expect(validateThemeValue({ font: "comic" })).toEqual({ error: 'Unknown font "comic".' });
+  });
+});

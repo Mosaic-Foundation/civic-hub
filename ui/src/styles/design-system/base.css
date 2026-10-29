@@ -35,7 +35,7 @@ body {
   min-height: 100vh;
   background: var(--ds-color-bg-page);
   color: var(--ds-color-text-default);
-  font-family: var(--ds-font-family-sans);
+  font-family: var(--font-body);
   font-size: var(--ds-font-size-base);
   line-height: var(--ds-line-height-normal);
   font-weight: var(--ds-font-weight-regular);
@@ -97,7 +97,7 @@ select:focus-visible,
    -------------------------------------------------------------------------- */
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--ds-font-family-display);
+  font-family: var(--font-heading);
   font-weight: var(--ds-font-weight-semibold);
   line-height: var(--ds-line-height-tight);
   color: var(--ds-color-text-default);

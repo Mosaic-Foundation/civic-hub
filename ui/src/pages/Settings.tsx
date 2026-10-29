@@ -9,7 +9,9 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/authState";
 import AuthModal from "../components/AuthModal";
-import { setDigestFrequency, setNoticesEmail } from "../services/api";
+import { setAppearance as saveAppearance, setDigestFrequency, setNoticesEmail } from "../services/api";
+import { RadioCards } from "../kit";
+import { applyAppearance, type Appearance } from "../config/appearance";
 import { useHub } from "../config/hub";
 import {
   deleteAccount as deleteAccountApi,
@@ -57,6 +59,14 @@ export default function Settings() {
   const [savingNotices, setSavingNotices] = useState(false);
   const [noticesMessage, setNoticesMessage] = useState<string | null>(null);
   const [noticesError, setNoticesError] = useState<string | null>(null);
+
+  // Appearance (design pass, decision 9): the person's own look, on their
+  // account so it follows them; light by default.
+  const [appearance, setAppearanceState] = useState<Appearance>(user?.appearance ?? "light");
+  const [appearanceError, setAppearanceError] = useState<string | null>(null);
+  useEffect(() => {
+    if (user?.appearance) setAppearanceState(user.appearance);
+  }, [user?.appearance]);
 
   // "Hide AI drafting help" — server-persisted so it follows the user
   // across devices. Initialized from the freshly fetched user below.
@@ -120,6 +130,21 @@ export default function Settings() {
       setNoticesError(`Could not save: ${(err as Error).message}`);
     } finally {
       setSavingNotices(false);
+    }
+  }
+
+  async function onAppearanceChange(next: Appearance) {
+    const before = appearance;
+    setAppearanceState(next);
+    applyAppearance(next);
+    setAppearanceError(null);
+    try {
+      const res = await saveAppearance(next);
+      if (user) updateUser({ ...user, appearance: res.appearance });
+    } catch (err) {
+      setAppearanceState(before);
+      applyAppearance(before);
+      setAppearanceError(`Could not save: ${(err as Error).message}`);
     }
   }
 
@@ -344,6 +369,23 @@ export default function Settings() {
           {message && <p className="settings-message">{message}</p>}
         </section>
         )}
+
+        <section className="settings-panel" id="appearance" data-anchor="">
+          <h3>Appearance</h3>
+          <p className="form-hint">How this hub looks for you, on every device you sign in from.</p>
+          <RadioCards
+            name="appearance"
+            label="Appearance"
+            value={appearance}
+            onChange={(v) => void onAppearanceChange(v)}
+            options={[
+              { value: "light", title: "Light" },
+              { value: "dark", title: "Dark" },
+              { value: "system", title: "Follow this device", body: "Light or dark as the device is set." },
+            ]}
+          />
+          {appearanceError && <p className="form-error">{appearanceError}</p>}
+        </section>
 
         <section className="settings-panel" id="notices" data-anchor="">
           <h3>Notices</h3>

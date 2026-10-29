@@ -7,7 +7,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { contrast } from "../../src/shared/theme";
+import { contrast, mix } from "../../src/shared/theme";
 
 const STYLES = new URL("../../ui/src/styles/", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, STYLES), "utf8");
@@ -46,10 +46,29 @@ function resolve(vars: Vars, value: string, depth = 0): string {
   });
 }
 
+/** A hex colour, short or long, as #rrggbb. */
+function hex6(v: string): string | null {
+  const m = v.trim().toLowerCase().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/);
+  if (!m) return null;
+  const h = m[1]!;
+  return h.length === 3 ? `#${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}` : `#${h}`;
+}
+
+/** `color-mix(in srgb, A P%, B)` of two plain colours, as the browser mixes it. */
+function colourMix(v: string): string | null {
+  const m = v.match(/^color-mix\(in srgb,\s*(#[0-9a-f]{3,6})\s+(\d+(?:\.\d+)?)%,\s*(#[0-9a-f]{3,6})\s*\)$/i);
+  if (!m) return null;
+  const a = hex6(m[1]!);
+  const b = hex6(m[3]!);
+  return a && b ? mix(b, a, Number(m[2]) / 100) : null;
+}
+
 /** A token as a hex colour; `transparent` reads as the surface it sits on. */
 function colour(vars: Vars, token: string, under = "--color-surface"): string {
   const v = resolve(vars, `var(${token})`).trim().toLowerCase();
   if (v === "transparent") return colour(vars, under);
+  const mixed = colourMix(v);
+  if (mixed) return mixed;
   const hex = v.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/);
   if (!hex) throw new Error(`${token} is not a plain colour: ${v}`);
   const h = hex[1]!;
@@ -96,10 +115,12 @@ const PAIRS: Array<[string, string, number]> = [
   ),
 ];
 
-// The hub's look (Daylight, Adam's choice, 2026-10-29); the dark set joins
-// it with decision 9.
+// The hub's look (Daylight, Adam's choice, 2026-10-29) and its dark set
+// (decision 9), each over the same palette.
+const dark = declarations(read("tokens/dark.css"), (s) => s === ':root[data-mode="dark"]');
 const SETS: Record<string, Vars> = {
   light: tokenSet(),
+  dark: tokenSet(dark),
 };
 
 describe("token contrast (WCAG AA)", () => {

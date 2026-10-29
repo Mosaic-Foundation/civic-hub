@@ -273,20 +273,20 @@ function setMeta(
 }
 
 /**
- * The hub's theme, `identity.theme`, applied over the design tokens at the
- * root. src/shared/theme.ts derives every variable from the few colours the
- * admin picked; an empty theme sets nothing, so the stylesheet's own palette
- * stands. Variables a previous call set are removed first, so switching
- * themes (the Settings page re-applies after a save) leaves nothing behind.
+ * The hub's theme, `identity.theme`, applied over the design tokens.
+ * src/shared/theme.ts derives every variable from the few colours the admin
+ * picked; an empty theme sets nothing, so the stylesheet's own palette
+ * stands. Written as one stylesheet (#hub-theme), replaced on each call (the
+ * Settings page re-applies after a save), not as inline styles: the primary
+ * and accent scales hold in both modes (dark mode takes their lighter steps),
+ * while the page's and the kinds' colours hold in light mode only, so the
+ * dark set (styles/tokens/dark.css) keeps its own (design pass, decision 9).
  */
-let appliedThemeVars: string[] = [];
-
 export function applyTheme(raw: string | undefined): void {
   if (typeof document === "undefined") return;
-  const root = document.documentElement;
   // The packages' declared card colours (engine 2, A5), once: their tokens'
-  // defaults and the feed's edge and pill rules. A picked hue, set inline on
-  // the root below, still wins.
+  // defaults and the feed's edge and pill rules. A picked hue, in the theme's
+  // stylesheet below, still wins. The font holds in both modes too.
   if (!document.getElementById("declared-type-colors")) {
     const css = declaredTypeStylesheet();
     if (css) {
@@ -296,10 +296,23 @@ export function applyTheme(raw: string | undefined): void {
       document.head.appendChild(style);
     }
   }
-  for (const name of appliedThemeVars) root.style.removeProperty(name);
   const { vars } = resolveTheme(parseTheme(raw));
-  for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);
-  appliedThemeVars = Object.keys(vars);
+  const both: string[] = [];
+  const lightOnly: string[] = [];
+  for (const [name, value] of Object.entries(vars)) {
+    const line = `${name}:${value};`;
+    if (/^--ds-color-(primary|accent|action)-|^--font-/.test(name)) both.push(line);
+    else lightOnly.push(line);
+  }
+  let el = document.getElementById("hub-theme") as HTMLStyleElement | null;
+  if (!el) {
+    el = document.createElement("style");
+    el.id = "hub-theme";
+    document.head.appendChild(el);
+  }
+  el.textContent =
+    (both.length ? `html:root{${both.join("")}}` : "") +
+    (lightOnly.length ? `html:root:not([data-mode="dark"]){${lightOnly.join("")}}` : "");
 }
 
 /**

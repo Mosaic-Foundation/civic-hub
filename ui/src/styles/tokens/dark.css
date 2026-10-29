@@ -1,0 +1,136 @@
+/*
+ * The dark token set (design pass, decision 9, 2026-10-29; ADR-018).
+ *
+ * The same roles as theme.css, with dark values, under data-mode="dark" on
+ * <html>: a person's own setting (Appearance: light / dark / follow system,
+ * light by default), never the hub's. public/appearance.js sets it before the
+ * first paint; config/appearance.ts keeps it. Pages change nothing: they read
+ * the roles. Reference: Linear's dark, with a little warmth.
+ *
+ * The hub's chosen primary and accent still lead: their scales come from the
+ * hub's theme, and dark mode takes their lighter steps. Washes and tints are
+ * mixed from the colour and the surface, so they follow the hub's choice too.
+ * tests/unit/contrast.test.ts holds every pair here to WCAG AA.
+ */
+
+:root[data-mode="dark"],
+[data-mode="dark"] .theme-scope {
+  color-scheme: dark;
+
+  /* --- Surfaces --- */
+  --color-bg: #141519;
+  --color-surface: #1c1e23;
+  --color-surface-alt: #202228;
+  --color-surface-muted: #202228;
+  --color-surface-sunken: #18191d;
+  --color-surface-hover: #24272d;
+  --color-surface-stripe: #1f2126;
+  --color-surface-raised: #23262c;
+  --color-scrim: rgba(0, 0, 0, 0.6);
+
+  --color-border: #343840;
+  --color-border-subtle: #2a2d33;
+  --color-border-strong: #4a4f59;
+  --color-border-hover: #5c6370;
+  --color-border-control: #767d89;
+
+  /* --- Text --- */
+  --color-text: #e7e5e1;
+  --color-text-strong: #f6f4f1;
+  --color-text-muted: #a9afba;
+  --color-text-subtle: #959ca8;
+  --color-text-faint: #5c6370;
+  --color-text-inverse: #141519;
+
+  /* --- Primary: the hub's colour, its lighter steps --- */
+  --color-primary: var(--ds-color-primary-400);
+  --color-primary-text: #0d1117;
+  --color-primary-hover: var(--ds-color-primary-300);
+  --color-primary-active: var(--ds-color-primary-200);
+  --color-primary-ink: var(--ds-color-primary-200);
+  --color-primary-wash: color-mix(in srgb, var(--ds-color-primary-400) 16%, var(--color-surface));
+  --color-primary-bg: var(--color-primary-wash);
+  --color-primary-tint: color-mix(in srgb, var(--ds-color-primary-400) 26%, var(--color-surface));
+  --color-primary-border: color-mix(in srgb, var(--ds-color-primary-400) 45%, var(--color-surface));
+  --color-brand: var(--ds-color-primary-300);
+
+  /* --- Accent --- */
+  --color-accent: var(--ds-color-accent-400);
+  --color-accent-hover: var(--ds-color-accent-300);
+  --color-accent-text: #1a0f0a;
+  --color-accent-ink: var(--ds-color-accent-300);
+  --color-accent-wash: color-mix(in srgb, var(--ds-color-accent-400) 16%, var(--color-surface));
+  --color-accent-tint: color-mix(in srgb, var(--ds-color-accent-400) 26%, var(--color-surface));
+
+  /* --- Links and focus --- */
+  --color-link: var(--ds-color-primary-300);
+  --color-link-hover: var(--ds-color-primary-200);
+  --color-focus: var(--ds-color-primary-300);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--ds-color-primary-300) 45%, transparent);
+
+  /* --- Status --- */
+  --color-success: #7cc790;
+  --color-success-bg: #1f2a22;
+  --color-error: #f19a8f;
+  --color-error-bg: #2e1f1d;
+  --color-error-hover: #f5b0a7;
+  --color-warning: #e2b765;
+  --color-warning-bg: #2d2718;
+  --color-info: var(--ds-color-primary-300);
+  --color-info-bg: var(--color-primary-wash);
+  --color-badge-bg: #b3372a;
+  --color-badge-text: #ffffff;
+
+  /* --- Chrome --- */
+  --color-header-bg: var(--color-surface);
+  --color-header-border: var(--color-border-subtle);
+  --color-column-bg: var(--color-bg);
+  --color-column-border: var(--color-border-subtle);
+  --color-admin-bar-bg: #0e0f12;
+  --color-admin-bar-text: #c8cfdb;
+  --color-admin-bar-text-active: #ffffff;
+  --color-admin-bar-title: #ffffff;
+  --color-admin-bar-indicator: var(--ds-color-accent-400);
+  --color-admin-bar-hover: rgba(255, 255, 255, 0.06);
+  --color-admin-bar-active-bg: rgba(255, 255, 255, 0.1);
+
+  /* --- Depth: hairlines, no shadow on a card; a deeper one for popovers --- */
+  --card-shadow: none;
+  --card-shadow-hover: 0 0 0 1px var(--color-border);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --shadow-popover: var(--shadow-lg);
+  --table-row-hover: var(--color-surface-hover);
+
+  /* --- Each kind's colour: a light tone for words and bars, a dark tint behind --- */
+  --type-vote-fg: #9db6e0;          --type-vote-bg: #222a38;
+  --type-proposal-fg: #b9a6e0;      --type-proposal-bg: #2a2538;
+  --type-conversation-fg: #6fc4c9;  --type-conversation-bg: #1b2e30;
+  --type-project-fg: #7fb6ef;       --type-project-bg: #1d2a3a;
+  --type-wordcloud-fg: #b6c47a;     --type-wordcloud-bg: #272b1d;
+  --type-announcement-fg: #e6a283;  --type-announcement-bg: #33241d;
+  --type-announcement-author-fg: #c3b4e6; --type-announcement-author-bg: #2a2538;
+  --type-meeting-fg: #7cc790;       --type-meeting-bg: #1f2a22;
+  --type-official-response-fg: #e2b765; --type-official-response-bg: #2d2718;
+  --type-brief-fg: #e6a283;         --type-brief-bg: #33241d;
+  --type-brief-rule: #e6a283;       --type-brief-wash: #2a211c;
+  --type-generic-fg: #9db6e0;       --type-generic-bg: #222a38;
+  --type-event-fg: #e88fb6;         --type-event-bg: #33202a;
+
+  /* The older pill names a few surfaces still read. */
+  --pill-vote-bg: var(--type-vote-bg);           --pill-vote-fg: var(--type-vote-fg);
+  --pill-results-bg: var(--type-vote-bg);        --pill-results-fg: var(--type-vote-fg);
+  --pill-vote-results-bg: var(--type-vote-bg);   --pill-vote-results-fg: var(--type-vote-fg);
+  --pill-announcement-bg: var(--type-announcement-bg); --pill-announcement-fg: var(--type-announcement-fg);
+  --pill-announcement-author-bg: var(--type-announcement-author-bg); --pill-announcement-author-fg: var(--type-announcement-author-fg);
+  --pill-meeting-bg: var(--type-meeting-bg);     --pill-meeting-fg: var(--type-meeting-fg);
+  --pill-proposal-bg: var(--type-proposal-bg);   --pill-proposal-fg: var(--type-proposal-fg);
+  --pill-proposal-closed-bg: var(--color-surface-hover); --pill-proposal-closed-fg: var(--color-text-muted);
+  --pill-conversation-bg: var(--type-conversation-bg); --pill-conversation-fg: var(--type-conversation-fg);
+  --pill-conversation-results-bg: var(--type-conversation-bg); --pill-conversation-results-fg: var(--type-conversation-fg);
+  --pill-project-bg: var(--type-project-bg);     --pill-project-fg: var(--type-project-fg);
+  --pill-wordcloud-bg: var(--type-wordcloud-bg); --pill-wordcloud-fg: var(--type-wordcloud-fg);
+  --pill-brief-bg: var(--type-vote-bg);          --pill-brief-fg: var(--type-vote-fg);
+  --pill-brief-response-bg: var(--type-official-response-bg); --pill-brief-response-fg: var(--type-official-response-fg);
+}

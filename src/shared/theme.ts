@@ -45,6 +45,25 @@ export interface HubTheme {
   accent?: string;
   background?: string;
   types?: Partial<Record<ThemeTypeKey, string>>;
+  /** One of THEME_FONTS (design pass, decision 10); unset is Inter. */
+  font?: ThemeFontId;
+}
+
+/**
+ * The fonts a hub chooses from (design pass, decision 10, 2026-10-29): a short
+ * list, each a pair of font tokens (ui/src/styles/theme.css) for body text and
+ * headings, so a theme never names a font family itself.
+ */
+export const THEME_FONTS = [
+  { id: "inter", label: "Inter", hint: "Clear and modern, for everything (the default).", body: "inter", heading: "inter" },
+  { id: "serif", label: "Inter with serif headings", hint: "Headings in Source Serif, for an editorial feel.", body: "inter", heading: "serif" },
+  { id: "atkinson", label: "Atkinson Hyperlegible", hint: "Designed for readers with low vision.", body: "atkinson", heading: "atkinson" },
+  { id: "system", label: "The device's own", hint: "The phone's or computer's own font; nothing to load.", body: "system", heading: "system" },
+] as const;
+export type ThemeFontId = (typeof THEME_FONTS)[number]["id"];
+
+function isThemeFont(v: unknown): v is ThemeFontId {
+  return typeof v === "string" && THEME_FONTS.some((f) => f.id === v);
 }
 
 export interface ThemePreset {
@@ -123,6 +142,7 @@ export function cleanTheme(input: unknown): HubTheme {
   for (const k of ["primary", "accent", "background"] as const) {
     if (isHexColor(src[k])) out[k] = (src[k] as string).toLowerCase();
   }
+  if (isThemeFont(src.font)) out.font = src.font;
   if (src.types && typeof src.types === "object" && !Array.isArray(src.types)) {
     const types: Partial<Record<ThemeTypeKey, string>> = {};
     for (const k of THEME_TYPE_KEYS) {
@@ -145,6 +165,7 @@ export function serializeTheme(theme: HubTheme): string {
     for (const k of THEME_TYPE_KEYS) if (t.types[k]) types[k] = t.types[k]!;
     if (Object.keys(types).length > 0) out.types = types;
   }
+  if (t.font && t.font !== "inter") out.font = t.font;
   return Object.keys(out).length === 0 ? "" : JSON.stringify(out);
 }
 
@@ -173,6 +194,9 @@ export function validateThemeValue(raw: unknown): { value: string } | { error: s
     if (src[k] !== undefined && src[k] !== "" && !isHexColor(src[k])) {
       return { error: `Theme ${k} must be a colour like #1f5f8b.` };
     }
+  }
+  if (src.font !== undefined && src.font !== "" && !isThemeFont(src.font)) {
+    return { error: `Unknown font "${String(src.font)}".` };
   }
   if (src.preset !== undefined && !THEME_PRESETS.some((p) => p.id === src.preset)) {
     return { error: `Unknown theme preset "${String(src.preset)}".` };
@@ -439,6 +463,13 @@ export function resolveTheme(theme: HubTheme): ResolvedTheme {
   // inherited from :root has already been computed from the default palette.
   for (const [alias, target] of DS_ALIASES) {
     if (vars[target] !== undefined) vars[alias] = vars[target]!;
+  }
+
+  // The hub's font (decision 10): its body and heading tokens; Inter sets nothing.
+  const font = THEME_FONTS.find((f) => f.id === theme.font);
+  if (font && font.id !== "inter") {
+    vars["--font-body"] = `var(--font-family-${font.body})`;
+    vars["--font-heading"] = `var(--font-family-${font.heading})`;
   }
 
   return {

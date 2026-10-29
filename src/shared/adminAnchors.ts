@@ -36,7 +36,7 @@ export const ADMIN_PAGES = [
 /** Settings' sections, in the order of its menu. Each is /admin/settings/<id>. */
 export const SETTINGS_NAV = [
   { id: "identity", label: "Identity" },
-  { id: "theme", label: "Theme" },
+  { id: "theme", label: "Appearance" },
   { id: "copy", label: "Copy & pages" },
   { id: "legal", label: "Legal" },
   { id: "email", label: "Email" },

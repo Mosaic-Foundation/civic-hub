@@ -14,6 +14,8 @@ import Sidebar from "./components/Sidebar";
 import AdminBar from "./components/AdminBar";
 import { isAdminPath } from "./hooks/useAdminNav";
 import { ColumnSlotContext } from "./context/columnSlot";
+import { ChipGroup } from "./kit";
+import { applyAppearance, storedAppearance, type Appearance } from "./config/appearance";
 import BottomBar from "./components/BottomBar";
 import { NavDataProvider } from "./context/NavDataContext";
 import { navLayout } from "./config/navigation";
@@ -292,6 +294,7 @@ function AppContent() {
 
 function SiteFooter() {
   const hub = useHub();
+  const { user, loading } = useAuth();
   return (
     <footer className="app-footer">
       <div className="app-footer-inner">
@@ -326,6 +329,9 @@ function SiteFooter() {
           <span aria-hidden="true">·</span>
           <Link to="/code-of-conduct">Code of Conduct</Link>
         </nav>
+        {/* A signed-out reader's look (design pass, decision 9); a signed-in
+            person sets theirs in Your settings, on their account. */}
+        {!loading && !user && <FooterAppearance />}
       </div>
     </footer>
   );
@@ -341,5 +347,25 @@ export default function App() {
         </NavDataProvider>
       </AuthProvider>
     </BrowserRouter>
+  );
+}
+
+function FooterAppearance() {
+  const [pref, setPref] = useState<Appearance>(() => storedAppearance() ?? "system");
+  return (
+    <ChipGroup
+      className="app-footer-appearance"
+      label="Appearance"
+      value={pref}
+      onChange={(v) => {
+        setPref(v);
+        applyAppearance(v);
+      }}
+      options={[
+        { value: "light", label: "Light" },
+        { value: "dark", label: "Dark" },
+        { value: "system", label: "Device", title: "Follow this device" },
+      ]}
+    />
   );
 }

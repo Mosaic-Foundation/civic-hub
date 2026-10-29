@@ -11,6 +11,7 @@ import {
 import { clearToken, getStoredToken, storeToken } from "../services/tokenStore";
 import { markHubJustCreated } from "../utils/hubJustCreated";
 import { AuthContext } from "./authState";
+import { applyAppearance, forgetAppearance } from "../config/appearance";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -67,6 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void ready.then(restore);
   }, []);
 
+  // The signed-in person's look follows their account (design pass, decision
+  // 9): mirrored into this browser so the next first paint is right.
+  useEffect(() => {
+    if (user) applyAppearance(user.appearance ?? "light");
+  }, [user]);
+
   // Global 401 handler: the API client dispatches "civic:auth-expired" when a
   // request returns 401 (dead/expired session). Drop to logged-out state so
   // the user is prompted to sign in again instead of every action failing
@@ -111,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logoutApi(token).catch(() => {});
     }
     clearToken();
+    forgetAppearance();
     setToken(null);
     setUser(null);
     setRole(null);
