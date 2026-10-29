@@ -1,9 +1,4 @@
 {
-  "packages/civic.event/styles.css": {
-    "colour": 0,
-    "font": 0,
-    "length": 55
-  },
   "ui/src/console/console.css": {
     "colour": 34,
     "font": 3,

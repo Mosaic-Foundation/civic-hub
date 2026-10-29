@@ -46,8 +46,7 @@
 //  20. the hub in scope (Events 2, E3): its code names no time zone and no
 //      hub's address; hubContext() gives the hub's.
 //  21. its own look (design pass, 2026-10-29): its .css and .tsx set no
-//      colour, font or size of their own, only the hub's tokens (switched
-//      off until Events' stylesheet is clean: OWN_LOOK_STEP_ON below).
+//      colour, font or size of their own, only the hub's tokens.
 // Tier 2 (sandboxed) has a slot and no runtime yet.
 //
 // Needs the local stack and a hub server started with CIVIC_POLIS_FAKE=on and
@@ -985,11 +984,11 @@ function sdkSurfaceSteps(d: ProcessTypeDescriptor, facts: HostFacts, touched: Ar
 }
 
 /**
- * Step 21 is switched off until the design pass cleans
- * packages/civic.event/styles.css (55 lengths of its own today), and is
- * switched on in that same commit. Off, it is reported as skipped, by name.
+ * Step 21 runs for every package since Events 0.3.1 cleaned its stylesheet
+ * (design pass, 2026-10-29). The switch stays, named, for a hub that must
+ * take an old package back for a while.
  */
-const OWN_LOOK_STEP_ON = false;
+const OWN_LOOK_STEP_ON = true;
 
 /**
  * Step 21 (design pass, 2026-10-29; ADR-018 to come): a package sets no

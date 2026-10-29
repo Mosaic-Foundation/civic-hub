@@ -159,8 +159,8 @@ additive (refused); CI runs it too.
     Its card hue (`feed.kinds[].color` in `manifest.ts`) is a theme key, not a
     colour of its own (step 15), and `manifest.ts` is not scanned. The rules
     are `src/tokenScan.ts`, the same code the hub's own ratchet runs
-    (`scripts/check-tokens.ts`). Switched off (`OWN_LOOK_STEP_ON`) until the
-    design pass cleans Events' `styles.css`; reported as skipped until then.
+    (`scripts/check-tokens.ts`). On for every package since Events 0.3.1
+    (design pass, 2026-10-29); docs/PLUGIN-STYLE.md says what to use instead.
 
 `kit/conformance/fixtures/sdk-tour` uses every one of 11 to 17 through the
 SDK alone; `kit/scripts/prove.ts` runs it from an empty folder.
