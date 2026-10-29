@@ -23,7 +23,6 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 
-import { fromLocalInput, toLocalInput } from "./datetime";
 
 export { default as DraftShell } from "../components/DraftShell";
 
@@ -101,33 +100,12 @@ export function Select({ className, ...rest }: SelectHTMLAttributes<HTMLSelectEl
 }
 
 /**
- * A date and time, in the reader's time zone, as the hub's form input. Takes
- * and gives an ISO instant (null for none), so a package stores what the
- * server reads. The browser's own picker for now (the design pass may replace
- * it here, for every page at once).
+ * A date and time, in the reader's time zone (or the one named), as the hub's
+ * form input: the field and the hub's own picker (kit/DateTimeInput.tsx).
+ * Takes and gives an ISO instant (null for none), so a package stores what
+ * the server reads.
  */
-export function DateTimeInput({
-  value,
-  onChange,
-  timeZone,
-  className,
-  ...rest
-}: Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type"> & {
-  value: string | null | undefined;
-  onChange: (iso: string | null) => void;
-  /** The IANA zone the time is entered in (an event's own); the reader's when absent. */
-  timeZone?: string;
-}) {
-  return (
-    <input
-      type="datetime-local"
-      className={["form-input", className].filter(Boolean).join(" ")}
-      value={toLocalInput(value, timeZone)}
-      onChange={(e) => onChange(fromLocalInput(e.target.value, timeZone))}
-      {...rest}
-    />
-  );
-}
+export { default as DateTimeInput } from "./DateTimeInput";
 
 /** A checkbox with its words, and a line under them when it needs one. */
 export function Checkbox({

@@ -688,3 +688,158 @@
   font-size: var(--text-small-size);
   color: var(--color-text-subtle);
 }
+
+/* --- The date and time control (kit DateTimeInput) ---------------------- */
+
+.kit-datetime {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1-5);
+}
+
+.kit-datetime-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The browser's own picker: the hub's button below replaces it. */
+.kit-datetime-field::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.kit-datetime-button {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--control-height);
+  min-height: var(--control-height);
+  border: var(--border-width) solid var(--color-border-control);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.kit-datetime-button:hover:not(:disabled),
+.kit-datetime-button[aria-expanded="true"] {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.kit-datetime-button:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--border-width-strong);
+}
+
+.kit-datetime-button svg {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.kit-datetime-picker {
+  position: absolute;
+  top: calc(100% + var(--space-1-5));
+  right: 0;
+  z-index: var(--z-overlay);
+  width: min(calc(var(--grid-min-card) + var(--space-8)), 92vw);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-popover);
+}
+
+.kit-datetime-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.kit-datetime-month {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-strong);
+}
+
+.kit-datetime-nav {
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xl);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.kit-datetime-nav:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.kit-datetime-weekdays,
+.kit-datetime-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-0-5);
+  text-align: center;
+}
+
+.kit-datetime-weekdays {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-caption-size);
+  color: var(--color-text-subtle);
+}
+
+.kit-datetime-day {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-small-size);
+  cursor: pointer;
+}
+
+.kit-datetime-day:hover {
+  background: var(--color-surface-hover);
+}
+
+.kit-datetime-day.is-today {
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-border-strong);
+}
+
+.kit-datetime-day.is-chosen {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.kit-datetime-day:focus-visible,
+.kit-datetime-nav:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--space-px);
+}
+
+.kit-datetime-time {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
+}
+
+.kit-datetime-time .form-select {
+  flex: 1 1 auto;
+}
+
+.kit-datetime-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
