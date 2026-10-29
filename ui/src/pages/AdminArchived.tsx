@@ -12,7 +12,6 @@ import { useApi } from "../hooks/useApi";
 import { useAuth } from "../context/authState";
 import { adminListArchived, adminRestoreProcess } from "../services/api";
 import type { ArchivedProcess } from "../services/api";
-import AdminTabs from "../components/AdminTabs";
 import "./AdminArchived.css";
 import { typeName } from "../processes/display";
 import { localTimestamp } from "../utils/dates";
@@ -56,7 +55,6 @@ export default function AdminArchived() {
   if (authLoading || loading) {
     return (
       <div className="page admin-page">
-        <AdminTabs />
         <p>Loading…</p>
       </div>
     );
@@ -72,7 +70,6 @@ export default function AdminArchived() {
 
   return (
     <div className="page admin-page">
-      <AdminTabs />
       <h1>Archived</h1>
       <p className="admin-page-description">
         Items you've archived — meeting summaries, announcements, and other

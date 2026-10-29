@@ -101,6 +101,27 @@ const PATHS: Record<string, ReactElement> = {
       <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" />
     </>
   ),
+  edits: (
+    <>
+      <path d="M4 20h4L19 9l-4-4L4 16z" />
+      <path d="M13 7l4 4" />
+    </>
+  ),
+  archived: (
+    <>
+      <rect x="3" y="4" width="18" height="5" rx="1" />
+      <path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4" />
+    </>
+  ),
+  admin: (
+    <>
+      <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" />
+      <circle cx="16" cy="6" r="2" />
+      <circle cx="10" cy="12" r="2" />
+      <circle cx="18" cy="18" r="2" />
+    </>
+  ),
+  back: <path d="M19 12H5M11 6l-6 6 6 6" />,
   plugins: (
     <>
       <path d="M9 3v4M15 3v4" />

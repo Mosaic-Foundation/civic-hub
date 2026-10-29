@@ -1,0 +1,123 @@
+/* The admin bar (AdminBar.tsx; design pass, decision 4). Tokens only. */
+
+.admin-bar {
+  background: var(--color-admin-bar-bg);
+  color: var(--color-admin-bar-text);
+}
+
+.admin-bar-inner {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-4);
+  max-width: var(--width-content);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.admin-bar-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 0 0 auto;
+}
+
+.admin-bar-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-height: var(--tap-target);
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-admin-bar-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-bar-back:hover {
+  color: var(--color-admin-bar-text-active);
+  text-decoration: none;
+}
+
+.admin-bar-title {
+  padding-left: var(--space-4);
+  border-left: var(--border-width) solid currentColor;
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--text-eyebrow-spacing);
+  text-transform: uppercase;
+  color: var(--color-admin-bar-title);
+  line-height: var(--line-height-tight);
+}
+
+.admin-bar-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.admin-bar-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-bar .admin-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-height: var(--control-height-lg);
+  padding: 0 var(--space-2-5);
+  border-bottom: var(--indicator-width) solid transparent;
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-admin-bar-text);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--duration-fast) var(--ease-default), background var(--duration-fast) var(--ease-default);
+}
+
+.admin-bar .admin-tab:hover {
+  background: var(--color-admin-bar-hover);
+  color: var(--color-admin-bar-text-active);
+  text-decoration: none;
+}
+
+.admin-bar .admin-tab.is-active {
+  color: var(--color-admin-bar-text-active);
+  font-weight: var(--font-weight-semibold);
+  border-bottom-color: var(--color-admin-bar-indicator);
+}
+
+.admin-bar .admin-tab:focus-visible,
+.admin-bar-back:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-admin-bar-indicator);
+  outline-offset: calc(-1 * var(--border-width-strong));
+  box-shadow: none;
+}
+
+.admin-tab-badge {
+  display: inline-block;
+  min-width: var(--space-5);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-badge-bg);
+  color: var(--color-badge-text);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--space-5);
+  text-align: center;
+}
+
+/* Phones: the way back and the title on one line, the tabs scrolling under. */
+@media (max-width: 768px) {
+  .admin-bar-inner {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .admin-bar-tabs {
+    margin: 0 calc(-1 * var(--gutter));
+    padding: 0 var(--space-1);
+  }
+}

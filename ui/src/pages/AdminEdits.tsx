@@ -2,7 +2,6 @@ import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/authState";
 import { adminListEdits, markEditsSeen, type AdminEditRow } from "../services/api";
-import AdminTabs from "../components/AdminTabs";
 import "./AdminEdits.css";
 import { localShortDate } from "../utils/dates";
 
@@ -38,7 +37,6 @@ export default function AdminEdits() {
   if (authLoading || loading) {
     return (
       <div className="page admin-page">
-        <AdminTabs />
         <p>Loading…</p>
       </div>
     );
@@ -53,7 +51,6 @@ export default function AdminEdits() {
 
   return (
     <div className="page admin-page">
-      <AdminTabs />
       <h1>Edits</h1>
       <p className="admin-edits-intro">
         Changes creators have made to live processes in the last 90 days. Edits go live at once

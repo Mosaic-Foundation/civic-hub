@@ -22,7 +22,6 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/authState";
 import { adminListFeedback, adminMarkQueueSeen, notifyAdminQueuesChanged } from "../services/api";
 import type { FeedbackCategory, FeedbackSubmission } from "../services/api";
-import AdminTabs from "../components/AdminTabs";
 import HelpButton from "../components/HelpButton";
 import { ForwardButton, MosaicBadge } from "../components/ForwardToCivicSocial";
 import "./AdminFeedback.css";
@@ -106,7 +105,6 @@ export default function AdminFeedback() {
 
   return (
     <div className="page admin-page">
-      <AdminTabs />
       <h1>Feedback</h1>
       <p className="admin-page-description">
         Everything people have sent through the feedback form, newest

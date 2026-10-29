@@ -11,6 +11,9 @@ import ShareBanner from "./components/ShareBanner";
 import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
 import Nav from "./components/Nav";
 import Sidebar from "./components/Sidebar";
+import AdminBar from "./components/AdminBar";
+import { isAdminPath } from "./hooks/useAdminNav";
+import { ColumnSlotContext } from "./context/columnSlot";
 import BottomBar from "./components/BottomBar";
 import { NavDataProvider } from "./context/NavDataContext";
 import { navLayout } from "./config/navigation";
@@ -179,6 +182,12 @@ function AppContent() {
   // Beside the sidebar, the hub's bars head the content column, so the
   // sidebar starts at the top of the screen and its foot is never pushed off.
   const bannersInColumn = layout === "sidebar" && wide;
+  // Admin is its own place (design pass, decision 4): under the hub header,
+  // one admin bar replaces the section tabs and nothing else is stacked; in
+  // the left-column layout the column carries the admin list instead.
+  const inAdmin = isAdmin && isAdminPath(pathname);
+  const adminBar = inAdmin && !(layout === "sidebar" && wide);
+  const [columnSlot, setColumnSlot] = useState<HTMLElement | null>(null);
   forgetClosedNoticeOnLive(hub.config?.hub.mode);
   const hubBanners = (
     <>
@@ -194,7 +203,8 @@ function AppContent() {
   );
 
   return (
-    <div className={`app app--nav-${layout === "sidebar" ? "sidebar" : "tabs"}`}>
+    <ColumnSlotContext.Provider value={{ slot: layout === "sidebar" && wide ? columnSlot : null, setSlot: setColumnSlot }}>
+    <div className={`app app--nav-${layout === "sidebar" ? "sidebar" : "tabs"}${inAdmin ? " app--admin" : ""}`}>
       {showIntro && !inBetaPreview && !showReady && (
         <IntroPopup onDismiss={() => setShowIntro(false)} />
       )}
@@ -210,12 +220,12 @@ function AppContent() {
         <div className="app-column">
           {bannersInColumn && hubBanners}
           {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
-          {hub.plugins.enabled("wordcloud") && <WordcloudTeaser />}
+          {!inAdmin && hub.plugins.enabled("wordcloud") && <WordcloudTeaser />}
           <BannerSlot />
-          <FeedVotesTabs />
+          {adminBar ? <AdminBar /> : !inAdmin && <FeedVotesTabs />}
 
           {/* One share banner for the hub: a page's share moment, when its bar is off screen. */}
-          <ShareBanner />
+          {!inAdmin && <ShareBanner />}
 
           <main className="page-shell">
             {/* Every page but the feed loads its code when first needed (lazyPages.ts). */}
@@ -276,6 +286,7 @@ function AppContent() {
       {/* After "Your hub is ready", not on top of it. */}
       {!showReady && <ReAcceptModal />}
     </div>
+    </ColumnSlotContext.Provider>
   );
 }
 

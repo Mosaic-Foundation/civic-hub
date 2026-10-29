@@ -8,8 +8,9 @@
 
 import { Navigate, useLocation, useNavigate, useParams, Link } from "react-router-dom";
 import { adminAnchorPath, SETTINGS_NAV, type SettingsNavId } from "../../../src/shared/adminAnchors";
+import { createPortal } from "react-dom";
 import { useScrollToHash } from "../hooks/useAnchor";
-import AdminTabs from "../components/AdminTabs";
+import { useColumnSlot } from "../context/columnSlot";
 import { HubSettingsProvider } from "./settings/HubSettingsContext";
 import { confirmDiscard, useHubSettings } from "./settings/hubSettingsState";
 import IdentitySection from "./settings/IdentitySection";
@@ -68,6 +69,9 @@ function SettingsPage() {
   const { hash } = useLocation();
   const navigate = useNavigate();
   const { dirty } = useHubSettings();
+  // In the left-column layout the rail is drawn in the column, under Hub
+  // settings, so the admin sees one rail (design pass, decision 4).
+  const columnSlot = useColumnSlot();
   useScrollToHash();
 
   const current = SECTIONS.find((s) => s.id === section && s.render);
@@ -84,9 +88,40 @@ function SettingsPage() {
     navigate(`/admin/settings/${id}`);
   }
 
+  const rail = (
+    <nav className="settings-nav" aria-label="Hub settings sections">
+      <ul role="list">
+        {SECTIONS.map((s) => (
+          <li key={s.id}>
+            {s.render ? (
+              <Link
+                to={`/admin/settings/${s.id}`}
+                data-settings-nav=""
+                className={`settings-nav-link${s.id === current.id ? " is-active" : ""}`}
+                aria-current={s.id === current.id ? "page" : undefined}
+                onClick={(e) => go(e, s.id)}
+              >
+                {s.label}
+                {dirty.has(s.id) && (
+                  <span className="settings-nav-dot" aria-label="unsaved changes" />
+                )}
+              </Link>
+            ) : (
+              <span className="settings-nav-link is-disabled" aria-disabled="true">
+                {s.label}
+                {s.comingNote && (
+                  <span className="settings-nav-note">{s.comingNote}</span>
+                )}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+
   return (
     <div className="page admin-settings-page">
-      <AdminTabs />
       <div className="admin-settings-body">
         <h1>Hub settings</h1>
         <p className="admin-subtitle">
@@ -94,36 +129,8 @@ function SettingsPage() {
           effect straight away; there is nothing to redeploy.
         </p>
 
-        <div className="settings-layout">
-          <nav className="settings-nav" aria-label="Hub settings sections">
-            <ul role="list">
-              {SECTIONS.map((s) => (
-                <li key={s.id}>
-                  {s.render ? (
-                    <Link
-                      to={`/admin/settings/${s.id}`}
-                      data-settings-nav=""
-                      className={`settings-nav-link${s.id === current.id ? " is-active" : ""}`}
-                      aria-current={s.id === current.id ? "page" : undefined}
-                      onClick={(e) => go(e, s.id)}
-                    >
-                      {s.label}
-                      {dirty.has(s.id) && (
-                        <span className="settings-nav-dot" aria-label="unsaved changes" />
-                      )}
-                    </Link>
-                  ) : (
-                    <span className="settings-nav-link is-disabled" aria-disabled="true">
-                      {s.label}
-                      {s.comingNote && (
-                        <span className="settings-nav-note">{s.comingNote}</span>
-                      )}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </nav>
+        <div className={`settings-layout${columnSlot ? " settings-layout--in-column" : ""}`}>
+          {columnSlot ? createPortal(rail, columnSlot) : rail}
 
           <div className="settings-content" id={current.id} data-anchor="">
             {current.render!()}

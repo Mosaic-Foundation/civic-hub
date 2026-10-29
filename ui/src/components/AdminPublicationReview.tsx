@@ -12,7 +12,6 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { HeldBackNote } from "./HeldBackNote";
-import AdminTabs from "./AdminTabs";
 import type { HeldBackRecipient } from "../services/api";
 
 export type PublicationStatus = "pending" | "approved" | "published";
@@ -62,7 +61,6 @@ export function PublicationList<R extends { id: string; publication_status: Publ
 
   return (
     <div className="page admin-briefs-page">
-      <AdminTabs />
       <div className="admin-briefs-body">
         <h1>{heading}</h1>
         <p className="admin-subtitle">{intro}</p>
@@ -127,7 +125,6 @@ export function PublicationReview({
 }) {
   return (
     <div className="page admin-briefs-page">
-      <AdminTabs />
       <div className="admin-briefs-body">
         <button className="admin-back-link" onClick={onBack} type="button">
           &larr; {backLabel}

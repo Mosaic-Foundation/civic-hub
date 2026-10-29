@@ -15,7 +15,6 @@ import {
   type ReviewDetail,
   type ReviewStatus,
 } from "../services/api";
-import AdminTabs from "../components/AdminTabs";
 import ProcessHeader from "../components/ProcessHeader";
 import { friendlyType } from "../components/processLinkTypes";
 import { typeColorSlug } from "../components/typeColor";
@@ -245,7 +244,6 @@ export default function AdminReviews() {
 
     return (
       <div className="admin-reviews-page">
-        <AdminTabs />
         <div className="admin-reviews-body">
           <button className="admin-back-link" onClick={backToList}>
             ← Back to reviews
@@ -469,7 +467,6 @@ export default function AdminReviews() {
 
   return (
     <div className="admin-reviews-page">
-      <AdminTabs />
       <div className="admin-reviews-body">
         <h1>Processes</h1>
         <p style={{ color: "var(--color-text-muted)" }}>

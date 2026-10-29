@@ -17,7 +17,6 @@ import {
   type MeetingSummarySummary,
   type SummaryBlock,
 } from "../services/api";
-import AdminTabs from "../components/AdminTabs";
 import { useHub } from "../config/hub";
 import "./AdminMeetingSummaries.css";
 import { localShortDateOfDay, localDateAtTime } from "../utils/dates";
@@ -307,7 +306,6 @@ export default function AdminMeetingSummaries() {
     const isPending = selected.approval_status === "pending";
     return (
       <div className="page admin-meeting-summaries-page">
-        <AdminTabs />
         <div className="admin-meeting-summaries-body">
           <button
             className="admin-back-link"
@@ -817,7 +815,6 @@ export default function AdminMeetingSummaries() {
 
   return (
     <div className="page admin-meeting-summaries-page">
-      <AdminTabs />
       <div className="admin-meeting-summaries-body">
         <h1>Meeting summaries</h1>
         <p className="admin-subtitle">

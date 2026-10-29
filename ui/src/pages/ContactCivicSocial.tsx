@@ -9,7 +9,6 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/authState";
 import { contactCivicSocial } from "../services/api";
 import { lastPage } from "../services/lastPage";
-import AdminTabs from "../components/AdminTabs";
 import { useHub } from "../config/hub";
 import HelpButton from "../components/HelpButton";
 import "./Feedback.css";
@@ -42,7 +41,6 @@ export default function ContactCivicSocial() {
 
   return (
     <div className="page admin-page" id="contact-civic-social">
-      <AdminTabs />
       <div className="feedback-body">
         <h1 className="contact-civic-social-title">
           Contact Civic.Social

@@ -72,8 +72,22 @@
    Inner pages provide their own horizontal padding (e.g. .feed,
    .hub-info, .section) so the shell stays a pure width cap. */
 .page-shell {
-  max-width: var(--max-width-shell);
+  max-width: var(--width-content);
   margin: 0 auto;
+}
+
+/* Admin pages: the shell carries the gutter and the space under the admin bar,
+   in both layouts, so no admin page sits flush against the column or the bar
+   (design pass, 2026-10-29). */
+.app--admin .page-shell {
+  padding: var(--space-8) var(--gutter) var(--space-16);
+}
+
+@media (min-width: 769px) {
+  .app--admin .page-shell {
+    padding-left: var(--gutter-wide);
+    padding-right: var(--gutter-wide);
+  }
 }
 
 /* --- Hub banner + info --- */

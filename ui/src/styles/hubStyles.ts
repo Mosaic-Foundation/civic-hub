@@ -52,7 +52,7 @@ import "../pages/ProjectDetail.css";
 import "../components/PostFeaturedImage.css";
 import "../components/LinkPreviewCard.css";
 import "../pages/VoteResults.css";
-import "../components/AdminTabs.css";
+import "../components/AdminBar.css";
 import "../pages/AdminVoteResults.css";
 import "../pages/Outcomes.css";
 import "../components/FeedFilter.css";

@@ -19,7 +19,6 @@ import {
   adminGetModerationLog,
   type ModerationLogEntry,
 } from "../services/api";
-import AdminTabs from "../components/AdminTabs";
 import { localTimestamp } from "../utils/dates";
 
 function actionLabel(action: string): string {
@@ -51,7 +50,6 @@ export default function AdminModeration() {
   if (authLoading || loading) {
     return (
       <div className="page admin-page">
-        <AdminTabs />
         <p>Loading…</p>
       </div>
     );
@@ -68,7 +66,6 @@ export default function AdminModeration() {
   if (error) {
     return (
       <div className="page admin-page">
-        <AdminTabs />
         <p className="form-error">Could not load the log: {error.message}</p>
       </div>
     );
@@ -76,7 +73,6 @@ export default function AdminModeration() {
 
   return (
     <div className="page admin-page">
-      <AdminTabs />
       <h1>Moderation log</h1>
       <p className="admin-page-description">
         Every moderation action — comment hides, announcement removals,
