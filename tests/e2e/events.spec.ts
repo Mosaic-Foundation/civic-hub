@@ -436,6 +436,11 @@ for (const vp of VIEWPORTS) {
       const ends = page.getByRole("textbox", { name: "Ends", exact: true });
       const duration = page.getByRole("textbox", { name: "Duration", exact: true });
 
+      // Starts, then how long, then Ends.
+      await expect(ends).toBeVisible();
+      const order = await page.locator("#ev-start, #ev-duration, #ev-end").evaluateAll((els) => els.map((el) => el.id));
+      expect(order).toEqual(["ev-start", "ev-duration", "ev-end"]);
+
       await starts.fill(localTime(5, 18, 0));
       // The start's day, an hour later: not today.
       await expect(ends).toHaveValue(localTime(5, 19, 0));
@@ -450,6 +455,14 @@ for (const vp of VIEWPORTS) {
       // A later start keeps how long it runs.
       await starts.fill(localTime(5, 19, 0));
       await expect(ends).toHaveValue(localTime(5, 22, 15));
+
+      // An end at or before the start says so, and a duration puts it right.
+      await ends.fill(localTime(5, 18, 0));
+      await expect(ends).toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByText("Ends must be after it starts.")).toBeVisible();
+      await duration.fill("1 h");
+      await expect(ends).toHaveValue(localTime(5, 20, 0));
+      await expect(page.getByText("Ends must be after it starts.")).toHaveCount(0);
     });
 
     test("at its limit, someone not going sees Full with the count", async ({ request, page, browser }) => {

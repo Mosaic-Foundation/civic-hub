@@ -596,10 +596,11 @@ function whereBody(w: WhereFields): Record<string, string | null> {
 }
 
 /**
- * When it is (Events 2, 2 and 3): the start, the end and how long it runs,
- * kept together, all in the event's zone. Choosing a start fills the end an
- * hour after it, the same day (or keeps how long it runs when one is set);
- * a duration moves the end; an end moves the duration.
+ * When it is (Events 2, 2 and 3): the start, how long it runs and the end,
+ * in that order, kept together, all in the event's zone. Choosing a start fills
+ * the end an hour after it, the same day (or keeps how long it runs when one is
+ * set); a duration moves the end; an end moves the duration. An end at or
+ * before the start says so on the field.
  */
 function When({
   start,
@@ -623,6 +624,8 @@ function When({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minutes]);
 
+  const endError = start && end && !minutes ? "Ends must be after it starts." : null;
+
   function startChanged(next: string | null) {
     if (!next) return onTimes(null, end);
     const keep = durationMinutes(start, end);
@@ -642,9 +645,6 @@ function When({
         <Field label="Starts" required htmlFor="ev-start">
           <DateTimeInput id="ev-start" required value={start} timeZone={zone} onChange={startChanged} />
         </Field>
-        <Field label="Ends" required htmlFor="ev-end">
-          <DateTimeInput id="ev-end" required value={end} timeZone={zone} onChange={(v) => onTimes(start, v)} />
-        </Field>
         <Field label="Duration" htmlFor="ev-duration" hint={durationError ?? undefined}>
           <TextInput
             id="ev-duration"
@@ -654,6 +654,16 @@ function When({
             aria-invalid={durationError ? true : undefined}
             onChange={(e) => durationChanged(e.target.value)}
             onBlur={() => !durationError && minutes && setDuration(formatDuration(minutes))}
+          />
+        </Field>
+        <Field label="Ends" required htmlFor="ev-end" hint={endError ?? undefined}>
+          <DateTimeInput
+            id="ev-end"
+            required
+            value={end}
+            timeZone={zone}
+            aria-invalid={endError ? true : undefined}
+            onChange={(v) => onTimes(start, v)}
           />
         </Field>
       </div>
