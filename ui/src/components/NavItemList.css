@@ -1,46 +1,50 @@
-/* One navigation row, in the More sheet and the sidebar (NavItemList.tsx).
+/* One navigation row, in the More sheet and the left column (NavItemList.tsx).
    The current page: a filled wash behind the row and a heavier word, so it
-   reads without colour (navigation slice, 2026-10-14). */
+   reads without colour (navigation slice, 2026-10-14). Tokens only. */
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-3);
   width: 100%;
-  min-height: 44px;
-  padding: 6px var(--space-sm);
+  min-height: var(--tap-target);
+  padding: var(--space-1-5) var(--space-2);
   border: 0;
   border-radius: var(--radius-md);
   background: none;
   color: var(--color-text);
   font-family: var(--font-body);
-  font-size: var(--font-size-base);
-  font-weight: 500;
+  font-size: var(--text-body-size);
+  font-weight: var(--font-weight-medium);
   text-align: left;
   text-decoration: none;
   cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
 }
 
 .nav-item:hover {
-  background: var(--color-surface-muted);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
   text-decoration: none;
 }
 
 .nav-item:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 1px;
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--space-px);
 }
 
 .nav-item svg {
   flex: none;
-  color: var(--color-text-muted);
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--color-text-subtle);
 }
 
 .nav-item.is-current {
   background: var(--color-primary-wash);
   color: var(--color-primary-ink);
-  font-weight: 700;
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: inset var(--indicator-width) 0 0 var(--color-primary);
 }
 
 .nav-item.is-current svg {
@@ -59,20 +63,20 @@
 }
 
 .nav-item-sub {
-  font-size: var(--font-size-xs);
-  font-weight: 400;
+  font-size: var(--text-caption-size);
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-muted);
 }
 
 .nav-item-count {
   flex: none;
-  min-width: 1.5em;
-  padding: 1px 7px;
+  min-width: var(--space-6);
+  padding: var(--space-px) var(--space-2);
   border-radius: var(--radius-pill);
-  background: var(--color-primary-bg);
+  background: var(--color-primary-tint);
   color: var(--color-primary-ink);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-size: var(--text-caption-size);
+  font-weight: var(--font-weight-bold);
   text-align: center;
 }
 

@@ -10,8 +10,9 @@
  *    Navigation setting; More's sheet lists every section, Admin for admins
  *    only and You; it closes on Escape (focus back on More), a tap outside and
  *    a swipe down. A drafting form hides the bar, typing included.
- * 4. Desktop with Sidebar: the sidebar instead of the header and the tabs,
- *    with counts, "Signed in as", and the current page marked.
+ * 4. Desktop with Sidebar: the header across the top and the column under it
+ *    instead of the tabs, with counts and the current page marked; inside
+ *    admin the column is the admin area's (design pass, 2026-10-29).
  * 5. Hub settings → Theme: unset Navigation is Top tabs; Sidebar and a new
  *    order take effect at once, and the first four of the order are the bar.
  * 6. Polish (2026-10-14): a section page opens at its own header with no
@@ -223,16 +224,21 @@ test("Hub settings → Theme: Sidebar and a new order take effect at once, every
   await page.getByRole("button", { name: /^Save/ }).click();
   await expect(page.getByText(/^Saved\./)).toBeVisible();
 
-  // The sidebar, at once: header and tabs gone, the order applied, Hub settings current.
+  // The column, at once, as the admin area's: the way back, Admin, Hub
+  // settings current with its sections under it; the header stays, the tabs go.
   await expect(sidebar(page)).toBeVisible();
-  await expect(page.locator(".civic-nav")).toBeHidden();
+  await expect(page.locator(".civic-nav")).toBeVisible();
   await expect(page.locator(".feed-votes-tabs")).toBeHidden();
+  await expect(page.getByTestId("admin-bar")).toHaveCount(0);
+  await expect(sidebar(page).getByText("Admin", { exact: true })).toBeVisible();
+  await expect(sidebar(page).locator('[data-nav-id="hub-settings"]')).toHaveAttribute("aria-current", "page");
+  await expect(sidebar(page).getByRole("navigation", { name: "Hub settings sections" })).toBeVisible();
+
+  // Back to the hub: the sections in the new order, and one Admin entry.
+  await sidebar(page).getByRole("link", { name: "Back to the hub" }).click();
   const sections = sidebar(page).getByRole("list", { name: "Sections" }).locator(".nav-item-label");
   await expect(sections).toHaveText(["Feed", "Votes", "Conversations", "Proposals", "Events", "Projects", "Outcomes", "Members"]);
-  await expect(sidebar(page).locator('[aria-current="page"]')).toContainText("Hub settings");
-  await expect(sidebar(page).getByText("Admin", { exact: true })).toBeVisible();
-  await expect(sidebar(page).locator('[data-nav-id="reviews"]')).toBeVisible();
-  await expect(sidebar(page).getByText(/Signed in as/)).toBeVisible();
+  await expect(sidebar(page).locator('[data-nav-id="admin"]')).toBeVisible();
 
   // The phone's bar follows the same order.
   await page.setViewportSize(PHONE);
@@ -249,7 +255,9 @@ test("desktop: a resident's sidebar has no Admin group, counts beside Members, t
   await expect(sidebar(page).locator('[data-nav-id="hub-settings"]')).toHaveCount(0);
   await expect(sidebar(page).locator('[aria-current="page"]')).toContainText("Proposals");
   await expect(sidebar(page).locator('[data-nav-id="members"] .nav-item-count')).toBeVisible();
-  await expect(sidebar(page).getByText("Signed in as Nav Resident")).toBeVisible();
+  // The column only navigates: who is signed in is the header's account menu.
+  await expect(sidebar(page).getByText(/Signed in as/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Account menu/ })).toBeVisible();
   await expect(sidebar(page).getByRole("link", { name: "Feedback" })).toBeVisible();
 });
 
@@ -259,6 +267,7 @@ test("a plugin switched off leaves the chooser, the sheet and the sidebar", asyn
   await visitAs(page, adminToken);
   await page.goto("/admin/settings/theme");
   await expect(page.locator(".nav-order")).not.toContainText("Conversations");
+  await page.goto("/");
   await expect(sidebar(page).getByRole("list", { name: "Sections" })).not.toContainText("Conversations");
 
   await page.setViewportSize(PHONE);

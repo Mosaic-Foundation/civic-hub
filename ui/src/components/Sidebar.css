@@ -1,6 +1,8 @@
-/* The left sidebar (Sidebar.tsx; navigation slice, 2026-10-14). Desktop only,
-   and only when the hub's Navigation setting is Sidebar: the layout rules
-   that hide the header and the top tabs are in App.css (.app--nav-sidebar). */
+/* The left column (Sidebar.tsx). Desktop only, and only when the hub's
+   Navigation setting is Sidebar (the frame's rules are in App.css,
+   .app--nav-sidebar). It sits under the hub header, sticky, the height of the
+   window under the header, so its background reaches the bottom of the screen
+   however long the page is (design pass, 2026-10-29). Tokens only. */
 
 .hub-sidebar {
   display: none;
@@ -9,15 +11,15 @@
 @media (min-width: 769px) {
   .app--nav-sidebar .hub-sidebar {
     display: block;
-    flex: 0 0 248px;
-    width: 248px;
+    flex: 0 0 var(--width-sidebar);
+    width: var(--width-sidebar);
     position: sticky;
-    top: 0;
-    height: 100vh;
-    height: 100dvh;
+    top: var(--nav-h);
+    height: calc(100vh - var(--nav-h));
+    height: calc(100dvh - var(--nav-h));
     overflow-y: auto;
-    background: var(--color-surface);
-    border-right: 1px solid var(--color-border);
+    background: var(--color-column-bg);
+    border-right: var(--border-width) solid var(--color-column-border);
   }
 }
 
@@ -25,29 +27,8 @@
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  padding: var(--space-md) var(--space-sm) var(--space-md);
+  padding: var(--space-4) var(--space-3);
   box-sizing: border-box;
-}
-
-.hub-sidebar-brand {
-  display: block;
-  padding: var(--space-xs) var(--space-sm) var(--space-sm);
-  font-family: var(--font-heading);
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--color-text);
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-
-.hub-sidebar-brand:hover {
-  text-decoration: none;
-  color: var(--color-primary);
-}
-
-.hub-sidebar-search {
-  padding: 0 var(--space-xs) var(--space-sm);
 }
 
 .hub-sidebar-list {
@@ -55,45 +36,97 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 1px;
+  gap: var(--space-px);
 }
 
 .hub-sidebar-list .nav-item {
-  min-height: 38px;
-  font-size: var(--font-size-sm);
+  min-height: calc(var(--control-height-sm) + var(--space-1));
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-small-size);
+}
+
+.hub-sidebar-list .nav-item svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.hub-sidebar-list--quiet .nav-item {
+  min-height: var(--control-height-sm);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-regular);
 }
 
 .hub-sidebar-divider {
-  height: 1px;
-  margin: var(--space-sm) var(--space-xs);
+  height: var(--space-px);
+  margin: var(--space-3) var(--space-3);
   border: 0;
-  background: var(--color-border);
+  background: var(--color-border-subtle);
 }
 
 .hub-sidebar-heading {
-  margin: 0 0 var(--space-xs);
-  padding: 0 var(--space-sm);
+  margin: var(--space-4) 0 var(--space-1);
+  padding: 0 var(--space-3);
   font-family: var(--font-body);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: var(--text-eyebrow-size);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--text-eyebrow-spacing);
   text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+/* The hub's own pages sit at the foot when the column is taller than its
+   contents. */
+.hub-sidebar-foot {
+  margin-top: auto;
+  padding-top: var(--space-6);
+}
+
+.hub-sidebar-back.nav-item {
+  min-height: var(--control-height);
+  padding: var(--space-1-5) var(--space-3);
+  font-size: var(--text-small-size);
   color: var(--color-text-muted);
 }
 
-/* You sits at the bottom when the sidebar is taller than its contents. */
-.hub-sidebar-you {
-  margin-top: auto;
+/* Hub settings' sections, under the column's Hub settings item. The rail's
+   own markup (AdminSettings.tsx), indented under its parent. */
+.hub-sidebar-subnav .settings-nav {
+  position: static;
+  margin: var(--space-1) 0 0 var(--space-8);
+  padding: 0;
+  border: 0;
+  background: none;
 }
 
-.hub-sidebar-signed-in {
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 500;
+.hub-sidebar-subnav .settings-nav ul {
+  display: grid;
+  gap: var(--space-px);
+  border-left: var(--border-width) solid var(--color-border-subtle);
 }
 
-.hub-sidebar-name {
-  font-weight: 700;
+.hub-sidebar-subnav .settings-nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: calc(var(--control-height-sm) - var(--space-1));
+  padding: var(--space-1) var(--space-3);
+  margin-left: calc(-1 * var(--border-width));
+  border-left: var(--indicator-width) solid transparent;
+  border-radius: 0;
+  background: none;
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
+}
+
+.hub-sidebar-subnav .settings-nav-link:hover {
   color: var(--color-text);
-  overflow-wrap: anywhere;
+  background: var(--color-surface-hover);
+  text-decoration: none;
+}
+
+.hub-sidebar-subnav .settings-nav-link.is-active {
+  border-left-color: var(--color-primary);
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-semibold);
+  background: none;
 }

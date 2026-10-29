@@ -154,15 +154,20 @@ test("1. the Admin group in More (phone) and in the sidebar (desktop), Reviews w
   await sheet.getByRole("link", { name: "Plugins" }).click();
   await expect(page).toHaveURL(/\/admin\/settings\/plugins$/);
 
-  // A new hub is created with the sidebar.
+  // This hub uses the left column: one Admin entry with the same count, and
+  // inside admin the column is the admin area's list (design pass, 2026-10-29).
   await page.setViewportSize(DESKTOP);
   await page.goto(`${HUB}/`);
   const side = page.getByRole("navigation", { name: "Hub", exact: true });
   await expect(side).toBeVisible();
-  for (const label of ADMIN_ITEMS) await expect(side.locator(".nav-item", { hasText: label })).toBeVisible();
-  await side.locator('[data-nav-id="reviews"]').click();
+  const admin = side.locator('[data-nav-id="admin"]');
+  if (reviews > 0) await expect(admin.locator(".nav-item-count")).toHaveText(String(reviews));
+  await admin.click();
   await expect(page).toHaveURL(/\/admin\/(reviews|briefs|meeting-summaries)$/);
-  await expect(side.locator('[data-nav-id="reviews"]')).toHaveAttribute("aria-current", "page");
+  await expect(side.getByRole("link", { name: "Back to the hub" })).toBeVisible();
+  for (const label of ["Processes", "Moderation", "Activity", "Hub settings"]) {
+    await expect(side.locator(".nav-item", { hasText: label }).first()).toBeVisible();
+  }
 });
 
 test("1. a resident has no Admin pill, no review icon and no Admin group", async ({ page }) => {

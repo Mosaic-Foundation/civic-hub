@@ -23,11 +23,15 @@
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* --- Navigation layouts (navigation slice, 2026-10-14) ---
+/* --- Navigation layouts (navigation slice, 2026-10-14; design pass,
+   2026-10-29) ---
    Phones (either Navigation setting): the bottom bar and More replace the
-   top tab strip and the menu drawer. Desktop with Sidebar: the left sidebar
-   replaces the header and the strip; the content column keeps its width and
-   gutter. Desktop with Top tabs: today's layout, unchanged. */
+   top tab strip and the menu drawer. Desktop with Sidebar: the hub header
+   (name, search, account) runs across the top as in Top tabs, and the left
+   column under it carries the navigation and nothing else (decision 5); the
+   tab strip goes. Desktop with Top tabs: the header and the strip. Inside
+   admin, the strip gives way to the admin bar (AdminBar.tsx), or to the
+   column's admin list beside it. */
 .app-frame {
   display: block;
 }
@@ -48,12 +52,25 @@
 
 @media (min-width: 769px) {
   .app--nav-sidebar {
-    --nav-h: 0px;
     --tabs-h: 0px;
   }
 
-  .app--nav-sidebar .civic-nav,
   .app--nav-sidebar .feed-votes-tabs {
+    display: none;
+  }
+
+  /* The header spans the window over the column; the column has the
+     sections and Admin, so the header drops its menu button and the admin
+     pill (design pass, 2026-10-29). */
+  .app--nav-sidebar .civic-nav-inner {
+    max-width: none;
+    padding-left: var(--space-6);
+    padding-right: var(--space-6);
+  }
+
+  .app--nav-sidebar .civic-nav-hamburger,
+  .app--nav-sidebar .civic-nav .admin-review-icon,
+  .app--nav-sidebar .civic-nav .admin-pill {
     display: none;
   }
 
