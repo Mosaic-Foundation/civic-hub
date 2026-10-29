@@ -151,7 +151,7 @@ describe("previewVars", () => {
     const empty = previewVars(resolveTheme({}));
     expect(empty["--ds-color-primary-600"]).toBe("#2a4e84");
     expect(empty["--ds-color-action-primary"]).toBe("#2a4e84");
-    expect(empty["--ds-color-bg-page"]).toBe("#f8f6f3");
+    expect(empty["--ds-color-bg-page"]).toBe("#fcfbf8");
 
     const teal = previewVars(resolveTheme({ preset: "harbor-teal" }));
     expect(teal["--ds-color-primary-600"]).toBe("#1f6f6b");

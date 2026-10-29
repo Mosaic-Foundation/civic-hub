@@ -29,7 +29,6 @@ function declarations(css: string, select: (selector: string) => boolean): Vars 
 
 const palette = declarations(read("design-system/tokens.css"), (s) => s === ":root");
 const roles = declarations(read("theme.css"), (s) => s === ":root");
-const looks = read("tokens/looks.css");
 
 /** A token set: the palette, the roles, then a look's or mode's overrides, later winning. */
 function tokenSet(...layers: Vars[]): Vars {
@@ -64,7 +63,7 @@ const UI = 3;
 const PAIRS: Array<[string, string, number]> = [
   ...["--color-text", "--color-text-strong", "--color-text-muted", "--color-text-subtle", "--color-link"].flatMap(
     (fg) =>
-      ["--color-bg", "--color-surface", "--color-surface-sunken", "--color-surface-hover"].map(
+      ["--color-bg", "--color-surface", "--color-surface-sunken", "--color-surface-hover", "--color-surface-stripe", "--table-row-hover"].map(
         (bg) => [fg, bg, TEXT] as [string, string, number],
       ),
   ),
@@ -97,15 +96,10 @@ const PAIRS: Array<[string, string, number]> = [
   ),
 ];
 
-// The two directions on dev; the look Adam chooses becomes theme.css's own
-// values and the dark set is added beside it (decision 9).
+// The hub's look (Daylight, Adam's choice, 2026-10-29); the dark set joins
+// it with decision 9.
 const SETS: Record<string, Vars> = {
-  "look A (Daylight)": tokenSet(
-    declarations(looks, (s) => s === ':root[data-look="a"]'),
-  ),
-  "look B (Warm paper)": tokenSet(
-    declarations(looks, (s) => s === ':root[data-look="b"]'),
-  ),
+  light: tokenSet(),
 };
 
 describe("token contrast (WCAG AA)", () => {

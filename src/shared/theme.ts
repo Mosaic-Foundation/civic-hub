@@ -72,16 +72,16 @@ export const THEME_PRESETS: readonly ThemePreset[] = [
 /** Today's values, for swatches and as the base a partial theme builds on. */
 export const DEFAULT_THEME_COLORS = {
   primary: "#2a4e84",
-  accent: "#c37b51",
-  background: "#f8f6f3",
+  accent: "#b8501f",
+  background: "#fcfbf8",
   types: {
     vote: "#15294c",
     proposal: "#5f4b8b",
     conversation: "#0f5e66",
     project: "#1565c0",
-    announcement: "#8c4a2b",
+    announcement: "#6e3013",
     meeting: "#2a7340",
-    brief: "#8c4a2b",
+    brief: "#6e3013",
     wordcloud: "#5c6b2a",
     // The packages' declared colours (A5).
     ...Object.fromEntries(DECLARED_COLORS.map((c) => [c.key, c.fg])),
@@ -473,9 +473,9 @@ const DS_ALIASES: ReadonlyArray<[string, string]> = [
  * defaults, not inherit the live theme wherever the draft sets nothing.
  */
 const DS_DEFAULTS: Readonly<Record<string, string>> = {
-  "--ds-color-paper-50": "#f8f6f3",
-  "--ds-color-paper-100": "#f4f1ea",
-  "--ds-color-paper-200": "#e8e2d4",
+  "--ds-color-paper-50": "#fcfbf8",
+  "--ds-color-paper-100": "#f6f4ef",
+  "--ds-color-paper-200": "#ece8e0",
   "--ds-color-primary-50": "#ecf1fa",
   "--ds-color-primary-100": "#dce5f2",
   "--ds-color-primary-200": "#b9cade",
@@ -486,15 +486,15 @@ const DS_DEFAULTS: Readonly<Record<string, string>> = {
   "--ds-color-primary-700": "#1f3a66",
   "--ds-color-primary-800": "#15294c",
   "--ds-color-primary-950": "#0e1e36",
-  "--ds-color-accent-50": "#faf0e7",
-  "--ds-color-accent-100": "#f4e1d2",
-  "--ds-color-accent-200": "#efd3be",
-  "--ds-color-accent-300": "#e8c2a8",
-  "--ds-color-accent-400": "#ddae8e",
-  "--ds-color-accent-500": "#d69a75",
-  "--ds-color-accent-600": "#c37b51",
-  "--ds-color-accent-700": "#a85d38",
-  "--ds-color-accent-800": "#8c4a2b",
+  "--ds-color-accent-50": "#f9f1ed",
+  "--ds-color-accent-100": "#f4e3db",
+  "--ds-color-accent-200": "#e8c7b7",
+  "--ds-color-accent-300": "#daa48b",
+  "--ds-color-accent-400": "#cc815e",
+  "--ds-color-accent-500": "#c1653a",
+  "--ds-color-accent-600": "#b8501f",
+  "--ds-color-accent-700": "#903e18",
+  "--ds-color-accent-800": "#6e3013",
 };
 
 /**

@@ -40,9 +40,9 @@
      to feel intentional. Cards are pure white so they pop off the page.
      ------------------------------------------------------------------------- */
   --ds-color-paper-0:   #FFFFFF;   /* elevated card, modal */
-  --ds-color-paper-50:  #F8F6F3;   /* page background — light warm parchment to lift white cards */
-  --ds-color-paper-100: #F4F1EA;   /* alt surface, hover */
-  --ds-color-paper-200: #E8E2D4;   /* active surface */
+  --ds-color-paper-50:  #FCFBF8;   /* page background — nearly white, a little warm (Daylight, 2026-10-29) */
+  --ds-color-paper-100: #F6F4EF;   /* alt surface, hover */
+  --ds-color-paper-200: #ECE8E0;   /* active surface */
 
   /* -------------------------------------------------------------------------
      COLOR — PRIMARY (Civic Indigo — trustworthy, institutional)
@@ -59,17 +59,17 @@
   --ds-color-primary-50:  #ECF1FA;
 
   /* -------------------------------------------------------------------------
-     COLOR — ACCENT (Terracotta — humanist warmth)
+     COLOR — ACCENT (Coral — the inviting action; Daylight, 2026-10-29)
      ------------------------------------------------------------------------- */
-  --ds-color-accent-800: #8C4A2B;
-  --ds-color-accent-700: #A85D38;
-  --ds-color-accent-600: #C37B51;  /* default */
-  --ds-color-accent-500: #D69A75;
-  --ds-color-accent-400: #DDAE8E;
-  --ds-color-accent-300: #E8C2A8;
-  --ds-color-accent-200: #EFD3BE;
-  --ds-color-accent-100: #F4E1D2;
-  --ds-color-accent-50:  #FAF0E7;
+  --ds-color-accent-800: #6E3013;
+  --ds-color-accent-700: #903E18;
+  --ds-color-accent-600: #B8501F;  /* default */
+  --ds-color-accent-500: #C1653A;
+  --ds-color-accent-400: #CC815E;
+  --ds-color-accent-300: #DAA48B;
+  --ds-color-accent-200: #E8C7B7;
+  --ds-color-accent-100: #F4E3DB;
+  --ds-color-accent-50:  #F9F1ED;
 
   /* -------------------------------------------------------------------------
      COLOR — SEMANTIC (clean and modern — fresh enough to do real UI work,

@@ -8,12 +8,11 @@
  * LOCAL ONLY, on demand, on the `shots` hub (see screenshots.spec.ts):
  *
  *   CIVIC_E2E_DESIGN_AUDIT=<out dir> [CIVIC_E2E_DESIGN_MODES=light,dark] \
- *     [CIVIC_E2E_DESIGN_LOOKS=a,b] [CIVIC_E2E_DESIGN_PATHS=/,/admin/activity] \
+ *     [CIVIC_E2E_DESIGN_PATHS=/,/admin/activity] \
  *     npx playwright test designAudit
  *
- * LOOKS photographs the design pass's directions (?look=a|b, while they are
- * on dev); PATHS photographs those pages only instead of finding them (an
- * admin path is taken as the admin only).
+ * PATHS photographs those pages only instead of finding them (an admin path
+ * is taken as the admin only).
  *
  * The pages are found, not listed: the feed, then every link in the
  * navigation, the admin tabs and the settings rail, a detail page of each
@@ -29,7 +28,6 @@ import { adminEmailFor, session, visitAs } from "./actors";
 
 const OUT = process.env.CIVIC_E2E_DESIGN_AUDIT?.trim() ?? "";
 const MODES = (process.env.CIVIC_E2E_DESIGN_MODES?.trim() || "light").split(",");
-const LOOKS = (process.env.CIVIC_E2E_DESIGN_LOOKS?.trim() || "").split(",");
 const PATHS = process.env.CIVIC_E2E_DESIGN_PATHS?.trim().split(",").filter(Boolean) ?? [];
 const HUB = "shots";
 const PORT = new URL(process.env.CIVIC_E2E_BASE_URL?.trim() || "http://localhost:4173").port || "80";
@@ -109,17 +107,15 @@ test.describe("design audit", () => {
       for (const layout of LAYOUTS) {
         await setLayout(request, adminToken, layout);
         for (const mode of MODES) {
-          for (const look of LOOKS) {
           for (const w of WIDTHS) {
             for (const who of ["resident", "admin"] as const) {
-              const dir = join(OUT, `${look ? `look-${look}-` : ""}${layout}-${mode}`, who);
+              const dir = join(OUT, `${layout}-${mode}`, who);
               mkdirSync(dir, { recursive: true });
               const ctx = await browser.newContext({
                 viewport: { width: w.width, height: w.height },
                 colorScheme: mode === "dark" ? "dark" : "light",
               });
               const page = await ctx.newPage();
-              if (look) await page.addInitScript((l) => sessionStorage.setItem("civic_design_look", l), look);
               if (who === "admin") await visitAs(page, adminToken);
               else
                 await page.addInitScript(() => {
@@ -149,7 +145,6 @@ test.describe("design audit", () => {
               }
               await ctx.close();
             }
-          }
           }
         }
       }

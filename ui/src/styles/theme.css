@@ -18,13 +18,16 @@
  *
  * Names that older stylesheets already use (--color-*, --space-xs…xl,
  * --pill-*, --type-*) keep their meaning; the new role names sit beside them.
+ *
+ * The look is Daylight (Adam, 2026-10-29): nearly white and a little warm,
+ * white cards with a hairline edge, a coral accent, quiet table rules with
+ * every other row tinted, and each card's kind as a coloured bar on top.
  */
 
 @import "@fontsource-variable/inter/wght.css";
 @import "./design-system/tokens.css";
 @import "./design-system/base.css";
 @import "./design-system/components.css";
-@import "./tokens/looks.css";
 
 /* `.theme-scope` re-declares this whole layer on an element, so a theme's
    variables set on that element (Settings → Theme's live preview) flow
@@ -41,7 +44,7 @@
   /* A row or item under the pointer. */
   --color-surface-hover: var(--ds-color-paper-100);
   /* Every other row of a striped table; transparent where a look has none. */
-  --color-surface-stripe: transparent;
+  --color-surface-stripe: #faf8f4;
   /* Popovers, menus, dialogs. */
   --color-surface-raised: var(--ds-color-paper-0);
   /* Behind a dialog. */
@@ -49,7 +52,7 @@
 
   --color-border: var(--ds-color-border-default);
   /* A hairline: card edges, table rules, dividers inside a card. */
-  --color-border-subtle: var(--ds-color-border-subtle);
+  --color-border-subtle: #ebe7e0;
   --color-border-strong: var(--ds-color-border-strong);
   --color-border-hover: var(--ds-color-ink-500);
   /* A control's own edge (an input, a checkbox): 3:1 on the surface, so the
@@ -64,7 +67,7 @@
   --color-text-muted: var(--ds-color-text-muted);
   /* The lightest text that is still text (dates, hints, placeholders): AA on
      every surface (tests/unit/contrast.test.ts). */
-  --color-text-subtle: #66768f;
+  --color-text-subtle: #5f6f88;
   /* Decoration only, never words: a disabled control's edge, a separator dot. */
   --color-text-faint: var(--ds-color-ink-300);
   /* Text on a dark fill (a primary button, the admin bar). */
@@ -124,10 +127,10 @@
   --color-badge-text: var(--ds-color-paper-0);
 
   /* --- Chrome: the hub header, the admin bar, the left column ---------- */
-  --color-header-bg: var(--color-bg);
-  --color-header-border: var(--color-border);
+  --color-header-bg: var(--color-surface);
+  --color-header-border: var(--color-border-subtle);
   --color-column-bg: var(--color-surface);
-  --color-column-border: var(--color-border);
+  --color-column-border: var(--color-border-subtle);
   /* The admin bar: a different tone from the hub's own pages, so an admin
      always knows they are in admin (decision 4). */
   --color-admin-bar-bg: var(--ds-color-ink-900);
@@ -136,6 +139,10 @@
   --color-admin-bar-title: var(--ds-color-paper-0);
   --color-admin-bar-indicator: var(--ds-color-accent-400);
   --color-admin-bar-hover: rgba(255, 255, 255, 0.08);
+  /* The tab you are on: a lighter field and a thick accent rule, not only
+     a heavier word (Adam, 2026-10-29: "more obvious when selected"). */
+  --color-admin-bar-active-bg: rgba(255, 255, 255, 0.14);
+  --admin-bar-indicator-width: 3px;
 
   /* --- Colour: post-type pills (hub-specific) --- */
   --pill-vote-bg: var(--ds-color-primary-100);       --pill-vote-fg: var(--ds-color-primary-800);
@@ -321,15 +328,17 @@
      How a card and a table separate from the page. A look sets these; a
      page never draws its own edge or shadow. */
   --card-bg: var(--color-surface);
-  --card-border: var(--border-width) solid var(--color-border);
-  --card-radius: var(--radius-md);
+  --card-border: var(--border-width) solid var(--color-border-subtle);
+  --card-radius: var(--radius-lg);
   --card-shadow: none;
-  --card-shadow-hover: none;
-  --card-padding: var(--space-4);
-  --table-head-bg: var(--color-surface-sunken);
-  --table-head-text: var(--color-text);
-  --table-rule: var(--border-width) solid var(--color-border);
-  --table-row-hover: transparent;
+  --card-shadow-hover: 0 1px 3px rgba(40, 30, 15, 0.06);
+  --card-padding: var(--space-5);
+  /* A card's coloured top bar, where a card carries one (a kind, a stat). */
+  --card-accent-width: 3px;
+  --table-head-bg: transparent;
+  --table-head-text: var(--color-text-muted);
+  --table-rule: var(--border-width) solid var(--color-border-subtle);
+  --table-row-hover: var(--ds-color-primary-50);
   --table-stripe: var(--color-surface-stripe);
   --table-cell-padding-y: var(--space-2);
   --table-cell-padding-x: var(--space-4);
@@ -337,15 +346,15 @@
   /* --- The feed card's kind colour (decision 2) -------------------------
      Where a card wears its kind's colour: an edge (top or left) and the
      chip. A look moves the colour between them. */
-  --feed-card-edge-top: 4px;
+  --feed-card-edge-top: var(--card-accent-width);
   --feed-card-edge-left: 0;
   --feed-card-dot: none;
-  --feed-card-gap: var(--space-4);
-  --feed-tab-indicator: 4px;
+  --feed-card-gap: var(--space-3);
+  --feed-tab-indicator: var(--indicator-width);
   --feed-card-padding-x: var(--space-6);
-  --feed-title-size: var(--font-size-2xl);
-  --feed-pill-case: uppercase;
-  --feed-pill-spacing: 0.05em;
+  --feed-title-size: var(--font-size-xl);
+  --feed-pill-case: none;
+  --feed-pill-spacing: normal;
   --feed-thumb-size: 9rem;
   --feed-thumb-size-phone: 11.25rem;
 
