@@ -64,8 +64,11 @@ test.describe("Install and Remove on the Plugins page", () => {
 
     await card.getByRole("button", { name: "Remove…" }).click();
     const remove = page.getByRole("dialog", { name: "Remove Word clouds?" });
-    await expect(remove.getByText("What it holds doesn't close by itself, so it can only be stopped.")).toBeVisible();
-    await expect(remove.getByLabel(/Wind down/)).toBeDisabled();
+    // Wind down comes first and is chosen, in the plugin's own words (design
+    // pass, decision 14); Stop now is the second choice.
+    await expect(remove.getByLabel(/Wind down/)).toBeChecked();
+    await expect(remove.getByText(/No new word clouds can be created; the existing ones stay as they are\./)).toBeVisible();
+    await remove.getByLabel(/Stop now/).check();
     await remove.getByRole("button", { name: "Stop now", exact: true }).click();
     await expect(card.getByText("Not installed.", { exact: true })).toBeVisible();
     await expect(card.locator(".plugin-card-state")).toHaveText("Not installed");

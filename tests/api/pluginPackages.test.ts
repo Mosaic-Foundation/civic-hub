@@ -185,16 +185,23 @@ describe("a hub's plugin packages", () => {
     expect((await call("POST", "/admin/hub/plugins/vote/install", HOST, {}, admin)).body.plugin.state).toBe("installed");
   });
 
-  it("Wind down with nothing open stops at once, and is not offered for items that never close", async () => {
+  it("Wind down with nothing open stops at once; for items that never close it winds down and stays so", async () => {
     const wind = await call("POST", "/admin/hub/plugins/conversation/remove", HOST, { mode: "wind_down" }, admin);
     expect(wind.status, JSON.stringify(wind.body)).toBe(200);
     expect(wind.body.plugin.state).toBe("removed");
     await call("POST", "/admin/hub/plugins/conversation/install", HOST, {}, admin);
 
+    // Announcements never close (design pass, decision 14): nothing new, the
+    // existing ones stay, and the close job does not switch it off.
     expect((await one("announcement")).wind_down_offered).toBe(false);
-    const refused = await call("POST", "/admin/hub/plugins/announcement/remove", HOST, { mode: "wind_down" }, admin);
-    expect(refused.status).toBe(400);
-    expect(refused.body.code).toBe("wind_down_not_offered");
+    const winding = await call("POST", "/admin/hub/plugins/announcement/remove", HOST, { mode: "wind_down" }, admin);
+    expect(winding.status, JSON.stringify(winding.body)).toBe(200);
+    expect(winding.body.plugin.state).toBe("winding_down");
+    const job = await call("GET", `/internal/vote-close/run?hub=${SLUG}`, HOST, undefined, CRON);
+    expect(job.status, JSON.stringify(job.body)).toBe(200);
+    expect((await one("announcement")).state).toBe("winding_down");
+    await call("POST", "/admin/hub/plugins/announcement/install", HOST, {}, admin);
+    expect((await one("announcement")).state).toBe("installed");
   });
 
   it("civic.json lists the installed packages with their versions", async () => {

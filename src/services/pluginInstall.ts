@@ -73,7 +73,12 @@ export interface PluginInstallView {
   packages: PluginPackageView[];
   /** Its open processes (the wind-down waits for these). */
   open: number;
-  /** Whether Wind down is offered: its processes close at a deadline. */
+  /**
+   * Whether its processes close at a deadline. Wind down is offered either
+   * way (design pass, decision 14): with deadlines it ends by itself when the
+   * last open item closes; without, nothing new starts and what exists stays,
+   * until the admin stops it.
+   */
   wind_down_offered: boolean;
   installed_at: string | null;
   installed_by: string | null;
@@ -273,7 +278,13 @@ export async function updatePlugin(plugin: string, actor: { id: string; audit: s
   return one(plugin);
 }
 
-/** Remove a plugin: "stop" switches it off now; "wind_down" lets what is open run to its close first. */
+/**
+ * Remove a plugin: "stop" switches it off now; "wind_down" lets nothing new
+ * start, and lets what is open run to its close first. A plugin whose items
+ * never close winds down too (design pass, decision 14, 2026-10-29): nothing
+ * new, the existing ones stay as they are, and it stays winding down until
+ * the admin stops it.
+ */
 export async function removePlugin(
   plugin: string,
   mode: unknown,
@@ -282,13 +293,8 @@ export async function removePlugin(
   if (mode !== "stop" && mode !== "wind_down") throw new ValidationError('Send { "mode": "stop" } or { "mode": "wind_down" }.');
   const current = await one(plugin);
   if (current.state === "removed" || current.state === "unavailable") return current;
-  if (mode === "wind_down") {
-    if (!current.wind_down_offered) {
-      throw new ValidationError("What this plugin holds doesn't close by itself, so it can only be stopped.", "wind_down_not_offered");
-    }
-    // Nothing open: there is nothing to wait for, so it stops now.
-    if (current.open === 0) mode = "stop";
-  }
+  // With deadlines and nothing open, there is nothing to wait for: it stops now.
+  if (mode === "wind_down" && current.wind_down_offered && current.open === 0) mode = "stop";
   await change(plugin, mode === "stop" ? "stop" : "wind_down", actor.id);
   await recordHubAdminAudit({
     actor: actor.audit,
@@ -305,7 +311,11 @@ export async function removePlugin(
  * switched off. Returns the plugins switched off.
  */
 export async function finishWindDowns(): Promise<string[]> {
-  const winding = pluginsWithPackages().filter((e) => isPluginWindingDownSync(e.plugin) && isPluginEnabledSync(e.plugin));
+  // Only a plugin whose items close ends by itself; one whose items never
+  // close stays winding down until the admin stops it.
+  const winding = pluginsWithPackages().filter(
+    (e) => hasDeadlines(e.plugin) && isPluginWindingDownSync(e.plugin) && isPluginEnabledSync(e.plugin),
+  );
   if (winding.length === 0) return [];
   const counts = (await countLiveProcessesByPlugin()) as Record<string, number>;
   const done: string[] = [];

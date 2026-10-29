@@ -56,7 +56,7 @@ test.describe("Update on the Plugins page", () => {
 
     await page.goto("/admin/settings/plugins#brief");
     const intro = page.getByTestId("plugins-intro");
-    await expect(intro).toContainText("To remove one, choose Stop now or Wind down.");
+    await expect(intro).toContainText("To remove one, choose Wind down or Stop now.");
     await expect(intro).toContainText("Update shows what will change in what it can do before you take it.");
     await expect(intro).not.toContainText("Switch off anything this hub does not use");
 

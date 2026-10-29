@@ -114,11 +114,13 @@ export default function PluginsSection() {
             what it will be able to do on this hub and what it will not.
           </p>
           <p>
-            To remove one, choose Stop now or Wind down. Stop now takes it off
-            this hub's pages and menus at once. Wind down lets what is already
-            open run to its close, and nothing new can be started; it switches
-            off by itself when the last item closes. Either way nothing is
-            deleted: installing it again brings everything back as it was.
+            To remove one, choose Wind down or Stop now. Wind down means
+            nothing new can be started: what is open runs to its end date and
+            the plugin switches off by itself when the last one closes, and
+            where its items never close, they stay as they are until you stop
+            it. Stop now takes it off this hub's pages and menus at once.
+            Either way nothing is deleted: installing it again brings
+            everything back as it was.
           </p>
           <p>
             When Civic.Social checks a new version of a plugin, its card says

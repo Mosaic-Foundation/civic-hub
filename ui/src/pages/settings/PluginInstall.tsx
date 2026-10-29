@@ -84,8 +84,10 @@ export function PluginInstallControls({ install, onChanged }: { install: PluginI
       {install.state === "winding_down" && (
         <div className="plugin-install-state" role="status">
           <p>
-            <span className="plugin-install-label">Winding down</span>: {openItems(install.open)} still running. Nothing
-            new can be started. It switches off by itself when the last one closes.
+            <span className="plugin-install-label">Winding down</span>:{" "}
+            {install.wind_down_offered
+              ? `${openItems(install.open)} still running. Nothing new can be started. It switches off by itself when the last one closes.`
+              : `nothing new can be created; the existing ${install.name.toLowerCase()} stay as they are until you stop it.`}
           </p>
           <p className="plugin-install-actions">
             <button type="button" className="plugin-install-button" onClick={() => setAsking("remove")}>
@@ -246,8 +248,24 @@ function UpdateDialog({ install, onClose, onDone }: { install: PluginInstall; on
   );
 }
 
+/**
+ * What Wind down means for this plugin, in its own words (design pass,
+ * decision 14): with deadlines, what is open carries on to its end date and
+ * the plugin switches off by itself; without, nothing new and what exists
+ * stays, until Stop now.
+ */
+function windDownWords(install: PluginInstall): string {
+  const things = install.name.toLowerCase();
+  if (!install.wind_down_offered) {
+    return `No new ${things} can be created; the existing ones stay as they are. ${install.name} stays here, winding down, until you choose Stop now.`;
+  }
+  if (install.open === 0) return `No new ${things} can be created. None is open, so there is nothing to wait for: it switches off now.`;
+  return `No new ${things} can be created; the ${install.open} open now carry on until their end date and publish their results as usual. When the last one ends, ${install.name} switches off by itself.`;
+}
+
 function RemoveDialog({ install, onClose, onDone }: { install: PluginInstall; onClose: () => void; onDone: () => void }) {
-  const canWindDown = install.state === "installed" && install.wind_down_offered && install.open > 0;
+  // Wind down first and chosen (decision 14): the gentler way, for every plugin.
+  const canWindDown = install.state === "installed";
   const [mode, setMode] = useState<"stop" | "wind_down">(canWindDown ? "wind_down" : "stop");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -280,13 +298,7 @@ function RemoveDialog({ install, onClose, onDone }: { install: PluginInstall; on
             />
             <span>
               <strong>Wind down</strong>
-              <span className="plugin-remove-detail">
-                {!install.wind_down_offered
-                  ? "What it holds doesn't close by itself, so it can only be stopped."
-                  : install.open === 0
-                    ? "Nothing is open, so there is nothing to wait for: it stops now."
-                    : `Nothing new can be started from now on. The ${openItems(install.open)} run to their close and publish their results as usual. When the last one closes, ${name} switches off by itself.`}
-              </span>
+              <span className="plugin-remove-detail">{windDownWords(install)}</span>
             </span>
           </label>
         )}

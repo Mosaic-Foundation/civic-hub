@@ -152,7 +152,7 @@
     "anchor": "plugins-install"
   },
   "plugins.remove": {
-    "text": "Stop now switches the plugin off at once; nothing is deleted, and installing it again brings everything back. Wind down lets what is open run to its close first.",
+    "text": "Wind down lets nothing new start: what is open runs to its close, and items that never close stay until you stop it. Stop now switches it off at once. Nothing is deleted; installing it again brings everything back.",
     "page": "/reference/plugins",
     "anchor": "plugins-remove"
   },
