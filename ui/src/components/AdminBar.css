@@ -83,10 +83,13 @@
   text-decoration: none;
 }
 
+/* The tab you are on: a lighter field, a thick accent rule and the heavier
+   word, so it reads at a glance (Adam, 2026-10-29). */
 .admin-bar .admin-tab.is-active {
+  background: var(--color-admin-bar-active-bg);
   color: var(--color-admin-bar-text-active);
   font-weight: var(--font-weight-semibold);
-  border-bottom-color: var(--color-admin-bar-indicator);
+  border-bottom: var(--admin-bar-indicator-width) solid var(--color-admin-bar-indicator);
 }
 
 .admin-bar .admin-tab:focus-visible,
