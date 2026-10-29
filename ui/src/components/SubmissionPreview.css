@@ -3,37 +3,37 @@
 
 .submission-preview__heading {
   font-family: var(--font-heading);
-  font-size: var(--font-size-lg, 1.25rem);
-  margin: 0 0 var(--space-sm, 0.5rem);
+  font-size: var(--font-size-xl);
+  margin: 0 0 var(--space-2);
 }
 
 .submission-preview__banner {
-  margin: 0 0 var(--space-md, 1rem);
+  margin: 0 0 var(--space-4);
 }
 
 .submission-preview__banner img {
   display: block;
   width: 100%;
-  max-height: 320px;
+  max-height: calc(var(--media-max-height) * 1.25);
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .submission-preview__description {
   white-space: pre-wrap;
-  margin: 0 0 var(--space-md, 1rem);
+  margin: 0 0 var(--space-4);
 }
 
 .submission-preview__field {
-  margin: 0 0 var(--space-md, 1rem);
+  margin: 0 0 var(--space-4);
 }
 
 .submission-preview__label {
   display: block;
-  font-size: var(--font-size-sm, 0.875rem);
+  font-size: var(--text-small-size);
   font-weight: 600;
-  color: var(--color-text-muted, #666);
-  margin-bottom: 0.25rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
 }
 
 .submission-preview__paragraph {
@@ -45,41 +45,41 @@
 .submission-preview__list,
 .submission-preview__options {
   margin: 0;
-  padding-left: 1.25rem;
+  padding-left: var(--space-5);
 }
 
 .submission-preview__links li,
 .submission-preview__list li,
 .submission-preview__options li {
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--space-1);
 }
 
 .submission-preview__links a {
-  color: var(--color-primary, #1e3a5f);
+  color: var(--color-primary);
   word-break: break-all;
 }
 
 .submission-preview__sections p {
-  margin: 0.25rem 0 0.75rem;
+  margin: var(--space-1) 0 var(--space-3);
   white-space: pre-wrap;
 }
 
 .submission-preview__flags {
-  font-size: var(--font-size-sm, 0.875rem);
-  color: var(--color-text-muted, #666);
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
   font-style: italic;
   margin: 0;
 }
 
 .submission-preview__raw {
-  margin-top: var(--space-md, 1rem);
+  margin-top: var(--space-4);
 }
 
 .submission-preview__raw pre,
 .submission-preview__json {
-  font-size: var(--font-size-sm, 0.875rem);
+  font-size: var(--text-small-size);
   white-space: pre-wrap;
-  max-height: 300px;
+  max-height: calc(var(--media-max-height) * 1.25);
   overflow: auto;
   margin: 0;
 }

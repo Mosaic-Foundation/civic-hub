@@ -1,30 +1,30 @@
 /* Regenerate on the admin's brief page (Actions slice). */
 .brief-revision {
   border: 1px solid var(--color-border-strong);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  margin-top: 0.75rem;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-3);
   background: var(--color-surface-muted);
 }
 
 .brief-revision h4 {
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--space-2);
 }
 
 .brief-version-headline {
   font-weight: 600;
-  margin: 0 0 0.35rem;
+  margin: 0 0 var(--space-1-5);
 }
 
 .brief-version-summary,
 .brief-version-section {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--space-2);
 }
 
 .brief-history {
-  margin-top: 0.75rem;
+  margin-top: var(--space-3);
 }
 
 .brief-history summary {
@@ -34,6 +34,6 @@
 
 .brief-history-item {
   border-top: 1px solid var(--color-border);
-  padding-top: 0.5rem;
-  margin-top: 0.5rem;
+  padding-top: var(--space-2);
+  margin-top: var(--space-2);
 }

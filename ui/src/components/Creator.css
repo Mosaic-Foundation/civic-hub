@@ -1,7 +1,7 @@
 .creator {
   display: inline-flex;
   align-items: baseline;
-  gap: var(--space-xs, 0.375rem);
+  gap: var(--space-1-5);
 }
 
 .creator-name {
@@ -13,15 +13,15 @@
 .creator-admin-badge {
   display: inline-block;
   align-self: center;
-  padding: 1px var(--space-xs, 0.375rem);
-  font-size: var(--font-size-xs, 0.75rem);
+  padding: var(--space-px) var(--space-1-5);
+  font-size: var(--text-caption-size);
   font-weight: 600;
   line-height: 1.4;
-  border-radius: var(--radius-sm, 4px);
-  background: var(--ds-color-primary-100, var(--color-surface-alt, #dce5f2));
-  color: var(--ds-color-primary-800, var(--color-brand, #15294c));
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-wash);
+  color: var(--color-brand);
   text-transform: none;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--letter-spacing-wide);
 }
 
 /* Office pill — the author's public position ("Board of Supervisors").
@@ -39,15 +39,15 @@
 .creator-official-badge {
   display: inline-block;
   align-self: center;
-  padding: 1px var(--space-xs, 0.375rem);
-  font-size: var(--font-size-xs, 0.75rem);
+  padding: var(--space-px) var(--space-1-5);
+  font-size: var(--text-caption-size);
   font-weight: 600;
   line-height: 1.4;
-  border-radius: var(--radius-sm, 4px);
-  background: var(--ds-color-accent-100, #f4e1d2);
-  color: var(--ds-color-accent-800, #8c4a2b);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-tint);
+  color: var(--color-accent-ink);
   text-transform: none;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--letter-spacing-wide);
   white-space: nowrap;
 }
 
@@ -55,7 +55,7 @@
    the resolved name so admins can uniquely identify a submitter. Never
    used on public surfaces. */
 .admin-id-secondary {
-  font-size: var(--font-size-xs, 0.75rem);
+  font-size: var(--text-caption-size);
   color: var(--color-text-muted);
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
 }

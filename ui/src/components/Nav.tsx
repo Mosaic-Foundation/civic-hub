@@ -39,16 +39,16 @@ const DRAWER_LEGAL_LINKS: ReadonlyArray<{ to: string; label: string }> = [
   { to: "/terms", label: "Terms" },
 ];
 
-// Six muted, accessible-on-white background colors for the avatar circle.
-// Foreground (initial letter) is always white; backgrounds are saturated
-// enough to give white text >= 4.5:1 contrast.
+// Six background colours for the avatar circle: the kinds' dark tones
+// (theme.css), each AA for white words, so a theme recolours them too (design
+// pass, 2026-10-29). The initial is --color-text-inverse.
 const AVATAR_COLORS = [
-  "#1e3a5f", // brand navy
-  "#0f5a55", // teal
-  "#8c3210", // terracotta
-  "#0f4a26", // forest
-  "#5b21b6", // violet
-  "#a16207", // ochre
+  "var(--type-vote-fg)",
+  "var(--type-conversation-fg)",
+  "var(--type-brief-fg)",
+  "var(--type-meeting-fg)",
+  "var(--type-proposal-fg)",
+  "var(--type-official-response-fg)",
 ] as const;
 
 function avatarColor(seed: string): string {

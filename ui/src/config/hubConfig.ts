@@ -333,7 +333,7 @@ function initialIcon(name: string, fill: string): string {
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
     `<circle cx="50" cy="50" r="50" fill="${fill}"/>` +
     `<text x="50" y="50" text-anchor="middle" dominant-baseline="central" ` +
-    `font-family="Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" ` +
+    `font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" ` +
     `font-size="64" font-weight="700" fill="#ffffff">${escaped}</text></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }

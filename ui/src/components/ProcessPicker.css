@@ -2,7 +2,7 @@
    backdrop and close button are its; this is the panel's look and content. */
 
 .picker {
-  max-width: 540px;
+  max-width: calc(var(--grid-min-card) * 2);
 }
 
 .modal-body.picker-body {
@@ -51,8 +51,8 @@
 
 .picker-card:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 10%, transparent);
-  background: var(--pill-vote-bg, #e3eaf6);
+  box-shadow: var(--shadow-sm);
+  background: var(--color-primary-wash);
 }
 
 .picker-card:focus-visible {
@@ -86,14 +86,14 @@
 .picker-card-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 10px;
+  padding: var(--space-0-5) var(--space-2-5);
   font-family: var(--font-body);
-  font-size: var(--font-size-xs, 0.75rem);
+  font-size: var(--text-caption-size);
   font-weight: 600;
   color: var(--color-primary);
-  background: var(--color-primary-bg, rgba(42, 78, 132, 0.08));
-  border: 1px solid var(--color-primary-border, rgba(42, 78, 132, 0.2));
-  border-radius: var(--radius-pill, 999px);
+  background: var(--color-primary-bg);
+  border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-pill);
   white-space: nowrap;
   line-height: 1.5;
 }
@@ -103,14 +103,14 @@
   font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
   color: var(--color-text-muted);
-  padding-left: calc(24px + var(--space-sm));
+  padding-left: calc(var(--space-6) + var(--space-sm));
 }
 
 .picker-card-guidance {
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
-  padding-left: calc(24px + var(--space-sm));
+  padding-left: calc(var(--space-6) + var(--space-sm));
 }
 
 .picker-card-guidance--light {
@@ -120,11 +120,11 @@
 .picker-card-guidance--prominent {
   color: var(--color-primary);
   font-weight: 500;
-  background: var(--pill-vote-bg, #e3eaf6);
+  background: var(--color-primary-wash);
   padding: var(--space-xs) var(--space-sm);
-  border-left: 3px solid var(--color-primary);
+  border-left: var(--card-accent-width) solid var(--color-primary);
   border-radius: var(--radius-sm);
-  margin-left: calc(24px + var(--space-sm));
+  margin-left: calc(var(--space-6) + var(--space-sm));
   padding-left: var(--space-sm);
 }
 
@@ -158,6 +158,6 @@
 
   .picker-card-desc,
   .picker-card-guidance {
-    padding-left: calc(24px + var(--space-sm));
+    padding-left: calc(var(--space-6) + var(--space-sm));
   }
 }

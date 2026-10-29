@@ -1,11 +1,11 @@
 .related-processes {
-  margin-top: var(--space-xl, 2rem);
+  margin-top: var(--space-8);
   /* Symmetric bottom margin. The panel is mounted mid-page on several detail
      views, so whatever follows it (comments, an admin toolbar) would otherwise
      butt straight up against the last link row — margin-top alone only spaces
      the side we happened to think about. */
-  margin-bottom: var(--space-xl, 2rem);
-  padding-top: var(--space-lg, 1.5rem);
+  margin-bottom: var(--space-8);
+  padding-top: var(--space-6);
   border-top: 1px solid var(--color-border);
 }
 
@@ -32,7 +32,7 @@
   border: none;
   color: var(--color-primary);
   cursor: pointer;
-  padding: 4px 0;
+  padding: var(--space-1) 0;
 }
 
 .related-processes__add:hover {
@@ -53,7 +53,7 @@
   color: var(--color-error);
   background: var(--color-error-bg);
   border-radius: var(--radius-sm);
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-2-5);
   margin: var(--space-sm) 0 0;
 }
 
@@ -63,7 +63,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .related-processes__item {
@@ -71,7 +71,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
-  padding: 10px 12px;
+  padding: var(--space-2-5) var(--space-3);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -81,12 +81,12 @@
    left edge marks it as pointing inward without turning it into a second,
    competing list. */
 .related-processes__item--incoming {
-  border-left: 3px solid var(--color-border-strong, var(--color-border));
+  border-left: var(--card-accent-width) solid var(--color-border);
   background: var(--color-surface-alt);
 }
 
 .related-processes__item--outgoing {
-  border-left: 3px solid var(--color-primary);
+  border-left: var(--card-accent-width) solid var(--color-primary);
 }
 
 .related-processes__item-main {
@@ -102,7 +102,7 @@
   font-size: var(--font-size-xs);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--text-eyebrow-spacing);
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
@@ -122,9 +122,9 @@
 .related-processes__type {
   font-family: var(--font-body);
   font-size: var(--font-size-xs);
-  color: var(--color-text-subtle, var(--color-text-muted));
+  color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--text-eyebrow-spacing);
   flex-shrink: 0;
 }
 
@@ -136,7 +136,7 @@
   font-size: var(--font-size-lg);
   line-height: 1;
   cursor: pointer;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
 }
 
 .related-processes__remove:hover {
@@ -145,7 +145,7 @@
 
 .related-processes__confirm {
   display: flex;
-  gap: 6px;
+  gap: var(--space-1-5);
   flex-shrink: 0;
 }
 
@@ -155,7 +155,7 @@
   font-size: var(--font-size-xs);
   font-weight: 600;
   border-radius: var(--radius-sm);
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2-5);
   cursor: pointer;
   border: 1px solid var(--color-border);
   background: var(--color-surface);

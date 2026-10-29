@@ -26,22 +26,22 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: calc(88dvh - var(--bottom-bar-h, 58px));
+  max-height: calc(88dvh - var(--bottom-bar-h));
   width: 100%;
-  max-width: 560px;
+  max-width: calc(var(--grid-min-card) * 2);
   margin: 0 auto;
   box-sizing: border-box;
   padding: var(--space-sm) var(--space-md) var(--space-md);
-  background: var(--card-background, var(--color-surface));
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
+  background: var(--color-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-lg);
   transition: transform 0.15s ease-out;
   animation: more-sheet-in 0.2s ease-out;
 }
 
 @keyframes more-sheet-in {
   from {
-    transform: translateY(40px);
+    transform: translateY(var(--space-10));
     opacity: 0;
   }
   to {
@@ -59,9 +59,9 @@
 
 .more-sheet-grab {
   flex: none;
-  width: 40px;
-  height: 4px;
-  margin: 2px auto 0;
+  width: var(--control-height);
+  height: var(--space-1);
+  margin: var(--space-0-5) auto 0;
   border-radius: 2px;
   background: var(--color-border-strong);
 }
@@ -74,7 +74,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  min-height: 48px;
+  min-height: var(--control-height-lg);
   margin: var(--space-sm) 0 var(--space-xs);
   padding-left: var(--space-sm);
 }
@@ -86,7 +86,7 @@
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--text-eyebrow-spacing);
   text-transform: uppercase;
   color: var(--color-text-muted);
   display: -webkit-box;
@@ -101,8 +101,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: var(--tap-target);
+  height: var(--tap-target);
   border: 0;
   border-radius: 50%;
   background: var(--color-surface-muted);
@@ -131,7 +131,7 @@
   font-family: var(--font-body);
   font-size: var(--font-size-xs);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--text-eyebrow-spacing);
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
@@ -160,7 +160,7 @@
    More can close it (the page behind a modal is inert). */
 .more-sheet-bar {
   flex: none;
-  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  padding: 0 env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
 }

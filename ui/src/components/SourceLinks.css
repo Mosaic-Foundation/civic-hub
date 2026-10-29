@@ -12,7 +12,7 @@
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--text-eyebrow-spacing);
   font-size: var(--font-size-xs);
 }
 
@@ -22,7 +22,7 @@
 }
 
 .source-links-list li {
-  margin-bottom: 2px;
+  margin-bottom: var(--space-0-5);
 }
 
 .source-links-list a {

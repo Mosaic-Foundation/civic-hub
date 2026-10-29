@@ -2,23 +2,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 7px 16px;
-  background: var(--pill-vote-bg, #e3eaf6);
-  color: var(--pill-vote-fg, #1e3a5f);
-  font-size: 13px;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-4);
+  background: var(--color-primary-wash);
+  color: var(--pill-vote-fg);
+  font-size: var(--text-small-size);
   line-height: 1.2;
   text-decoration: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: var(--border-width) solid var(--color-border-subtle);
   transition: background 0.15s ease;
 }
 
 .wc-teaser:hover {
-  background: #d6e0f2;
+  background: var(--color-primary-tint);
 }
 
 .wc-teaser-icon {
-  font-size: 13px;
+  font-size: var(--text-small-size);
   opacity: 0.8;
 }
 
@@ -55,7 +55,7 @@
 @keyframes wc-word-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(var(--space-1));
   }
   to {
     opacity: 1;
@@ -73,8 +73,8 @@
    rotating word so a long entry can't push the row out of bounds. */
 @media (max-width: 560px) {
   .wc-teaser {
-    gap: 6px;
-    padding: 7px 12px;
+    gap: var(--space-1-5);
+    padding: var(--space-1-5) var(--space-3);
   }
   .wc-teaser-rotator {
     min-width: 0;

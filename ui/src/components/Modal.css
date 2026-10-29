@@ -7,33 +7,33 @@
   padding: 0;
   background: transparent;
   color: var(--color-text);
-  width: calc(100% - 2rem);
-  max-width: 520px;
-  max-height: calc(100dvh - 2rem);
+  width: calc(100% - var(--space-8));
+  max-width: calc(var(--grid-min-card) * 2);
+  max-height: calc(100dvh - var(--space-8));
   margin: auto;
   overflow: visible;
 }
 
 .modal::backdrop {
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-scrim);
   backdrop-filter: blur(2px);
 }
 
 .modal-body {
   position: relative;
-  background: var(--card-background, var(--color-surface));
-  border-radius: 12px;
-  padding: 2rem;
-  max-height: calc(100dvh - 2rem);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  max-height: calc(100dvh - var(--space-8));
   overflow-y: auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
   animation: modal-fade-in 0.2s ease-out;
 }
 
 @keyframes modal-fade-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(var(--space-2));
   }
   to {
     opacity: 1;
@@ -49,24 +49,24 @@
 
 .modal-close {
   position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
+  top: var(--space-3);
+  right: var(--space-3);
   background: none;
   border: none;
-  font-size: 1.5rem;
-  color: var(--light-text, var(--color-text-muted));
+  font-size: var(--font-size-2xl);
+  color: var(--color-text-muted);
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   line-height: 1;
-  border-radius: 4px;
-  min-width: 44px;
-  min-height: 44px;
+  border-radius: var(--radius-sm);
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
   transition: color 0.15s, background 0.15s;
 }
 
 .modal-close:hover:not(:disabled) {
-  color: var(--text-color, var(--color-text));
-  background: var(--page-background, var(--color-surface-alt));
+  color: var(--color-text);
+  background: var(--color-surface-alt);
 }
 
 .modal-close:disabled {
@@ -77,9 +77,9 @@
 .modal-title {
   font-family: var(--font-heading);
   font-size: var(--font-size-xl);
-  line-height: var(--line-height-tight, 1.25);
+  line-height: 1.25;
   margin: 0 0 var(--space-md);
-  padding-right: 2.5rem;
+  padding-right: var(--space-10);
 }
 
 /* The page behind does not scroll while a modal is open. */
@@ -93,7 +93,7 @@ html.modal-open {
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
+  margin: calc(-1 * var(--space-px));
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
@@ -102,6 +102,6 @@ html.modal-open {
 
 @media (max-width: 480px) {
   .modal-body {
-    padding: 1.5rem 1.25rem;
+    padding: var(--space-6) var(--space-5);
   }
 }

@@ -11,7 +11,7 @@
   align-items: center;
   gap: var(--space-xs);
   margin: 0 0 var(--space-sm);
-  font-size: var(--font-size-md, 1rem);
+  font-size: var(--text-body-size);
 }
 
 .share-panel-note {
@@ -35,18 +35,18 @@
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: 16px; /* no zoom on focus on iOS */
+  font-size: var(--text-body-size); /* no zoom on focus on iOS */
   resize: vertical;
 }
 
 .share-panel-send {
   margin-top: var(--space-sm);
-  min-height: 40px;
-  padding: 8px 18px;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-4);
   border: none;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   background: var(--color-primary);
-  color: var(--color-on-primary, #fff);
+  color: var(--color-primary-text);
   font-family: var(--font-body);
   font-weight: 600;
   cursor: pointer;
@@ -70,10 +70,10 @@
 .share-panel-target {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
-  padding: 6px 14px;
+  min-height: var(--control-height);
+  padding: var(--space-1-5) var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   background: var(--color-surface);
   color: var(--color-text);
   font-family: var(--font-body);

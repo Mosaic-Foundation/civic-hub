@@ -4,20 +4,20 @@
   position: fixed;
   left: 50%;
   /* Above the phone's bottom bar when there is one (BottomBar.css). */
-  bottom: calc(var(--space-md, 1rem) + max(var(--bottom-bar-space, 0px), env(safe-area-inset-bottom, 0px)));
+  bottom: calc(var(--space-4) + max(var(--bottom-bar-space, 0), env(safe-area-inset-bottom, 0)));
   transform: translateX(-50%);
   z-index: 950;
   display: flex;
   align-items: center;
-  gap: var(--space-sm, 0.5rem);
+  gap: var(--space-2);
   width: max-content;
-  max-width: calc(100vw - 2rem);
-  padding: 0.55rem 0.5rem 0.55rem 0.9rem;
-  border-radius: var(--radius-md, 10px);
-  background: var(--pill-vote-fg, #1e3a5f);
-  color: #fff;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
-  font-size: var(--font-size-sm, 0.9rem);
+  max-width: calc(100vw - var(--space-8));
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-small-size);
   line-height: 1.35;
   animation: share-banner-in 0.2s ease-out;
 }
@@ -30,10 +30,10 @@
 .share-banner-btn {
   flex: none;
   border: none;
-  border-radius: 999px;
-  padding: 0.35rem 0.85rem;
-  background: #fff;
-  color: var(--pill-vote-fg, #1e3a5f);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1-5) var(--space-3);
+  background: var(--color-surface);
+  color: var(--pill-vote-fg);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -43,24 +43,24 @@
   flex: none;
   border: none;
   background: transparent;
-  color: #fff;
-  font-size: 1.25rem;
+  color: var(--color-primary-text);
+  font-size: var(--font-size-xl);
   line-height: 1;
-  padding: 0.15rem 0.35rem;
+  padding: var(--space-0-5) var(--space-1-5);
   cursor: pointer;
   opacity: 0.85;
 }
 
 .share-banner-btn:focus-visible,
 .share-banner-close:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--color-primary-text);
   outline-offset: 2px;
 }
 
 @keyframes share-banner-in {
   from {
     opacity: 0;
-    transform: translate(-50%, 0.5rem);
+    transform: translate(-50%, var(--space-2));
   }
 }
 

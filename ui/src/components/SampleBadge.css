@@ -3,14 +3,14 @@
 .sample-badge {
   display: inline-flex;
   align-items: center;
-  padding: 1px 8px;
+  padding: var(--space-px) var(--space-2);
   border: 1px dashed var(--color-warning);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--color-warning);
   background: var(--color-warning-bg);
-  font-size: var(--font-size-xs, 0.75rem);
+  font-size: var(--text-caption-size);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--letter-spacing-wide);
   line-height: 1.6;
   white-space: nowrap;
 }

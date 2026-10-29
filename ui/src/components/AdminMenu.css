@@ -7,9 +7,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  min-width: var(--control-height-sm);
   border-radius: 50%;
   color: var(--color-primary-ink);
   border: 1px solid var(--color-border);
@@ -28,22 +28,22 @@
 }
 
 .admin-count {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background: #e02424;
-  color: #ffffff;
-  font-size: 11px;
+  min-width: var(--icon-size);
+  height: var(--icon-size);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--color-badge-bg);
+  color: var(--color-badge-text);
+  font-size: var(--text-caption-size);
   font-weight: 600;
-  line-height: 18px;
+  line-height: var(--icon-size);
   text-align: center;
 }
 
 .admin-count--icon {
   position: absolute;
-  top: -5px;
-  right: -6px;
+  top: calc(-1 * var(--space-1));
+  right: calc(-1 * var(--space-1-5));
   border: 2px solid var(--color-bg);
   box-sizing: content-box;
 }
@@ -55,11 +55,11 @@
 .admin-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 6px 12px;
+  gap: var(--space-1-5);
+  min-height: var(--control-height-sm);
+  padding: var(--space-1-5) var(--space-3);
   border: 1px solid var(--color-primary-ink);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-primary-ink);
   font-family: var(--font-body);
@@ -75,13 +75,13 @@
 }
 
 .admin-menu {
-  min-width: 200px;
+  min-width: var(--grid-min-field);
 }
 
 @media (max-width: 767px) {
   .admin-pill {
-    padding: 5px 10px;
-    gap: 4px;
-    font-size: 12px;
+    padding: var(--space-1) var(--space-2-5);
+    gap: var(--space-1);
+    font-size: var(--text-caption-size);
   }
 }

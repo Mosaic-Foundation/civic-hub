@@ -1,5 +1,5 @@
 .link-field {
-  margin-top: var(--space-lg, 1.5rem);
+  margin-top: var(--space-6);
 }
 
 .link-field__header {
@@ -20,14 +20,14 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--text-eyebrow-spacing);
 }
 
 .link-field__help {
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-  margin: 4px 0 var(--space-sm);
+  margin: var(--space-1) 0 var(--space-sm);
   max-width: 56ch;
 }
 
@@ -37,7 +37,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 /* Two lines per link: the relation, type, and × on top, the title below at
@@ -48,13 +48,13 @@
 .link-field__item {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  grid-template-areas:
+  grid-template-areas: 
     "relation type remove"
     "title title title";
   align-items: baseline;
   column-gap: var(--space-sm);
-  row-gap: 2px;
-  padding: 8px 10px;
+  row-gap: var(--space-0-5);
+  padding: var(--space-2) var(--space-2-5);
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -65,7 +65,7 @@
   font-size: var(--font-size-xs);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--text-eyebrow-spacing);
   color: var(--color-text-muted);
   grid-area: relation;
 }
@@ -82,7 +82,7 @@
 .link-field__type {
   font-family: var(--font-body);
   font-size: var(--font-size-xs);
-  color: var(--color-text-subtle, var(--color-text-muted));
+  color: var(--color-text-muted);
   text-transform: uppercase;
   grid-area: type;
   justify-self: start;
@@ -95,7 +95,7 @@
   font-size: var(--font-size-lg);
   line-height: 1;
   cursor: pointer;
-  padding: 0 2px;
+  padding: 0 var(--space-0-5);
   grid-area: remove;
 }
 
@@ -108,11 +108,11 @@
   font-size: var(--font-size-sm);
   font-weight: 600;
   background: none;
-  border: 1px dashed var(--color-border-strong, var(--color-border));
+  border: 1px dashed var(--color-border);
   border-radius: var(--radius-sm);
   color: var(--color-primary);
   cursor: pointer;
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .link-field__add:hover:not(:disabled) {

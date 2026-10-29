@@ -17,7 +17,7 @@
 }
 
 .link-preview-card-image {
-  flex: 0 0 180px;
+  flex: 0 0 var(--grid-min-field);
   background: var(--color-surface-muted);
   overflow: hidden;
   display: block;
@@ -43,7 +43,7 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--text-eyebrow-spacing);
   font-weight: 600;
 }
 
@@ -88,7 +88,7 @@
   pointer-events: none;
 }
 .link-preview-card-skeleton-image {
-  flex: 0 0 180px;
+  flex: 0 0 var(--grid-min-field);
   background: var(--color-surface-muted);
   aspect-ratio: 16 / 9;
 }
@@ -100,7 +100,7 @@
   flex: 1 1 auto;
 }
 .link-preview-card-skeleton-line {
-  height: 16px;
+  height: var(--icon-size-sm);
   background: var(--color-surface-muted);
   border-radius: var(--radius-sm);
 }

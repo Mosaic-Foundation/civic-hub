@@ -24,7 +24,7 @@
 .subtype-pill {
   padding: var(--space-xs) var(--space-md);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-full, 999px);
+  border-radius: var(--radius-pill);
   background: var(--color-surface);
   font-size: var(--font-size-sm);
   font-weight: 500;
@@ -39,9 +39,9 @@
 }
 
 .subtype-pill-active {
-  border-color: #2e7d32;
-  background: #e8f5e9;
-  color: #2e7d32;
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+  color: var(--color-success);
   font-weight: 600;
 }
 
@@ -56,16 +56,16 @@
    one solid button, in the theme's dark primary. Stacks on a phone. */
 
 .drafting-form-footer {
-  --submit-bg: var(--ds-color-primary-800, #1e3a5f);
-  --submit-bg-hover: var(--ds-color-primary-900, #14304f);
+  --submit-bg: var(--color-primary);
+  --submit-bg-hover: var(--color-primary-hover);
   border-top: 1px solid var(--color-border);
   padding: var(--space-xs) var(--space-lg);
-  padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0));
   display: flex;
   align-items: center;
   gap: var(--space-sm) var(--space-md);
   background: var(--color-surface);
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
   position: sticky;
   bottom: 0;
   z-index: 10;
@@ -101,12 +101,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  min-height: 40px;
-  min-width: 9rem;
-  padding: 0.45rem 1.1rem;
-  background: var(--submit-bg, var(--ds-color-primary-800, #1e3a5f));
-  color: #fff;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  min-width: calc(var(--space-10) * 3.5);
+  padding: var(--space-2) var(--space-4);
+  background: var(--submit-bg);
+  color: var(--color-primary-text);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
@@ -116,14 +116,14 @@
 }
 
 .draft-submit-btn:hover:not(:disabled) {
-  background: var(--submit-bg-hover, var(--ds-color-primary-900, #14304f));
+  background: var(--submit-bg-hover);
 }
 
 .draft-submit-btn:focus-visible,
 .draft-secondary-btn:focus-visible,
 .draft-suggest-btn:focus-visible,
 .draft-cancel-btn:focus-visible {
-  outline: 2px solid var(--color-focus, var(--ds-color-primary-500, #2563eb));
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 
@@ -139,8 +139,8 @@
 
 /* A turning ring inside a busy button. */
 .btn-spinner {
-  width: 0.95em;
-  height: 0.95em;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   border: 2px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
@@ -171,7 +171,7 @@
     flex-wrap: nowrap;
     gap: var(--space-sm);
     padding: var(--space-xs) var(--space-md);
-    padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0));
   }
 
   .drafting-form-footer.is-typing {
@@ -196,11 +196,11 @@
   }
 
   .drafting-form-footer .draft-suggest-btn {
-    min-height: 44px;
+    min-height: var(--tap-target);
     padding: 0 var(--space-xs);
     border: none;
     background: none;
-    color: var(--color-link, var(--color-primary));
+    color: var(--color-primary);
     text-decoration: underline;
     font-weight: 600;
   }
@@ -210,7 +210,7 @@
   }
 
   .drafting-form-footer .draft-submit-btn {
-    min-width: 8.5rem;
+    min-width: calc(var(--space-10) * 3.5);
   }
 }
 
@@ -226,14 +226,14 @@
 }
 
 .field-guide-example {
-  color: var(--color-text-subtle, var(--color-text-muted));
+  color: var(--color-text-muted);
   font-style: italic;
 }
 
 /* Edit mode: Cancel beside Save — outlined, never the emphasized action. */
 .draft-cancel-btn {
-  min-height: 40px;
-  padding: 0.45rem 0.9rem;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-4);
   background: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
@@ -251,15 +251,15 @@
 /* A locked field's value: plain text where the input would be. */
 .form-locked-value {
   margin: 0;
-  padding: 0.6rem 0;
-  font-size: 1.05rem;
+  padding: var(--space-2-5) 0;
+  font-size: var(--text-body-size);
   font-weight: 600;
   color: var(--color-text);
 }
 
 /* Seed statements: the running count under the numbered rows. */
 .seed-statement-count {
-  margin: 0.35rem 0 0;
+  margin: var(--space-1-5) 0 0;
   font-family: var(--font-body);
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
@@ -269,13 +269,13 @@
    scrolls to the bottom to submit still finds it. Quiet/secondary — the
    primary footer action is Submit. Sits above the status line. */
 .draft-suggest-btn {
-  min-height: 40px;
-  padding: 0.45rem 0.9rem;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-4);
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--color-text);
   background: var(--color-surface);
-  border: 1px solid var(--color-border-strong, var(--color-border));
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.15s ease;
@@ -307,7 +307,7 @@
   padding: var(--space-sm) var(--space-md);
   background: var(--color-surface);
   color: var(--color-text);
-  border: 1px solid var(--color-border-strong, var(--color-border));
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   font-weight: 600;
@@ -317,7 +317,7 @@
 
 .draft-secondary-btn:hover:not(:disabled),
 .draft-dispute-btn:hover:not(:disabled) {
-  background: var(--color-surface-alt, var(--color-surface));
+  background: var(--color-surface);
 }
 
 .draft-secondary-btn:disabled,
@@ -347,7 +347,7 @@
 }
 
 :root {
-  --draft-phone-bar-h: 48px;
+  --draft-phone-bar-h: var(--control-height-lg);
 }
 
 .draft-phone-bar {
@@ -368,16 +368,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
   border-radius: var(--radius-md);
   color: var(--color-text);
-  font-size: 1.35rem;
+  font-size: var(--font-size-xl);
   text-decoration: none;
 }
 
 .draft-phone-back:focus-visible {
-  outline: 2px solid var(--color-focus, var(--ds-color-primary-500, #2563eb));
+  outline: 2px solid var(--color-focus);
   outline-offset: 1px;
 }
 

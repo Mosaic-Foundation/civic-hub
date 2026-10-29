@@ -6,7 +6,7 @@
 /* Single-column desktop state (assistant collapsed). */
 .propose-draft-layout.draft-shell-solo {
   grid-template-columns: 1fr;
-  max-width: 860px;
+  max-width: var(--width-content);
   margin: 0 auto;
   width: 100%;
 }
@@ -24,7 +24,7 @@
 .coc-disclosure {
   margin: var(--space-xs) 0 0;
   font-size: var(--font-size-xs);
-  color: var(--color-text-subtle, var(--color-text-muted));
+  color: var(--color-text-muted);
   line-height: var(--line-height-relaxed);
 }
 
@@ -38,7 +38,7 @@
   padding: var(--space-sm) var(--space-md);
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-surface-alt, transparent);
+  background: var(--color-surface-alt);
 }
 
 .assistant-affordance-text {
@@ -88,7 +88,7 @@
      was spilling into the field below it (Adam, 2026-09-03). */
   max-height: 60vh;
   overflow-y: auto;
-  box-shadow: inset 0 -14px 14px -14px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -125,7 +125,7 @@
   padding: 0;
   font: inherit;
   font-weight: 600;
-  color: var(--color-link, var(--color-primary));
+  color: var(--color-primary);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -180,7 +180,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   position: sticky;
-  top: calc(var(--nav-h, 61px) + var(--tabs-h, 44px));
+  top: calc(var(--space-16) + var(--space-10));
   z-index: 95;
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
@@ -196,12 +196,12 @@
   position: relative;
   padding: var(--space-sm) var(--space-md);
   font-family: var(--font-body);
-  font-size: var(--font-size-md, 1rem);
+  font-size: var(--text-body-size);
   font-weight: 600;
   color: var(--color-text-muted);
   background: none;
   border: none;
-  border-bottom: 3px solid transparent;
+  border-bottom: var(--card-accent-width) solid transparent;
   cursor: pointer;
 }
 
@@ -222,11 +222,11 @@
 
 .draft-view-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-left: 0.4rem;
+  width: var(--space-2);
+  height: var(--space-2);
+  margin-left: var(--space-1-5);
   border-radius: 50%;
-  background: var(--civic-rust, #c37b51);
+  background: var(--civic-rust);
   vertical-align: middle;
 }
 
@@ -239,29 +239,29 @@
 }
 
 .assistant-affordance-btn--secondary {
-  background: var(--color-surface, #fff);
-  color: var(--pill-vote-fg, #1e3a5f);
-  border: 1px solid var(--pill-vote-fg, #1e3a5f);
+  background: var(--color-surface);
+  color: var(--pill-vote-fg);
+  border: 1px solid var(--color-primary);
 }
 
 .assistant-affordance-btn--secondary:hover:not(:disabled) {
-  background: var(--pill-vote-bg, #e7eef7);
+  background: var(--color-primary-wash);
 }
 
 /* Edit mode: the way out is a real button, not grey text (Adam, 2026-09-03). */
 .back-link.back-link--button {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.45rem 0.9rem;
-  background: var(--pill-vote-fg, #1e3a5f);
-  color: #fff;
-  border-radius: var(--radius-sm, 4px);
+  gap: var(--space-1-5);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border-radius: var(--radius-sm);
   font-weight: 600;
   text-decoration: none;
 }
 
 .back-link.back-link--button:hover {
-  background: #14304f;
-  color: #fff;
+  background: var(--color-primary-hover);
+  color: var(--color-primary-text);
 }

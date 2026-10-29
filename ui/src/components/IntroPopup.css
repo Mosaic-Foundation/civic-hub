@@ -3,7 +3,7 @@
  * its; this is the content and the panel's look. Uses Slice 8 design tokens. */
 
 .intro-popup {
-  max-width: 480px;
+  max-width: calc(var(--grid-min-card) * 2);
 }
 
 .modal-body.intro-popup-body {
@@ -35,7 +35,7 @@
   font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
   color: var(--color-text);
-  background: var(--color-surface-alt, #f3f4f6);
+  background: var(--color-surface-alt);
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-sm);
   margin: 0 0 var(--space-lg);
@@ -51,12 +51,12 @@
 .intro-popup-secondary {
   font: inherit;
   font-weight: 600;
-  padding: 0.6rem 1.2rem;
+  padding: var(--space-2-5) var(--space-5);
   border-radius: var(--radius-md);
   cursor: pointer;
-  min-height: 44px;
+  min-height: var(--tap-target);
   border: 1px solid transparent;
-  transition:
+  transition: 
     background 0.15s ease,
     border-color 0.15s ease,
     color 0.15s ease;

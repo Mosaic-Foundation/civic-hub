@@ -10,8 +10,8 @@
   flex-wrap: wrap;
   gap: var(--space-sm) var(--space-md);
   padding: var(--space-sm) var(--space-md);
-  background: var(--pill-vote-fg, #1e3a5f);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-primary-text);
   font-size: var(--font-size-base);
   line-height: var(--line-height-base);
   text-align: center;
@@ -23,11 +23,11 @@
 
 .beta-banner-cta {
   flex-shrink: 0;
-  min-height: 34px;
+  min-height: var(--control-height-sm);
   padding: var(--space-xs) var(--space-md);
-  background: #fff;
-  color: var(--pill-vote-fg, #1e3a5f);
-  border: 1px solid #fff;
+  background: var(--color-surface);
+  color: var(--pill-vote-fg);
+  border: 1px solid var(--color-primary-text);
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
@@ -41,7 +41,7 @@
 }
 
 .beta-banner-cta:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--color-primary-text);
   outline-offset: 2px;
 }
 
@@ -61,7 +61,7 @@
    card chrome is neutralized here — the dialog provides the chrome. */
 
 .modal.beta-waitlist-dialog {
-  max-width: 440px;
+  max-width: calc(var(--grid-min-card) * 1.75);
 }
 
 .modal-body.beta-waitlist-dialog-body {
@@ -93,30 +93,30 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: #fff;
+  color: var(--color-primary-text);
   cursor: pointer;
 }
 
 .beta-banner-close:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: color-mix(in srgb, var(--color-primary-text) 15%, transparent);
 }
 
 .beta-banner-close:focus-visible,
 .beta-banner-short:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--color-primary-text);
   outline-offset: 2px;
 }
 
 /* The full message keeps clear of the ×. */
 .beta-banner:not(.beta-banner--thin) {
-  padding-right: calc(var(--space-sm) + 44px);
-  padding-left: calc(var(--space-sm) + 44px);
+  padding-right: calc(var(--space-sm) + var(--space-10));
+  padding-left: calc(var(--space-sm) + var(--space-10));
 }
 
 .beta-banner--thin {
@@ -124,30 +124,30 @@
   flex-wrap: nowrap;
   justify-content: space-between;
   gap: var(--space-sm);
-  min-height: 34px;
-  padding: 2px var(--space-md);
+  min-height: var(--control-height-sm);
+  padding: var(--space-0-5) var(--space-md);
   font-size: var(--font-size-sm);
 }
 
 .beta-banner-short {
-  min-height: 30px;
+  min-height: var(--control-height-sm);
   padding: 0 var(--space-xs);
   border: 0;
   background: transparent;
-  color: #fff;
+  color: var(--color-primary-text);
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--letter-spacing-wide);
   text-decoration: underline;
-  text-decoration-color: rgba(255, 255, 255, 0.45);
-  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--color-primary-text) 45%, transparent);
+  text-underline-offset: var(--space-0-5);
   cursor: pointer;
 }
 
 .beta-banner--thin .beta-banner-cta {
-  min-height: 28px;
-  padding: 2px var(--space-sm);
+  min-height: var(--control-height-sm);
+  padding: var(--space-0-5) var(--space-sm);
   font-size: var(--font-size-xs);
 }
 

@@ -3,7 +3,7 @@
 
 export function PluginOff() {
   return (
-    <main className="page-container" style={{ padding: "48px 16px", textAlign: "center" }}>
+    <main className="page-container" style={{ padding: "var(--space-12) var(--space-4)", textAlign: "center" }}>
       <h1>Page not found</h1>
       <p>This hub does not offer this.</p>
       <p>

@@ -3,7 +3,7 @@
 .field-finding {
   margin: var(--space-xs) 0 0;
   padding: var(--space-xs) var(--space-sm);
-  border-left: 3px solid var(--color-error);
+  border-left: var(--card-accent-width) solid var(--color-error);
   background: var(--color-error-bg);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }

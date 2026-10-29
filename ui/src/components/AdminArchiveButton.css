@@ -19,7 +19,7 @@
 
 .admin-archive-open-btn:hover,
 .admin-archive-cancel-btn:hover {
-  border-color: var(--color-border-strong, var(--color-primary));
+  border-color: var(--color-primary);
 }
 
 .admin-archive-confirm {
@@ -29,8 +29,8 @@
   padding: var(--space-md);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-surface-alt, #f8f6f3);
-  max-width: 480px;
+  background: var(--color-surface-alt);
+  max-width: calc(var(--grid-min-card) * 2);
 }
 
 .admin-archive-label {
@@ -55,9 +55,9 @@
 }
 
 .admin-archive-confirm-btn {
-  background: var(--ds-color-accent-700, #a85d38);
-  border-color: var(--ds-color-accent-700, #a85d38);
-  color: #fff;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
 }
 
 .admin-archive-confirm-btn:disabled,

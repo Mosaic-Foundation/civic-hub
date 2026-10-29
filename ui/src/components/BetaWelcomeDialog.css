@@ -18,7 +18,7 @@
   margin: 0 0 var(--space-xs);
   color: var(--color-brand);
   /* Keep clear of the absolutely-positioned close button. */
-  padding-right: var(--space-2xl, 48px);
+  padding-right: var(--space-12);
 }
 
 .beta-welcome-tagline {
@@ -44,11 +44,11 @@
 .beta-welcome-signin {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--tap-target);
   padding: var(--space-sm) var(--space-lg);
-  background: var(--pill-vote-fg, #1e3a5f);
-  color: #fff;
-  border: 1px solid var(--pill-vote-fg, #1e3a5f);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
   font-size: var(--font-size-base);
@@ -58,17 +58,17 @@
 }
 
 .beta-welcome-signin:hover {
-  background: #14304f;
+  background: var(--color-primary-hover);
 }
 
 .beta-welcome-browse {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--tap-target);
   padding: var(--space-sm) var(--space-lg);
   background: transparent;
-  color: var(--pill-vote-fg, #1e3a5f);
-  border: 1px solid var(--pill-vote-fg, #1e3a5f);
+  color: var(--pill-vote-fg);
+  border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
   font-size: var(--font-size-base);
@@ -78,7 +78,7 @@
 }
 
 .beta-welcome-browse:hover {
-  background: var(--pill-vote-bg, #e7eef7);
+  background: var(--color-primary-wash);
 }
 
 .beta-welcome-feedback-note {

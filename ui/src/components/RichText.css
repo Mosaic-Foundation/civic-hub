@@ -13,17 +13,17 @@
 }
 
 .richtext p {
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-3);
 }
 
 .richtext ul,
 .richtext ol {
-  margin: 0 0 0.75rem;
-  padding-left: 1.4rem;
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-6);
 }
 
 .richtext li {
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--space-1);
 }
 
 .richtext li > p {
@@ -31,10 +31,10 @@
 }
 
 .richtext blockquote {
-  margin: 0 0 0.75rem;
-  padding-left: 0.85rem;
-  border-left: 3px solid var(--color-border, #d9d2c3);
-  color: var(--color-text-muted, #5b6470);
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-3);
+  border-left: var(--card-accent-width) solid var(--color-border);
+  color: var(--color-text-muted);
 }
 
 .richtext > :last-child {
@@ -42,8 +42,8 @@
 }
 
 .richtext a {
-  color: var(--color-link, #1f3a66);
+  color: var(--color-link);
   text-decoration: underline;
-  text-underline-offset: 0.15em;
+  text-underline-offset: var(--space-0-5);
   overflow-wrap: anywhere;
 }

@@ -29,10 +29,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin: -4px -6px 0 0;
-  font-size: 20px;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-1-5)) 0 0;
+  font-size: var(--font-size-xl);
   line-height: 1;
   color: var(--color-text-muted);
   background: none;

@@ -9,7 +9,7 @@
   position: sticky;
   /* 2px under the tab strip — same seam fix as .votes-filter: hardcoded
      chrome heights plus zoom rounding left a 1px see-through gap. */
-  top: calc(var(--nav-h) + var(--tabs-h) - 2px);
+  top: calc(var(--nav-h) + var(--tabs-h) - var(--space-0-5));
   z-index: 89;
   background: var(--color-bg);
 }
@@ -42,20 +42,20 @@
   /* 44 px tap target per the Slice 10 a11y rule. The 12 px vertical
    * padding + base font size gets us there without explicit min-height
    * on most browsers; the explicit min-height nails it for the rest. */
-  min-height: 44px;
-  padding: 0.4rem 1rem;
+  min-height: var(--tap-target);
+  padding: var(--space-1-5) var(--space-4);
   border-radius: var(--radius-pill);
   border: 1px solid transparent;
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--letter-spacing-wide);
   white-space: nowrap;
   cursor: pointer;
   background: var(--color-surface);
   color: var(--color-text-muted);
   border-color: var(--color-border);
-  transition:
+  transition: 
     background 0.15s ease,
     color 0.15s ease,
     border-color 0.15s ease;
@@ -80,7 +80,7 @@
 /* Active: invert — pill fg as background, light text. Reads as
  * "currently selected" against the inactive siblings. */
 .feed-filter-pill.is-active {
-  color: var(--color-primary-text);
+  color: var(--color-surface);
   border-color: transparent;
 }
 .feed-filter-pill--all.is-active { background: var(--color-text); }
@@ -100,9 +100,9 @@
 .feed-filter-pill--type-wordcloud.feed-filter-pill     { background: var(--type-wordcloud-bg);     color: var(--type-wordcloud-fg);     border-color: transparent; }
 .feed-filter-pill--type-generic.feed-filter-pill       { background: var(--type-generic-bg);       color: var(--type-generic-fg);       border-color: transparent; }
 
-.feed-filter-pill--type-vote.is-active          { background: var(--type-vote-fg); color: var(--color-primary-text); }
-.feed-filter-pill--type-proposal.is-active      { background: var(--type-proposal-fg); color: var(--color-primary-text); }
-.feed-filter-pill--type-conversation.is-active  { background: var(--type-conversation-fg); color: var(--color-primary-text); }
-.feed-filter-pill--type-project.is-active       { background: var(--type-project-fg); color: var(--color-primary-text); }
-.feed-filter-pill--type-wordcloud.is-active     { background: var(--type-wordcloud-fg); color: var(--color-primary-text); }
-.feed-filter-pill--type-generic.is-active       { background: var(--type-generic-fg); color: var(--color-primary-text); }
+.feed-filter-pill--type-vote.is-active          { background: var(--type-vote-fg); color: var(--color-surface); }
+.feed-filter-pill--type-proposal.is-active      { background: var(--type-proposal-fg); color: var(--color-surface); }
+.feed-filter-pill--type-conversation.is-active  { background: var(--type-conversation-fg); color: var(--color-surface); }
+.feed-filter-pill--type-project.is-active       { background: var(--type-project-fg); color: var(--color-surface); }
+.feed-filter-pill--type-wordcloud.is-active     { background: var(--type-wordcloud-fg); color: var(--color-surface); }
+.feed-filter-pill--type-generic.is-active       { background: var(--type-generic-fg); color: var(--color-surface); }

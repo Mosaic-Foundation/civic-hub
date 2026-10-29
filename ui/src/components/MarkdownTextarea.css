@@ -3,34 +3,34 @@
 .md-editor {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--space-1-5);
 }
 
 .md-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .md-tool {
-  min-height: 30px;
-  padding: 0.2rem 0.6rem;
+  min-height: var(--control-height-sm);
+  padding: var(--space-1) var(--space-2-5);
   font-family: var(--font-body);
-  font-size: var(--font-size-sm, 0.85rem);
+  font-size: var(--text-small-size);
   font-weight: 500;
-  color: var(--color-text, #1f2a2d);
-  background: var(--color-surface, #fff);
-  border: 1px solid var(--border-color, var(--color-border, #d9d2c3));
-  border-radius: var(--radius-sm, 4px);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
 .md-tool:hover:not(:disabled) {
-  border-color: var(--pill-vote-fg, #1e3a5f);
+  border-color: var(--color-primary);
 }
 
 .md-tool:focus-visible {
-  outline: 2px solid var(--color-focus, #1e3a5f);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -42,9 +42,9 @@
 }
 
 .md-tool--preview.is-on {
-  background: var(--pill-vote-fg, #1e3a5f);
-  color: #fff;
-  border-color: var(--pill-vote-fg, #1e3a5f);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border-color: var(--color-primary);
 }
 
 /* Keep the textarea mounted (the form's handlers and the assistant's
@@ -58,24 +58,24 @@
 }
 
 .md-preview {
-  min-height: 6rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px dashed var(--border-color, var(--color-border, #d9d2c3));
-  border-radius: 6px;
-  background: var(--color-surface, #fff);
-  font-size: 0.95rem;
+  min-height: calc(var(--space-12) * 2);
+  padding: var(--space-2-5) var(--space-3);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: var(--font-size-md);
 }
 
 .md-preview-empty {
   margin: 0;
-  color: var(--color-text-muted, #5b6470);
+  color: var(--color-text-muted);
   font-style: italic;
 }
 
 .md-hint {
   margin: 0;
-  font-size: var(--font-size-xs, 0.75rem);
-  color: var(--color-text-muted, #5b6470);
+  font-size: var(--text-caption-size);
+  color: var(--color-text-muted);
 }
 
 /* A phone: the toolbar shows only while its field is being edited, docked
@@ -97,16 +97,16 @@
 
   .md-toolbar {
     flex-wrap: nowrap;
-    gap: 0.25rem;
+    gap: var(--space-1);
     overflow: hidden;
   }
 
   .md-tool {
     flex: 1 1 auto;
     min-width: 0;
-    min-height: 36px;
-    padding: 0.2rem 0.35rem;
-    font-size: 0.8rem;
+    min-height: var(--control-height-sm);
+    padding: var(--space-1) var(--space-1-5);
+    font-size: var(--text-caption-size);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -114,7 +114,7 @@
 
   .md-tool--bold,
   .md-tool--italic {
-    flex: 0 0 2.25rem;
+    flex: 0 0 var(--control-height-sm);
   }
 
   .md-toolbar--docked {
@@ -123,10 +123,10 @@
     right: 0;
     z-index: 30;
     margin: 0;
-    padding: 0.35rem var(--space-sm);
+    padding: var(--space-1-5) var(--space-sm);
     background: var(--color-surface);
     border-top: 1px solid var(--color-border);
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: var(--shadow-sm);
     transition: opacity 0.12s ease;
   }
 
