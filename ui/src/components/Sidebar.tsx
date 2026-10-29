@@ -70,6 +70,13 @@ function AdminColumn() {
   const { setSlot } = useContext(ColumnSlotContext);
   const { pathname } = useLocation();
   const inSettings = pathname.startsWith("/admin/settings");
+  const contact: NavItem = {
+    id: "contact",
+    label: "Contact Civic.Social",
+    icon: "contact",
+    to: "/admin/contact-civic-social",
+    current: pathname.startsWith("/admin/contact-civic-social"),
+  };
 
   return (
     <nav className="hub-sidebar-nav" aria-label="Hub">
@@ -85,6 +92,10 @@ function AdminColumn() {
       <NavItemList className="hub-sidebar-list" items={items} labelledBy="hub-sidebar-admin" />
       {/* Hub settings' sections, drawn here by the page (AdminSettings.tsx). */}
       {inSettings && <div className="hub-sidebar-subnav" ref={setSlot} />}
+      {/* Writing to Civic.Social is the admin's, but not a page of the hub's own. */}
+      <div className="hub-sidebar-foot">
+        <NavItemList className="hub-sidebar-list hub-sidebar-list--quiet" items={[contact]} label="Civic.Social" />
+      </div>
     </nav>
   );
 }
