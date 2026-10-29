@@ -3,17 +3,17 @@
      tab strip / filter pills above and with the section containers
      used on the Votes page. The cards themselves stay readable
      because the inner content paddings handle horizontal rhythm. */
-  padding: var(--space-lg) var(--space-md);
-  max-width: var(--max-width-shell);
+  padding: var(--space-6) var(--gutter);
+  max-width: var(--width-content);
   margin: 0 auto;
 }
 
 .feed-status {
   color: var(--color-text-subtle);
   font-family: var(--font-body);
-  font-size: var(--font-size-base);
+  font-size: var(--text-body-size);
   text-align: center;
-  padding: var(--space-xl) var(--space-md);
+  padding: var(--space-8) var(--space-4);
   line-height: var(--line-height-relaxed);
 }
 
@@ -31,29 +31,35 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--feed-card-gap);
 }
 
 .feed-list-item {
   display: block;
 }
 
+/* A card: the look's surface (--card-*), and its kind's colour where the
+   look puts it — a top edge, a left edge, or the chip's dot (design pass,
+   decision 2). Each kind sets --feed-kind below; a package's kind sets it
+   in the stylesheet declaredTypeStylesheet() adds at boot. */
 .feed-post {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  --feed-kind: var(--color-border);
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-top: var(--feed-card-edge-top) solid var(--feed-kind);
+  border-left: var(--feed-card-edge-left) solid var(--feed-kind);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  transition: border-color var(--duration-fast) var(--ease-default), box-shadow var(--duration-base) var(--ease-default);
 }
 
 .feed-post:hover {
-  border-color: var(--color-border-strong);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow-hover);
 }
 
 .feed-post-link {
   display: block;
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--card-padding) var(--feed-card-padding-x);
   color: inherit;
   text-decoration: none;
   font-family: var(--font-body);
@@ -67,7 +73,7 @@
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 .feed-post-body {
@@ -77,10 +83,10 @@
 
 .feed-post-image {
   display: block;
-  flex: 0 0 144px;
-  width: 144px;
-  height: 144px;
-  background: var(--color-surface-muted);
+  flex: 0 0 var(--feed-thumb-size);
+  width: var(--feed-thumb-size);
+  height: var(--feed-thumb-size);
+  background: var(--color-surface-sunken);
   border-radius: var(--radius-sm);
   overflow: hidden;
   margin: 0;
@@ -101,35 +107,29 @@
   .feed-post-image {
     flex: 0 0 auto;
     width: 100%;
-    height: 180px;
-    margin: 0 0 var(--space-md);
+    height: var(--feed-thumb-size-phone);
+    margin: 0 0 var(--space-4);
   }
 }
 
-/* Colored top border per PROCESS TYPE (2026-08-28) — the DARK half of
- * each type pair (--type-*-fg), matching every other accent edge on the
- * site. This block previously used the pastel pill BACKGROUNDS, keyed by
- * the retired kind classes and carrying pre-palette hexes — it was the
- * "pastely" read Adam flagged, and half its rules no longer matched any
- * emitted class. FeedPost emits feed-post--type-<color>. */
-.feed-post {
-  border-top: 4px solid var(--color-border);
-}
-.feed-post--type-vote                { border-top-color: var(--type-vote-fg); }
-.feed-post--type-proposal            { border-top-color: var(--type-proposal-fg); }
-.feed-post--type-conversation        { border-top-color: var(--type-conversation-fg); }
-.feed-post--type-project             { border-top-color: var(--type-project-fg); }
-.feed-post--type-wordcloud           { border-top-color: var(--type-wordcloud-fg); }
-.feed-post--type-announcement        { border-top-color: var(--type-announcement-fg); }
-.feed-post--type-announcement-author { border-top-color: var(--type-announcement-author-fg); }
-.feed-post--type-meeting             { border-top-color: var(--type-meeting-fg); }
-.feed-post--type-official-response   { border-top-color: var(--type-official-response-fg); }
-.feed-post--type-generic             { border-top-color: var(--type-generic-fg); }
+/* Each card's kind colour per PROCESS TYPE (2026-08-28): the DARK half of
+ * each type pair (--type-*-fg), worn as the look's edge and the chip's dot.
+ * FeedPost emits feed-post--type-<color>. */
+.feed-post--type-vote                { --feed-kind: var(--type-vote-fg); }
+.feed-post--type-proposal            { --feed-kind: var(--type-proposal-fg); }
+.feed-post--type-conversation        { --feed-kind: var(--type-conversation-fg); }
+.feed-post--type-project             { --feed-kind: var(--type-project-fg); }
+.feed-post--type-wordcloud           { --feed-kind: var(--type-wordcloud-fg); }
+.feed-post--type-announcement        { --feed-kind: var(--type-announcement-fg); }
+.feed-post--type-announcement-author { --feed-kind: var(--type-announcement-author-fg); }
+.feed-post--type-meeting             { --feed-kind: var(--type-meeting-fg); }
+.feed-post--type-official-response   { --feed-kind: var(--type-official-response-fg); }
+.feed-post--type-generic             { --feed-kind: var(--type-generic-fg); }
 
 .feed-post-link:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
-  border-radius: var(--radius-md);
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--border-width-strong);
+  border-radius: var(--card-radius);
 }
 
 .feed-post-title {
@@ -154,10 +154,11 @@
 .feed-post-title {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: var(--font-size-2xl);
-  font-weight: 600;
-  line-height: var(--line-height-tight);
-  color: var(--color-text);
+  font-size: var(--feed-title-size);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-strong);
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -171,10 +172,10 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px var(--space-sm);
-  margin: var(--space-xs) 0 var(--space-sm);
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-1-5) 0 var(--space-2);
   font-family: var(--font-body);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-small-size);
   color: var(--color-text-muted);
 }
 
@@ -184,25 +185,25 @@
 
 .feed-post-note,
 .feed-post-author {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .feed-post-note + .feed-post-author::before,
 .feed-post-note + .feed-post-time::before,
 .feed-post-author + .feed-post-time::before {
   content: "·";
-  margin-right: var(--space-sm);
+  margin-right: var(--space-2);
   color: var(--color-text-subtle);
 }
 
 .feed-post-meta .feed-post-time {
-  font-size: var(--font-size-sm);
+  font-size: var(--text-small-size);
 }
 
 .feed-post-summary {
-  margin: 0 0 var(--space-sm);
+  margin: 0 0 var(--space-2);
   font-family: var(--font-body);
-  font-size: var(--font-size-base);
+  font-size: var(--text-body-size);
   line-height: var(--line-height-normal);
   color: var(--color-text-muted);
   display: -webkit-box;
@@ -215,16 +216,16 @@
  * timestamp. Slightly larger than time but smaller than summary so it
  * reads as secondary metadata, not body copy. */
 .feed-post-engagement {
-  margin: 0 0 var(--space-xs);
+  margin: 0 0 var(--space-1);
   font-family: var(--font-body);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-small-size);
   color: var(--color-text-muted);
 }
 
 .feed-post-time {
   display: inline;
   font-family: var(--font-body);
-  font-size: var(--font-size-xs);
+  font-size: var(--text-caption-size);
   color: var(--color-text-subtle);
 }
 
@@ -237,16 +238,27 @@
 .feed-pill {
   display: inline-flex;
   align-items: center;
-  padding: 2px 10px;
+  gap: var(--space-1-5);
+  padding: var(--space-0-5) var(--space-2-5);
   margin-left: auto;
   border-radius: var(--radius-pill);
   font-family: var(--font-body);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: var(--text-caption-size);
+  font-weight: var(--font-weight-semibold);
+  text-transform: var(--feed-pill-case);
+  letter-spacing: var(--feed-pill-spacing);
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+/* The kind's dot, where the look wears it (A). */
+.feed-pill::before {
+  content: "";
+  display: var(--feed-card-dot);
+  width: var(--space-1-5);
+  height: var(--space-1-5);
+  border-radius: var(--radius-pill);
+  background: currentColor;
 }
 
 /*
@@ -285,20 +297,20 @@
 .feed-load-more-row {
   display: flex;
   justify-content: center;
-  margin-top: var(--space-lg);
+  margin-top: var(--space-6);
 }
 
 .feed-load-more {
-  min-height: 44px;
-  padding: var(--space-sm) var(--space-lg);
+  min-height: var(--tap-target);
+  padding: var(--space-2) var(--space-6);
   background: var(--color-surface);
   color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
   font-family: var(--font-body);
-  font-size: var(--font-size-base);
+  font-size: var(--text-body-size);
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: border-color var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default);
 }
 
 .feed-load-more:hover {
@@ -306,6 +318,6 @@
 }
 
 .feed-load-more:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--border-width-strong);
 }

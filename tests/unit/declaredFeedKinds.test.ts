@@ -31,7 +31,7 @@ describe("declared feed kinds", () => {
     const css = declaredTypeStylesheet();
     expect(css).toContain(":root{--type-event-bg:#f6e3ec;--type-event-fg:#8a2456}");
     expect(css).toContain(".feed-pill--type-event{background:var(--type-event-bg);color:var(--type-event-fg)}");
-    expect(css).toContain(".feed-post--type-event{border-top-color:var(--type-event-fg)}");
+    expect(css).toContain(".feed-post--type-event{--feed-kind:var(--type-event-fg)}");
   });
 
   it("are refused at startup when they clash with the hub's own or name no colour", () => {

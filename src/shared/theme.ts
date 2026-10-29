@@ -317,7 +317,7 @@ export function declaredTypeStylesheet(): string {
     .map(
       (c) =>
         `:root{--type-${c.key}-bg:${c.bg};--type-${c.key}-fg:${c.fg}}\n` +
-        `.feed-post--type-${c.key}{border-top-color:var(--type-${c.key}-fg)}\n` +
+        `.feed-post--type-${c.key}{--feed-kind:var(--type-${c.key}-fg)}\n` +
         `.feed-pill--type-${c.key}{background:var(--type-${c.key}-bg);color:var(--type-${c.key}-fg)}\n`,
     )
     .join("");
