@@ -257,10 +257,11 @@ function UpdateDialog({ install, onClose, onDone }: { install: PluginInstall; on
 function windDownWords(install: PluginInstall): string {
   const things = install.name.toLowerCase();
   if (!install.wind_down_offered) {
-    return `No new ${things} can be created; the existing ones stay as they are. ${install.name} stays here, winding down, until you choose Stop now.`;
+    return `No new ${things} can be created; the existing ones stay as they are. ${install.name} stays here, winding down, until you stop it.`;
   }
   if (install.open === 0) return `No new ${things} can be created. None is open, so there is nothing to wait for: it switches off now.`;
-  return `No new ${things} can be created; the ${install.open} open now carry on until their end date and publish their results as usual. When the last one ends, ${install.name} switches off by itself.`;
+  const carry = install.open === 1 ? "the one open now carries" : `the ${install.open} open now carry`;
+  return `No new ${things} can be created; ${carry} on until their end date and publish their results as usual. When the last one ends, ${install.name} switches off by itself.`;
 }
 
 function RemoveDialog({ install, onClose, onDone }: { install: PluginInstall; onClose: () => void; onDone: () => void }) {

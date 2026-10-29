@@ -116,7 +116,8 @@ test.describe("Install and Remove on the Plugins page", () => {
     await card.getByRole("button", { name: "Remove…" }).click();
     const remove = page.getByRole("dialog", { name: "Remove Votes?" });
     await expect(remove.getByLabel(/Wind down/)).toBeChecked();
-    await expect(remove.getByText(/Nothing new can be started from now on/)).toBeVisible();
+    // In the plugin's own words (design pass, decision 14).
+    await expect(remove.getByText(/No new votes can be created; the (one|\d+) open now carr(y|ies) on until their end date/)).toBeVisible();
     await remove.getByRole("button", { name: "Wind down", exact: true }).click();
 
     await expect(card.locator(".plugin-card-state")).toHaveText("Winding down");
