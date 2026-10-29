@@ -384,11 +384,16 @@ export default strawPollPackage;
 ## 6. Its page: `ui.tsx`
 
 The UI module lists your type's pages. They are your own React components, using the React the hub runs, drawn
-with the hub's UI kit so they look like the hub's own pages: `Button` (primary, secondary, danger), `Field`,
-`TextInput`, `TextArea`, `Select`, `DateTimeInput` (ISO in and out; `timeZone` to enter a time in a zone other than
-the reader's) and `DraftShell` (a drafting form's page, with
-the hub's slim phone header), all from `@civic-social/plugin-sdk/ui`. Keep your own CSS to layout; the suite's step
-17 refuses dark text on the hub's primary colour. The straw poll's one page reads the poll and answers through the
+with the hub's UI kit so they look like the hub's own pages, in whatever colours, font, light or dark the hub and
+its readers have chosen: `Button`, `Field`, `TextInput`, `TextArea`, `Select`, `Checkbox`, `RadioCards`,
+`ChipGroup`, `DateTimeInput` (ISO in and out, with the hub's picker; `timeZone` to enter a time in a zone other
+than the reader's), `ImageUpload`, `Card`, `Stat` and `StatGrid`, `Table`, `PageHead` and `DraftShell` (a drafting
+form's page, with the hub's slim phone header), all from `@civic-social/plugin-sdk/ui`.
+
+**A plugin never sets a colour, a font or a size of its own.** Where you need layout of your own, use the hub's
+tokens (`var(--space-4)`, `var(--color-text-muted)`, …). [How a plugin looks](PLUGIN-STYLE.md) lists the tokens and
+which kit component to use when; the suite's step 21 checks your stylesheets and inline styles, and step 17 refuses
+dark text on the hub's primary colour. The straw poll's one page reads the poll and answers through the
 hub's routes for every process (`GET /api/process/:id/state`, `POST /api/process/:id/action`):
 
 ```tsx
@@ -472,3 +477,4 @@ what applies. Building and testing plugins with it is what it is for. Your plugi
 - The contract in full, for the hub's own packages: `docs/PLUGIN-PACKAGE.md` in the repository.
 - The suite, step by step: `README.md` in `@civic-social/plugin-conformance`.
 - The worked example: `examples/straw-poll/`.
+- How a plugin looks (the tokens, the kit, the never-set-your-own rule): `docs/PLUGIN-STYLE.md`.
