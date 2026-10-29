@@ -35,6 +35,10 @@ const ADDED: Record<string, string> = {
   "GET /admin/analytics": "Admin → Activity's report",
   "GET /admin/analytics/csv": "Admin → Activity's CSV",
   "POST /admin/analytics/refresh": "Admin → Activity's Recount now",
+  // A person's own settings (design pass, 2026-10-29, decisions 9 and 15).
+  "GET /unsubscribe/notices": "a notice's one-click link stops notices only",
+  "PATCH /user/settings/notices": "Notices about things I take part in, on or off",
+  "PATCH /user/settings/appearance": "Your look: light, dark or follow the device",
   "GET /admin/analytics/keys": "the reporting keys and their read log",
   "POST /admin/analytics/keys": "issue a reporting key",
   "POST /admin/analytics/keys/:id/revoke": "revoke a reporting key",

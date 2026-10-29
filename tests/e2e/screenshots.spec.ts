@@ -1,7 +1,10 @@
 /**
  * Before/after screenshots of the hub's pages (frontend pass, 2026-10-24):
- * the home page, a detail page of every type, the admin queue and the
- * settings page, at phone and desktop width, signed out and as an admin.
+ * the home page, a detail page of every type, the admin queue, Activity and
+ * the settings page, at phone and desktop width, signed out and as an admin.
+ * The design pass (2026-10-29, ADR-018) took new images and added the other
+ * layout and the dark mode at desktop width: the home page, a vote, the
+ * admin queue, Activity and Appearance, signed out and as an admin.
  * A change meant to leave the UI as it was (a refactor) is checked against
  * the committed images in tests/e2e/screenshots/.
  *
@@ -102,8 +105,57 @@ test.describe("screenshots", () => {
       await shoot(page, `admin-home-${w.name}`);
       await page.goto(`${ORIGIN}/admin/reviews`);
       await shoot(page, `admin-queue-${w.name}`);
+      await page.goto(`${ORIGIN}/admin/activity`);
+      await shoot(page, `admin-activity-${w.name}`);
       await page.goto(`${ORIGIN}/admin/settings`);
       await shoot(page, `admin-settings-${w.name}`);
+    });
+  }
+
+  // The left-column layout and the dark mode, at desktop width (ADR-018).
+  const VARIANTS = [
+    { name: "sidebar", layout: "sidebar", mode: "light" },
+    { name: "dark", layout: "top_tabs", mode: "dark" },
+  ] as const;
+  for (const v of VARIANTS) {
+    test(`${v.name}: signed out and admin, desktop`, async ({ page, request }) => {
+      const auth = { Authorization: `Bearer ${adminToken}` };
+      const set = (layout: string) =>
+        request.put(`${ORIGIN}/api/admin/hub/settings`, { headers: auth, data: { section: "theme", values: { "nav.layout": layout } } });
+      const appearance = (mode: string) =>
+        request.patch(`${ORIGIN}/api/user/settings/appearance`, { headers: auth, data: { appearance: mode } });
+      expect((await set(v.layout)).ok()).toBe(true);
+      expect((await appearance(v.mode)).ok()).toBe(true);
+      try {
+        await page.setViewportSize({ width: 1280, height: 900 });
+        // A signed-out reader follows the device.
+        await page.emulateMedia({ colorScheme: v.mode });
+        await page.addInitScript(() => {
+          localStorage.setItem("seen_intro_popup", "true");
+          localStorage.setItem("welcome-banner-dismissed-v2", "true");
+          sessionStorage.setItem("civic_preview", "1");
+        });
+        await page.goto(`${ORIGIN}/`);
+        await shoot(page, `${v.name}-home-desktop`);
+        const vote = paths.find((p) => p.type === "civic.vote");
+        if (vote) {
+          await page.goto(`${ORIGIN}${vote.path}`);
+          await shoot(page, `${v.name}-vote-desktop`);
+        }
+        // The admin's own Appearance decides theirs.
+        await visitAs(page, adminToken);
+        for (const [path, name] of [
+          ["/admin/reviews", "admin-queue"],
+          ["/admin/activity", "admin-activity"],
+          ["/admin/settings/theme", "admin-appearance"],
+        ] as const) {
+          await page.goto(`${ORIGIN}${path}`);
+          await shoot(page, `${v.name}-${name}-desktop`);
+        }
+      } finally {
+        await set("top_tabs");
+        await appearance("light");
+      }
     });
   }
 });

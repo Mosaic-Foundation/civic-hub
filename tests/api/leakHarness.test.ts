@@ -460,6 +460,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /search/": { query: [`?q=${MARKER_B}`, "?q=Vote", "?q=Notice&sort=newest", `?q=${MARKER_A}`] },
   "GET /meeting-summary/:id": {},
   "GET /unsubscribe/digest": { query: [] /* filled in below: none, a bad token, Floyd's resident's token */ },
+  "GET /unsubscribe/notices": { query: [] /* filled in below: none, a bad token, Floyd's resident's notices token */ },
   "GET /events/": { query: ["", "?limit=500", "?page=true&limit=200", `?context=${"x"}`] },
   "GET /activities/:id": { ids: "events" },
   "GET /audiences/:name": {},
@@ -528,6 +529,9 @@ function expand(route: string, plan: Plan): Array<{ path: string; echoed: string
   }
   if (route === "GET /link-preview/") queries = ["", `?url=${encodeURIComponent(B.previewUrl)}`];
   if (route === "GET /unsubscribe/digest") queries = ["", "?token=not-a-real-token", `?token=${encodeURIComponent(B.unsubscribeToken)}`];
+  if (route === "GET /unsubscribe/notices") {
+    queries = ["", "?token=not-a-real-token", `?token=${encodeURIComponent(buildUnsubscribeToken(B.resident, DIGEST_SECRET, "unsub_notices"))}`];
+  }
   if (route === "GET /feed/") queries = ["", "?limit=200", `?process_id=${B.vote}`];
   if (route === "GET /feed/meta" || route === "GET /api/feed/meta") {
     queries = ["", `?process=${[B.vote, B.proposal, B.project, B.wordcloud, B.brief, B.announcement, B.conversation].join(",")}`];
