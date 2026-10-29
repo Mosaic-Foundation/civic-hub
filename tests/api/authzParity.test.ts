@@ -77,6 +77,7 @@ function toUser(p: Person): User {
   return {
     id: p.row.id, email: p.row.email, email_verified: true, is_resident: p.row.is_resident, created_at: "",
     digest_frequency_days: null, last_digest_sent_at: null, tos_version_accepted: null, tos_accepted_at: null,
+    notices_email: true, appearance: "light",
     hide_ai_drafting_help: false, hidden_from_members: false, display_name: null, full_name: p.row.full_name,
   };
 }
