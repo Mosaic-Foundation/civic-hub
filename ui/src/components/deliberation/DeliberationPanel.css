@@ -1,40 +1,40 @@
 .deliberation-panel {
-  background: #fff;
-  border: 1px solid var(--border, #e0e0e0);
-  border-radius: 8px;
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
   overflow: hidden;
 }
 
 .deliberation-panel-loading,
 .deliberation-panel-error {
-  padding: 2rem;
+  padding: var(--space-8);
   text-align: center;
-  color: #888;
-  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+  font-size: var(--text-small-size);
 }
 
 .deliberation-panel-error {
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 .deliberation-panel-header {
-  padding: 1.25rem;
-  border-bottom: 1px solid var(--border, #e0e0e0);
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .deliberation-topic {
-  font-size: 1.25rem;
+  font-size: var(--text-title-size);
   font-weight: 700;
-  color: var(--color-text, #222);
-  margin: 0 0 0.25rem 0;
+  color: var(--color-text);
+  margin: 0 0 var(--space-1) 0;
 }
 
 .deliberation-framing {
-  font-size: 0.85rem;
-  color: #666;
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
   line-height: 1.5;
   margin: 0;
 }
@@ -42,75 +42,75 @@
 .deliberation-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1rem;
+  gap: var(--space-1) var(--space-4);
 }
 
 .deliberation-deadline,
 .deliberation-threshold {
-  font-size: 0.75rem;
-  color: #999;
+  font-size: var(--text-caption-size);
+  color: var(--color-text-subtle);
 }
 
 .deliberation-tabs {
   display: flex;
-  border-bottom: 1px solid var(--border, #e0e0e0);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .deliberation-tab {
   flex: 1;
-  font-size: 0.85rem;
+  font-size: var(--text-small-size);
   font-weight: 600;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  color: #888;
+  color: var(--color-text-subtle);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .deliberation-tab:hover {
-  color: var(--color-text, #222);
+  color: var(--color-text);
 }
 
 .deliberation-tab--active {
-  color: #fff;
+  color: var(--color-primary-text);
   background: var(--color-brand);
   border-bottom-color: var(--color-brand);
 }
 
 .deliberation-tab--active:hover {
-  color: #fff;
-  background: #2a4f7a;
+  color: var(--color-primary-text);
+  background: var(--color-primary-hover);
 }
 
 .deliberation-participate {
-  padding: 1.25rem;
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .deliberation-vote-count {
-  font-size: 0.85rem;
-  color: #888;
+  font-size: var(--text-small-size);
+  color: var(--color-text-subtle);
   margin: 0;
 }
 
 .deliberation-no-statements {
   text-align: center;
-  padding: 2rem 0;
-  color: #888;
-  font-size: 0.85rem;
+  padding: var(--space-8) 0;
+  color: var(--color-text-subtle);
+  font-size: var(--text-small-size);
 }
 
 .deliberation-no-statements p {
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 var(--space-1) 0;
 }
 
 .deliberation-no-clusters {
-  padding: 2rem 1.25rem;
+  padding: var(--space-8) var(--space-5);
   text-align: center;
-  color: #888;
-  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+  font-size: var(--text-small-size);
 }

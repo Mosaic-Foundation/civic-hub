@@ -213,7 +213,7 @@ export default function MySubmissions() {
         {loading && <p>Loading…</p>}
         {error && <p className="error-text">{error}</p>}
         {(actionMessage ?? (detail?.review.status === "pending_review" ? arrival : null)) && (
-          <p style={{ color: "var(--success-color, #2e7d32)" }} role="status">
+          <p style={{ color: "var(--color-success)" }} role="status">
             {actionMessage ?? arrival}
           </p>
         )}
@@ -356,7 +356,7 @@ export default function MySubmissions() {
                       value={revNote}
                       onChange={(e) => setRevNote(e.target.value)}
                       placeholder="Describe what you changed"
-                      style={{ minHeight: "60px" }}
+                      style={{ minHeight: "calc(var(--control-height) * 1.5)" }}
                     />
                     <div className="review-actions">
                       <button

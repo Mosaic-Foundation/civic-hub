@@ -5,7 +5,7 @@
    blue (doubled selector — this sheet's own .confirm-finality-warning rule
    above would otherwise win the cascade). */
 .confirm-finality-warning.confirm-finality-warning--edit {
-  background: var(--type-project-bg, #e3f2fd);
-  border-left-color: var(--type-project-fg, #1565c0);
+  background: var(--type-project-bg);
+  border-left-color: var(--type-project-fg);
   color: var(--color-text);
 }

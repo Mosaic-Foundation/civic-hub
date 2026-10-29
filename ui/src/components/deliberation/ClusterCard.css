@@ -1,26 +1,26 @@
 .cluster-card {
-  background: #fff;
-  border: 1px solid var(--border, #e0e0e0);
-  border-radius: 8px;
-  padding: 1.25rem;
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: var(--space-5);
 }
 
 .cluster-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
 }
 
 .cluster-name {
-  font-size: 0.95rem;
+  font-size: var(--font-size-md);
   font-weight: 700;
-  color: var(--color-text, #222);
+  color: var(--color-text);
 }
 
 .cluster-size {
-  font-size: 0.75rem;
-  color: #888;
+  font-size: var(--text-caption-size);
+  color: var(--color-text-subtle);
 }
 
 .cluster-statements {
@@ -29,39 +29,39 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .cluster-statement-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .cluster-direction {
-  font-size: 0.7rem;
+  font-size: var(--font-size-2xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 .cluster-agree {
-  color: #16a34a;
+  color: var(--color-success);
 }
 
 .cluster-disagree {
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 .cluster-statement-text {
-  font-size: 0.85rem;
-  color: var(--color-text, #222);
+  font-size: var(--text-small-size);
+  color: var(--color-text);
   line-height: 1.5;
 }
 
 .cluster-repness-bar {
-  height: 4px;
-  background: #f0f0f0;
+  height: var(--space-1);
+  background: var(--color-surface-sunken);
   border-radius: 2px;
   overflow: hidden;
 }

@@ -4,7 +4,7 @@
 
 .feedback-body {
   padding: var(--space-md) var(--space-lg) var(--space-xl);
-  max-width: 720px;
+  max-width: var(--width-prose);
   margin: 0 auto;
 }
 
@@ -36,10 +36,10 @@
   display: inline-flex;
   align-items: center;
   padding: var(--space-xs) var(--space-md);
-  min-height: 36px;
+  min-height: var(--control-height);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
   color: var(--color-text);
   cursor: pointer;
@@ -58,9 +58,9 @@
 }
 
 .feedback-category-pill.is-selected {
-  background: var(--pill-vote-bg, #e7eef7);
-  border-color: var(--pill-vote-fg, #1e3a5f);
-  color: var(--pill-vote-fg, #1e3a5f);
+  background: var(--type-vote-bg);
+  border-color: var(--type-vote-fg);
+  color: var(--type-vote-fg);
   font-weight: 600;
 }
 
@@ -78,11 +78,11 @@
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
-  min-height: 44px;
+  min-height: var(--tap-target);
   padding: var(--space-sm) var(--space-lg);
-  background: var(--pill-vote-fg, #1e3a5f);
-  color: #fff;
-  border: 1px solid var(--pill-vote-fg, #1e3a5f);
+  background: var(--type-vote-fg);
+  color: var(--color-primary-text);
+  border: 1px solid var(--type-vote-fg);
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
   font-size: var(--font-size-base);
@@ -92,7 +92,7 @@
 }
 
 .feedback-submit-button:hover:not(:disabled) {
-  background: #14304f;
+  background: var(--color-primary-hover);
 }
 
 .feedback-submit-button:disabled {
@@ -109,14 +109,14 @@
 .feedback-success {
   margin: var(--space-md) 0 var(--space-lg);
   padding: var(--space-md) var(--space-lg);
-  background: var(--pill-vote-bg, #e7eef7);
-  border: 1px solid var(--pill-vote-fg, #1e3a5f);
+  background: var(--type-vote-bg);
+  border: 1px solid var(--type-vote-fg);
   border-radius: var(--radius-md);
-  color: var(--pill-vote-fg, #1e3a5f);
+  color: var(--type-vote-fg);
 }
 
 .feedback-back-link {
-  color: var(--color-link, var(--pill-vote-fg, #1e3a5f));
+  color: var(--color-link);
 }
 
 /* Honeypot — visually hidden but technically focusable to nothing.
@@ -124,7 +124,7 @@
  * see or interact with it. */
 .fb-honeypot {
   position: absolute;
-  left: -9999px;
+  left: calc(-1 * var(--space-20));
   width: 1px;
   height: 1px;
   overflow: hidden;
@@ -158,10 +158,10 @@
   flex-direction: column;
   gap: 2px;
   padding: var(--space-sm) var(--space-md);
-  min-height: 44px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
+  min-height: var(--tap-target);
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -177,13 +177,13 @@
 }
 
 .feedback-side-card:focus-within {
-  outline: 2px solid var(--pill-vote-fg, #1e3a5f);
+  outline: 2px solid var(--type-vote-fg);
   outline-offset: 2px;
 }
 
 .feedback-side-card.is-selected {
-  background: var(--pill-vote-bg, #e7eef7);
-  border-color: var(--pill-vote-fg, #1e3a5f);
+  background: var(--type-vote-bg);
+  border-color: var(--type-vote-fg);
 }
 
 .feedback-side-label {
@@ -203,7 +203,7 @@
   gap: var(--space-xs);
   padding: var(--space-sm) var(--space-md);
   background: var(--color-surface-alt);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .feedback-shared-notice {
@@ -220,13 +220,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  min-height: 44px;
+  min-height: var(--tap-target);
   cursor: pointer;
 }
 
 .feedback-consent input {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-size);
+  height: var(--icon-size);
   flex: none;
 }
 
@@ -234,8 +234,8 @@
   background: none;
   border: 0;
   padding: var(--space-xs) 0;
-  min-height: 44px;
-  color: var(--color-link, var(--pill-vote-fg, #1e3a5f));
+  min-height: var(--tap-target);
+  color: var(--color-link);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;

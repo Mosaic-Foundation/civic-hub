@@ -13,7 +13,7 @@
   align-items: center;
   gap: var(--space-xs);
   padding: var(--space-sm) var(--space-md);
-  font-size: var(--font-size-base, 1rem);
+  font-size: var(--font-size-base);
   font-weight: 600;
   line-height: 1.2;
   border-radius: var(--radius-pill);
@@ -23,16 +23,16 @@
 /* Awaiting — a plain, non-interactive status in the brief's own palette.
    Bigger than the old chip, but nothing to click until a response lands. */
 .brief-response-cta-btn--awaiting {
-  color: var(--type-brief-fg, #8c4a2b);
-  background: var(--type-brief-bg, #f4e1d2);
+  color: var(--type-brief-fg);
+  background: var(--type-brief-bg);
   cursor: default;
 }
 
 /* Responded — an actual button that jumps to the responses below, in the
    feed's official-response gold. The ↓ tells the reader it moves them. */
 .brief-response-cta-btn--responded {
-  color: #fff;
-  background: var(--pill-brief-response-fg, #8a5a13);
+  color: var(--color-text-inverse);
+  background: var(--type-official-response-fg);
   cursor: pointer;
   transition: background 0.15s ease, transform 0.05s ease;
 }
@@ -43,7 +43,7 @@
 }
 
 .brief-response-cta-btn--responded:hover {
-  background: var(--color-primary-hover, #6f4810);
+  background: color-mix(in srgb, var(--type-official-response-fg) 82%, var(--color-text-strong));
 }
 
 .brief-response-cta-btn--responded:active {
@@ -65,10 +65,10 @@
 
 .brief-response {
   padding: var(--space-md);
-  border: 1px solid var(--color-border, #d8dce1);
-  border-left: 3px solid var(--pill-brief-response-fg, #8a5a13);
+  border: 1px solid var(--color-border);
+  border-left: var(--border-width-strong) solid var(--type-official-response-fg);
   border-radius: var(--radius-md);
-  background: var(--color-surface, #fbfbfc);
+  background: var(--color-surface);
   margin: 0 0 var(--space-md);
 }
 
@@ -87,7 +87,7 @@
 .brief-response-date {
   margin-left: auto;
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted, #5b6470);
+  color: var(--color-text-muted);
 }
 
 .brief-response-body {
@@ -114,7 +114,7 @@
   box-sizing: border-box;
   padding: var(--space-sm);
   font: inherit;
-  border: 1px solid var(--color-border, #d8dce1);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   resize: vertical;
 }
@@ -122,13 +122,13 @@
 .brief-response-form-note {
   margin: 0;
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted, #5b6470);
+  color: var(--color-text-muted);
 }
 
 .brief-response-form-error {
   margin: 0;
   font-size: var(--font-size-sm);
-  color: var(--color-danger, #b3261e);
+  color: var(--color-error);
 }
 
 .brief-response-form button {
@@ -136,8 +136,8 @@
   padding: var(--space-sm) var(--space-md);
   font: inherit;
   font-weight: 600;
-  color: #fff;
-  background: var(--color-primary, #1f3a66);
+  color: var(--color-primary-text);
+  background: var(--color-primary);
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;

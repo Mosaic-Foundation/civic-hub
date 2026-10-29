@@ -19,8 +19,8 @@
 /* The marker the plain textarea could never show. Sized to the input's
    first line so "1." sits beside the start of the statement. */
 .seed-row-num {
-  flex: 0 0 1.75rem;
-  padding-top: 0.6rem;
+  flex: 0 0 var(--icon-size-lg);
+  padding-top: var(--space-2-5);
   text-align: right;
   font-size: var(--font-size-sm);
   font-variant-numeric: tabular-nums;
@@ -33,7 +33,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--space-1);
 }
 
 /* One line tall until the text needs more; the component sets the height
@@ -43,7 +43,7 @@
   /* ~two lines tall when empty, so a row reads as a block to write a
      sentence into rather than a cramped single line; it still grows past
      this as the statement gets longer (the component sets the height). */
-  min-height: 3.25rem;
+  min-height: var(--space-12);
   line-height: 1.5;
   resize: none;
   overflow: hidden;
@@ -54,11 +54,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin-top: 0.35rem;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  margin-top: var(--space-1-5);
   padding: 0;
-  font-size: 1.25rem;
+  font-size: var(--text-title-size);
   line-height: 1;
   color: var(--color-text-muted);
   background: none;
@@ -68,7 +68,7 @@
 }
 
 .seed-row-remove:hover:not(:disabled) {
-  color: var(--color-error, #dc2626);
+  color: var(--color-error);
   border-color: var(--color-border);
 }
 

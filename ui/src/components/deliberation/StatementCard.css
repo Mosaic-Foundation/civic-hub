@@ -1,11 +1,11 @@
 .statement-card {
-  background: #fff;
-  border: 1px solid var(--border, #e0e0e0);
-  border-radius: 8px;
-  padding: 1.25rem;
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
   transition: opacity 0.2s ease;
 }
 
@@ -15,41 +15,41 @@
 
 .statement-seed-badge {
   align-self: flex-start;
-  font-size: 0.7rem;
+  font-size: var(--font-size-2xs);
   font-weight: 600;
-  color: #b45309;
-  background: #fef3c7;
-  padding: 2px 6px;
-  border-radius: 4px;
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  padding: 2px var(--space-1-5);
+  border-radius: var(--radius-sm);
 }
 
 .statement-text {
-  font-size: 1.05rem;
-  color: var(--color-text, #222);
+  font-size: var(--text-body-size);
+  color: var(--color-text);
   line-height: 1.6;
   margin: 0;
 }
 
 .statement-voted-label {
-  font-size: 0.85rem;
-  color: #16a34a;
+  font-size: var(--text-small-size);
+  color: var(--color-success);
   font-weight: 600;
   margin: 0;
 }
 
 .vote-controls {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .vote-btn {
   flex: 1;
-  font-size: 0.85rem;
+  font-size: var(--text-small-size);
   font-weight: 600;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  border: 1px solid var(--border, #e0e0e0);
-  background: #fff;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--card-radius);
+  border: var(--card-border);
+  background: var(--card-bg);
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -60,30 +60,30 @@
 }
 
 .vote-agree {
-  color: #16a34a;
-  border-color: #16a34a;
+  color: var(--color-success);
+  border-color: var(--color-success);
 }
 
 .vote-agree:hover:not(:disabled) {
-  background: #16a34a;
-  color: white;
+  background: var(--color-success);
+  color: var(--color-text-inverse);
 }
 
 .vote-disagree {
-  color: #dc2626;
-  border-color: #dc2626;
+  color: var(--color-error);
+  border-color: var(--color-error);
 }
 
 .vote-disagree:hover:not(:disabled) {
-  background: #dc2626;
-  color: white;
+  background: var(--color-error);
+  color: var(--color-text-inverse);
 }
 
 .vote-pass {
-  color: #666;
-  border-color: var(--border, #e0e0e0);
+  color: var(--color-text-muted);
+  border-color: var(--color-border-subtle);
 }
 
 .vote-pass:hover:not(:disabled) {
-  background: #f5f5f5;
+  background: var(--color-surface-sunken);
 }

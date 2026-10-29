@@ -1,8 +1,8 @@
 .cluster-view {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.25rem;
+  gap: var(--space-3);
+  padding: var(--space-5);
 }
 
 .cluster-view-header {
@@ -10,33 +10,33 @@
   justify-content: space-between;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .cluster-view-title {
-  font-size: 1.05rem;
+  font-size: var(--text-body-size);
   font-weight: 700;
-  color: var(--color-text, #222);
+  color: var(--color-text);
   margin: 0;
 }
 
 .cluster-view-meta {
-  font-size: 0.75rem;
-  color: #888;
+  font-size: var(--text-caption-size);
+  color: var(--color-text-subtle);
 }
 
 .consensus-section {
-  background: #f9f9f9;
-  border: 1px solid var(--border, #e0e0e0);
-  border-radius: 8px;
-  padding: 0.75rem;
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
 }
 
 .consensus-heading {
-  font-size: 0.85rem;
+  font-size: var(--text-small-size);
   font-weight: 600;
-  color: var(--color-text, #222);
-  margin: 0 0 0.5rem 0;
+  color: var(--color-text);
+  margin: 0 0 var(--space-2) 0;
 }
 
 .consensus-list {
@@ -45,34 +45,34 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: var(--space-1-5);
 }
 
 .consensus-item {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 0.75rem;
-  font-size: 0.85rem;
+  gap: var(--space-3);
+  font-size: var(--text-small-size);
 }
 
 .consensus-text {
-  color: var(--color-text, #222);
+  color: var(--color-text);
   flex: 1;
 }
 
 .consensus-rate {
-  font-size: 0.75rem;
-  color: #16a34a;
+  font-size: var(--text-caption-size);
+  color: var(--color-success);
   font-weight: 600;
   white-space: nowrap;
 }
 
 .cluster-view-pending {
   text-align: center;
-  padding: 2rem 1rem;
-  color: #888;
-  font-size: 0.9rem;
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-subtle);
+  font-size: var(--text-small-size);
 }
 
 .cluster-view-pending p {
@@ -81,6 +81,6 @@
 
 .cluster-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-card), 1fr));
+  gap: var(--space-3);
 }

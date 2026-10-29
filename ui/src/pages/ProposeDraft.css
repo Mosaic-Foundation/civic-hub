@@ -1,7 +1,7 @@
 /* --- ProposeDraft page --- */
 
 .propose-draft-page {
-  height: calc(100vh - var(--nav-h, 61px));
+  height: calc(100vh - var(--nav-h));
   overflow: hidden;
 }
 
@@ -103,18 +103,18 @@
 
 .keyword-idea {
   font-weight: 600;
-  color: #2e7d32;
+  color: var(--color-success);
   text-decoration: underline;
-  text-decoration-color: #a5d6a7;
+  text-decoration-color: var(--color-success);
   text-underline-offset: 2px;
   text-decoration-thickness: 2px;
 }
 
 .keyword-concern {
   font-weight: 600;
-  color: #e65100;
+  color: var(--color-warning);
   text-decoration: underline;
-  text-decoration-color: #ffcc80;
+  text-decoration-color: var(--color-warning);
   text-underline-offset: 2px;
   text-decoration-thickness: 2px;
 }
@@ -164,8 +164,8 @@
   color: var(--color-text-muted);
   margin: var(--space-md) 0;
   padding: var(--space-sm) var(--space-md);
-  background: var(--color-surface-alt, #f5f0eb);
-  border-left: 3px solid var(--color-text-muted);
+  background: var(--color-surface-alt);
+  border-left: var(--border-width-strong) solid var(--color-text-muted);
   border-radius: var(--radius-sm);
 }
 
@@ -177,7 +177,7 @@
 
 .tell-admins-text {
   font-size: var(--font-size-sm);
-  line-height: var(--line-height-relaxed, 1.5);
+  line-height: var(--line-height-relaxed);
   margin: 0 0 var(--space-md);
 }
 
@@ -189,14 +189,14 @@
 }
 
 .confirm-actions > button {
-  flex: 1 1 10rem;
+  flex: 1 1 var(--grid-min-stat);
 }
 
 /* Edit mode: the "your edits go live right away" callout in the project
    blue, so it reads as information about THIS action, not a footnote. */
 .confirm-finality-warning--edit {
-  background: var(--type-project-bg, #e3f2fd);
-  border-left-color: var(--type-project-fg, #1565c0);
+  background: var(--type-project-bg);
+  border-left-color: var(--type-project-fg);
   color: var(--color-text);
 }
 

@@ -1,27 +1,27 @@
 .statement-submission {
-  background: #f9f9f9;
-  border: 1px solid var(--border, #e0e0e0);
-  border-radius: 8px;
-  padding: 1.25rem;
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .statement-submission-title {
-  font-size: 0.85rem;
+  font-size: var(--text-small-size);
   font-weight: 600;
-  color: var(--color-text, #222);
+  color: var(--color-text);
   margin: 0;
 }
 
 .statement-submission-input {
-  font-size: 0.95rem;
-  border: 1px solid var(--border, #e0e0e0);
-  border-radius: 6px;
-  padding: 0.5rem;
+  font-size: var(--font-size-md);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
   resize: vertical;
-  min-height: 80px;
+  min-height: calc(var(--control-height) * 2);
   font-family: inherit;
 }
 
@@ -38,28 +38,28 @@
 }
 
 .char-count {
-  font-size: 0.75rem;
-  color: #888;
+  font-size: var(--text-caption-size);
+  color: var(--color-text-subtle);
 }
 
 .char-count--low {
-  color: #b45309;
+  color: var(--color-warning);
   font-weight: 600;
 }
 
 .statement-submit-btn {
-  font-size: 0.85rem;
+  font-size: var(--text-small-size);
   font-weight: 600;
-  padding: 0.375rem 1rem;
+  padding: var(--space-1-5) var(--space-4);
   background: var(--color-brand);
-  color: white;
+  color: var(--color-primary-text);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
 .statement-submit-btn:hover:not(:disabled) {
-  background: #15304f;
+  background: var(--color-primary-hover);
 }
 
 .statement-submit-btn:disabled {
@@ -68,27 +68,27 @@
 }
 
 .statement-error-msg {
-  margin: var(--space-sm, 0.5rem) 0 0;
+  margin: var(--space-sm) 0 0;
   font-family: var(--font-body);
-  font-size: var(--font-size-sm, 0.85rem);
+  font-size: var(--font-size-sm);
   line-height: 1.4;
-  color: var(--color-error, #c1351a);
+  color: var(--color-error);
 }
 
 .statement-submitted-msg {
-  font-size: 0.85rem;
-  color: #16a34a;
+  font-size: var(--text-small-size);
+  color: var(--color-success);
   margin: 0;
 }
 
 .statement-submission--done {
   text-align: center;
-  padding: 1.5rem 1.25rem;
+  padding: var(--space-6) var(--space-5);
 }
 
 .statement-submission-done-msg {
-  font-size: 0.9rem;
-  color: #555;
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
   margin: 0;
   line-height: 1.5;
 }

@@ -1,7 +1,7 @@
 /* Full width and left-aligned, like every other process page (.detail-page;
    Submit and Save, 2026-10-12): it was a centered 720px column. */
 .announcement-page {
-  padding: 1.5rem;
+  padding: var(--space-6);
 }
 
 
@@ -28,7 +28,7 @@
   font-size: var(--font-size-sm);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 .announcement-header h1 {

@@ -4,13 +4,13 @@
   margin-bottom: var(--space-lg);
   /* Square on top so the banner meets the section-tab rule above it
      cleanly; rounded only where it sits on the page (Adam, 2026-09-04). */
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   overflow: hidden;
 }
 
 .project-banner-img {
   width: 100%;
-  max-height: 320px;
+  max-height: calc(var(--media-max-height) * 1.25);
   object-fit: cover;
   display: block;
 }
@@ -21,7 +21,7 @@
 
 .project-detail-header h1 {
   margin: 0 0 var(--space-xs);
-  font-size: 1.5rem;
+  font-size: var(--font-size-2xl);
 }
 
 .project-detail-meta {
@@ -57,11 +57,11 @@
 .sentiment-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 2px solid var(--color-border, #d1d5db);
-  border-radius: 8px;
-  background: var(--color-surface, #fff);
+  gap: var(--space-1-5);
+  padding: var(--space-2) var(--space-4);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
   font-size: var(--font-size-sm);
   font-weight: 500;
   cursor: pointer;
@@ -73,15 +73,15 @@
 }
 
 .sentiment-btn.is-active-support {
-  background: #e8f5e9;
-  border-color: #2e7d32;
-  color: #2e7d32;
+  background: var(--color-success-bg);
+  border-color: var(--color-success);
+  color: var(--color-success);
 }
 
 .sentiment-btn.is-active-oppose {
-  background: #ffebee;
-  border-color: #c62828;
-  color: #c62828;
+  background: var(--color-error-bg);
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 
 .sentiment-counts {
@@ -104,7 +104,7 @@
 .project-sources h3 {
   font-size: var(--font-size-sm);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--letter-spacing-normal);
   color: var(--color-text-muted);
   margin: 0 0 var(--space-xs);
 }
@@ -131,13 +131,13 @@
 }
 
 .project-updates h2 {
-  font-size: 1.1rem;
+  font-size: var(--text-heading-size);
   margin: 0 0 var(--space-md);
 }
 
 .project-update-item {
   padding: var(--space-sm) 0;
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .project-update-item:last-child {
@@ -161,10 +161,10 @@
 
 .project-update-form textarea {
   width: 100%;
-  min-height: 80px;
+  min-height: calc(var(--control-height) * 2);
   padding: var(--space-sm);
-  border: 1px solid var(--color-border, #d1d5db);
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   font-family: inherit;
   font-size: var(--font-size-base);
   resize: vertical;
@@ -173,17 +173,17 @@
 
 .project-update-form button {
   margin-top: var(--space-xs);
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   background: var(--type-project-fg);
-  color: #fff;
+  color: var(--color-text-inverse);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
   cursor: pointer;
 }
 
 .project-update-form button:hover {
-  background: #0d47a1;
+  background: var(--color-primary-hover);
 }
 
 .project-update-form button:disabled {
@@ -198,14 +198,14 @@
 }
 
 .project-comments h2 {
-  font-size: 1.1rem;
+  font-size: var(--text-heading-size);
   margin: 0 0 var(--space-md);
 }
 
 /* .project-comment-item is styled as a comment bubble in App.css, together
    with the shared input panel's .input-item, so both read the same. */
 .project-comment-item + .project-comment-item {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 
 .project-comment-content {
@@ -227,10 +227,10 @@
 
 .project-comment-form textarea {
   width: 100%;
-  min-height: 60px;
+  min-height: calc(var(--control-height) * 1.5);
   padding: var(--space-sm);
-  border: 1px solid var(--color-border, #d1d5db);
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   font-family: inherit;
   font-size: var(--font-size-base);
   resize: vertical;
@@ -239,17 +239,17 @@
 
 .project-comment-form button {
   margin-top: var(--space-xs);
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   background: var(--type-project-fg);
-  color: #fff;
+  color: var(--color-text-inverse);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
   cursor: pointer;
 }
 
 .project-comment-form button:hover {
-  background: #0d47a1;
+  background: var(--color-primary-hover);
 }
 
 .project-comment-form button:disabled {
@@ -259,17 +259,17 @@
 
 /* "Mark complete" — creator/admin action to close a project into its brief. */
 .project-complete-btn {
-  padding: 0.4rem 0.9rem;
+  padding: var(--space-1-5) var(--space-4);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: #fff;
-  background: var(--ds-color-success-500, #4a9d5c);
+  color: var(--color-text-inverse);
+  background: var(--color-success);
   border: none;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   cursor: pointer;
 }
 .project-complete-btn:hover:not(:disabled) {
-  background: var(--ds-color-success-700, #2a7340);
+  background: var(--color-success);
 }
 .project-complete-btn:disabled {
   opacity: 0.6;
@@ -279,18 +279,18 @@
 /* "Edit project" beside the status badge — a quiet outlined control; the
    destructive actions stay at the bottom of the page. */
 .project-edit-btn {
-  padding: 0.35rem 0.8rem;
+  padding: var(--space-1-5) var(--space-3);
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: #fff;
-  background: var(--pill-vote-fg, #1e3a5f);
-  border: 1px solid var(--pill-vote-fg, #1e3a5f);
-  border-radius: var(--radius-sm, 4px);
+  color: var(--color-primary-text);
+  background: var(--type-vote-fg);
+  border: 1px solid var(--type-vote-fg);
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 .project-edit-btn:hover:not(:disabled) {
-  background: #14304f;
+  background: var(--color-primary-hover);
 }
 .project-edit-btn:disabled {
   opacity: 0.6;
@@ -302,14 +302,14 @@
 .project-edited-toast {
   position: fixed;
   left: 50%;
-  bottom: calc(1.5rem + max(var(--bottom-bar-space, 0px), env(safe-area-inset-bottom, 0px)));
+  bottom: calc(var(--space-6) + max(var(--bottom-bar-space), env(safe-area-inset-bottom, 0px)));
   transform: translateX(-50%);
   z-index: 50;
-  padding: 0.7rem 1.1rem;
-  background: var(--color-success, #2a7340);
-  color: #fff;
-  border-radius: 999px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
   font-size: var(--font-size-sm);
   font-weight: 600;
   white-space: nowrap;
@@ -317,7 +317,7 @@
 }
 
 @keyframes project-toast {
-  0% { opacity: 0; transform: translate(-50%, 8px); }
+  0% { opacity: 0; transform: translate(-50%, var(--space-2)); }
   8% { opacity: 1; transform: translate(-50%, 0); }
   85% { opacity: 1; }
   100% { opacity: 0; }

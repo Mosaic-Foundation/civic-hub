@@ -6,13 +6,13 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .project-card-header h3 {
   flex: 1;
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--text-body-size);
 }
 
 .project-sentiment-bar {
@@ -24,11 +24,11 @@
 }
 
 .sentiment-support {
-  color: #2e7d32;
+  color: var(--color-success);
 }
 
 .sentiment-oppose {
-  color: #c62828;
+  color: var(--color-error);
 }
 
 .status-active {

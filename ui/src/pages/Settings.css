@@ -4,7 +4,7 @@
 
 .settings-body {
   padding: var(--space-md) var(--space-lg) var(--space-xl);
-  max-width: 720px;
+  max-width: var(--width-prose);
   margin: 0 auto;
 }
 
@@ -26,9 +26,9 @@
 .settings-panel {
   margin: var(--space-md) 0 var(--space-lg);
   padding: var(--space-md) var(--space-lg);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
 }
 
 .settings-panel h3 {
@@ -57,8 +57,8 @@
 }
 
 .settings-toggle input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-size);
+  height: var(--icon-size);
   accent-color: var(--color-primary);
   cursor: pointer;
 }
@@ -74,32 +74,32 @@
 
 .settings-panel .form-select {
   display: block;
-  max-width: 280px;
+  max-width: 35ch;
   padding: var(--space-sm) var(--space-md);
-  padding-right: calc(var(--space-md) + 1.25em);
+  padding-right: calc(var(--space-md) + var(--space-5));
   font-size: var(--font-size-sm);
   font-family: var(--font-body);
   color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
   appearance: none;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-position: right var(--space-sm) center;
   background-repeat: no-repeat;
-  background-size: 1.25em;
+  background-size: var(--icon-size);
   cursor: pointer;
   transition: border-color 0.15s ease;
 }
 
 .settings-panel .form-select:hover:not(:disabled) {
-  border-color: var(--color-border-hover, #9ca3af);
+  border-color: var(--color-border-hover);
 }
 
 .settings-panel .form-select:focus {
   outline: none;
-  border-color: var(--color-primary, #1e3a5f);
-  box-shadow: 0 0 0 2px var(--pill-vote-bg, #e7eef7);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--type-vote-bg);
 }
 
 .settings-panel .form-select:disabled {
@@ -132,21 +132,21 @@
  * separate from regular settings panels. */
 .settings-danger-zone {
   margin-top: var(--space-xl);
-  border-color: var(--color-error, #c1351a);
+  border-color: var(--color-error);
 }
 
 .settings-danger-zone h3 {
-  color: var(--color-error, #c1351a);
+  color: var(--color-error);
 }
 
 .settings-danger-button {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--tap-target);
   padding: var(--space-sm) var(--space-md);
-  background: var(--color-error, #c1351a);
-  color: #fff;
-  border: 1px solid var(--color-error, #c1351a);
+  background: var(--color-error);
+  color: var(--color-text-inverse);
+  border: 1px solid var(--color-error);
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
@@ -156,7 +156,7 @@
 }
 
 .settings-danger-button:hover:not(:disabled) {
-  background: var(--color-error-hover, #9c2a14);
+  background: var(--color-error-hover);
 }
 
 .settings-danger-button:disabled {
@@ -185,12 +185,12 @@
 .settings-danger-cancel {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--tap-target);
   padding: var(--space-sm) var(--space-md);
-  background: var(--color-surface);
+  background: var(--card-bg);
   color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   font-weight: 500;
@@ -214,8 +214,8 @@
 }
 
 .settings-toggle-row input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   accent-color: var(--color-primary);
   cursor: pointer;
 }
@@ -226,7 +226,7 @@
   margin: 0 0 var(--space-sm);
   padding: var(--space-xs) var(--space-sm);
   background: var(--color-surface-muted);
-  border-left: 3px solid var(--color-primary);
+  border-left: var(--border-width-strong) solid var(--color-primary);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   color: var(--color-text);
 }
@@ -235,7 +235,7 @@
    sized to its label rather than the page. */
 .settings-signin {
   width: auto;
-  padding: 0.6rem 1.5rem;
+  padding: var(--space-2-5) var(--space-6);
 }
 
 /* A panel heading with its "?" (members and invites slice). */

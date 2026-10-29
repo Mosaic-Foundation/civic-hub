@@ -24,7 +24,16 @@ import "./WordCloud.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { formatDate } from "../utils/dates";
 
-const COLORS = ["#1e3a5f", "#2a7d4f", "#5c6bc0", "#00897b", "#37474f", "#4a148c"];
+// The kinds' dark tones (theme.css), so a theme or dark mode recolours the
+// cloud too (design pass, 2026-10-29). Applied as a style, which reads var().
+const COLORS = [
+  "var(--type-vote-fg)",
+  "var(--type-meeting-fg)",
+  "var(--type-proposal-fg)",
+  "var(--type-conversation-fg)",
+  "var(--type-project-fg)",
+  "var(--type-brief-fg)",
+];
 // Two size scales, picked by how much canvas there is. A phone's cloud was
 // capping at ~17 words however many people contributed, and silently dropping
 // the rest (measured, Adam 2026-09-04). The narrow scale trades a smaller
@@ -201,11 +210,10 @@ function CloudViz({ entries }: { entries: WordcloudCloudEntry[] }) {
               x={w.x}
               y={w.y}
               fontSize={w.fontSize}
-              fill={w.color}
+              style={{ fill: w.color, fontFamily: "var(--font-body)" }}
               textAnchor="middle"
               dominantBaseline="central"
               fontWeight={w.fontSize >= 32 ? 700 : w.fontSize >= 24 ? 600 : 400}
-              fontFamily="'Inter', 'Segoe UI', system-ui, sans-serif"
               transform={w.rotate ? `rotate(90, ${w.x}, ${w.y})` : undefined}
             >
               <title>{`${w.text} — ${w.count} ${w.count === 1 ? "mention" : "mentions"}`}</title>

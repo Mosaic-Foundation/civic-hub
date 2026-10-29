@@ -1,13 +1,13 @@
 /* Propose listing page */
 
 .propose-action-btn {
-  background: var(--pill-vote-fg, #1e3a5f);
-  color: #fff;
+  background: var(--type-vote-fg);
+  color: var(--color-primary-text);
 }
 
 .propose-action-btn:hover {
-  background: var(--color-primary-hover, #14304a);
-  color: #fff;
+  background: var(--color-primary-hover);
+  color: var(--color-primary-text);
   text-decoration: none;
 }
 
@@ -15,18 +15,18 @@
 
 .keyword-idea {
   font-weight: 600;
-  color: #2e7d32;
+  color: var(--color-success);
   text-decoration: underline;
-  text-decoration-color: #a5d6a7;
+  text-decoration-color: var(--color-success);
   text-underline-offset: 2px;
   text-decoration-thickness: 2px;
 }
 
 .keyword-concern {
   font-weight: 600;
-  color: #e65100;
+  color: var(--color-warning);
   text-decoration: underline;
-  text-decoration-color: #ffcc80;
+  text-decoration-color: var(--color-warning);
   text-underline-offset: 2px;
   text-decoration-thickness: 2px;
 }
@@ -38,16 +38,16 @@
 }
 
 .status-open {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .status-converted {
-  background: var(--pill-vote-bg, #e3eaf6);
-  color: var(--pill-vote-fg, #1e3a5f);
+  background: var(--type-vote-bg);
+  color: var(--type-vote-fg);
 }
 
 .status-archived {
-  background: var(--color-surface-muted, #f3f4f6);
-  color: var(--color-text-muted, #6b7280);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }

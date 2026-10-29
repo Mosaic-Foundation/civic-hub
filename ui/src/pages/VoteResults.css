@@ -14,7 +14,7 @@
    width, left-aligned. It used to be a 720px centered column, which read
    as "indented" next to the conversation / vote / project pages. */
 .vote-results-page {
-  padding: 1.5rem;
+  padding: var(--space-6);
 }
 
 
@@ -41,7 +41,7 @@
   font-size: var(--font-size-sm);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 .vote-results-header h1 {
@@ -63,8 +63,8 @@
 .vote-results-delivery {
   margin: 0 0 var(--space-xl);
   padding: var(--space-sm) var(--space-md);
-  background: var(--pill-vote-fg, #1e3a5f);
-  color: #fff;
+  background: var(--type-vote-fg);
+  color: var(--color-primary-text);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
   font-weight: 500;
@@ -87,19 +87,19 @@
 .vote-results-section h2::after {
   content: "";
   display: block;
-  width: 2.5rem;
-  height: 3px;
+  width: var(--space-10);
+  height: var(--card-accent-width);
   margin-top: var(--space-xs);
   border-radius: 2px;
-  background: var(--type-brief-rule, #c37b51);
+  background: var(--type-brief-rule);
 }
 
 /* The Summary is the record's opening statement — a tinted card, so the
    eye lands on it first. */
 .vote-results-section--summary {
   padding: var(--space-md) var(--space-lg);
-  background: var(--type-brief-wash, #faf0e7);
-  border-left: 4px solid var(--type-brief-rule, #c37b51);
+  background: var(--type-brief-wash);
+  border-left: var(--card-accent-width) solid var(--type-brief-rule);
   border-radius: var(--radius-md);
 }
 
@@ -119,7 +119,7 @@
 
 .vote-results-options-list {
   list-style: disc;
-  padding-left: 1.25rem;
+  padding-left: var(--space-5);
   margin: 0 0 var(--space-md);
   color: var(--color-text);
   line-height: var(--line-height-base);
@@ -168,7 +168,7 @@
 /* --- Shared chart + list primitives (kept under brief-* names) --- */
 
 .brief-comments-list {
-  padding-left: 1.25rem;
+  padding-left: var(--space-5);
   margin: 0;
   line-height: var(--line-height-base);
   color: var(--color-text);
@@ -218,7 +218,7 @@
   font-family: var(--font-heading);
   font-size: var(--font-size-lg);
   line-height: var(--line-height-normal);
-  color: var(--type-brief-fg, #8c4a2b);
+  color: var(--type-brief-fg);
 }
 
 @media (max-width: 600px) {

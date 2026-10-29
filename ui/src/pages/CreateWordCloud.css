@@ -1,6 +1,6 @@
 .create-wordcloud-page {
   padding: var(--space-lg);
-  max-width: 720px;
+  max-width: var(--width-prose);
   margin: 0 auto;
 }
 

@@ -14,7 +14,7 @@
   font-size: var(--font-size-3xl);
   font-weight: 600;
   margin: 0 0 var(--space-md);
-  letter-spacing: -0.005em;
+  letter-spacing: var(--letter-spacing-normal);
 }
 .search-page h1 em {
   font-style: normal;
@@ -22,7 +22,7 @@
 }
 
 .search-page-input {
-  max-width: 560px;
+  max-width: var(--max-width-feed);
 }
 
 .search-page-filters {
@@ -45,13 +45,13 @@
   font: inherit;
   font-size: var(--font-size-sm);
   font-weight: 600;
-  padding: 0.4rem 0.9rem;
+  padding: var(--space-1-5) var(--space-4);
   border-radius: var(--radius-pill);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-muted);
   cursor: pointer;
-  min-height: 36px;
+  min-height: var(--control-height);
   transition:
     background 0.15s ease,
     color 0.15s ease,
@@ -83,7 +83,7 @@
 .search-page-sort select {
   font: inherit;
   font-size: var(--font-size-sm);
-  padding: 0.35rem 0.5rem;
+  padding: var(--space-1-5) var(--space-2);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   background: var(--color-surface);
@@ -111,9 +111,9 @@
 
 .search-page-card {
   display: block;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
   padding: var(--space-md) var(--space-lg);
   text-decoration: none;
   color: inherit;
@@ -174,7 +174,7 @@
   color: var(--color-text);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) var(--space-4);
   font: inherit;
   cursor: pointer;
 }
@@ -202,7 +202,7 @@
   background: var(--color-primary);
   color: var(--color-primary-text);
   border: none;
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) var(--space-4);
   font: inherit;
   font-weight: 600;
   border-radius: var(--radius-md);
