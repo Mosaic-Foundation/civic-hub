@@ -6,9 +6,13 @@ import App from './App.tsx'
 import { loadHubConfig, applyHubHead, getHubDeadEnd, getHubMovedTo } from './config/hubConfig'
 import { DEAD_ENDS, DEAD_END_STYLE } from '../../src/shared/deadEnd'
 import { installErrorReporter } from './services/errorReporter'
+import { applyDesignLook } from './config/look'
 
 // Uncaught errors go to the hub's /api/client-errors (operations shell).
 installErrorReporter('hub')
+
+// The design pass's ?look=a|b on dev (temporary; config/look.ts).
+applyDesignLook()
 
 // Which hub is this? Decided by the hostname, so it has to be fetched before
 // anything renders: a first paint with the wrong hub's name and banner, then
