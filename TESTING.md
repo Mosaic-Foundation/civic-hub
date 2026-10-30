@@ -87,6 +87,34 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Pilot readiness 1: from the invite to a working hub, and a new kind of hub (2026-10-30)
+
+- **UI (jsdom, `ui/`, `npm test`):**
+  - `HubReadyDialog.test.tsx`: the pop-up has the first steps, the guide link in a new tab and the address.
+  - `AdminBar.test.tsx`: the Setup guide link on the bar and in the column's list, from `helpRegistry.json`'s
+    `admin.setup_guide` (pending: the link opens the page's top until the docs publish that anchor).
+  - `JurisdictionPicker.test.tsx`: Clear, typing over a pick, one backspace, a new state or type drops the pick;
+    `crossesPlace` and `choiceAfterKind`.
+  - `CreateForm.test.tsx`: Kind of hub updates the form at once, a typed place only for a neighbourhood or
+    association, Location for every kind and required only for a jurisdiction.
+  - `start/App.test.tsx`: `#code=` fills the field and leaves the address (the module reads it once, so each case
+    resets the modules).
+  - `PeopleSection.test.tsx`: Settings → Admins is about admins; an old board list still shows, without Add.
+  - `HubInfo.test.tsx`: a hub of another kind is headed by its name, its location beside the label.
+- **Unit:** `tests/unit/hubInvite.test.ts` (the link, the fragment, the message and the email in both forms); the
+  kind's samples and wording join `sampleRefresh`, `hubWording`, `jurisdictions` and `consolePolish`.
+- **API:** `tests/api/startPage.test.ts`: `POST /control/invites/:id/send` emails an unused code and audits
+  `invite.send` with `sent_to` and no code; refuses a bad address, another invite's code and a revoked code; a
+  neighbourhood or association hub with a typed name, or a location from the list, with its samples; a typed place on
+  a jurisdiction's hub refused from the start page. With no mailer (local, CI) a send counts as sent, as the other
+  flows do; the 502 with a mailer that fails is not exercised.
+- **E2E:** `startPage.spec.ts` sends the invite from the console's card, opens the link (from `about:blank`: a goto
+  that only changes the fragment does not reload the page) and checks the pop-up.
+- **Local pitfall:** the UI lint allows no warning, and exporting a helper from a component's file is one
+  (`react-refresh/only-export-components`). `npm run lint` in `ui/` as well as the root before a push.
+
+---
+
 ## The design pass: tokens, the kit, admin as its own place, dark mode (2026-10-29)
 
 **Every colour, font and size is a token, and the checks hold it there (ADR-018).**
