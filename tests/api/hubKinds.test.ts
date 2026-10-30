@@ -79,7 +79,7 @@ describe("a place hub", () => {
     for (const extra of [{}, { hub_kind: "place" }]) {
       const res = await create({ slug: `kind-pl-${run}`, ...extra });
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/A place hub needs its jurisdiction/);
+      expect(res.body.error).toMatch(/A jurisdiction's hub needs its jurisdiction/);
     }
   });
 });

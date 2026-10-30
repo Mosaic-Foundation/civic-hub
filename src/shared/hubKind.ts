@@ -1,21 +1,29 @@
-// What a hub IS (`identity.hub_kind`, 2026-09-27, Adam): a place's hub — a
-// local government or community — or an issue campaign, an organization or
-// club, or something else. Structure helps when it fits; it never forces a
-// place onto a hub that has none.
+// What a hub IS (`identity.hub_kind`, 2026-09-27, Adam): a jurisdiction's hub
+// (the id stays `place`), a neighbourhood or association, an issue campaign,
+// an organization or club, or something else. Structure helps when it fits;
+// it never forces a place onto a hub that has none.
 //
-//   place         a jurisdiction is required: a reference row, or custom
-//   issue         a related place is optional (a campaign may be statewide)
-//   organization  a related place is optional
-//   other         a related place is optional
+//   place         a jurisdiction is required
+//   community     a neighbourhood, a homeowners association, a tribal nation,
+//                 an association: its location is optional, from the list or
+//                 typed when the list doesn't have it (2026-10-30)
+//   issue         a location is optional (a campaign may be statewide)
+//   organization  a location is optional
+//   other         a location is optional
 //
 // Unset means `place`: every hub made before the setting existed serves a
 // place. `identity.jurisdiction_type` and the governing body belong to place
 // hubs only. Shared by the server, the console and the hub UI. Pure.
 
-export type HubKind = "place" | "issue" | "organization" | "other";
+export type HubKind = "place" | "community" | "issue" | "organization" | "other";
 
 export const HUB_KINDS: ReadonlyArray<{ id: HubKind; label: string; hint: string }> = [
-  { id: "place", label: "Place", hint: "A local government or community: a county, city, town or school district." },
+  { id: "place", label: "Jurisdiction", hint: "A local government: a county, city, town or school district." },
+  {
+    id: "community",
+    label: "Neighbourhood or association",
+    hint: "A neighbourhood, a homeowners association, a tribal nation or an association: people who share a place and decide together.",
+  },
   { id: "issue", label: "Issue campaign", hint: "A cause that crosses places, such as a ranked-choice voting effort." },
   { id: "organization", label: "Organization or club", hint: "A group with members, wherever they live." },
   { id: "other", label: "Other", hint: "Anything else." },
@@ -41,7 +49,7 @@ export function hubKindOf(value: string | null | undefined): HubKind {
  */
 export function participantNoun(kind: HubKind, count: number, custom?: string | null): string {
   const own = custom?.trim().toLowerCase();
-  const one = own || (kind === "place" ? "resident" : kind === "organization" ? "member" : "participant");
+  const one = own || (kind === "place" ? "resident" : kind === "organization" || kind === "community" ? "member" : "participant");
   return count === 1 ? one : pluralNoun(one);
 }
 
@@ -70,6 +78,6 @@ export function personLabel(kind: HubKind, custom?: string | null): string {
  */
 export function affiliationClause(kind: HubKind, names: { place: string; hub: string }): string | null {
   if (kind === "place") return `I confirm that I am a resident of ${names.place}`;
-  if (kind === "organization") return `I confirm that I am a member of ${names.hub}`;
+  if (kind === "organization" || kind === "community") return `I confirm that I am a member of ${names.hub}`;
   return null;
 }

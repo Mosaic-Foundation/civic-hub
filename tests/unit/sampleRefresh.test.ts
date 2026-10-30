@@ -33,7 +33,7 @@ const ALL = { open: true, endorsing: true, closedWithOutcome: true, proposal: tr
 describe("samples for every kind of hub", () => {
   it("gives every place type and every other kind the required mix", () => {
     for (const t of JURISDICTION_TYPES.map((x) => x.id)) expect(mix(templatesFor(t, "place")), t).toEqual(ALL);
-    for (const k of ["organization", "issue", "other"] as const) expect(mix(templatesFor(null, k)), k).toEqual(ALL);
+    for (const k of ["community", "organization", "issue", "other"] as const) expect(mix(templatesFor(null, k)), k).toEqual(ALL);
   });
 
   it("spreads each kind's set across the plugin types", () => {
@@ -43,6 +43,7 @@ describe("samples for every kind of hub", () => {
     expect([...kinds(templatesFor("school_district"))].sort()).toEqual([...every].sort());
     expect([...kinds(templatesFor(null, "organization"))].sort()).toEqual([...every].sort());
     expect([...kinds(templatesFor(null, "issue"))].sort()).toEqual([...every].sort());
+    expect([...kinds(templatesFor(null, "community"))].sort()).toEqual([...every].sort());
   });
 
   it("names no place or governing body in a set for a hub without one", () => {

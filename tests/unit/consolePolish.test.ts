@@ -65,12 +65,14 @@ describe("affiliation by hub kind", () => {
     expect(affiliationClause("organization", names)).toBe("I confirm that I am a member of Example Civic Hub");
   });
   it("asks nothing of an issue campaign or another kind", () => {
+    expect(affiliationClause("community", names)).toBe("I confirm that I am a member of Example Civic Hub");
     expect(affiliationClause("issue", names)).toBeNull();
     expect(affiliationClause("other", names)).toBeNull();
   });
   it("names an unnamed person by the kind", () => {
     expect(personLabel("place")).toBe("Resident");
     expect(personLabel("organization")).toBe("Member");
+    expect(personLabel("community")).toBe("Member");
     expect(personLabel("issue")).toBe("Participant");
     expect(personLabel("other")).toBe("Participant");
   });

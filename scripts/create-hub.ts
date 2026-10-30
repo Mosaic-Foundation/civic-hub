@@ -34,6 +34,7 @@
  * deployment's own admin the way the Athens fixture does.
  */
 
+import type { HubKind } from "../src/shared/hubKind.js";
 import { createHub, planCreateHub, ControlInputError } from "../src/control/hubs.js";
 import { addStarterWordcloud } from "../src/control/inHub.js";
 import { isHubMode, type HubMode } from "../src/models/hub.js";
@@ -110,7 +111,7 @@ async function main(): Promise<void> {
     jurisdictionName,
     jurisdictionOcdId: ocdId,
     jurisdictionCustom: !ocdId && !!jurisdiction,
-    hubKind: kind as "place" | "issue" | "organization" | "other",
+    hubKind: kind as HubKind,
     governingBody: null,
     admins,
     mode,

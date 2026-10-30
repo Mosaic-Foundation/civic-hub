@@ -102,6 +102,7 @@ export function defaultWelcomeStrip(ctx: HubCopyContext): string {
     case "place":
       return `A new space to follow ${governmentPhrase(ctx.jurisdictionType)}, raise the issues that matter, and decide together.`;
     case "organization":
+    case "community":
       return `A new space for ${participantNoun(ctx.kind, 2, ctx.residentNoun)} to raise the issues that matter and decide together.`;
     case "issue":
       return `A new space for everyone working on this cause to raise what matters and decide together.`;

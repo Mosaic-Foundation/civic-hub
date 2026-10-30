@@ -40,7 +40,7 @@ import { consoleHostname, isProductionDatabase, platformDomain } from "./config.
 import { defaultGoverningBody, defaultGoverningBodyShort, isJurisdictionType, stateOfOcdId, type JurisdictionType } from "../shared/jurisdictionType.js";
 import { suggestedTimeZone } from "../shared/stateTimeZones.js";
 import { getJurisdiction, type Jurisdiction } from "./jurisdictions.js";
-import { DEFAULT_HUB_KIND, hubKindOf, isHubKind, type HubKind } from "../shared/hubKind.js";
+import { DEFAULT_HUB_KIND, HUB_KINDS, hubKindOf, isHubKind, type HubKind } from "../shared/hubKind.js";
 import { jurisdictionCodeFor } from "../shared/jurisdictionNames.js";
 import { isValidTimeZone } from "../utils/hubTime.js";
 import { fieldSpec } from "../shared/hubSettingsSections.js";
@@ -381,7 +381,7 @@ export function parseCreateInput(body: Record<string, unknown>): CreateHubInput 
     throw new ControlInputError(`"${jurisdictionType}" is not a jurisdiction type.`);
   }
   const kind = text(body.hub_kind, 32) || DEFAULT_HUB_KIND;
-  if (!isHubKind(kind)) throw new ControlInputError(`"${kind}" is not a kind of hub. Choose place, issue, organization or other.`);
+  if (!isHubKind(kind)) throw new ControlInputError(`"${kind}" is not a kind of hub. Choose ${HUB_KINDS.map((k) => k.id).join(", ")}.`);
   const custom = body.jurisdiction_custom === true;
   const ocdId = orNull(text(body.jurisdiction_ocd_id, 300));
   if (custom && ocdId) throw new ControlInputError("A custom jurisdiction has no OCD id. Choose one or the other.");
@@ -453,7 +453,7 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
   const hasJurisdiction = Boolean(input.jurisdictionOcdId || input.jurisdictionCustom);
   if (kind === "place" && !hasJurisdiction) {
     throw new ControlInputError(
-      "A place hub needs its jurisdiction: choose it from the list, or Other / not listed. (An issue campaign, an organization or another kind of hub may have none.)",
+      "A jurisdiction's hub needs its jurisdiction: choose it from the list, or Other / not listed. (Any other kind of hub may have none.)",
     );
   }
   if (kind !== "place" && input.jurisdictionType) {
@@ -754,7 +754,7 @@ export async function validateHubConfig(hub: ControlHub, changes: Partial<HubCon
   if (touchesPlace) {
     const kindAfter = changes.hub_kind ?? (await hubKind(hub.id));
     if (kindAfter === "place" && !ocdAfter && !customAfter) {
-      throw new ControlInputError("A place hub needs its jurisdiction: choose it from the list, or Other / not listed.");
+      throw new ControlInputError("A jurisdiction's hub needs its jurisdiction: choose it from the list, or Other / not listed.");
     }
     const nameAfter = changes.jurisdiction_name !== undefined ? changes.jurisdiction_name : hub.jurisdiction_name;
     if (!ocdAfter && !customAfter && nameAfter) {

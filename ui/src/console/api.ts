@@ -72,7 +72,7 @@ export interface Hub {
 }
 
 export interface HubConfig {
-  hub_kind: "place" | "issue" | "organization" | "other";
+  hub_kind: "place" | "community" | "issue" | "organization" | "other";
   name: string;
   hostname: string;
   jurisdiction_code: string | null;

@@ -31,6 +31,7 @@ const PLACE_ONLY: readonly HubKind[] = ["place"];
 // "other" takes the organization set (Adam, 2026-10-07).
 const ORGANIZATION: readonly HubKind[] = ["organization", "other"];
 const ISSUE: readonly HubKind[] = ["issue"];
+const COMMUNITY: readonly HubKind[] = ["community"];
 
 // --- Synthetic authors --------------------------------------------------------
 
@@ -1101,6 +1102,282 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
       ["change", 2],
       ["skills", 2],
       ["volunteering", 2],
+    ],
+  },
+
+  // ===========================================================================
+  // Neighbourhoods and associations (2026-10-30). People who share a place and
+  // look after it together: a neighbourhood, a homeowners association, a tribal
+  // nation. Their own voice ("we", "our"); no named place, no governing body.
+  // ===========================================================================
+
+  {
+    key: "community_vote_shared_funds",
+    kind: "vote",
+    kinds: COMMUNITY,
+    fits: EVERY_TYPE,
+    by: "JORDAN",
+    at: -6,
+    title: "What should we do first with this year's shared funds?",
+    description:
+      "There is enough in the shared fund this year for one larger piece of work. The paths and lighting are showing their age, the shared green spaces need replanting, and some of us would rather build up the reserve for repairs we can't see coming.\n\n" +
+      "Pick the one you would do first. The result guides the budget at the next meeting.",
+    method: "yes_no_unsure",
+    options: [
+      "Repair the paths and lighting",
+      "Replant the shared green spaces",
+      "Put more aside for future repairs",
+    ],
+    phase: "open",
+    opens_at: -6,
+    closes_at: 8,
+    ballots: [9, 6, 8],
+  },
+  {
+    key: "community_vote_work_days",
+    kind: "vote",
+    kinds: COMMUNITY,
+    fits: EVERY_TYPE,
+    by: "SAM",
+    at: -5,
+    title: "Should we hold a shared work day each spring and fall?",
+    description:
+      "A work day would get small jobs done without paying for them, and it is a good way to meet people. Not everyone can give up a weekend day, though, and some worry that the same few people would end up doing the work.\n\n" +
+      "This vote opens once enough members endorse it. Endorse it if you think members should be asked; endorsing does not mean you would vote yes.",
+    method: "yes_no_unsure",
+    options: ["Yes", "No", "Unsure"],
+    phase: "proposed",
+    endorsed_by: ["SAM", "ALEX", "CASEY"],
+  },
+  {
+    key: "community_vote_notices",
+    kind: "vote",
+    kinds: COMMUNITY,
+    fits: EVERY_TYPE,
+    by: "ALEX",
+    at: -21,
+    title: "How should we hear about work on our shared spaces?",
+    description:
+      "When a road is closed or the water is off for repairs, some people find out in good time and others find out when it happens. We want one main way to tell everyone.\n\n" +
+      "Pick the one you would rely on.",
+    method: "yes_no_unsure",
+    options: ["A monthly email", "Everything posted here on the hub", "Paper notices at the shared noticeboards"],
+    phase: "closed",
+    opens_at: -20,
+    closes_at: -6,
+    ballots: [10, 16, 8],
+  },
+  {
+    key: "community_outcome_notices",
+    kind: "outcome",
+    kinds: COMMUNITY,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -6,
+    source: "community_vote_notices",
+    published_at: -4,
+    headline: "Posting everything here on the hub came first",
+    summary:
+      "The question. Which one way members would rely on to hear about work on shared spaces: a monthly email, the hub, or paper notices.\n\n" +
+      "Result. 34 people voted over two weeks: 47% the hub, 29% a monthly email, 24% paper notices. No option had a majority.",
+    sections: [
+      {
+        heading: "What supporters of the hub said",
+        body: "Notices can go up the same day, and everything stays in one place to look back on.",
+      },
+      {
+        heading: "What supporters of a monthly email said",
+        body: "An email comes to you, so nobody has to remember to check, and it is easy to find again.",
+      },
+      {
+        heading: "What supporters of paper notices said",
+        body: "Not everyone is online, and a notice on the board reaches people walking past, visitors included.",
+      },
+      {
+        heading: "Suggested next step",
+        body: "Post everything here first, and put urgent notices on the boards as well, so nobody is left out.",
+      },
+    ],
+    participation_label: "34 people voted",
+    participation_count: 34,
+    sent_to: "the organizers",
+  },
+  {
+    key: "community_proposal_tool_library",
+    kind: "proposal",
+    kinds: COMMUNITY,
+    fits: EVERY_TYPE,
+    by: "JORDAN",
+    at: -9,
+    title: "Start a shared tool library",
+    description:
+      "Most of us own a ladder or a mower we use a few times a year, and some of us have none and borrow when we can. A shared list would save money and put fewer tools in sheds.\n\n" +
+      "The proposal: a simple list, kept here, of tools people are willing to lend, with a named person to ask for each one and a short note on how to return it.",
+    closes_at: 21,
+    endorsed_by: ["JORDAN", "ALEX", "CASEY"],
+    comments: [
+      {
+        by: "ALEX",
+        at: -8,
+        body: "I'd use this. I bought a pressure washer for one job and it has sat in the garage ever since.",
+      },
+      {
+        by: "SAM",
+        at: -7,
+        body: "What happens when something breaks? I'd want that settled before I lend anything out.",
+      },
+      {
+        by: "CASEY",
+        at: -5,
+        body: "Could we start with a short list and one rule: if you break it, you fix it or replace it?",
+      },
+    ],
+  },
+  {
+    key: "community_deliberation_shared_care",
+    kind: "deliberation",
+    kinds: COMMUNITY,
+    fits: EVERY_TYPE,
+    by: "CASEY",
+    at: -10,
+    topic: "Looking after our shared spaces: what's fair?",
+    framing:
+      "Some people give a lot of time to the places we share, and others can't or don't. Some think dues should pay for the work; others would rather do it themselves and keep the dues low.\n\n" +
+      "React to each statement (agree, disagree or pass) and add your own. The organizers will use the results to plan the coming year.",
+    closes_at: 32,
+    statements: [
+      "We should pay for regular upkeep rather than rely on volunteers.",
+      "Everyone who lives here should give some time each year, if they are able.",
+      "Dues should stay as low as we can keep them, even if the work takes longer.",
+      "People who can't give time should be able to give money instead.",
+      "The rules about shared spaces are too hard to find.",
+      "Newcomers should be told plainly what is expected of them when they arrive.",
+      "A few people decide too much of what happens to our shared spaces.",
+      "We should agree a short list of priorities each year and stick to it.",
+    ],
+    picture: {
+      participants: 19,
+      groups: [
+        { size: 10, agree: [0, 3, 7], disagree: [2] },
+        { size: 9, agree: [1, 2, 6], disagree: [0] },
+      ],
+      consensus: [
+        { statement: 4, agree_rate: 0.89, votes: 19 },
+        { statement: 5, agree_rate: 0.84, votes: 19 },
+      ],
+    },
+  },
+  {
+    key: "community_project_welcome_packet",
+    kind: "project",
+    kinds: COMMUNITY,
+    fits: EVERY_TYPE,
+    by: "CASEY",
+    at: -18,
+    title: "A welcome packet for new households",
+    description:
+      "A few of us are putting together a short packet for people who have just moved in: who to call about what, when the bins go out, what the shared spaces are for, and how decisions get made.\n\n" +
+      "We'd like help from anyone who moved here recently and remembers what they wished they had known.",
+    supported_by: ["JORDAN", "SAM"],
+    updates: [
+      {
+        at: -7,
+        body: "A first draft is done: two pages, with the phone numbers on the front. Next step: three recent arrivals read it and tell us what is missing.",
+      },
+    ],
+    comments: [
+      {
+        by: "SAM",
+        at: -12,
+        body: "Please put in who to call when something breaks on a weekend. That was the first thing I needed.",
+      },
+      {
+        by: "ALEX",
+        at: -9,
+        body: "A printed copy matters too. Not everyone will read it on a screen in their first week.",
+      },
+    ],
+  },
+  {
+    key: "community_announcement_annual_meeting",
+    kind: "announcement",
+    kinds: COMMUNITY,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -2,
+    title: "Annual meeting: the budget, elections and the year ahead",
+    body:
+      "Our annual meeting will review the past year, present the budget for the coming one, and elect officers.\n\n" +
+      "Anyone who is a member may stand. Nominations are open until one week before the meeting; the date, time and place will be posted here.",
+  },
+  {
+    key: "community_meeting_summary",
+    kind: "meeting_summary",
+    kinds: COMMUNITY,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -8,
+    meeting_title: "Community meeting",
+    meeting_at: -9,
+    published_at: -8,
+    blocks: [
+      {
+        title: "Open comments",
+        summary:
+          "Three members spoke. One asked about speeding on the through road, one offered to help with the planting, and one thanked the people who cleared the paths after the last storm.",
+        at_minute: 3,
+        action: null,
+      },
+      {
+        title: "Treasurer's report",
+        summary:
+          "The treasurer reported income and spending for the quarter. Members asked how much is held for repairs and whether dues cover regular upkeep.",
+        at_minute: 15,
+        action: "Report accepted.",
+      },
+      {
+        title: "Shared spaces",
+        summary:
+          "The grounds group reported on the paths and lighting, and on the cost of replanting. Members agreed to put the choice to a vote rather than decide it at the meeting.",
+        at_minute: 31,
+        action: "A vote on the shared funds to open this month.",
+      },
+      {
+        title: "Next meeting",
+        summary: "Members asked for the next meeting to come after the vote closes, so the budget can reflect the result.",
+        at_minute: 52,
+        action: "Next meeting date to be set after the vote closes.",
+      },
+    ],
+    minutes:
+      "Call to order. The chair opened the meeting. The agenda was approved, and the notes of the previous meeting were accepted.\n\n" +
+      "Open comments. Three members spoke. One asked about speeding on the through road. One offered to help with the planting. One thanked the people who cleared the paths after the last storm.\n\n" +
+      "Treasurer's report. The treasurer reported income and spending for the quarter. Members asked how much is held for repairs and whether dues cover regular upkeep. The report was accepted.\n\n" +
+      "Shared spaces. The grounds group reported on the paths and lighting, and on the cost of replanting. Members agreed to put the choice to a vote rather than decide it at the meeting.\n\n" +
+      "Next meeting. The date of the next meeting will be set after the vote on the shared funds closes.\n\n" +
+      "Adjournment. The meeting was adjourned.",
+  },
+  {
+    key: "community_wordcloud_living_here",
+    kind: "wordcloud",
+    kinds: COMMUNITY,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -12,
+    title: "What do you value most about living here?",
+    description: "One word is enough. Answers appear in the cloud as they come in.",
+    prompt: "In one word, what do you value most about living here?",
+    answers: [
+      ["neighbors", 6],
+      ["quiet", 5],
+      ["trees", 4],
+      ["safety", 4],
+      ["walking", 3],
+      ["friendly", 3],
+      ["history", 2],
+      ["children", 2],
+      ["gardens", 2],
+      ["home", 2],
     ],
   },
 

@@ -41,6 +41,7 @@ const CASES: Case[] = [
   { label: "town", kind: "place", type: "town", name: "Town of Example Civic Hub", jurisdiction: "Town of Example, Zedland" },
   { label: "school district", kind: "place", type: "school_district", name: "Example School District Civic Hub", jurisdiction: "Example School District, Zedland" },
   { label: "organization", kind: "organization", type: null, name: "Example Tenants Association", jurisdiction: null },
+  { label: "neighbourhood or association", kind: "community", type: null, name: "Example Homeowners Association", jurisdiction: null },
   { label: "issue campaign", kind: "issue", type: null, name: "Fair Votes Now", jurisdiction: null },
 ];
 
@@ -104,7 +105,7 @@ describe.each(CASES)("a $label hub's own words", (c) => {
 
   it("names its people by kind", () => {
     const one = participantNoun(c.kind, 1);
-    expect(one).toBe(c.kind === "place" ? "resident" : c.kind === "organization" ? "member" : "participant");
+    expect(one).toBe(c.kind === "place" ? "resident" : c.kind === "organization" || c.kind === "community" ? "member" : "participant");
   });
 });
 
