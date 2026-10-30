@@ -28,12 +28,9 @@ export default function AdminBar() {
           </span>
         </div>
         <nav className="admin-bar-tabs admin-tabs" aria-label="Admin sections">
-          {items.map((item) =>
-            item.href ? (
-              <a key={item.id} href={item.href} target="_blank" rel="noopener" className="admin-tab" data-nav-id={item.id}>
-                {item.label}
-              </a>
-            ) : (
+          {items
+            .filter((item) => !item.href)
+            .map((item) => (
               <Link
                 key={item.id}
                 to={item.to!}
@@ -48,9 +45,16 @@ export default function AdminBar() {
                   </span>
                 )}
               </Link>
-            ),
-          )}
+            ))}
         </nav>
+        {/* Off to the docs, and outside the scrolling tabs so it is always in view. */}
+        {items
+          .filter((item) => item.href)
+          .map((item) => (
+            <a key={item.id} href={item.href} target="_blank" rel="noopener" className="admin-bar-guide" data-nav-id={item.id}>
+              {item.label}
+            </a>
+          ))}
       </div>
     </div>
   );

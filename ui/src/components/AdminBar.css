@@ -33,6 +33,22 @@
   white-space: nowrap;
 }
 
+.admin-bar-guide {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  margin-left: auto;
+  min-height: var(--tap-target);
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-admin-bar-text);
+  white-space: nowrap;
+}
+
+.admin-bar-guide:hover {
+  color: var(--color-admin-bar-text-active);
+}
+
 .admin-bar-back:hover {
   color: var(--color-admin-bar-text-active);
   text-decoration: none;
@@ -93,6 +109,7 @@
 }
 
 .admin-bar .admin-tab:focus-visible,
+.admin-bar-guide:focus-visible,
 .admin-bar-back:focus-visible {
   outline: var(--border-width-strong) solid var(--color-admin-bar-indicator);
   outline-offset: calc(-1 * var(--border-width-strong));

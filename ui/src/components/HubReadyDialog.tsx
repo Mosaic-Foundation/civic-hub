@@ -8,6 +8,7 @@
 //
 // Same look as IntroPopup: the one Modal, with its styles.
 
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { theName } from "../../../src/shared/hubCopy";
 import { PLATFORM_SETUP_GUIDE_URL } from "../../../src/shared/platform";
@@ -19,6 +20,7 @@ import "./IntroPopup.css";
 export default function HubReadyDialog({ email, onDismiss }: { email: string; onDismiss: () => void }) {
   const hub = useHub();
   const navigate = useNavigate();
+  const primary = useRef<HTMLButtonElement>(null);
 
   function close(next?: string) {
     clearHubJustCreated();
@@ -33,6 +35,7 @@ export default function HubReadyDialog({ email, onDismiss }: { email: string; on
       className="intro-popup"
       bodyClassName="intro-popup-body"
       onClose={() => close()}
+      initialFocus={primary}
     >
       <p className="intro-popup-text">
         You're signed in as the admin of {theName(hub.name)}. It's a demo for now, filled with sample content so you can
@@ -51,7 +54,7 @@ export default function HubReadyDialog({ email, onDismiss }: { email: string; on
         . We've also sent these steps to {email ? <strong>{email}</strong> : "your email"}.
       </p>
       <div className="intro-popup-actions">
-        <button type="button" className="intro-popup-primary" onClick={() => close("/admin/settings")} autoFocus>
+        <button ref={primary} type="button" className="intro-popup-primary" onClick={() => close("/admin/settings")}>
           Open Hub settings
         </button>
         <button type="button" className="intro-popup-secondary" onClick={() => close()}>
