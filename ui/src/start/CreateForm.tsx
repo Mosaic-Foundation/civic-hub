@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StartApiError, startApi, startJurisdictions, type StartConfig } from "./api";
 import type { SlugSuggestion } from "../console/api";
-import { JurisdictionPicker, type JurisdictionChoice } from "../console/JurisdictionPicker";
+import { JurisdictionPicker, crossesPlace, type JurisdictionChoice } from "../console/JurisdictionPicker";
 import { SuggestInput } from "../console/SuggestInput";
 import { TimeZoneSelect } from "../console/TimeZoneSelect";
 import { TermsAtCreate } from "./TermsAtCreate";
@@ -204,8 +204,11 @@ export default function CreateForm({
                   checked={hubKind === k.id}
                   onChange={() => {
                     setHubKind(k.id);
-                    if (k.id !== "place" && choice.kind === "unlinked") setChoice({ kind: "none" });
-                    if (k.id === "place" && choice.kind === "none") setChoice({ kind: "unlinked" });
+                    // A place's details mean something else on the other side, so they go at once.
+                    if (crossesPlace(hubKind, k.id)) {
+                      setChoice(k.id === "place" ? { kind: "unlinked" } : { kind: "none" });
+                      setForm((f) => ({ ...f, jurisdiction_name: "", jurisdiction_type: "", governing_body: "", governing_body_short: "" }));
+                    }
                   }}
                 />
                 <span>

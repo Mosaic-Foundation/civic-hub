@@ -19,7 +19,7 @@ import {
 } from "../../../src/shared/jurisdictionType";
 import { defaultHubName, jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
 import { fillSampleText } from "../../../src/shared/hubCopy";
-import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
+import { JurisdictionPicker, crossesPlace, type JurisdictionChoice } from "./JurisdictionPicker";
 import { PLUGIN_NAMES } from "./pluginNames";
 import { SuggestInput, SuggestNote } from "./SuggestInput";
 import { TimeZoneSelect } from "./TimeZoneSelect";
@@ -280,9 +280,11 @@ export default function CreateHub() {
                     checked={hubKind === k.id}
                     onChange={() => {
                       setHubKind(k.id);
-                      // Leaving "place": no place until one is chosen; back to it: choose one.
-                      if (k.id !== "place" && choice.kind === "unlinked") setChoice({ kind: "none" });
-                      if (k.id === "place" && choice.kind === "none") setChoice({ kind: "unlinked" });
+                      // A place's details mean something else on the other side, so they go at once.
+                      if (crossesPlace(hubKind, k.id)) {
+                        setChoice(k.id === "place" ? { kind: "unlinked" } : { kind: "none" });
+                        setForm((f) => ({ ...f, jurisdiction_name: "", jurisdiction_type: "", governing_body: "", governing_body_short: "" }));
+                      }
                     }}
                   />
                   <span>
