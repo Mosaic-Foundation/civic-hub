@@ -217,8 +217,8 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
 .cx-combo-chosen { font-weight: 600; border-color: var(--cx-accent); }
 .cx-combo-clear {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-  height: 26px; border: 0; border-radius: 13px; padding: 0 10px;
-  background: var(--cx-surface-2); color: var(--cx-text); font-size: 0.8rem; line-height: 1; cursor: pointer;
+  border: 0; border-radius: 8px; padding: 0 8px;
+  background: var(--cx-surface-2); color: var(--cx-text); font-size: 0.8rem; line-height: 1.8; cursor: pointer;
 }
 .cx-combo-clear:hover { color: var(--cx-text); }
 

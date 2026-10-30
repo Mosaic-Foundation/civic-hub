@@ -23,8 +23,17 @@ const source: JurisdictionSource = {
 let latest: JurisdictionChoice = { kind: "unlinked" };
 function Harness() {
   const [value, setValue] = useState<JurisdictionChoice>({ kind: "unlinked" });
-  latest = value;
-  return <JurisdictionPicker value={value} onChange={setValue} source={source} plain />;
+  return (
+    <JurisdictionPicker
+      value={value}
+      onChange={(next) => {
+        latest = next;
+        setValue(next);
+      }}
+      source={source}
+      plain
+    />
+  );
 }
 
 async function pick(name: string) {
