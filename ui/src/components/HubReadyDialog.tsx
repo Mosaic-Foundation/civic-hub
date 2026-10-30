@@ -41,7 +41,7 @@ export default function HubReadyDialog({ email, onDismiss }: { email: string; on
       <p className="intro-popup-text">Your first steps:</p>
       <ol className="intro-popup-text intro-popup-steps">
         <li>Open Hub settings. Work through Identity, Copy &amp; pages, Legal and Email, so the hub speaks for your community.</li>
-        <li>Under Admins &amp; board, add anyone who will run the hub with you. They get an email with these steps.</li>
+        <li>Under Admins, add anyone who will run the hub with you. They get an email with these steps.</li>
         <li>When it's ready, Hub settings → Mode moves it to beta.</li>
       </ol>
       <p className="intro-popup-text">

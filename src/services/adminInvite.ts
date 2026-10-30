@@ -2,7 +2,7 @@
 //
 // Sent to each address that joins a hub's admin list: the first admin when
 // the console creates the hub, and anyone added later, from the console or
-// from the hub's own Settings → Admins & board. Before this, nobody was told;
+// from the hub's own Settings → Admins. Before this, nobody was told;
 // they learned they were an admin by signing in.
 //
 // Runs inside the hub's scope (the console wraps the call in withHubScope),
@@ -46,7 +46,7 @@ export function renderAdminInvite(input: AdminInviteInput): { subject: string; t
   const steps = [
     `Go to ${hubUrl} and sign in with this email address. A code comes to you by email.`,
     `Open Hub settings (${settingsUrl}). Work through Identity, Copy & pages, Legal and Email, so the hub speaks for your community.`,
-    "Under Admins & board, add anyone who will run the hub with you. They get an email like this one.",
+    "Under Admins, add anyone who will run the hub with you. They get an email like this one.",
   ];
   const subject = `You're now an admin of ${hubName}`;
   const text = [
@@ -69,7 +69,7 @@ export function renderAdminInvite(input: AdminInviteInput): { subject: string; t
     `<ol>`,
     `<li>Go to ${link(hubUrl)} and sign in with this email address. A code comes to you by email.</li>`,
     `<li>Open ${link(settingsUrl, "Hub settings")}. Work through Identity, Copy &amp; pages, Legal and Email, so the hub speaks for your community.</li>`,
-    `<li>Under Admins &amp; board, add anyone who will run the hub with you. They get an email like this one.</li>`,
+    `<li>Under Admins, add anyone who will run the hub with you. They get an email like this one.</li>`,
     `</ol>`,
     `<p>${escapeHtml(MODE_LINE[input.mode])}</p>`,
     `<p>Questions? Write to ${link(`mailto:${PLATFORM_CONTACT_EMAIL}`, PLATFORM_CONTACT_EMAIL)}.</p>`,

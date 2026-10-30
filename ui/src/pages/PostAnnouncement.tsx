@@ -67,7 +67,7 @@ export default function PostAnnouncement() {
         </Link>
         <h1>Not available</h1>
         <p>
-          Only Board members and admins can post announcements. If you believe
+          Only officials and admins can post announcements. If you believe
           this is a mistake, contact the hub administrator.
         </p>
       </div>
@@ -91,7 +91,7 @@ export default function PostAnnouncement() {
           </Link>
           <h1>Not your announcement</h1>
           <p>
-            Board members can only edit announcements they posted. If a
+            Officials can only edit announcements they posted. If a
             correction is needed, ask an admin.
           </p>
         </div>

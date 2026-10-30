@@ -1,10 +1,14 @@
-// Admins & board — the hub's roster. A roster change is the one edit on this
+// Admins: who runs the hub. Board members and other office holders go under
+// Officials (Adam, 2026-10-30). A hub that already has addresses on the old
+// board list (people.board_emails) still sees them here, to move and remove:
+// they keep signing in until they are. A roster change is the one edit on this
 // page that takes a fresh emailed code, so it carries its own little state
 // machine: edit the lists, ask for a code, type it in, save. See
 // src/controllers/adminStepUp.ts.
 
 import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
 import PatternAvatar from "../../components/PatternAvatar";
 import { useHub } from "../../config/hub";
@@ -23,6 +27,8 @@ export default function PeopleSection() {
 
   const [adminEmails, setAdminEmails] = useState<string[]>([]);
   const [boardEmails, setBoardEmails] = useState<string[]>([]);
+  /** The old board list, shown only to a hub that came here with one. */
+  const [hasOldBoardList, setHasOldBoardList] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState("");
   const [peopleCode, setPeopleCode] = useState("");
   const [peopleCodeSent, setPeopleCodeSent] = useState(false);
@@ -34,6 +40,7 @@ export default function PeopleSection() {
       .then((p) => {
         setAdminEmails(p.admin_emails);
         setBoardEmails(p.board_emails);
+        setHasOldBoardList(p.board_emails.length > 0);
         setSavedSnapshot(JSON.stringify({ admin_emails: p.admin_emails, board_emails: p.board_emails }));
       })
       .catch((err: Error) => {
@@ -81,8 +88,8 @@ export default function PeopleSection() {
       setPeopleCode("");
       setPeopleCodeSent(false);
       setPeopleMessage(
-        `Saved. ${saved.admin_emails.length} admin${saved.admin_emails.length === 1 ? "" : "s"}, ` +
-          `${saved.board_emails.length} board member${saved.board_emails.length === 1 ? "" : "s"}.` +
+        `Saved. ${saved.admin_emails.length} admin${saved.admin_emails.length === 1 ? "" : "s"}. ` +
+          (saved.board_emails.length > 0 ? `${saved.board_emails.length} on the old board list.` : "") +
           (saved.invite_message ? ` ${saved.invite_message}` : ""),
       );
     } catch (err) {
@@ -97,16 +104,15 @@ export default function PeopleSection() {
   return (
     <section className="settings-section">
       <h2 className="settings-section-title">
-        Admins & board
-        <HelpButton k="settings.people" label="Admins & board" />
+        Admins
+        <HelpButton k="settings.people" label="Admins" />
       </h2>
 
       <p className="form-hint">
-        Admins reach every page under /admin and can post announcements.
-        Board members can sign in while the hub is in beta, and can post
-        announcements until an Officials list is saved (after that, list
-        them there too); they cannot reach admin pages. Both lists belong to
-        this hub — an admin here is not an admin on any other hub.
+        Admins reach every page under /admin and can post announcements. The
+        list belongs to this hub: an admin here is not an admin on any other
+        hub. Board members and other office holders go under{" "}
+        <Link to="/admin/settings/officials">Officials</Link>.
       </p>
       <p className="form-hint">
         A new admin gets an email saying so, with a link and the first steps.
@@ -125,14 +131,21 @@ export default function PeopleSection() {
         minimumHint="A hub must keep at least one admin."
       />
 
-      <EmailListEditor
-        label="Board members"
-        helpKey="people.board"
-        addLabel="+ Add board member"
-        emails={boardEmails}
-        onChange={setBoardEmails}
-        disabled={savingPeople}
-      />
+      {hasOldBoardList && (
+        <>
+          <EmailListEditor
+            label="Old board list"
+            helpKey="people.board"
+            emails={boardEmails}
+            onChange={setBoardEmails}
+            disabled={savingPeople}
+          />
+          <p className="form-hint">
+            These addresses can still sign in while the hub is in beta. List them
+            under <Link to="/admin/settings/officials">Officials</Link>, then remove them here.
+          </p>
+        </>
+      )}
 
       <p className="form-hint" style={{ marginTop: "var(--space-md)" }}>
         Changing who administers a hub takes a code emailed to you now —
@@ -168,7 +181,7 @@ export default function PeopleSection() {
               onClick={savePeople}
               disabled={savingPeople || peopleCode.trim().length === 0}
             >
-              {savingPeople ? "Saving…" : "Save roster"}
+              {savingPeople ? "Saving…" : "Save"}
             </button>
             <button
               type="button"
@@ -255,7 +268,8 @@ function EmailListEditor({
 }: {
   label: string;
   helpKey: string;
-  addLabel: string;
+  /** Leave it out and the list can only shrink. */
+  addLabel?: string;
   emails: string[];
   onChange: (next: string[]) => void;
   disabled: boolean;
@@ -306,14 +320,16 @@ function EmailListEditor({
       {atMinimum && minimumHint && (
         <p className="form-hint">{minimumHint}</p>
       )}
-      <button
-        type="button"
-        className="admin-add-section"
-        onClick={() => onChange([...emails, ""])}
-        disabled={disabled}
-      >
-        {addLabel}
-      </button>
+      {addLabel && (
+        <button
+          type="button"
+          className="admin-add-section"
+          onClick={() => onChange([...emails, ""])}
+          disabled={disabled}
+        >
+          {addLabel}
+        </button>
+      )}
     </div>
   );
 }

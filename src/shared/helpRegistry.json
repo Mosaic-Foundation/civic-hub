@@ -46,7 +46,7 @@
     "anchor": "settings-admin-log"
   },
   "settings.people": {
-    "text": "Who administers the hub and who sits on its board. Admins reach the admin pages; board members can post announcements. Changing either list needs a fresh code.",
+    "text": "Who administers the hub. Admins reach the admin pages and can post announcements. Board members and other office holders go under Officials. Changing the list needs a fresh code.",
     "page": "/reference/settings/",
     "anchor": "settings-people"
   },
@@ -193,7 +193,7 @@
     "anchor": "people-admins"
   },
   "people.board": {
-    "text": "Email addresses of board members. They can sign in while the hub is in beta and post announcements until an Officials list is saved, but cannot open admin pages. Changing the list needs a fresh code.",
+    "text": "Addresses from the old board list, which this hub still has. They can sign in while the hub is in beta. List them under Officials, then remove them here. Changing the list needs a fresh code.",
     "page": "/reference/settings/",
     "anchor": "people-board"
   },

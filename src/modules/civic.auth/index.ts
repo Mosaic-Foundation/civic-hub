@@ -177,7 +177,7 @@ async function limitIp(step: keyof typeof HUB_SIGN_IN_LIMITS, ip: string, timeZo
  * Checked when a code is asked for, and when an invite link is used.
  *
  * Board members too (Adam, 2026-10-15, leaving-demo slice): an admin who has
- * just added someone under Admins & board should not find them turned away
+ * just added someone to the board list should not find them turned away
  * in beta. Sign-in only, like officials: the mail guard is unchanged.
  */
 async function assertMayEnterBeta(normalizedEmail: string): Promise<void> {

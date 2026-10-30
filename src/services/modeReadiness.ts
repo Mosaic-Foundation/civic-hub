@@ -167,7 +167,7 @@ async function readinessItems(from: HubMode): Promise<ReadinessItem[]> {
     blocking: false,
     accept_label: "Just me for now",
     link: "/admin/settings/people",
-    link_label: "Admins & board",
+    link_label: "Admins",
   });
 
   const reviewed = asBoolean(getSettingSync(KEYS.LEGAL_REVIEWED), false);
@@ -254,8 +254,8 @@ async function consequences(from: HubMode, to: HubMode): Promise<ModeConsequence
     const entered = new Set([...admins, ...board, ...allowlist, ...officials.map((o) => o.email.toLowerCase())]);
     lines.push(
       allowlist.size > 0
-        ? `Only admins, officials, board members and the ${plural(allowlist.size, "address", "addresses")} on the allowlist can sign in. Anyone else is offered the waitlist.`
-        : "Only admins, officials and board members can sign in, because the allowlist is empty. Anyone else is offered the waitlist.",
+        ? `Only admins, officials and the ${plural(allowlist.size, "address", "addresses")} on the allowlist can sign in. Anyone else is offered the waitlist.`
+        : "Only admins and officials can sign in, because the allowlist is empty. Anyone else is offered the waitlist.",
     );
     if (from === "live") {
       const lockedOut = members.filter((m) => !entered.has(m.email.toLowerCase())).length;

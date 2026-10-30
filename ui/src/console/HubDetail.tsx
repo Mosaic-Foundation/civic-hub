@@ -637,7 +637,7 @@ function AdminsSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
       <h2 className="cx-h2">Admins</h2>
       <p className="cx-muted cx-small">
         Who administers this hub from Hub settings. Adding or removing someone needs a fresh code, as on the
-        hub's own Admins &amp; board page, where its admins can change this list too. Someone added gets an email
+        hub's own Admins page, where its admins can change this list too. Someone added gets an email
         with a link and the first steps.
       </p>
       {admins.length === 0 && (

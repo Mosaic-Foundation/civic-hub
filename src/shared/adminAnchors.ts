@@ -43,7 +43,7 @@ export const SETTINGS_NAV = [
   { id: "mode", label: "Mode" },
   { id: "sample", label: "Sample content" },
   { id: "admin-log", label: "Admin log" },
-  { id: "people", label: "Admins & board" },
+  { id: "people", label: "Admins" },
   { id: "officials", label: "Officials" },
   { id: "participation", label: "Participation" },
   { id: "plugins", label: "Plugins" },

@@ -139,7 +139,7 @@ export default function ModeSection() {
       setMessage({
         text:
           saved.mode === "beta"
-            ? `Switched to beta. Only admins, officials, board members and the allowlist can sign in now; everyone else is offered the waitlist.`
+            ? `Switched to beta. Only admins, officials and the allowlist can sign in now; everyone else is offered the waitlist.`
             : `Switched to live. Anyone can sign in, and the ${from === "demo" ? "demo" : "beta"} notice is gone.${
                 told > 0 ? ` ${told} ${told === 1 ? "person" : "people"} on the waitlist ${told === 1 ? "was" : "were"} told the hub is open.` : ""
               }`,
@@ -505,7 +505,7 @@ function AllowlistAndWaitlist({ live }: { live: boolean }) {
         </summary>
         <p className="form-hint">
           Who may sign in while this hub is in beta, one address per line.
-          Admins, officials and board members can always sign in.
+          Admins and officials can always sign in.
           {live && <> This hub is live, so the list does nothing until it goes back to beta.</>}
         </p>
         <textarea

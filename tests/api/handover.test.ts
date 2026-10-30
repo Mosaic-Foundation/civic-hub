@@ -5,7 +5,7 @@
 //   - a new hub name in Settings → Identity carries to the operator, the
 //     email sender name and the registry name (review R11);
 //   - the Feedback page's address is a public setting (docs item #6);
-//   - adding an admin in Settings → Admins & board emails them (review R38).
+//   - adding an admin in Settings → Admins emails them (review R38).
 //
 // Needs the console's env, like tests/api/control.test.ts
 // (CIVIC_CONSOLE_HOSTNAME=console.localhost, CIVIC_CONSOLE_ADMIN_EMAIL).

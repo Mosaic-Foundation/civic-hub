@@ -153,7 +153,8 @@ export default function OfficialsSection() {
       {error && <p className="form-error">{error}</p>}
 
       <p className="form-hint">
-        Accounts that hold a public office. The title shows as a pill next
+        Accounts that hold a public office, such as the members of a board or
+        council. The title shows as a pill next
         to their name everywhere they post — announcements, proposals,
         projects, and comments — and they can post announcements and
         respond to briefs. Leave name blank to use the person's own

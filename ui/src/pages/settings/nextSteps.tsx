@@ -38,7 +38,7 @@ export function NextSteps() {
         <li>
           <Link to="/admin/settings/people">Add a second admin</Link>
           <span className="form-hint">
-            {" "}in Admins &amp; board, and list your officials in{" "}
+            {" "}in Admins, and list your officials in{" "}
             <Link to="/admin/settings/officials">Officials</Link>.
           </span>
         </li>

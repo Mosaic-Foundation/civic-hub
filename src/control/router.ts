@@ -526,7 +526,7 @@ export function controlRouter(): Router {
       return;
     }
     // Any change to who runs a hub takes a fresh code, adding as well as
-    // removing, as on the hub's own Admins & board page (review R52).
+    // removing, as on the hub's own Admins page (review R52).
     if (!(await stepUp(req, res))) return;
     await setHubAdmins(hub.id, next, actor(res));
     await audited(res, { actor: actor(res), action: "hub.admins", hubId: hub.id, before, after: next });
