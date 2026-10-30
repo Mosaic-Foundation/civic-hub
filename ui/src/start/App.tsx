@@ -6,6 +6,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { startApi, type StartSessionView } from "./api";
 import CreateForm from "./CreateForm";
+import { codeFromFragment } from "../../../src/shared/hubInvite";
+
+/**
+ * The code an invite link carries (#code=…). Read once, as the page loads, and
+ * taken out of the address bar, so it stays out of the history and a shared
+ * screen.
+ */
+function takeLinkedCode(): string {
+  const code = codeFromFragment(window.location.hash);
+  if (code) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  return code ?? "";
+}
+const LINKED_CODE = takeLinkedCode();
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -46,11 +59,15 @@ function useBusy() {
 }
 
 function CodeStep({ refused, onDone }: { refused: boolean; onDone: () => void }) {
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(LINKED_CODE);
   const { busy, error, run } = useBusy();
   return (
     <Card title="Start your Civic Hub">
-      <p className="cx-muted">Enter the invite code you were given. It lets you create one hub.</p>
+      <p className="cx-muted">
+        {LINKED_CODE
+          ? "Your invite code is filled in from your link. It lets you create one hub."
+          : "Enter the invite code you were given. It lets you create one hub."}
+      </p>
       {refused && (
         <p className="cx-alert cx-alert-warn" role="status">
           The code you used earlier can no longer be used. If you have another, enter it here.

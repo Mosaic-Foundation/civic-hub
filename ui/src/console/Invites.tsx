@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { api, type Invite, type InviteList } from "./api";
 import { href } from "./route";
 import { day, when } from "./format";
+import { inviteLink, inviteMessage } from "../../../src/shared/hubInvite";
 
 const STATUS_LABEL: Record<Invite["status"], string> = {
   unused: "unused",
@@ -22,10 +23,8 @@ function StatusBadge({ status }: { status: Invite["status"] }) {
 
 function Minted({ code, startHost, onDone }: { code: string; startHost: string | null; onDone: () => void }) {
   const [copied, setCopied] = useState(false);
-  const link = startHost ? `https://${startHost}` : null;
-  const message = link
-    ? `Here's your invite to create a Civic Hub. Go to ${link} and enter this code: ${code}`
-    : code;
+  const link = startHost ? inviteLink(startHost, code) : null;
+  const message = startHost ? inviteMessage(startHost, code) : code;
   return (
     <div className="cx-card cx-invite-card cx-minted" role="status">
       <p className="cx-eyebrow">New code: copy it now</p>
@@ -34,7 +33,7 @@ function Minted({ code, startHost, onDone }: { code: string; startHost: string |
         This is the only time the code is shown. Send it to the person it is for
         {link ? (
           <>
-            , with the start page: <span className="cx-mono">{link}</span>
+            , with its link: <span className="cx-mono cx-break">{link}</span>
           </>
         ) : (
           ". No start page is configured on this deployment (CIVIC_START_HOSTNAME), so it cannot be used yet"
