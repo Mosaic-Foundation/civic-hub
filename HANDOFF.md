@@ -26,7 +26,8 @@ Updated after every Claude Code session. Records what was built, what's incomple
   state or type drops the pick, which it did not before.
 - **Invite link:** `https://<start host>/#code=…` (`src/shared/hubInvite.ts`). The code is in the fragment, so it reaches
   no server log, and the page removes it from the address. Same single-use, expiring code.
-- **Console send:** `POST /control/invites/:id/send` with the code and an address, from the minted card. The server
+- **Console send:** `POST /control/invites/:id/send` with the code and an address. The address is asked on the first
+  form ("Mint and send", Adam, 2026-10-30), and the minted card can send to another or retry. The server
   checks the code against that invite's hash. Audited as `invite.send` with `sent_to`, never the code.
   From the platform's sender: the console has no hub in scope, so the hub mail guard does not apply.
 - **Admins** (Adam's addition): Settings → Admins, about admins only; board members go under Officials. The email,

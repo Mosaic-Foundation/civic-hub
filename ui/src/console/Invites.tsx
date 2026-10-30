@@ -21,12 +21,27 @@ function StatusBadge({ status }: { status: Invite["status"] }) {
   return <span className={`cx-badge ${cls}`}>{STATUS_LABEL[status]}</span>;
 }
 
-function Minted({ code, id, startHost, onDone }: { code: string; id: string; startHost: string | null; onDone: () => void }) {
+function Minted({
+  code,
+  id,
+  startHost,
+  firstSentTo,
+  firstSendError,
+  onDone,
+}: {
+  code: string;
+  id: string;
+  startHost: string | null;
+  /** The address the form's own send reached, or why it did not. */
+  firstSentTo?: string;
+  firstSendError?: string;
+  onDone: () => void;
+}) {
   const [copied, setCopied] = useState(false);
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
-  const [sentTo, setSentTo] = useState<string[]>([]);
-  const [sendError, setSendError] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<string[]>(firstSentTo ? [firstSentTo] : []);
+  const [sendError, setSendError] = useState<string | null>(firstSendError ?? null);
   const link = startHost ? inviteLink(startHost, code) : null;
   const message = startHost ? inviteMessage(startHost, code) : code;
 
@@ -69,10 +84,9 @@ function Minted({ code, id, startHost, onDone }: { code: string; id: string; sta
         >
           <label className="cx-field">
             <span>
-              Email it to <em>optional</em>
+              {sentTo.length > 0 ? "Also email it to" : "Email it to"} <em>optional</em>
             </span>
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.org" />
-            <small className="cx-muted">We send the link and the code. The address goes in the audit log.</small>
           </label>
           <button className="cx-btn" disabled={sending || !email.trim()}>
             {sending ? "Sending…" : "Send"}
@@ -109,7 +123,8 @@ export default function Invites() {
   const [note, setNote] = useState("");
   const [days, setDays] = useState<number | "">("");
   const [busy, setBusy] = useState(false);
-  const [minted, setMinted] = useState<{ code: string; id: string } | null>(null);
+  const [recipient, setRecipient] = useState("");
+  const [minted, setMinted] = useState<{ code: string; id: string; sentTo?: string; sendError?: string } | null>(null);
 
   function load() {
     api
@@ -124,9 +139,20 @@ export default function Invites() {
     setError(null);
     try {
       const r = await api.mintInvite(note.trim(), days === "" ? (list?.default_days ?? 14) : days);
-      setMinted({ code: r.code, id: r.invite.id });
+      // Minted either way: a send that fails leaves the code on the card to copy or send again.
+      const sending = recipient.trim();
+      let sent: { sentTo?: string; sendError?: string } = {};
+      if (sending) {
+        try {
+          sent = { sentTo: (await api.sendInvite(r.invite.id, r.code, sending)).sent_to };
+        } catch (e) {
+          sent = { sendError: (e as Error).message };
+        }
+      }
+      setMinted({ code: r.code, id: r.invite.id, ...sent });
       setNote("");
       setDays("");
+      setRecipient("");
       load();
     } catch (e) {
       setError((e as Error).message);
@@ -167,7 +193,14 @@ export default function Invites() {
       )}
 
       {minted ? (
-        <Minted code={minted.code} id={minted.id} startHost={list?.start_hostname ?? null} onDone={() => setMinted(null)} />
+        <Minted
+          code={minted.code}
+          id={minted.id}
+          startHost={list?.start_hostname ?? null}
+          firstSentTo={minted.sentTo}
+          firstSendError={minted.sendError}
+          onDone={() => setMinted(null)}
+        />
       ) : (
         <form
           className="cx-card cx-form cx-invite-card"
@@ -197,8 +230,17 @@ export default function Invites() {
               <small className="cx-muted">Unused after this, it expires.</small>
             </label>
           </div>
+          {list?.start_hostname && (
+            <label className="cx-field">
+              <span>
+                Email it to <em>optional</em>
+              </span>
+              <input type="email" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="name@example.org" />
+              <small className="cx-muted">We send the link and the code. The address goes in the audit log.</small>
+            </label>
+          )}
           <button className="cx-btn cx-btn-primary" disabled={busy || !list}>
-            {busy ? "Minting…" : "Mint a code"}
+            {busy ? "Minting…" : recipient.trim() ? "Mint and send" : "Mint a code"}
           </button>
         </form>
       )}
