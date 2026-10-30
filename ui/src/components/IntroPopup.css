@@ -30,6 +30,14 @@
   margin: 0 0 var(--space-lg);
 }
 
+.intro-popup-steps {
+  padding-left: var(--space-lg);
+}
+
+.intro-popup-steps li + li {
+  margin-top: var(--space-xs);
+}
+
 .intro-popup-demo-hint {
   font-family: var(--font-body);
   font-size: var(--font-size-sm);

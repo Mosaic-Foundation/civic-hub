@@ -120,11 +120,12 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   expect(me.role).toBe("admin");
   expect(me.user.email).toBe(email);
 
-  // "Your hub is ready: check your email", once, instead of the visitor's
+  // "Your hub is ready", with the first steps and the guide, once, instead of the visitor's
   // popup (2026-10-08).
   const ready = page.getByRole("dialog", { name: /is ready/ });
   await expect(ready).toBeVisible();
-  await expect(ready).toContainText("Check your email");
+  await expect(ready).toContainText("Your first steps");
+  await expect(ready.getByRole("link", { name: "Learn how to set up your hub" })).toHaveAttribute("target", "_blank");
   await expect(ready).toContainText(email);
   await expect(page.getByRole("dialog")).toHaveCount(1);
   if (process.env.CIVIC_E2E_SHOT) await page.screenshot({ path: process.env.CIVIC_E2E_SHOT });
