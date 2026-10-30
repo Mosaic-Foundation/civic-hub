@@ -4,6 +4,64 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Pilot readiness 1: from the invite to a working hub; Neighbourhood or association — 2026-10-30
+
+**State:**
+- **Dev:** `f515e80`, via `release.sh dev --yes`. No migrations. Health ok, 9 of 9 packages mounted, CI, E2E and Smoke
+  green.
+- **Not on production.**
+- **Reports:** `~/Documents/Mosaic/0 Management/Civic Social/Pilot-Readiness-1-Session-Report-2026-10-30.md` and
+  `Pilot-Readiness-1-Handoff-to-Management-2026-10-30.md`.
+
+**What changed:**
+- **Pop-up** (`HubReadyDialog.tsx`): the first steps and "Learn how to set up your hub", as the intro email has them.
+- **Setup guide:** a link at the right of the admin bar, outside the scrolling tabs, and last in the left column's
+  list. It reads `admin.setup_guide` in the help registry, pending until the docs publish that anchor.
+- **Wording:** Operated by ("the entity responsible for governing this hub") on every form that asks. The field is in
+  Settings → Legal, not Identity. What the list is, under From the list. No neighbourhood in the first kind's hint.
+- **Kind of hub:** crossing to or from a jurisdiction clears the place at once, on the start page and the console
+  (`jurisdictionChoice.ts`). The exact report (nothing changed until a refresh) did not reproduce in Chromium: the form
+  did change, but a chosen place stayed, so it looked the same.
+- **Place Name:** a Clear button with the word on it, typing replaces the pick (one backspace clears it), and a new
+  state or type drops the pick, which it did not before.
+- **Invite link:** `https://<start host>/#code=…` (`src/shared/hubInvite.ts`). The code is in the fragment, so it reaches
+  no server log, and the page removes it from the address. Same single-use, expiring code.
+- **Console send:** `POST /control/invites/:id/send` with the code and an address, from the minted card. The server
+  checks the code against that invite's hash. Audited as `invite.send` with `sent_to`, never the code.
+  From the platform's sender: the console has no hub in scope, so the hub mail guard does not apply.
+- **Admins** (Adam's addition): Settings → Admins, about admins only; board members go under Officials. The email,
+  pop-up, help, readiness, Mode and announcement wording follow. **`people.board_emails` and everything it grants
+  are unchanged.** A hub with addresses on it sees an "Old board list" it can only shrink.
+- **New kind:** `community`, "Neighbourhood or association", with its own sample set of ten templates; its people are
+  members. Place reads **Jurisdiction**; the stored id stays `place`.
+- **Location for every kind:** State, Type, Name, optional except for a jurisdiction, stored in `hubs.jurisdiction_*`.
+  "Other / not listed" is offered only to the new kind on both create forms. The start page refuses a typed place on a
+  jurisdiction's hub. The console's API and its hub page still accept one, for hubs that already have one.
+- **Masthead:** a hub that is not a jurisdiction is headed by its own name, with its location beside its label
+  (`hub.location`), not by its location. This changes existing non-place hubs that have a related place.
+
+**Invariants:**
+- **Wire:** local snapshot before and after: 3,092 events compared, 3,088 identical, 4 removed by the API suite's own
+  tests, none changed. Nothing under `src/events`, `src/processes`, `src/authz` or `packages/` changed.
+- **Migrations:** none.
+
+**Checks (local):** unit and API service role 3,209 passed; API minted tokens 1,056; UI 59; Playwright the CI way 216
+passed, 9 skipped; lint, ratchet and place names clean. CI on `f515e80` green.
+
+**Not verified:** a real email through Resend (no mailer locally or in CI; a send counts as sent there, as other flows
+do). The console's 502 when a mailer fails is not exercised. On dev's start page, `#code=` filled the field and left
+the address.
+
+**Left:**
+- **Adam:** send one real invite from dev's console.
+- **Hub settings has no Location or kind:** after creation only the console's hub page changes them.
+- **"Board label"** on the create form means the governing body's short name, not the roster. Left as it is.
+- **The console and the start page** still use their own `cx-` controls, not the kit: the two files the ratchet
+  leaves. The new controls follow them.
+- **Docs:** see the session report.
+
+---
+
 ## The design pass: one token system, the kit, admin as its own place, dark mode — 2026-10-28/29
 
 **State:**
