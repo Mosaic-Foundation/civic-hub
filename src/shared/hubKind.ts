@@ -15,7 +15,7 @@
 export type HubKind = "place" | "issue" | "organization" | "other";
 
 export const HUB_KINDS: ReadonlyArray<{ id: HubKind; label: string; hint: string }> = [
-  { id: "place", label: "Place", hint: "A local government or community: a county, city, town, school district, neighbourhood." },
+  { id: "place", label: "Place", hint: "A local government or community: a county, city, town or school district." },
   { id: "issue", label: "Issue campaign", hint: "A cause that crosses places, such as a ranked-choice voting effort." },
   { id: "organization", label: "Organization or club", hint: "A group with members, wherever they live." },
   { id: "other", label: "Other", hint: "Anything else." },

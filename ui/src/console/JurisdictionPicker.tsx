@@ -135,7 +135,10 @@ export function JurisdictionPicker({
             disabled={!listLoaded}
             onChange={() => onChange(value.kind === "custom" || value.kind === "none" ? { kind: "unlinked" } : value)}
           />
-          <span>From the list</span>
+          <span>
+            From the list
+            <small className="cx-muted">An official jurisdiction: a state, county, city, town or school district.</small>
+          </span>
         </label>
         <label className="cx-radio">
           <input type="radio" name={`${listId}-source`} checked={custom} onChange={() => onChange({ kind: "custom" })} />
