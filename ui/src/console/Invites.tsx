@@ -21,10 +21,29 @@ function StatusBadge({ status }: { status: Invite["status"] }) {
   return <span className={`cx-badge ${cls}`}>{STATUS_LABEL[status]}</span>;
 }
 
-function Minted({ code, startHost, onDone }: { code: string; startHost: string | null; onDone: () => void }) {
+function Minted({ code, id, startHost, onDone }: { code: string; id: string; startHost: string | null; onDone: () => void }) {
   const [copied, setCopied] = useState(false);
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sentTo, setSentTo] = useState<string[]>([]);
+  const [sendError, setSendError] = useState<string | null>(null);
   const link = startHost ? inviteLink(startHost, code) : null;
   const message = startHost ? inviteMessage(startHost, code) : code;
+
+  async function send() {
+    setSending(true);
+    setSendError(null);
+    try {
+      const r = await api.sendInvite(id, code, email.trim());
+      setSentTo((list) => [...list, r.sent_to]);
+      setEmail("");
+    } catch (e) {
+      setSendError((e as Error).message);
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <div className="cx-card cx-invite-card cx-minted" role="status">
       <p className="cx-eyebrow">New code: copy it now</p>
@@ -40,6 +59,32 @@ function Minted({ code, startHost, onDone }: { code: string; startHost: string |
         )}
         .
       </p>
+      {link && (
+        <form
+          className="cx-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+        >
+          <label className="cx-field">
+            <span>
+              Email it to <em>optional</em>
+            </span>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.org" />
+            <small className="cx-muted">We send the link and the code. The address goes in the audit log.</small>
+          </label>
+          <button className="cx-btn" disabled={sending || !email.trim()}>
+            {sending ? "Sending…" : "Send"}
+          </button>
+          {sentTo.length > 0 && <p className="cx-alert cx-alert-info">Sent to {sentTo.join(", ")}.</p>}
+          {sendError && (
+            <p className="cx-alert cx-alert-error" role="alert">
+              {sendError}
+            </p>
+          )}
+        </form>
+      )}
       <div className="cx-actions">
         <button
           type="button"
@@ -64,7 +109,7 @@ export default function Invites() {
   const [note, setNote] = useState("");
   const [days, setDays] = useState<number | "">("");
   const [busy, setBusy] = useState(false);
-  const [minted, setMinted] = useState<string | null>(null);
+  const [minted, setMinted] = useState<{ code: string; id: string } | null>(null);
 
   function load() {
     api
@@ -79,7 +124,7 @@ export default function Invites() {
     setError(null);
     try {
       const r = await api.mintInvite(note.trim(), days === "" ? (list?.default_days ?? 14) : days);
-      setMinted(r.code);
+      setMinted({ code: r.code, id: r.invite.id });
       setNote("");
       setDays("");
       load();
@@ -122,7 +167,7 @@ export default function Invites() {
       )}
 
       {minted ? (
-        <Minted code={minted} startHost={list?.start_hostname ?? null} onDone={() => setMinted(null)} />
+        <Minted code={minted.code} id={minted.id} startHost={list?.start_hostname ?? null} onDone={() => setMinted(null)} />
       ) : (
         <form
           className="cx-card cx-form cx-invite-card"

@@ -53,6 +53,11 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   await expect(codeText).toHaveText(/^[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/);
   const code = (await codeText.textContent())!.trim();
   await expect(consolePage.getByText("This is the only time the code is shown")).toBeVisible();
+  // Sent from here too: the code stays on the screen, the address goes in the audit log.
+  await consolePage.getByLabel("Email it to").fill(`colleague-${run}@example.test`);
+  await consolePage.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(consolePage.getByText(`Sent to colleague-${run}@example.test`)).toBeVisible();
+  await expect(codeText).toHaveText(code);
   await consolePage.getByRole("button", { name: "Done" }).click();
   const row = consolePage.getByRole("row", { name: new RegExp(`Colleague ${run}`) });
   await expect(row).toContainText("unused");
@@ -69,7 +74,11 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByRole("alert")).toHaveText(/That code can't be used/);
 
-  await page.getByLabel("Invite code").fill(code.toLowerCase());
+  // The link in the email: the code is filled in, and out of the address bar.
+  await page.goto("about:blank");
+  await page.goto(`${START_PAGE}#code=${encodeURIComponent(code)}`);
+  await expect(page.getByLabel("Invite code")).toHaveValue(code);
+  expect(new URL(page.url()).hash).toBe("");
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 

@@ -143,6 +143,14 @@ export function parseMintInput(body: unknown): MintInput {
   return { note: note || null, days };
 }
 
+/** The address and code the console sends an invite with. */
+export function parseSendInvite(body: unknown): { email: string; code: string } {
+  const b = (body ?? {}) as { email?: unknown; code?: unknown };
+  const email = typeof b.email === "string" ? b.email.trim().toLowerCase() : "";
+  if (!/^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$/.test(email)) throw new EntitlementError("Enter one email address.");
+  return { email, code: typeof b.code === "string" ? b.code : "" };
+}
+
 /** Mint an invite code for one hub. Returns the code, which is never stored. */
 export async function mintInvite(input: MintInput, actor: string): Promise<{ code: string; entitlement: EntitlementView }> {
   const code = generateInviteCode();

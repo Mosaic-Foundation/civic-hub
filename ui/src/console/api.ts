@@ -228,6 +228,8 @@ export const api = {
   invites: () => request<InviteList>("GET", "/invites"),
   mintInvite: (note: string, days: number) =>
     request<{ code: string; invite: Invite; start_hostname: string | null }>("POST", "/invites", { note, days }),
+  sendInvite: (id: string, code: string, email: string) =>
+    request<{ sent_to: string }>("POST", `/invites/${encodeURIComponent(id)}/send`, { code, email }),
   revokeInvite: (id: string) => request<{ invites: Invite[] }>("POST", `/invites/${encodeURIComponent(id)}/revoke`),
   hubs: () => request<{ hubs: Hub[] }>("GET", "/hubs"),
   hub: (id: string) => request<HubDetail>("GET", `/hubs/${encodeURIComponent(id)}`),

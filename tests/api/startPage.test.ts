@@ -120,6 +120,34 @@ describe("invite codes in the console", () => {
     expect(JSON.stringify(audit[0])).not.toContain(code);
   });
 
+  it("emails an unused code to an address, and audits who it went to", async () => {
+    const { code, id } = await mint();
+    const cookie = await mintConsoleSession();
+    const res = await consoleCall("POST", `/control/invites/${id}/send`, { cookie, body: { code, email: " Sam@Example.test " } });
+    expect(res.status).toBe(200);
+    expect(res.body.sent_to).toBe("sam@example.test");
+    const sent = (await inviteAudit(id)).filter((a) => a.action === "invite.send");
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ actor_email: OPERATOR });
+    expect(sent[0]!.after).toEqual({ entitlement_id: id, code_hint: code.slice(-4), sent_to: "sam@example.test" });
+    expect(JSON.stringify(sent[0])).not.toContain(code);
+    // Sending spends nothing.
+    expect((await entitlement(id))!.used).toBe(0);
+  });
+
+  it("refuses a bad address, another invite's code, and a revoked code", async () => {
+    const one = await mint();
+    const other = await mint();
+    const cookie = await mintConsoleSession();
+    const send = (id: string, code: string, email = "sam@example.test") =>
+      consoleCall("POST", `/control/invites/${id}/send`, { cookie, body: { code, email } });
+    expect((await send(one.id, one.code, "two@a.test, b@a.test")).status).toBe(400);
+    expect((await send(one.id, other.code)).status).toBe(403);
+    expect((await consoleCall("POST", `/control/invites/${other.id}/revoke`, { cookie })).status).toBe(200);
+    expect((await send(other.id, other.code)).status).toBe(403);
+    expect((await inviteAudit(one.id)).map((a) => a.action)).toEqual(["invite.mint"]);
+  });
+
   it("defaults to 14 days, and refuses a lifetime out of range", async () => {
     const { id } = await mint();
     const row = (await entitlement(id)) as unknown as { expires_at: string };

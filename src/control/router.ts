@@ -48,12 +48,17 @@ import {
 import {
   DEFAULT_INVITE_DAYS,
   EntitlementError,
+  INVITE_REFUSED,
   MAX_INVITE_DAYS,
+  checkInviteCode,
   listEntitlements,
   mintInvite,
   parseMintInput,
+  parseSendInvite,
   revokeEntitlement,
 } from "./entitlements.js";
+import { renderInviteEmail } from "./inviteEmail.js";
+import { mailConfigured, sendEmail, unsentReason } from "../utils/email.js";
 import {
   consoleAdminEmail,
   consoleHostname,
@@ -631,6 +636,31 @@ export function controlRouter(): Router {
       },
     });
     res.status(201).json({ code, invite: entitlement, start_hostname: startHostname() });
+  }));
+
+  // The minted code comes back from the console's screen, the only place it
+  // exists: the server keeps its hash, so it can check the two belong together.
+  r.post("/control/invites/:id/send", route(async (req, res) => {
+    const { email, code } = parseSendInvite(req.body);
+    const host = startHostname();
+    if (!host) throw new ControlInputError("No start page is configured on this deployment, so the code cannot be used yet.", 409);
+    const entitlement = await checkInviteCode(code);
+    if (entitlement.id !== String(req.params.id)) throw new EntitlementError(INVITE_REFUSED, 403);
+    const result = await sendEmail({ to: email, ...renderInviteEmail({ startHost: host, code, expiresAt: entitlement.expires_at }) });
+    if (!result.sent) {
+      console.warn(`[control] invite email NOT sent (${unsentReason(result)}).`);
+      // As the other flows: with no mailer at all (local development) it counts as sent.
+      if (mailConfigured()) {
+        throw new ControlInputError("The email could not be sent. The code still works: copy it and send it yourself.", 502);
+      }
+    }
+    await audited(res, {
+      actor: actor(res),
+      action: "invite.send",
+      before: null,
+      after: { entitlement_id: entitlement.id, code_hint: entitlement.code_hint, sent_to: email },
+    });
+    res.json({ sent_to: email });
   }));
 
   r.post("/control/invites/:id/revoke", route(async (req, res) => {
