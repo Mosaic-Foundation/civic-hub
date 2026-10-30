@@ -499,7 +499,7 @@ export default function CreateHub() {
                 <span>Operated by</span>
                 <SuggestInput value={form.operator_name} suggestion={name} onChange={(v) => set("operator_name", v)} />
                 <small className="cx-muted">
-                  In the legal documents: a person, a group or an office.
+                  The entity responsible for governing this hub: an organization, a group or a person. Named in the legal documents.
                   <SuggestNote value={form.operator_name} suggestion={name} />
                 </small>
               </label>

@@ -313,7 +313,7 @@
     "anchor": "legal-proposal-best-practices"
   },
   "legal.operator_name": {
-    "text": "Whoever is answerable for this hub: a person, a group or an office. It is printed as written in the Terms and Privacy Policy.",
+    "text": "The entity responsible for governing this hub: an organization, a group or a person. It is printed as written in the Terms and Privacy Policy.",
     "page": "/reference/settings/legal",
     "anchor": "legal-operator-name"
   },

@@ -344,7 +344,7 @@ export default function CreateForm({
               <span>Operated by</span>
               <SuggestInput value={form.operator_name} suggestion={name} onChange={(v) => set("operator_name", v)} />
               <small className="cx-muted">
-                Named in the hub's terms: a person, a group or an office.
+                The entity responsible for governing this hub: an organization, a group or a person. Named in the hub's terms.
               </small>
             </label>
             <label className="cx-field">

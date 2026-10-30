@@ -21,8 +21,8 @@ export default function LegalSection() {
             f={f}
             k="legal.operator_name"
             label="Operated by"
-            placeholder="Who runs this hub"
-            hint={`A person or a group — whoever is answerable for this hub. Printed verbatim, e.g. "the Moderators' Group", a town office, or a named individual.`}
+            placeholder="Who governs this hub"
+            hint="The entity responsible for governing this hub: an organization, a group or a person. Printed as written in the legal documents."
           />
           <EmailField
             f={f}

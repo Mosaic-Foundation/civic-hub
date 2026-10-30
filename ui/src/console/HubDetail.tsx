@@ -412,7 +412,7 @@ const HANDOVER_FIELDS: ReadonlyArray<{
   placeOnly?: boolean;
 }> = [
   { key: "identity.name", label: "Hub name", section: "identity", kind: "text", hint: "The header on every page, the browser tab, the legal documents. A new name also replaces the operator and email sender name where they still read the old one." },
-  { key: "legal.operator_name", label: "Operated by", section: "legal", kind: "text", hint: "Who answers for the hub, printed in the legal documents: a person, a group or an office." },
+  { key: "legal.operator_name", label: "Operated by", section: "legal", kind: "text", hint: "The entity responsible for governing this hub: an organization, a group or a person. Named in the legal documents." },
   { key: "legal.contact_email", label: "Contact address", section: "legal", kind: "email", hint: "Where the documents tell people to write. Empty: the platform's address." },
   { key: "legal.who_runs_this", label: '"Who runs this site"', section: "legal", kind: "textarea", hint: "The paragraph that opens the Privacy Policy and the Terms. Empty: the shared paragraph, which says the hub is not run by local government. Write one if that is not true." },
   { key: "email.from_name", label: "Email from name", section: "email", kind: "text", hint: "The sender name on every email the hub sends." },
