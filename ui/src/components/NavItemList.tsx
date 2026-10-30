@@ -51,6 +51,13 @@ function Row({ item, onPicked }: { item: NavItem; onPicked?: () => void }) {
       )}
     </>
   );
+  if (item.href) {
+    return (
+      <a href={item.href} target="_blank" rel="noopener" className={cls} data-nav-id={item.id} onClick={() => onPicked?.()}>
+        {inner}
+      </a>
+    );
+  }
   if (item.to) {
     return (
       <Link

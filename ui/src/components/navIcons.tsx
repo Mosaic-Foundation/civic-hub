@@ -129,6 +129,12 @@ const PATHS: Record<string, ReactElement> = {
       <path d="M12 17v4" />
     </>
   ),
+  guide: (
+    <>
+      <path d="M12 6c-2-1.5-5-2-8-2v15c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2z" />
+      <path d="M12 6v15" />
+    </>
+  ),
   contact: (
     <>
       <rect x="3" y="5" width="18" height="14" rx="2" />

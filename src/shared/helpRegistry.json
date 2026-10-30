@@ -1,4 +1,10 @@
 {
+  "admin.setup_guide": {
+    "text": "The guide to setting up this hub, step by step: its name and look, its words, its legal pages, who runs it, and when to leave demo.",
+    "page": "/start/setup",
+    "anchor": "admin-setup-guide",
+    "pending": true
+  },
   "settings.identity": {
     "text": "What this hub is called and how it looks: the header, the browser tab and the card a shared link shows.",
     "page": "/reference/settings/identity",

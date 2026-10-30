@@ -29,6 +29,8 @@ const PARTS = [
   "plugins.install",
   "plugins.remove",
   "plugins.update",
+  // The Setup guide link in the admin navigation.
+  "admin.setup_guide",
 ];
 
 // Settings with no field of their own: each plugin's switch sits under its

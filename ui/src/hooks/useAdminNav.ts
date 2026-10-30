@@ -3,7 +3,8 @@
 // the left column draws it under an Admin heading. Ordered by function: the
 // publication queues first (Processes, Briefs, Meeting summaries), then
 // oversight (Moderation, Feedback, Edits, Archived), the switched-on
-// features' pages (Activity), then Hub settings.
+// features' pages (Activity), then Hub settings, and last the setup guide on
+// the docs site, which opens in a new tab.
 //
 // Counts (Adam, 2026-09-06): each item shows what is NEW in its queue since
 // this admin last opened it — "new is defined by items that I haven't
@@ -17,6 +18,7 @@ import { useApi } from "./useApi";
 import { adminQueueCounts, ADMIN_QUEUES_CHANGED, type AdminQueueCounts } from "../services/api";
 import { useHub } from "../config/hub";
 import { FEATURE_UI } from "../features";
+import { helpEntry, helpUrl } from "../../../src/shared/helpRegistry";
 import type { NavItem } from "./useNavGroups";
 
 const EMPTY: AdminQueueCounts = { reviews: 0, briefs: 0, meeting_summaries: 0, feedback: 0, edits: 0, total: 0 };
@@ -67,5 +69,6 @@ export function useAdminNav(): NavItem[] {
     if (u.adminTab && hub.plugins.enabled(u.feature)) items.push(item(u.feature, u.adminTab.label, u.adminTab.icon, u.adminTab.path));
   }
   items.push(item("hub-settings", "Hub settings", "settings", "/admin/settings"));
+  items.push({ id: "setup-guide", label: "Setup guide", icon: "guide", href: helpUrl(helpEntry("admin.setup_guide")!) });
   return items;
 }

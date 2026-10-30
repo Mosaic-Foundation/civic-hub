@@ -28,22 +28,28 @@ export default function AdminBar() {
           </span>
         </div>
         <nav className="admin-bar-tabs admin-tabs" aria-label="Admin sections">
-          {items.map((item) => (
-            <Link
-              key={item.id}
-              to={item.to!}
-              className={`admin-tab${item.current ? " is-active" : ""}`}
-              aria-current={item.current ? "page" : undefined}
-              data-nav-id={item.id}
-            >
-              {item.label}
-              {item.count !== undefined && item.count > 0 && (
-                <span className="admin-tab-badge" aria-label={item.countLabel}>
-                  {item.count}
-                </span>
-              )}
-            </Link>
-          ))}
+          {items.map((item) =>
+            item.href ? (
+              <a key={item.id} href={item.href} target="_blank" rel="noopener" className="admin-tab" data-nav-id={item.id}>
+                {item.label}
+              </a>
+            ) : (
+              <Link
+                key={item.id}
+                to={item.to!}
+                className={`admin-tab${item.current ? " is-active" : ""}`}
+                aria-current={item.current ? "page" : undefined}
+                data-nav-id={item.id}
+              >
+                {item.label}
+                {item.count !== undefined && item.count > 0 && (
+                  <span className="admin-tab-badge" aria-label={item.countLabel}>
+                    {item.count}
+                  </span>
+                )}
+              </Link>
+            ),
+          )}
         </nav>
       </div>
     </div>

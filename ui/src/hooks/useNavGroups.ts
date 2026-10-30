@@ -28,6 +28,8 @@ export interface NavItem {
   icon: string;
   /** A link; otherwise `onSelect` runs. */
   to?: string;
+  /** A link away from the hub, opened in a new tab (the setup guide). */
+  href?: string;
   onSelect?: () => void;
   /** A count beside it (Members, Reviews, My submissions); hidden at 0. */
   count?: number;
