@@ -12,7 +12,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StartApiError, startApi, startJurisdictions, type StartConfig } from "./api";
 import type { SlugSuggestion } from "../console/api";
-import { JurisdictionPicker, crossesPlace, type JurisdictionChoice } from "../console/JurisdictionPicker";
+import { JurisdictionPicker, type JurisdictionChoice } from "../console/JurisdictionPicker";
+import { crossesPlace } from "../console/jurisdictionChoice";
 import { SuggestInput } from "../console/SuggestInput";
 import { TimeZoneSelect } from "../console/TimeZoneSelect";
 import { TermsAtCreate } from "./TermsAtCreate";

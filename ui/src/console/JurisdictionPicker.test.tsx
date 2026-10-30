@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { JurisdictionPicker, crossesPlace, type JurisdictionChoice, type JurisdictionSource } from "./JurisdictionPicker";
+import { JurisdictionPicker, type JurisdictionChoice, type JurisdictionSource } from "./JurisdictionPicker";
+import { crossesPlace } from "./jurisdictionChoice";
 import type { Jurisdiction, JurisdictionMatch } from "./api";
 
 const row = (name: string, state = "XA"): JurisdictionMatch =>

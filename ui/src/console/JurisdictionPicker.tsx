@@ -9,7 +9,6 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { api, type Jurisdiction, type JurisdictionMatch } from "./api";
-import type { HubKind } from "../../../src/shared/hubKind";
 import { REFERENCE_JURISDICTION_TYPES, stateOfOcdId, type ReferenceJurisdictionType } from "../../../src/shared/jurisdictionType";
 
 /** Where the picker reads the list: the console's API, or the start page's (session 4b). */
@@ -25,11 +24,6 @@ export type JurisdictionChoice =
   | { kind: "none" }
   /** A hub made before the list existed, not linked yet. Only the hub page shows it. */
   | { kind: "unlinked" };
-
-/** Does this change of kind go to or from a place hub? Then the place chosen so far no longer applies. */
-export function crossesPlace(from: HubKind, to: HubKind): boolean {
-  return (from === "place") !== (to === "place");
-}
 
 export function JurisdictionPicker({
   value,

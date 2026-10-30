@@ -19,7 +19,8 @@ import {
 } from "../../../src/shared/jurisdictionType";
 import { defaultHubName, jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
 import { fillSampleText } from "../../../src/shared/hubCopy";
-import { JurisdictionPicker, crossesPlace, type JurisdictionChoice } from "./JurisdictionPicker";
+import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
+import { crossesPlace } from "./jurisdictionChoice";
 import { PLUGIN_NAMES } from "./pluginNames";
 import { SuggestInput, SuggestNote } from "./SuggestInput";
 import { TimeZoneSelect } from "./TimeZoneSelect";
