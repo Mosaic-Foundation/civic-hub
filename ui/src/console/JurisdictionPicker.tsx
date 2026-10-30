@@ -72,8 +72,7 @@ export function JurisdictionPicker({
   const listId = useId();
   const seq = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  /** Typing over a chosen place: the search is open again until something is picked. */
-  const [editing, setEditing] = useState(false);
+  const blurTimer = useRef<number | undefined>(undefined);
   const chosen = value.kind === "listed" ? value.row : null;
 
   useEffect(() => {
@@ -87,8 +86,7 @@ export function JurisdictionPicker({
   }, [source]);
 
   // The type-ahead, debounced; answers that arrive out of order are dropped.
-  const searching =
-    Boolean(state && type) && value.kind !== "custom" && value.kind !== "none" && (value.kind !== "listed" || editing);
+  const searching = Boolean(state && type) && value.kind === "unlinked";
   useEffect(() => {
     if (!searching) return;
     const n = ++seq.current;
@@ -114,8 +112,20 @@ export function JurisdictionPicker({
   function choose(row: JurisdictionMatch) {
     onChange({ kind: "listed", row });
     setQ("");
-    setEditing(false);
     setOpen(false);
+  }
+
+  /** The pick no longer stands: its state or type changed, it was cleared, or it is being typed over. */
+  function release(nextQ = "") {
+    if (chosen) onChange({ kind: "unlinked" });
+    setQ(nextQ);
+  }
+
+  /** What is left to search for once typing replaces the pick: only what was typed, not the place's own name. */
+  function typedOver(typed: string, name: string): string {
+    if (typed.startsWith(name)) return typed.slice(name.length);
+    if (typed.length === name.length - 1 && name.startsWith(typed)) return "";
+    return typed;
   }
 
   const others = value.kind === "listed" ? value.row.hubs.filter((h) => h.id !== hubId) : [];
@@ -169,7 +179,13 @@ export function JurisdictionPicker({
           <div className="cx-two">
             <label className="cx-field">
               <span>State</span>
-              <select value={state} onChange={(e) => setState(e.target.value)}>
+              <select
+                value={state}
+                onChange={(e) => {
+                  setState(e.target.value);
+                  release();
+                }}
+              >
                 <option value="">Choose…</option>
                 {states!.map((s) => (
                   <option key={s.ocd_id} value={s.state}>
@@ -184,6 +200,7 @@ export function JurisdictionPicker({
                 value={type}
                 onChange={(e) => {
                   setType(e.target.value);
+                  release();
                   onTypeChange?.(e.target.value as ReferenceJurisdictionType | "");
                 }}
                 disabled={!state}
@@ -216,25 +233,27 @@ export function JurisdictionPicker({
                 autoComplete="off"
                 disabled={!state || !type}
                 placeholder={state && type ? "Start typing…" : "Choose a state and a type first"}
-                // The chosen place sits in the field itself; typing reopens the search.
-                value={chosen && !editing ? chosen.display_name : q}
-                className={chosen && !editing ? "cx-combo-chosen" : undefined}
+                // The chosen place sits in the field itself; typing replaces it and reopens the search.
+                value={chosen ? chosen.display_name : q}
+                className={chosen ? "cx-combo-chosen" : undefined}
                 onChange={(e) => {
-                  setEditing(true);
-                  setQ(e.target.value);
+                  if (chosen) release(typedOver(e.target.value, chosen.display_name));
+                  else setQ(e.target.value);
                   setOpen(true);
                 }}
                 onFocus={() => {
-                  if (!chosen || editing) setOpen(true);
+                  window.clearTimeout(blurTimer.current);
+                  if (!chosen) setOpen(true);
                 }}
-                onBlur={() =>
-                  window.setTimeout(() => {
+                onClick={(e) => {
+                  if (chosen) e.currentTarget.select();
+                }}
+                onBlur={() => {
+                  blurTimer.current = window.setTimeout(() => {
                     setOpen(false);
-                    // Left mid-edit with a place still chosen: show the place again.
-                    setEditing(false);
                     setQ("");
-                  }, 120)
-                }
+                  }, 120);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "ArrowDown") {
                     e.preventDefault();
@@ -257,16 +276,13 @@ export function JurisdictionPicker({
                   type="button"
                   className="cx-combo-clear"
                   aria-label={`Clear ${chosen.display_name}`}
-                  title="Clear"
                   onClick={() => {
-                    onChange({ kind: "unlinked" });
-                    setQ("");
-                    setEditing(true);
+                    release();
                     setOpen(true);
                     inputRef.current?.focus();
                   }}
                 >
-                  ×
+                  Clear
                 </button>
               )}
             </div>
