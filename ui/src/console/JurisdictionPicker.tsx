@@ -2,7 +2,9 @@
 // state, then type, then a type-ahead over that state's jurisdictions of
 // that type. "Other / not listed" takes a typed name instead (a
 // neighbourhood, a tribal nation, an association) and leaves the OCD id
-// empty. Used by Create hub and by a hub's Configuration.
+// empty: a choice of the Neighbourhood or association kind when a hub is made
+// (2026-10-30). Used by Create hub and by a hub's Configuration, which still
+// offers every choice, for the hubs that already have one.
 //
 // Hubs already serving the chosen jurisdiction are shown as information:
 // several hubs may serve one place.
@@ -32,6 +34,8 @@ export function JurisdictionPicker({
   currentName,
   hubId,
   optional = false,
+  noneChoice = optional,
+  customChoice = true,
   onTypeChange,
   source = api,
   plain = false,
@@ -45,6 +49,10 @@ export function JurisdictionPicker({
   hubId?: string;
   /** A hub that is not a place: "Related place (optional)", with a None choice. */
   optional?: boolean;
+  /** Offer None. With no None and no Other, the picker is the list alone. */
+  noneChoice?: boolean;
+  /** Offer Other / not listed. */
+  customChoice?: boolean;
   /**
    * The Type select changed. Create hub uses it as the hub's type too, so the
    * form asks for a type once (2026-10-06).
@@ -126,9 +134,11 @@ export function JurisdictionPicker({
 
   return (
     <div className="cx-jpick">
+      {(noneChoice || customChoice) && (
       <div className="cx-field" role="radiogroup" aria-label="Where the jurisdiction comes from">
-        <span>{optional ? "Related place (optional)" : "Jurisdiction"}</span>
-        {optional && (
+        {/* On the start page the form's own heading says this. */}
+        {!plain && <span>{optional ? "Location (optional)" : "Jurisdiction"}</span>}
+        {noneChoice && (
           <label className="cx-radio">
             <input type="radio" name={`${listId}-source`} checked={none} onChange={() => onChange({ kind: "none" })} />
             <span>
@@ -150,21 +160,24 @@ export function JurisdictionPicker({
             <small className="cx-muted">An official jurisdiction: a state, county, city, town or school district.</small>
           </span>
         </label>
-        <label className="cx-radio">
-          <input type="radio" name={`${listId}-source`} checked={custom} onChange={() => onChange({ kind: "custom" })} />
-          <span>
-            Other / not listed
-            <small className="cx-muted">A neighbourhood, a tribal nation, an association: type its name below.{plain ? "" : " No OCD id."}</small>
-          </span>
-        </label>
+        {customChoice && (
+          <label className="cx-radio">
+            <input type="radio" name={`${listId}-source`} checked={custom} onChange={() => onChange({ kind: "custom" })} />
+            <span>
+              Other / not listed
+              <small className="cx-muted">A neighbourhood, a tribal nation, an association: type its name below.{plain ? "" : " No OCD id."}</small>
+            </span>
+          </label>
+        )}
       </div>
+      )}
 
       {states !== null && !listLoaded && !none && (
         <p className="cx-alert cx-alert-warn">
           {loadError
             ? `The jurisdiction list could not be read: ${loadError}`
             : "The jurisdiction list is not loaded on this database (scripts/load-jurisdictions.ts)."}{" "}
-          Choose Other / not listed, or load the list first.
+          {customChoice ? "Choose Other / not listed, or load the list first." : "Load the list first."}
         </p>
       )}
 
@@ -303,7 +316,7 @@ export function JurisdictionPicker({
               </ul>
             )}
             {open && state && type && q && shown.length === 0 && (
-              <small className="cx-muted">Nothing on the official list matches. Check the state and type; if the place isn't on the list (a neighbourhood, a new or informal place), choose <strong>Other / not listed</strong> above and type its name.</small>
+              <small className="cx-muted">Nothing on the official list matches. Check the state and type.{customChoice && <> If the place isn't on the list, choose <strong>Other / not listed</strong> above and type its name.</>}</small>
             )}
             {chosen && plain ? (
               chosen.type === "cdp" && (
@@ -320,7 +333,7 @@ export function JurisdictionPicker({
                   ". A census-designated place has no local government of its own; its residents are governed by the surrounding county or town."}
               </small>
             ) : (
-              <small className="cx-muted">The place this hub serves, from the official list. Enter picks the highlighted match.</small>
+              <small className="cx-muted">{optional ? "Where this hub is" : "The place this hub serves"}, from the official list. Enter picks the highlighted match.</small>
             )}
           </div>
         </>

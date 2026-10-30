@@ -94,7 +94,7 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   await expect(page.getByRole("heading", { name: "Create your hub" })).toBeVisible();
   await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
   // The place picker's two selects, State then Type ("State" is also a Type, so not by text).
-  const selects = page.locator("fieldset", { hasText: "Place" }).locator("select");
+  const selects = page.locator("fieldset", { hasText: "Jurisdiction" }).locator("select");
   await selects.nth(0).selectOption({ label: "Virginia" });
   await selects.nth(1).selectOption({ label: "County" });
   await page.getByPlaceholder("Start typing…").fill("Pulaski");

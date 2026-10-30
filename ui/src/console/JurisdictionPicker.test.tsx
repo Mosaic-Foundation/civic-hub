@@ -3,7 +3,7 @@ import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { JurisdictionPicker, type JurisdictionChoice, type JurisdictionSource } from "./JurisdictionPicker";
-import { crossesPlace } from "./jurisdictionChoice";
+import { choiceAfterKind, crossesPlace } from "./jurisdictionChoice";
 import type { Jurisdiction, JurisdictionMatch } from "./api";
 
 const row = (name: string, state = "XA"): JurisdictionMatch =>
@@ -102,5 +102,19 @@ describe("crossesPlace", () => {
     expect(crossesPlace("issue", "place")).toBe(true);
     expect(crossesPlace("issue", "other")).toBe(false);
     expect(crossesPlace("place", "place")).toBe(false);
+  });
+});
+
+describe("choiceAfterKind", () => {
+  const listed = { kind: "listed", row: row("Alder") } as JurisdictionChoice;
+  const custom = { kind: "custom" } as JurisdictionChoice;
+  it("clears a pick crossing to or from a jurisdiction, and keeps it between the others", () => {
+    expect(choiceAfterKind("place", "other", listed)).toEqual({ kind: "unlinked" });
+    expect(choiceAfterKind("issue", "place", listed)).toEqual({ kind: "unlinked" });
+    expect(choiceAfterKind("issue", "community", listed)).toBe(listed);
+  });
+  it("keeps a typed place only for a neighbourhood or association", () => {
+    expect(choiceAfterKind("community", "issue", custom)).toEqual({ kind: "unlinked" });
+    expect(choiceAfterKind("community", "community", custom)).toBe(custom);
   });
 });

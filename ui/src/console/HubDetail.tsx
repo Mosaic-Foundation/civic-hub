@@ -293,7 +293,7 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
             </option>
           ))}
         </select>
-        <small className="cx-muted">A place hub needs a jurisdiction; any other kind may have a related place, or none.</small>
+        <small className="cx-muted">A jurisdiction's hub needs its jurisdiction; any other kind may have a location, or none.</small>
       </label>
       <JurisdictionPicker
         optional={!isPlace}

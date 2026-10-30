@@ -490,3 +490,51 @@ describe("creating a hub", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("a neighbourhood or association hub from the start page", () => {
+  it("needs no jurisdiction, takes a typed name, and starts with its own samples", async () => {
+    const { code } = await mint();
+    const cookie = await signedInStart(code, `assoc-${run}@example.test`);
+    const slug = `st-assoc-${run}`;
+    const res = await startCall("POST", "/start/hubs", {
+      cookie,
+      ip: freshIp(),
+      body: hubBody(slug, { hub_kind: "community", jurisdiction_custom: true, jurisdiction_name: "Example Homeowners" }),
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    created.push(slug);
+    const config = await call("GET", "/hub-config", `${slug}.localhost`);
+    expect(config.body.settings["identity.hub_kind"]).toBe("community");
+    expect(config.body.hub.jurisdiction_name).toBe("Example Homeowners");
+    expect(res.body.sample_content.error).toBeUndefined();
+    const titles = (await localRest(`processes?hub_id=eq.${slug}&select=title`)) as Array<{ title: string }>;
+    expect(titles.map((t) => t.title)).toContain("What should we do first with this year's shared funds?");
+  });
+
+  it("has a location from the list, optional as for any other kind", async () => {
+    const { code } = await mint();
+    const cookie = await signedInStart(code, `assoc2-${run}@example.test`);
+    const slug = `st-assoc2-${run}`;
+    const res = await startCall("POST", "/start/hubs", {
+      cookie,
+      ip: freshIp(),
+      body: hubBody(slug, { hub_kind: "community", jurisdiction_ocd_id: "ocd-division/country:us/state:va" }),
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    created.push(slug);
+    const config = await call("GET", "/hub-config", `${slug}.localhost`);
+    expect(config.body.hub.jurisdiction_name).toBe("Virginia");
+  });
+
+  it("refuses a typed place on a jurisdiction's hub", async () => {
+    const { code } = await mint();
+    const cookie = await signedInStart(code, `juris-${run}@example.test`);
+    const res = await startCall("POST", "/start/hubs", {
+      cookie,
+      ip: freshIp(),
+      body: hubBody(`st-juris-${run}`, { hub_kind: "place", jurisdiction_custom: true, jurisdiction_name: "Somewhere" }),
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/from the list/);
+  });
+});

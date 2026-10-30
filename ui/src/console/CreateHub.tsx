@@ -10,7 +10,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type ConsoleConfig, type HubMode, type SlugSuggestion } from "./api";
 import { go, href } from "./route";
 import {
-  JURISDICTION_TYPES,
   defaultGoverningBody,
   defaultGoverningBodyShort,
   hubTypeFor,
@@ -20,7 +19,7 @@ import {
 import { defaultHubName, jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
 import { fillSampleText } from "../../../src/shared/hubCopy";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
-import { crossesPlace } from "./jurisdictionChoice";
+import { choiceAfterKind } from "./jurisdictionChoice";
 import { PLUGIN_NAMES } from "./pluginNames";
 import { SuggestInput, SuggestNote } from "./SuggestInput";
 import { TimeZoneSelect } from "./TimeZoneSelect";
@@ -50,7 +49,6 @@ export default function CreateHub() {
     slug: "",
     custom_hostname: "",
     jurisdiction_name: "",
-    jurisdiction_type: "",
     governing_body: "",
     governing_body_short: "",
     timezone: "",
@@ -96,17 +94,9 @@ export default function CreateHub() {
   const suggestedPlaceName = listed?.display_name ?? "";
   const placeName = form.jurisdiction_name || suggestedPlaceName;
   const placeCode = listed ? (jurisdictionCodeFor(listed) ?? "") : "";
-  const hubType = !isPlace
-    ? ""
-    : listed
-      ? hubTypeFor(listed.type)
-      : choice.kind === "custom"
-        ? form.jurisdiction_type
-        : pickerType
-          ? hubTypeFor(pickerType)
-          : "";
+  const hubType = !isPlace ? "" : listed ? hubTypeFor(listed.type) : pickerType ? hubTypeFor(pickerType) : "";
   const suggest = {
-    name: isPlace && placeName ? defaultHubName(placeName) : "",
+    name: (isPlace || choice.kind === "custom") && placeName ? defaultHubName(placeName) : "",
     governing_body:
       isPlace && isJurisdictionType(hubType) ? defaultGoverningBody(hubType, placeCode, listed?.ocd_id ?? null) : "",
     timezone: isPlace && listed ? suggestedTimeZone(listed.state) : "",
@@ -281,10 +271,11 @@ export default function CreateHub() {
                     checked={hubKind === k.id}
                     onChange={() => {
                       setHubKind(k.id);
-                      // A place's details mean something else on the other side, so they go at once.
-                      if (crossesPlace(hubKind, k.id)) {
-                        setChoice(k.id === "place" ? { kind: "unlinked" } : { kind: "none" });
-                        setForm((f) => ({ ...f, jurisdiction_name: "", jurisdiction_type: "", governing_body: "", governing_body_short: "" }));
+                      // What was chosen for the place may not apply to this kind; it goes at once if not.
+                      const next = choiceAfterKind(hubKind, k.id, choice);
+                      if (next !== choice) {
+                        setChoice(next);
+                        setForm((f) => ({ ...f, jurisdiction_name: "", governing_body: "", governing_body_short: "" }));
                       }
                     }}
                   />
@@ -299,7 +290,7 @@ export default function CreateHub() {
           </fieldset>
 
           <fieldset>
-            <legend>{isPlace ? "Place" : "Related place"}</legend>
+            <legend>{isPlace ? "Jurisdiction" : "Location"}</legend>
             <JurisdictionPicker
               value={choice}
               onChange={(next) => {
@@ -308,6 +299,8 @@ export default function CreateHub() {
                 set("jurisdiction_name", "");
               }}
               optional={!isPlace}
+              noneChoice={false}
+              customChoice={hubKind === "community"}
               onTypeChange={setPickerType}
             />
             {(choice.kind === "custom" || listed) && (
@@ -323,7 +316,7 @@ export default function CreateHub() {
                 <small className="cx-muted">
                   {isPlace
                     ? `Shown at sign-up: "I confirm that I am a resident of ${placeName.trim() || "…"}".`
-                    : "Names the hub's related place."}
+                    : "How the hub's location is named."}
                   <SuggestNote value={form.jurisdiction_name} suggestion={suggestedPlaceName} />
                 </small>
               </label>
@@ -333,20 +326,6 @@ export default function CreateHub() {
                 Jurisdiction code <span className="cx-mono">{placeCode || "—"}</span>: derived from the OCD id once,
                 when the hub is created, and never changed.
               </p>
-            )}
-            {isPlace && choice.kind === "custom" && (
-              <label className="cx-field">
-                <span>Type of place</span>
-                <select value={form.jurisdiction_type} onChange={(e) => set("jurisdiction_type", e.target.value)}>
-                  <option value="">Choose…</option>
-                  {JURISDICTION_TYPES.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-                <small className="cx-muted">Sets the usual governing body and which sample content fits.</small>
-              </label>
             )}
             {isPlace && (
               <div className="cx-two">

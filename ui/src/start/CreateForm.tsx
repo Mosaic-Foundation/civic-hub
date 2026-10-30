@@ -13,12 +13,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { StartApiError, startApi, startJurisdictions, type StartConfig } from "./api";
 import type { SlugSuggestion } from "../console/api";
 import { JurisdictionPicker, type JurisdictionChoice } from "../console/JurisdictionPicker";
-import { crossesPlace } from "../console/jurisdictionChoice";
+import { choiceAfterKind } from "../console/jurisdictionChoice";
 import { SuggestInput } from "../console/SuggestInput";
 import { TimeZoneSelect } from "../console/TimeZoneSelect";
 import { TermsAtCreate } from "./TermsAtCreate";
 import {
-  JURISDICTION_TYPES,
   defaultGoverningBody,
   defaultGoverningBodyShort,
   hubTypeFor,
@@ -54,7 +53,6 @@ export default function CreateForm({
     name: "",
     slug: "",
     jurisdiction_name: "",
-    jurisdiction_type: "",
     governing_body: "",
     governing_body_short: "",
     timezone: "",
@@ -87,20 +85,13 @@ export default function CreateForm({
   const suggestedPlaceName = listed?.display_name ?? "";
   const placeName = form.jurisdiction_name || suggestedPlaceName;
   const placeCode = listed ? (jurisdictionCodeFor(listed) ?? "") : "";
-  const hubType = !isPlace
-    ? ""
-    : listed
-      ? hubTypeFor(listed.type)
-      : choice.kind === "custom"
-        ? form.jurisdiction_type
-        : pickerType
-          ? hubTypeFor(pickerType)
-          : "";
+  const hubType = !isPlace ? "" : listed ? hubTypeFor(listed.type) : pickerType ? hubTypeFor(pickerType) : "";
   const suggest = {
-    name: isPlace && placeName ? defaultHubName(placeName) : "",
+    // A hub of another kind has its own name; only the place it was typed for suggests one.
+    name: (isPlace || choice.kind === "custom") && placeName ? defaultHubName(placeName) : "",
     governing_body:
       isPlace && isJurisdictionType(hubType) ? defaultGoverningBody(hubType, placeCode, listed?.ocd_id ?? null) : "",
-    timezone: isPlace && listed ? suggestedTimeZone(listed.state) : browserTimeZone(),
+    timezone: listed ? suggestedTimeZone(listed.state) : browserTimeZone(),
   };
   const governingBody = isPlace ? form.governing_body || suggest.governing_body : "";
   const suggestShort = governingBody ? defaultGoverningBodyShort(governingBody) : "";
@@ -205,10 +196,11 @@ export default function CreateForm({
                   checked={hubKind === k.id}
                   onChange={() => {
                     setHubKind(k.id);
-                    // A place's details mean something else on the other side, so they go at once.
-                    if (crossesPlace(hubKind, k.id)) {
-                      setChoice(k.id === "place" ? { kind: "unlinked" } : { kind: "none" });
-                      setForm((f) => ({ ...f, jurisdiction_name: "", jurisdiction_type: "", governing_body: "", governing_body_short: "" }));
+                    // What was chosen for the place may not apply to this kind; it goes at once if not.
+                    const next = choiceAfterKind(hubKind, k.id, choice);
+                    if (next !== choice) {
+                      setChoice(next);
+                      setForm((f) => ({ ...f, jurisdiction_name: "", governing_body: "", governing_body_short: "" }));
                     }
                   }}
                 />
@@ -222,7 +214,12 @@ export default function CreateForm({
         </fieldset>
 
         <fieldset>
-          <legend>{isPlace ? "Place" : "Related place"}</legend>
+          <legend>{isPlace ? "Jurisdiction" : "Location"}</legend>
+          {!isPlace && (
+            <p className="cx-muted cx-small">
+              Where this hub is. Optional: leave it blank if it isn't in one place. For a whole state, choose State as the type.
+            </p>
+          )}
           <JurisdictionPicker
             value={choice}
             onChange={(next) => {
@@ -230,13 +227,15 @@ export default function CreateForm({
               set("jurisdiction_name", "");
             }}
             optional={!isPlace}
+            noneChoice={false}
+            customChoice={hubKind === "community"}
             onTypeChange={setPickerType}
             source={startJurisdictions}
             plain
           />
           {(choice.kind === "custom" || listed) && (
             <label className="cx-field">
-              <span>Place name</span>
+              <span>{choice.kind === "custom" ? "Its name" : "Place name"}</span>
               <SuggestInput
                 required={choice.kind === "custom"}
                 value={form.jurisdiction_name}
@@ -247,21 +246,10 @@ export default function CreateForm({
               <small className="cx-muted">
                 {isPlace
                   ? `People joining confirm: "I am a resident of ${placeName.trim() || "…"}".`
-                  : "Names the hub's related place."}
+                  : choice.kind === "custom"
+                    ? "The neighbourhood, nation or association's own name."
+                    : "How the hub's location is named."}
               </small>
-            </label>
-          )}
-          {isPlace && choice.kind === "custom" && (
-            <label className="cx-field">
-              <span>Type of place</span>
-              <select value={form.jurisdiction_type} onChange={(e) => set("jurisdiction_type", e.target.value)}>
-                <option value="">Choose…</option>
-                {JURISDICTION_TYPES.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
             </label>
           )}
           {isPlace && (

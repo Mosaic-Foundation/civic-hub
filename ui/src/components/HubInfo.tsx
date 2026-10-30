@@ -16,7 +16,10 @@ export default function HubInfo() {
     <header className={`hub-info${hub.logo_url ? " hub-info--with-logo" : ""}`}>
       <div className="hub-info-text">
         <h1 className="hub-name">{hub.jurisdiction}</h1>
-        <span className="hub-label">{hub.label}</span>
+        <span className="hub-label">
+          {hub.label}
+          {hub.location && ` · ${hub.location}`}
+        </span>
       </div>
       {hub.logo_url && (
         // Decorative: the place name beside it says what it is.

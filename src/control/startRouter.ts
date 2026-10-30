@@ -340,6 +340,10 @@ export function startRouter(): Router {
     const hubDomain = startHubDomain();
     if (!hubDomain) throw new StartError("This page is not set up to create hubs.", 503);
     const input = parseCreateInput(startCreateBody((req.body ?? {}) as Record<string, unknown>, s.email, hubDomain));
+    // A typed place belongs to a neighbourhood or association; a jurisdiction comes from the list.
+    if (input.hubKind === "place" && input.jurisdictionCustom) {
+      throw new StartError("Choose your jurisdiction from the list. If it isn't there, a Neighbourhood or association hub can type its name.");
+    }
 
     // Hold the code, create, then spend it. A create that fails releases it.
     const claimed = await claimEntitlement(s.entitlement_id, s.email);

@@ -89,7 +89,7 @@ function residencyIntroFallback(): string {
       ? "please confirm you are trying this demo and review the policies below"
       : kind === "place"
         ? "please confirm your residency and review the policies below"
-        : kind === "organization"
+        : kind === "organization" || kind === "community"
           ? "please confirm your membership and review the policies below"
           : "please review the policies below";
   return `To participate in ${theName(setting("identity.name") ?? hubDisplayName())}, ${ask}.`;
@@ -144,15 +144,25 @@ const hub = {
    * Geographic jurisdiction — banner, hub-info card, residency copy. The
    * place this hub serves, which stays accurate even when `name` is
    * rebranded for demo or white-label use.
+   *
+   * Only a jurisdiction's hub is headed by its place. Any other kind is headed
+   * by its own name, wherever it is (`location` says where), never "".
    */
   get jurisdiction(): string {
+    if (!this.isPlace) return this.name;
     return (
       getLoadedHubConfig()?.hub.jurisdiction_name ??
       env(import.meta.env.VITE_HUB_JURISDICTION) ??
-      // A hub with no place (an issue campaign, an organization): the
-      // headings that name the place name the hub instead, never "".
       this.name
     );
+  },
+
+  /** Where a hub that is not a jurisdiction is, if it said (shown beside its label); null otherwise. */
+  get location(): string | null {
+    if (this.isPlace) return null;
+    const location = getLoadedHubConfig()?.hub.jurisdiction_name?.trim();
+    // A typed name is often the hub's own: no need to say it twice.
+    return location && !this.name.toLowerCase().includes(location.toLowerCase()) ? location : null;
   },
 
   /**
