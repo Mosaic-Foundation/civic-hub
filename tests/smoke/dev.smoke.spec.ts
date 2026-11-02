@@ -73,6 +73,8 @@ const mosaicCopies: string[] = [];
 let navLayoutBefore: string | null = null;
 /** The smoke hub's Members threshold before the sidebar test raised it; put back in afterAll. */
 let membersMinBefore: string | null = null;
+/** The threshold the last test raises to. A run cut short leaves it on the hub, so the next run puts it back first. */
+const MEMBERS_MIN_RAISED = "100000";
 /** The vote the phone ballot test made: its feed card carries the type pill. */
 let smokeVoteTitle = "";
 let cleanReview = { id: "", title: "" };
@@ -147,6 +149,16 @@ test.beforeAll(async ({ playwright }) => {
       data: { section: "theme", values: { "nav.layout": "" } },
     });
     expect(r.ok(), `nav.layout back to the header: ${await r.text()}`).toBeTruthy();
+  }
+  // A run stopped by the global timeout skips afterAll and leaves the Members
+  // threshold raised, which would fail the member tests in every run after it.
+  const settings = await (await request.get(`${apiBase()}/admin/hub/settings`, { headers: auth(admin) })).json();
+  if (settings.values?.["plugin.members.min_count"] === MEMBERS_MIN_RAISED) {
+    const back = await request.put(`${apiBase()}/admin/hub/settings`, {
+      headers: auth(admin),
+      data: { section: "plugins", values: { "plugin.members.min_count": "" } },
+    });
+    expect(back.ok(), await back.text()).toBeTruthy();
   }
   await request.dispose();
 });
@@ -944,10 +956,11 @@ test("an admin's invite with a message the check flags sends nothing and shows w
 // threshold (2026-10-14), raised above any count and put back in afterAll.
 test("below the Members threshold a resident gets no count from the server; the admin sees it with a note", async ({ browser, request }) => {
   const settings = await (await request.get(`${apiBase()}/admin/hub/settings`, { headers: auth(admin) })).json();
-  membersMinBefore = (settings.values?.["plugin.members.min_count"] as string | undefined) ?? "";
+  const stored = (settings.values?.["plugin.members.min_count"] as string | undefined) ?? "";
+  membersMinBefore = stored === MEMBERS_MIN_RAISED ? "" : stored;
   const raised = await request.put(`${apiBase()}/admin/hub/settings`, {
     headers: auth(admin),
-    data: { section: "plugins", values: { "plugin.members.min_count": "100000" } },
+    data: { section: "plugins", values: { "plugin.members.min_count": MEMBERS_MIN_RAISED } },
   });
   expect(raised.ok(), await raised.text()).toBeTruthy();
   // At once, on whichever instance answers (the settings version, 20261018000000).
