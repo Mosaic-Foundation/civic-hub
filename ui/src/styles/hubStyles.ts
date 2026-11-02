@@ -85,6 +85,8 @@ import "../components/BottomBar.css";
 import "../components/WordcloudTeaser.css";
 import "../components/FeedVotesTabs.css";
 import "../components/WelcomeBanner.css";
+import "../components/AdminSetupCard.css";
+import "../pages/settings/document/DocumentEditor.css";
 import "../components/MemberStack.css";
 import "../components/Feed.css";
 import "../components/LegalPage.css";

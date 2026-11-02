@@ -26,6 +26,9 @@ const BEFORE: string[] = JSON.parse(readFileSync(join(here, "../fixtures/plugins
 
 /** Added on purpose since e92804c, each with why. */
 const ADDED: Record<string, string> = {
+  // Pilot readiness 2 (2026-11-02): the home page's "Set up your hub" card.
+  "GET /admin/hub/setup-card": "the admin's setup card: its ticks",
+  "POST /admin/hub/setup-card": "the admin's setup card: Dismiss and Skip",
   "GET /admin/hub/plugins/installs": "the Plugins page's installs (ADR-014)",
   "POST /admin/hub/plugins/:plugin/install": "Install (ADR-014)",
   "POST /admin/hub/plugins/:plugin/remove": "Remove: Stop now or Wind down (ADR-014)",

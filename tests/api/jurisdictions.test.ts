@@ -125,22 +125,22 @@ describe("the reference list in the console", () => {
 });
 
 describe("the slug suggestion", () => {
-  it("offers the plain name, then name + type, then name + state, then a number", async () => {
+  it("offers the plain name, then name + state, then name + type, then a number", async () => {
     expect((await suggest(`${Name} town`, "town")).slug).toBe(BASE);
     const a = await create({ slug: BASE, jurisdiction_ocd_id: OCD.town, jurisdiction_name: `Town of ${Name}, Zedland`, jurisdiction_type: "town" });
     expect(a.status, JSON.stringify(a.body)).toBe(201);
 
     const county = await suggest(`${Name} County`, "county");
-    expect(county.slug).toBe(`${BASE}-county`);
+    expect(county.slug).toBe(`${BASE}-zz`);
     expect(county.passed_over).toEqual([{ slug: BASE, reason: "taken" }]);
     // With a platform domain (console.<domain>) the address comes too; on
     // console.localhost there is none, and the form leaves the hostname to the operator.
-    if (county.hostname !== null) expect(county.hostname).toMatch(new RegExp(`^${BASE}-county\\.`));
+    if (county.hostname !== null) expect(county.hostname).toMatch(new RegExp(`^${BASE}-zz\\.`));
 
-    expect((await suggest(`${Name} town`, "town")).slug).toBe(`${BASE}-town`);
-    expect((await create({ slug: `${BASE}-town`, jurisdiction_ocd_id: OCD.town, jurisdiction_type: "town" })).status).toBe(201);
     expect((await suggest(`${Name} town`, "town")).slug).toBe(`${BASE}-zz`);
     expect((await create({ slug: `${BASE}-zz`, jurisdiction_ocd_id: OCD.town, jurisdiction_type: "town" })).status).toBe(201);
+    expect((await suggest(`${Name} town`, "town")).slug).toBe(`${BASE}-town`);
+    expect((await create({ slug: `${BASE}-town`, jurisdiction_ocd_id: OCD.town, jurisdiction_type: "town" })).status).toBe(201);
     expect((await suggest(`${Name} town`, "town")).slug).toBe(`${BASE}-2`);
   });
 
