@@ -1,5 +1,34 @@
 import SectionForm from "./SectionForm";
-import { BooleanField, DocumentField, EmailField, TextField } from "./fields";
+import { BooleanField, DocumentField, EmailField, ReadOnlyField, TextField } from "./fields";
+import type { FormApi } from "./SectionForm";
+
+/**
+ * Whose law the Terms use. A place hub's is its own state, shown and not asked.
+ * Any other hub may choose; left empty it uses what's shown in grey, marked as
+ * its location's state or the platform's default.
+ */
+function GoverningLaw({ f }: { f: FormApi }) {
+  const law = f.data.governing_law;
+  if (law?.source === "place") {
+    return (
+      <ReadOnlyField
+        label="Governing law (state)"
+        value={law.state}
+        hint="From this hub's jurisdiction: its Terms use this state's law, so there's nothing to set here."
+      />
+    );
+  }
+  const shown = law ? `${law.fallback} (${law.fallback_source === "location" ? "this hub's location" : "the platform's default"})` : undefined;
+  return (
+    <TextField
+      f={{ ...f, fallback: () => undefined }}
+      k="legal.governing_state"
+      label="Governing law (state)"
+      placeholder={shown}
+      hint="The state whose law governs this hub's Terms. Leave it empty to use the one shown in grey."
+    />
+  );
+}
 
 export default function LegalSection() {
   return (
@@ -30,12 +59,7 @@ export default function LegalSection() {
             placeholder="contact@example.com"
             hint="Where the documents tell people to write with a question, an appeal, or a data request. A shared inbox is fine."
           />
-          <TextField
-            f={f}
-            k="legal.governing_state"
-            label="Governing law (state)"
-            hint="For a hub that is not a place — a campaign, an organization: the state whose law governs its Terms. A place hub's documents use its own state. Leave it empty to use the platform's default, shown here."
-          />
+          <GoverningLaw f={f} />
           <DocumentField
             f={f}
             k="legal.who_runs_this"

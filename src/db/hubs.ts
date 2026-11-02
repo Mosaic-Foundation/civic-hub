@@ -70,6 +70,21 @@ function remember<T>(map: Map<string, CacheEntry<T | null>>, key: string, value:
 }
 
 /**
+ * The name of the state a hub's listed place is in, for a place name that
+ * doesn't carry it: a whole state ("Colorado") or a name typed without one.
+ * Null when the hub has no listed place or the list has no such state.
+ */
+export async function stateNameForHub(hubId: string): Promise<string | null> {
+  const db = getDb();
+  const { data: hub } = await db.from("hubs").select("jurisdiction_ocd_id").eq("id", hubId).maybeSingle();
+  const ocdId = (hub as { jurisdiction_ocd_id: string | null } | null)?.jurisdiction_ocd_id ?? "";
+  const code = /\/(?:state|district):([a-z]{2})(?:\/|$)/.exec(ocdId)?.[1];
+  if (!code) return null;
+  const { data } = await db.from("jurisdictions").select("official_name").eq("type", "state").eq("state", code).maybeSingle();
+  return (data as { official_name: string } | null)?.official_name ?? null;
+}
+
+/**
  * Drop every cached miss. Call after creating a hub or changing a hostname,
  * so this instance finds the new address at once. (Other changes need no
  * call: a found hub is read fresh on every request.)

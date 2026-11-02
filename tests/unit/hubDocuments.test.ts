@@ -288,6 +288,15 @@ describe("a hub's substitutions come from its own row", () => {
     expect(values.STATE).toBe("Virginia");
   });
 
+  it("takes a place hub's state from its name, or from its listed place when the name has none", () => {
+    expect(substitutions(hubRow({ jurisdiction_name: "Alder County, Xland" })).STATE).toBe("Xland");
+    // A whole state has no comma, and read Virginia's law until 2026-11-02.
+    expect(substitutions(hubRow({ jurisdiction_name: "Xland" }), "Xland").STATE).toBe("Xland");
+    expect(substitutions(hubRow({ jurisdiction_name: "Alder County" }), "Xland").STATE).toBe("Xland");
+    // Nothing listed: the platform's default, as before.
+    expect(substitutions(hubRow({ jurisdiction_name: "Alder County" })).STATE).toBe("Virginia");
+  });
+
   it("reads the operator as its administrators, and the platform's address, when none is set (review R15; Adam 2026-11-02)", () => {
     // Outside a request there is no settings snapshot. Until 2026-10-07 the
     // operator and contact address were then left as visible placeholders,

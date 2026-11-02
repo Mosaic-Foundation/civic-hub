@@ -21,6 +21,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stateNameForHub } from "../db/hubs.js";
 import { fetchHubDocuments } from "../db/hubSettingsStore.js";
 import { getSettingSync } from "./hubSettings.js";
 import { HUB_KINDS, hubKindOf } from "../shared/hubKind.js";
@@ -123,6 +124,10 @@ export function documentSettingDefault(key: string): string | undefined {
  * is a document about somebody else's website, which is exactly what Athens
  * was serving before 2026-09-23.
  *
+ * A name with no comma (a whole state, or a place typed without its state)
+ * brings its state from the hub's listed place: `listedState`, read by the
+ * caller, because this stays synchronous.
+ *
  * `{OPERATOR}` and `{CONTACT_EMAIL}` are the two settings added the same day.
  * Terms and a privacy policy have to name who is answerable and how to reach
  * them; shared templates cannot, so the hub says it once and all four
@@ -137,10 +142,10 @@ export function documentSettingDefault(key: string): string | undefined {
  * with no state in its name uses the governing state's default. A hub's own
  * text can still use a placeholder nobody defines; that one stays visible.
  */
-export function substitutions(hub: Hub): Record<string, string> {
+export function substitutions(hub: Hub, listedState?: string | null): Record<string, string> {
   const jurisdiction = hub.jurisdiction_name?.trim() ?? "";
   const [place, ...rest] = jurisdiction.split(",");
-  const state = rest.join(",").trim();
+  const state = rest.join(",").trim() || listedState?.trim() || "";
 
   const out: Record<string, string> = {};
   // The DISPLAY name where a hub has chosen one, the registry name otherwise.
@@ -169,7 +174,7 @@ export function substitutions(hub: Hub): Record<string, string> {
       out.PLACE = fallback;
       out.JURISDICTION = jurisdiction || fallback;
     }
-    return withOperator(out);
+    return withOperator(out, state);
   }
 
   if (jurisdiction) out.JURISDICTION = jurisdiction;
@@ -178,7 +183,37 @@ export function substitutions(hub: Hub): Record<string, string> {
 
   const governingBody = getSettingSync(KEYS.COPY_GOVERNING_BODY_NAME)?.trim();
   out.GOVERNING_BODY = governingBody || "local government";
-  return withOperator(out);
+  return withOperator(out, state);
+}
+
+/** Whether a hub's place name leaves its state to be read from its listed place. */
+function hubListedState(hub: Hub): Promise<string | null> {
+  return (hub.jurisdiction_name ?? "").includes(",") ? Promise.resolve(null) : stateNameForHub(hub.id);
+}
+
+/**
+ * Whose law a hub's Terms use, and why (pilot readiness 2): the state of a
+ * place hub's own place; for another kind the hub's choice, else its location's
+ * state, else the platform's default. `fallback` is what applies if the field
+ * is empty, for the form to show marked as such.
+ */
+export async function hubGoverningLaw(hub: Hub): Promise<{
+  state: string;
+  source: "place" | "setting" | "location" | "platform_default";
+  fallback: string;
+  fallback_source: "location" | "platform_default";
+}> {
+  const name = hub.jurisdiction_name?.trim() ?? "";
+  const located = name.split(",").slice(1).join(",").trim() || (await hubListedState(hub))?.trim() || "";
+  const platform = documentSettingDefault(KEYS.LEGAL_GOVERNING_STATE) ?? "";
+  const fallback = located || platform;
+  const fallback_source = located ? "location" : "platform_default";
+  if (hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)) === "place" && located) {
+    return { state: located, source: "place", fallback, fallback_source };
+  }
+  const chosen = getSettingSync(KEYS.LEGAL_GOVERNING_STATE)?.trim();
+  if (chosen) return { state: chosen, source: "setting", fallback, fallback_source };
+  return { state: fallback, source: fallback_source, fallback, fallback_source };
 }
 
 /**
@@ -189,7 +224,7 @@ export function substitutions(hub: Hub): Record<string, string> {
  */
 export const NO_OPERATOR = { OPERATOR: "its administrators", OPERATOR_NOUN: "the Hub's administrators", OPERATOR_LINE: "" } as const;
 
-function withOperator(out: Record<string, string>): Record<string, string> {
+function withOperator(out: Record<string, string>, locatedState: string): Record<string, string> {
   const operator = getSettingSync(KEYS.LEGAL_OPERATOR_NAME)?.trim();
   Object.assign(out, operator ? { OPERATOR: operator, OPERATOR_NOUN: operator, OPERATOR_LINE: `${operator}\n` } : NO_OPERATOR);
   // The name the admin panel shows beside the editor, matching the key.
@@ -199,9 +234,10 @@ function withOperator(out: Record<string, string>): Record<string, string> {
   out.CONTACT_EMAIL = getSettingSync(KEYS.LEGAL_CONTACT_EMAIL)?.trim() || PLATFORM_CONTACT_EMAIL;
 
   // Used by the sentences of a hub that is not a place (its governing law,
-  // the draft note); a place hub's use its own {STATE}.
+  // the draft note): its choice, else its location's state, else the platform's
+  // default. A place hub's use its own {STATE}.
   const governingState =
-    getSettingSync(KEYS.LEGAL_GOVERNING_STATE)?.trim() || documentSettingDefault(KEYS.LEGAL_GOVERNING_STATE);
+    getSettingSync(KEYS.LEGAL_GOVERNING_STATE)?.trim() || locatedState || documentSettingDefault(KEYS.LEGAL_GOVERNING_STATE);
   if (governingState) {
     out.GOVERNING_STATE = governingState;
     // A custom place written without its state ("Riverside") still needs one.
@@ -349,7 +385,7 @@ export async function hubDocumentsWithNotes(
   hub: Hub,
 ): Promise<{ documents: HubDocuments; draft_notes: HubDraftNotes; defaults: string[] }> {
   const overrides = await fetchHubDocuments(hub.id);
-  const values = substitutions(hub);
+  const values = substitutions(hub, await hubListedState(hub));
   resolveWhoRunsThis(values, getSettingSync(KEYS.LEGAL_WHO_RUNS_THIS));
   const out: HubDocuments = {};
   const notes: HubDraftNotes = {};
