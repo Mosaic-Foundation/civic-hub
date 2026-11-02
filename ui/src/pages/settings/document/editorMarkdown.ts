@@ -65,7 +65,7 @@ function wrap(mark: string, inner: string): string {
 }
 
 function inlineMarkdown(node: Node): string {
-  if (node.nodeType === Node.TEXT_NODE) return (node.textContent ?? "").replace(/ /g, " ").replace(/\n/g, " ");
+  if (node.nodeType === Node.TEXT_NODE) return (node.textContent ?? "").replace(/\u00a0/g, " ").replace(/\n/g, " ");
   if (!(node instanceof HTMLElement)) return "";
   if (node.dataset.token) return `{${node.dataset.token}}`;
   const inner = [...node.childNodes].map(inlineMarkdown).join("");
