@@ -9,7 +9,7 @@ import {
   adminPatchSettings,
   type CommentIdentityMode,
 } from "../../services/api";
-import { useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
+import { useBriefMessage, useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
 
 export default function ParticipationSection() {
   const { setDirty } = useHubSettings();
@@ -51,6 +51,8 @@ export default function ParticipationSection() {
   useEffect(() => setDirty("participation", dirty), [dirty, setDirty]);
   useEffect(() => () => setDirty("participation", false), [setDirty]);
   useUnsavedChangesGuard(dirty);
+  useBriefMessage(thresholdMessage, () => setThresholdMessage(null));
+  useBriefMessage(identityModeMessage, () => setIdentityModeMessage(null));
 
   async function saveThreshold() {
     setSavingThreshold(true);
@@ -127,15 +129,16 @@ export default function ParticipationSection() {
           disabled={!loaded || savingThreshold}
           style={{ maxWidth: "12ch" }}
         />
-        <div className="admin-settings-actions">
+        <div className="admin-settings-actions settings-savebar is-floating" role="group" aria-label="Save the threshold">
           <button
             type="button"
-            className="admin-convert-button"
+            className="admin-convert-button settings-save-button"
             onClick={saveThreshold}
-            disabled={!loaded || savingThreshold}
+            disabled={!thresholdDirty || savingThreshold}
           >
             {savingThreshold ? "Saving…" : "Save threshold"}
           </button>
+          {thresholdDirty && !savingThreshold && !thresholdMessage && <span className="settings-unsaved">You have unsaved changes.</span>}
           {thresholdMessage && (
             <span className="admin-settings-message">{thresholdMessage}</span>
           )}
@@ -178,15 +181,16 @@ export default function ParticipationSection() {
           Anonymity is display-level: the author is always recorded
           internally for Code of Conduct moderation.
         </p>
-        <div className="admin-settings-actions">
+        <div className="admin-settings-actions settings-savebar is-floating" role="group" aria-label="Save comment identity">
           <button
             type="button"
-            className="admin-convert-button"
+            className="admin-convert-button settings-save-button"
             onClick={saveIdentityMode}
-            disabled={!loaded || savingIdentityMode}
+            disabled={!identityModeDirty || savingIdentityMode}
           >
             {savingIdentityMode ? "Saving…" : "Save comment identity"}
           </button>
+          {identityModeDirty && !savingIdentityMode && !identityModeMessage && <span className="settings-unsaved">You have unsaved changes.</span>}
           {identityModeMessage && (
             <span className="admin-settings-message">{identityModeMessage}</span>
           )}

@@ -515,14 +515,11 @@ test("admin settings: an unsaved change keeps Save in view, and leaving asks fir
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(save).toBeInViewport();
 
-  let asked = "";
-  page.once("dialog", async (d) => {
-    asked = d.message();
-    await d.dismiss();
-  });
   // Admin is its own place: the way out is "Back to the hub" (design pass).
   await page.getByRole("link", { name: "Back to the hub" }).first().click();
-  expect(asked).toMatch(/unsaved changes/);
+  const asked = page.getByRole("dialog", { name: "Leave without saving?" });
+  await expect(asked).toContainText("unsaved changes");
+  await asked.getByRole("button", { name: "Stay on this page" }).click();
   await expect(page).toHaveURL(/\/admin\/settings\/copy/);
 
   // Discard: nothing is saved, the hub's copy is as it was.

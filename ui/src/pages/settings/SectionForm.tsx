@@ -1,8 +1,8 @@
 // One Settings section as one form: the fields, a Save bar, an
-// unsaved-changes guard, and "last changed by X on <date>". While there are
-// unsaved changes (and while saving, and with the result), the Save bar
-// floats at the bottom of the screen, so a long page never sends the admin
-// hunting for the button (Submit and Save, 2026-10-12).
+// unsaved-changes guard, and "last changed by X on <date>". The Save bar stays
+// in view at the bottom of the screen, so a long page never sends the admin
+// hunting for the button or wondering whether their work is saved (Submit and
+// Save, 2026-10-12; always in view, pilot readiness 2, 2026-11-02).
 //
 // Saving sends ONLY this section's keys, and of those only the ones the admin
 // changed — so a key nobody touched keeps its own "last changed" record.
@@ -17,7 +17,7 @@ import {
   type SettingsSectionId,
 } from "../../../../src/shared/hubSettingsSections";
 import { adminGetSettingTemplate, type HubSettings } from "../../services/api";
-import { useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
+import { useBriefMessage, useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
 import { HANDOVER_KEYS, SETTING_LABELS } from "../../../../src/shared/settingOwners";
 
 /** Values in the form for keys the hub has not set: what the site uses today. */
@@ -56,7 +56,7 @@ export default function SectionForm({
   section,
   title,
   intro,
-  savedMessage = "Saved. It shows on this page now; visitors see it on their next page load.",
+  savedMessage = "Saved.",
   onSaved,
   children,
 }: Props) {
@@ -74,7 +74,8 @@ export default function SectionForm({
   const [initial, setInitial] = useState<Record<string, string> | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+  const [message, setMessage] = useState<{ text: string; error: boolean; brief?: boolean } | null>(null);
+  useBriefMessage(message?.brief ? message.text : null, () => setMessage(null));
 
   // The shared default of every document in this section, once. A document
   // the hub has not rewritten opens WITH its default in the editor, so the
@@ -146,7 +147,8 @@ export default function SectionForm({
       setInitial(next);
       setDraft(next);
       // A rename says what followed it (review R11).
-      setMessage({ text: fresh.follow_on ? `${savedMessage} ${fresh.follow_on}` : savedMessage, error: false });
+      // What followed it stays until the next edit; a plain "Saved" goes by itself.
+      setMessage(fresh.follow_on ? { text: `${savedMessage} ${fresh.follow_on}`, error: false } : { text: savedMessage, error: false, brief: true });
       onSaved?.(fresh);
     } catch (err) {
       setMessage({
@@ -209,7 +211,7 @@ export default function SectionForm({
         {/* A direct child of the form: sticky moves only within its parent,
             and the form is the tall box the bar must float over. */}
         <div
-          className={`admin-settings-actions settings-savebar${isDirty || saving || message ? " is-floating" : ""}`}
+          className="admin-settings-actions settings-savebar is-floating"
           role="group"
           aria-label="Save this section"
         >

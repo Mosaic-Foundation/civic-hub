@@ -151,13 +151,13 @@ export default function PeopleSection() {
         Changing who administers a hub takes a code emailed to you now —
         an open admin tab is not enough on its own.
       </p>
-      <div className="admin-settings-actions">
+      <div className="admin-settings-actions settings-savebar is-floating" role="group" aria-label="Save this section">
         {!peopleCodeSent ? (
           <button
             type="button"
-            className="admin-convert-button"
+            className="admin-convert-button settings-save-button"
             onClick={requestPeopleCode}
-            disabled={savingPeople}
+            disabled={savingPeople || !dirty}
           >
             Email me a code
           </button>
@@ -177,7 +177,7 @@ export default function PeopleSection() {
             />
             <button
               type="button"
-              className="admin-convert-button"
+              className="admin-convert-button settings-save-button"
               onClick={savePeople}
               disabled={savingPeople || peopleCode.trim().length === 0}
             >

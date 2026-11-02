@@ -33,8 +33,8 @@ test("an unsaved change keeps Save in view, and leaving asks first", async ({ pa
   const bar = page.getByRole("group", { name: "Save this section" });
   const save = bar.getByRole("button", { name: "Save", exact: true });
   await expect(save).toBeDisabled();
-  // Nothing to save: the bar sits at the end of a long form, out of view.
-  await expect(save).not.toBeInViewport();
+  // Nothing to save: Save is disabled, and the bar is in view all the same.
+  await expect(save).toBeInViewport();
 
   const field = page.locator(".settings-form textarea").first();
   await field.fill(`${await field.inputValue()} (edited)`);
@@ -46,18 +46,47 @@ test("an unsaved change keeps Save in view, and leaving asks first", async ({ pa
   await expect(save).toBeInViewport();
 
   // A link away asks; staying keeps the change.
-  let asked = "";
-  page.once("dialog", async (d) => {
-    asked = d.message();
-    await d.dismiss();
-  });
   await page.getByRole("link", { name: "Back to the hub" }).first().click();
-  expect(asked).toMatch(/unsaved changes/);
+  const asked = page.getByRole("dialog", { name: "Leave without saving?" });
+  await expect(asked).toContainText("unsaved changes");
+  await asked.getByRole("button", { name: "Stay on this page" }).click();
   await expect(page).toHaveURL(/\/admin\/settings\/copy/);
   await expect(field).toHaveValue(/\(edited\)$/);
 
-  // Discard: nothing to save, and the bar goes back to its place.
+  // Back asks too; staying keeps the change and the address.
+  await page.goBack();
+  await expect(asked).toBeVisible();
+  await asked.getByRole("button", { name: "Stay on this page" }).click();
+  await expect(asked).toHaveCount(0);
+  await expect(page).toHaveURL(/\/admin\/settings\/copy/);
+  await expect(field).toHaveValue(/\(edited\)$/);
+
+  // The section list asks; leaving goes there, and the change is gone.
+  await page.getByRole("link", { name: "Email", exact: true }).click();
+  await expect(asked).toBeVisible();
+  await asked.getByRole("button", { name: "Stay on this page" }).click();
+  await expect(page).toHaveURL(/\/admin\/settings\/copy/);
+
+  // Discard: nothing to save, and Save goes quiet.
   await bar.getByRole("button", { name: "Discard changes" }).click();
   await expect(save).toBeDisabled();
-  await expect(save).not.toBeInViewport();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // Nothing unsaved, and Back is an ordinary Back: no question, no dead press.
+  await page.goto("/admin/settings/email");
+  await page.goto("/admin/settings/copy");
+  await field.fill(`${await field.inputValue()}x`);
+  await expect(save).toBeEnabled();
+  await bar.getByRole("button", { name: "Discard changes" }).click();
+  await expect(save).toBeDisabled();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/admin\/settings\/email/);
+
+  // Back and Leave goes back.
+  await page.goto("/admin/settings/copy");
+  await field.fill(`${await field.inputValue()}y`);
+  await expect(save).toBeEnabled();
+  await page.goBack();
+  await asked.getByRole("button", { name: "Leave" }).click();
+  await expect(page).toHaveURL(/\/admin\/settings\/email/);
 });

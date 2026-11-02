@@ -2,7 +2,8 @@
 // every section that edits those keys, plus the page-wide record of which
 // section has unsaved changes (for the guard in useUnsavedChangesGuard).
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import { useApi } from "../../hooks/useApi";
 import {
   adminGetHubSettings,
@@ -50,7 +51,40 @@ export function HubSettingsProvider({ children }: { children: React.ReactNode })
     });
   }, []);
 
+  // One question at a time: a second ask while one is open gets the same answer.
+  const [asking, setAsking] = useState(false);
+  const waiting = useRef<{ promise: Promise<boolean>; resolve: (leave: boolean) => void } | null>(null);
+  const askDiscard = useCallback(() => {
+    if (!waiting.current) {
+      let resolve: (leave: boolean) => void = () => {};
+      const promise = new Promise<boolean>((r) => {
+        resolve = r;
+      });
+      waiting.current = { promise, resolve };
+      setAsking(true);
+    }
+    return waiting.current.promise;
+  }, []);
+  function answer(leave: boolean) {
+    waiting.current?.resolve(leave);
+    waiting.current = null;
+    setAsking(false);
+  }
+
   return (
-    <HubSettingsCtx.Provider value={{ data, error, save, reload, dirty, setDirty }}>{children}</HubSettingsCtx.Provider>
+    <HubSettingsCtx.Provider value={{ data, error, save, reload, dirty, setDirty, askDiscard }}>
+      {children}
+      {asking && (
+        <ConfirmDialog
+          title="Leave without saving?"
+          confirmLabel="Leave"
+          cancelLabel="Stay on this page"
+          onConfirm={() => answer(true)}
+          onClose={() => answer(false)}
+        >
+          <p>You have unsaved changes on this page. If you leave now, they're lost.</p>
+        </ConfirmDialog>
+      )}
+    </HubSettingsCtx.Provider>
   );
 }

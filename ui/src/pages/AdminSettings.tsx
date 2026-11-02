@@ -4,7 +4,7 @@
 //
 // Sections are addressed by URL (/admin/settings/<section>) so a link can
 // point at one, and the browser's back button moves between them. Switching
-// away from a section with unsaved edits asks first.
+// away from a section with unsaved edits asks first, in the kit's confirm.
 
 import { Navigate, useLocation, useNavigate, useParams, Link } from "react-router-dom";
 import { adminAnchorPath, SETTINGS_NAV, type SettingsNavId } from "../../../src/shared/adminAnchors";
@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { useScrollToHash } from "../hooks/useAnchor";
 import { useColumnSlot } from "../context/columnSlot";
 import { HubSettingsProvider } from "./settings/HubSettingsContext";
-import { confirmDiscard, useHubSettings } from "./settings/hubSettingsState";
+import { replaceGuardEntry, useHubSettings } from "./settings/hubSettingsState";
 import IdentitySection from "./settings/IdentitySection";
 import ThemeSection from "./settings/ThemeSection";
 import CopySection from "./settings/CopySection";
@@ -68,7 +68,7 @@ function SettingsPage() {
   const { section } = useParams<{ section?: string }>();
   const { hash } = useLocation();
   const navigate = useNavigate();
-  const { dirty } = useHubSettings();
+  const { dirty, askDiscard } = useHubSettings();
   // In the left-column layout the rail is drawn in the column, under Hub
   // settings, so the admin sees one rail (design pass, decision 4).
   const columnSlot = useColumnSlot();
@@ -84,8 +84,13 @@ function SettingsPage() {
   function go(e: React.MouseEvent, id: string) {
     e.preventDefault();
     if (id === current!.id) return;
-    if (dirty.size > 0 && !confirmDiscard()) return;
-    navigate(`/admin/settings/${id}`);
+    if (dirty.size === 0) {
+      navigate(`/admin/settings/${id}`);
+      return;
+    }
+    void askDiscard().then((leave) => {
+      if (leave) navigate(`/admin/settings/${id}`, { replace: replaceGuardEntry() });
+    });
   }
 
   const rail = (

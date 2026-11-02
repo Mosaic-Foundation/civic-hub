@@ -49,7 +49,6 @@ export default function ThemeSection() {
           can still choose light or dark for themselves.
         </p>
       }
-      savedMessage="Saved. The site wears it now; visitors see it on their next page load."
       onSaved={(fresh) => {
         applyTheme(fresh.values[KEY]);
         // The navigation redraws at once for the admin who saved it.

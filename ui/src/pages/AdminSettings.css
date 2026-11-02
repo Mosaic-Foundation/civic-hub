@@ -436,9 +436,9 @@
   font-weight: var(--font-weight-semibold);
 }
 
-/* The Save bar: in place at the end of the form when there is nothing to
-   save; floating at the bottom of the screen while there is (SectionForm).
-   Its negative margin matches the section card's padding. */
+/* The Save bar: in view at the bottom of the screen wherever a section has
+   fields (SectionForm, Officials, Admins, Participation). Its negative margin
+   matches the section card's padding. */
 .settings-savebar.is-floating {
   position: sticky;
   /* Above the phone's bottom bar (BottomBar.css); 0 at desktop width. */

@@ -13,7 +13,6 @@ export default function LegalSection() {
           address below are substituted into all of them.
         </p>
       }
-      savedMessage="Saved. The legal pages show the change on their next load."
     >
       {(f) => (
         <>

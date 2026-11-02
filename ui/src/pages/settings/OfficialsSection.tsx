@@ -19,7 +19,7 @@ import {
   type OfficialType,
 } from "../../../../src/shared/officialTypes";
 import { useHub } from "../../config/hub";
-import { useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
+import { useBriefMessage, useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
 
 type OfficialRow = Official & { sends_briefs: boolean };
 
@@ -63,6 +63,7 @@ export default function OfficialsSection() {
   useEffect(() => setDirty("officials", dirty), [dirty, setDirty]);
   useEffect(() => () => setDirty("officials", false), [setDirty]);
   useUnsavedChangesGuard(dirty);
+  useBriefMessage(officialsMessage, () => setOfficialsMessage(null));
 
   function updateOfficial(i: number, patch: Partial<OfficialRow>) {
     setOfficials((cur) => cur.map((o, idx) => (idx === i ? { ...o, ...patch } : o)));
@@ -299,15 +300,16 @@ export default function OfficialsSection() {
         />
       </div>
 
-      <div className="admin-settings-actions" style={{ marginTop: "var(--space-md)" }}>
+      <div className="admin-settings-actions settings-savebar is-floating" role="group" aria-label="Save this section">
         <button
           type="button"
-          className="admin-convert-button"
+          className="admin-convert-button settings-save-button"
           onClick={saveOfficials}
-          disabled={!loaded || savingOfficials}
+          disabled={!dirty || savingOfficials}
         >
           {savingOfficials ? "Saving…" : "Save officials & recipients"}
         </button>
+        {dirty && !savingOfficials && !officialsMessage && <span className="settings-unsaved">You have unsaved changes.</span>}
         {officialsMessage && (
           <span className="admin-settings-message">{officialsMessage}</span>
         )}
