@@ -55,8 +55,9 @@ export function slugCandidates(name: string, type: ReferenceJurisdictionType | n
   const base = fitSlug(slugify(name));
   if (!base) return [];
   const out = [base];
-  if (type) out.push(`${fitSlug(base, SLUG_MAX - TYPE_WORD[type].length - 1)}-${TYPE_WORD[type]}`);
+  // First come keeps the clean name; the next one in another state gets its state.
   if (state) out.push(`${fitSlug(base, SLUG_MAX - state.length - 1)}-${state}`);
+  if (type) out.push(`${fitSlug(base, SLUG_MAX - TYPE_WORD[type].length - 1)}-${TYPE_WORD[type]}`);
   for (let n = 2; out.length < max; n++) {
     const suffix = `-${n}`;
     out.push(`${fitSlug(base, SLUG_MAX - suffix.length)}${suffix}`);

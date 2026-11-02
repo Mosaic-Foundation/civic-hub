@@ -54,6 +54,12 @@ export interface StartConfig {
   sample_kinds: string[];
 }
 
+export interface SlugCheck {
+  available: boolean;
+  reason: "taken" | "reserved" | "invalid" | null;
+  suggestion: string | null;
+}
+
 export interface Created {
   hub: { id: string; name: string; hostname: string };
   redirect: string;
@@ -91,6 +97,8 @@ export const startApi = {
       "GET",
       `/slug-suggestion?${new URLSearchParams({ name, ...(type ? { type } : {}), ...(state ? { state } : {}) }).toString()}`,
     ),
+  checkSlug: (slug: string, state?: string | null) =>
+    request<SlugCheck>("GET", `/slug-check?${new URLSearchParams({ slug, ...(state ? { state } : {}) }).toString()}`),
   createHub: (body: Record<string, unknown>) => request<Created>("POST", "/hubs", body),
 };
 

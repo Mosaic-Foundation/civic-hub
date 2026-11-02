@@ -326,6 +326,53 @@ describe("an invite the console emailed", () => {
   });
 });
 
+describe("the web address, checked as it is typed", () => {
+  it("says free, taken with a state-qualified suggestion, or reserved; only when signed in", async () => {
+    const { code } = await mint();
+    const ip = freshIp();
+    expect((await startCall("GET", "/start/slug-check?slug=athens", { ip })).status).toBe(401);
+    const cookie = await signedInStart(code, `slugs-${run}@example.test`, ip);
+    const free = await startCall("GET", `/start/slug-check?slug=free-${run}`, { cookie, ip });
+    expect(free.body).toEqual({ available: true, reason: null, suggestion: null });
+    const taken = await startCall("GET", "/start/slug-check?slug=athens&state=co", { cookie, ip });
+    expect(taken.body).toEqual({ available: false, reason: "taken", suggestion: "athens-co" });
+    const noState = await startCall("GET", "/start/slug-check?slug=athens", { cookie, ip });
+    expect(noState.body.reason).toBe("taken");
+    expect(noState.body.suggestion).toBe("athens-2");
+    expect((await startCall("GET", "/start/slug-check?slug=www", { cookie, ip })).body.reason).toBe("reserved");
+    expect((await startCall("GET", "/start/slug-check?slug=-", { cookie, ip })).body).toMatchObject({ reason: "invalid", suggestion: null });
+  });
+
+  it("the suggestion goes to the state's form when the clean name is taken", async () => {
+    const { code } = await mint();
+    const ip = freshIp();
+    const cookie = await signedInStart(code, `sug-${run}@example.test`, ip);
+    const res = await startCall("GET", "/start/slug-suggestion?name=Athens&type=county&state=co", { cookie, ip });
+    expect(res.body.slug).toBe("athens-co");
+    expect(res.body.passed_over[0]).toMatchObject({ slug: "athens", reason: "taken" });
+  });
+});
+
+describe("a hub made with Operated by left empty", () => {
+  it("stores no operator, and its documents read its administrators", async () => {
+    const { code } = await mint();
+    const ip = freshIp();
+    const cookie = await signedInStart(code, `noop-${run}@example.test`, ip);
+    const slug = `noop-${run}`.slice(0, 30);
+    const res = await startCall("POST", "/start/hubs", { cookie, ip, body: hubBody(slug) });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    created.push(res.body.hub.id);
+    const rows = (await localRest(`hub_settings?hub_id=eq.${slug}&key=eq.legal.operator_name&select=value`)) as unknown[];
+    expect(rows).toHaveLength(0);
+    const docs = await call("GET", "/hub-config/documents", `${slug}.localhost`);
+    expect(docs.status).toBe(200);
+    const terms: string = docs.body.documents["legal.terms"];
+    expect(terms).toContain("is operated by its administrators");
+    expect(terms).toContain("the Hub's administrators and its contributors");
+    expect(terms).not.toMatch(/\{[A-Z_]+\}/);
+  });
+});
+
 describe("rate limits", () => {
   it("ten invite codes an hour from one address, then a refusal that is not counted", async () => {
     const ip = freshIp();

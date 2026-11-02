@@ -52,7 +52,7 @@ export function normalizeStartEmail(raw: unknown): string {
 /**
  * Per IP per hour. `invite` counts every invite code typed (right or wrong);
  * `request_code` every emailed code asked for; `verify` every emailed code
- * typed; `create` every create submitted. The per-address rules for emailed
+ * typed; `create` every create submitted; `slug_check` every address checked. The per-address rules for emailed
  * codes are codeRules.ts's (since the sign-in slice, 2026-10-14).
  */
 export const START_LIMITS = {
@@ -60,6 +60,8 @@ export const START_LIMITS = {
   request_code: { ip: 6 },
   verify: { ip: 20 },
   create: { ip: 10 },
+  // The web address checked as it is typed (debounced on the page).
+  slug_check: { ip: 300 },
 } as const;
 export type StartStep = keyof typeof START_LIMITS;
 

@@ -23,16 +23,16 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 describe("slug candidates", () => {
-  it("plain name, then name + type, then name + state, then a number", () => {
+  it("plain name, then name + state, then name + type, then a number", () => {
     expect(slugCandidates("Example", "town", "zz", 6)).toEqual([
       "example",
-      "example-town",
       "example-zz",
+      "example-town",
       "example-2",
       "example-3",
       "example-4",
     ]);
-    expect(slugCandidates("Example", "county", "zz", 3)).toEqual(["example", "example-county", "example-zz"]);
+    expect(slugCandidates("Example", "county", "zz", 3)).toEqual(["example", "example-zz", "example-county"]);
     expect(slugCandidates("Example Unified", "school_district", null, 3)).toEqual([
       "example-unified",
       "example-unified-schools",

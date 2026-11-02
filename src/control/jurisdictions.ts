@@ -135,6 +135,14 @@ async function slugTaken(slug: string): Promise<string | null> {
   return null;
 }
 
+/** Is this web address free? In plain words, with a free one beside it when it isn't. */
+export async function checkSlug(slug: string, state?: string | null): Promise<{ available: boolean; reason: "taken" | "reserved" | "invalid" | null; suggestion: string | null }> {
+  const why = await slugTaken(slug);
+  if (!why) return { available: true, reason: null, suggestion: null };
+  const reason = why === "reserved" ? "reserved" : why === "not a valid slug" ? "invalid" : "taken";
+  return { available: false, reason, suggestion: reason === "invalid" ? null : (await suggestSlug({ name: slug, state })).slug };
+}
+
 /** The shortest free, unreserved slug for a jurisdiction (or a custom name). */
 export async function suggestSlug(params: {
   name: string;

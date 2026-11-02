@@ -13,7 +13,8 @@
 //   POST /start/request-code  an emailed code to the address given
 //   POST /start/verify        the emailed code → the session is that address's
 //   GET  /start/session       which step the page is on
-//   GET  /start/config, /start/jurisdictions…, /start/slug-suggestion
+//   GET  /start/config, /start/jurisdictions…, /start/slug-suggestion,
+//        /start/slug-check
 //                             what the form needs (signed in)
 //   POST /start/hubs          create the hub → { redirect } to the hub, signed in
 //   POST /start/leave         end the session
@@ -49,7 +50,7 @@ import {
 } from "./entitlements.js";
 import { ControlInputError, createHub, parseCreateInput, type ControlHub } from "./hubs.js";
 import { addStarterWordcloud, handoffUrl, inviteAdmins, seedSampleInHub } from "./inHub.js";
-import { listStates, searchJurisdictions, suggestSlug } from "./jurisdictions.js";
+import { checkSlug, listStates, searchJurisdictions, suggestSlug } from "./jurisdictions.js";
 import {
   START_SESSION_TTL_MS,
   StartError,
@@ -349,6 +350,15 @@ export function startRouter(): Router {
     await signedIn(req);
     const str = (v: unknown) => (typeof v === "string" ? v : "");
     res.json(await suggestSlug({ name: str(req.query.name), type: str(req.query.type) || null, state: str(req.query.state) || null }));
+  }));
+
+  // The address as it is typed: free, or taken with a free one beside it.
+  // Hubs' addresses are public anyway, so this says nothing a visit wouldn't.
+  r.get("/start/slug-check", route(async (req, res) => {
+    await signedIn(req);
+    await rateLimit("slug_check", clientIp(req));
+    const str = (v: unknown) => (typeof v === "string" ? v : "");
+    res.json(await checkSlug(str(req.query.slug).trim().toLowerCase(), str(req.query.state) || null));
   }));
 
   // --- Create ---

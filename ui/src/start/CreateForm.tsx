@@ -10,7 +10,7 @@
 // once, at the top, rather than under every field as the console does.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { StartApiError, startApi, startJurisdictions, type StartConfig } from "./api";
+import { StartApiError, startApi, startJurisdictions, type SlugCheck, type StartConfig } from "./api";
 import type { SlugSuggestion } from "../console/api";
 import { JurisdictionPicker, type JurisdictionChoice } from "../console/JurisdictionPicker";
 import { choiceAfterKind } from "../console/jurisdictionChoice";
@@ -63,6 +63,7 @@ export default function CreateForm({
   const [hubKind, setHubKind] = useState<HubKind>("place");
   const [pickerType, setPickerType] = useState<ReferenceJurisdictionType | "">("");
   const [suggestion, setSuggestion] = useState<SlugSuggestion | null>(null);
+  const [slugCheck, setSlugCheck] = useState<{ slug: string; result: SlugCheck } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const seq = useRef(0);
@@ -126,8 +127,39 @@ export default function CreateForm({
   const suggestedSlug = suggestion?.slug ?? "";
   const slug = form.slug || suggestedSlug;
   const domain = config?.hub_domain ?? "";
-  const slugProblem =
-    slug && !SLUG_RE.test(slug) ? "2–32 characters: lowercase letters, digits and hyphens, not at either end." : null;
+  const badShape = Boolean(slug) && !SLUG_RE.test(slug);
+
+  // What the admin typed, checked as they type: the suggestion is free already.
+  const typedSlug = form.slug && !badShape ? form.slug : "";
+  const slugState = listed?.state ?? null;
+  useEffect(() => {
+    if (!typedSlug) return;
+    let live = true;
+    const t = window.setTimeout(() => {
+      startApi
+        .checkSlug(typedSlug, slugState)
+        .then((result) => {
+          if (live) setSlugCheck({ slug: typedSlug, result });
+        })
+        .catch(() => undefined); // The create still refuses an address that's taken.
+    }, 300);
+    return () => {
+      live = false;
+      window.clearTimeout(t);
+    };
+  }, [typedSlug, slugState]);
+  const checked = typedSlug && slugCheck?.slug === typedSlug ? slugCheck.result : null;
+  const slugProblem = badShape
+    ? "2–32 characters: lowercase letters, digits and hyphens, not at either end."
+    : checked && !checked.available
+      ? checked.reason === "reserved"
+        ? "That address is reserved."
+        : checked.reason === "invalid"
+          ? "That address can't be used."
+          : `${form.slug}.${domain || "…"} is taken.`
+      : null;
+  // A suggestion that had to step past the clean name says why.
+  const passedOver = !form.slug ? suggestion?.passed_over?.find((p) => /taken|archived/.test(p.reason)) : undefined;
 
   const placeReady =
     choice.kind === "listed" ||
@@ -151,7 +183,7 @@ export default function CreateForm({
         governing_body: governingBody,
         governing_body_short: governingBodyShort,
         timezone,
-        operator_name: form.operator_name || name,
+        operator_name: form.operator_name,
         contact_email: form.contact_email || email,
       });
       // Off to the hub, signed in. Kept busy: the page is leaving.
@@ -315,8 +347,21 @@ export default function CreateForm({
               />
               <span className="cx-mono cx-muted">.{domain || "…"}</span>
             </div>
-            <small className={slugProblem ? "cx-error-text" : "cx-muted"}>
-              {slugProblem ?? "Your hub's address. It can be changed later, and old links keep working."}
+            <small className={slugProblem ? "cx-error-text" : "cx-muted"} role={slugProblem ? "alert" : undefined}>
+              {slugProblem ??
+                (passedOver
+                  ? `${passedOver.slug} is taken, so this is the suggestion. It can be changed later, and old links keep working.`
+                  : checked?.available
+                    ? "Available. It can be changed later, and old links keep working."
+                    : "Your hub's address. It can be changed later, and old links keep working.")}
+              {checked?.suggestion && !badShape && (
+                <>
+                  {" "}
+                  <button type="button" className="cx-linkbtn" onClick={() => set("slug", checked.suggestion ?? "")}>
+                    Use {checked.suggestion}
+                  </button>
+                </>
+              )}
             </small>
           </div>
           <label className="cx-field">
@@ -334,9 +379,10 @@ export default function CreateForm({
           <div className="cx-two">
             <label className="cx-field">
               <span>Operated by</span>
-              <SuggestInput value={form.operator_name} suggestion={name} onChange={(v) => set("operator_name", v)} />
+              <input value={form.operator_name} onChange={(e) => set("operator_name", e.target.value)} />
               <small className="cx-muted">
                 The entity responsible for governing this hub: an organization, a group or a person. Named in the hub's terms.
+                Left empty, they read "operated by its administrators".
               </small>
             </label>
             <label className="cx-field">
