@@ -198,20 +198,3 @@ export function fieldSpec(key: string): SettingFieldSpec | undefined {
   }
   return undefined;
 }
-
-/**
- * The placeholders a document may use, filled in per hub when it renders.
- * Shown beside every document editor so an admin can write "{HUB_NAME}"
- * instead of a name a rename would strand. Must match
- * `substitutions()` in src/services/hubDocuments.ts.
- */
-export const DOCUMENT_PLACEHOLDERS: readonly string[] = [
-  "{HUB_NAME}",
-  "{HOSTNAME}",
-  "{OPERATOR_NAME}",
-  "{CONTACT_EMAIL}",
-  "{PLACE}",
-  "{STATE}",
-  "{GOVERNING_BODY}",
-  "{GOVERNING_STATE}",
-];

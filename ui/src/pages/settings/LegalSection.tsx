@@ -37,9 +37,9 @@ export default function LegalSection() {
       title="Legal"
       intro={
         <p className="form-hint">
-          The documents people agree to. Every hub starts from the same
-          shared text with its own names filled in — the operator and contact
-          address below are substituted into all of them.
+          The documents people agree to. Every hub starts from the same shared
+          text with its own names filled in, including the operator and contact
+          address below. Read them here, and change any wording you need to.
         </p>
       }
     >
@@ -64,7 +64,6 @@ export default function LegalSection() {
             f={f}
             k="legal.who_runs_this"
             label='"Who runs this site"'
-            rows={6}
             hint={
               <>
                 The paragraph that opens the Privacy Policy and the Terms. It

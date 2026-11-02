@@ -5,13 +5,17 @@
 // Kinds mirror src/shared/hubSettingsSections.ts; the server validates the
 // same limits, so these are a courtesy, not the rule.
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useApi } from "../../hooks/useApi";
 import { Link } from "react-router-dom";
 import MarkdownTextarea from "../../components/MarkdownTextarea";
 import HelpButton from "../../components/HelpButton";
 import PostImagePicker from "../../components/PostImagePicker";
-import { fieldSpec, DOCUMENT_PLACEHOLDERS } from "../../../../src/shared/hubSettingsSections";
+import { fieldSpec } from "../../../../src/shared/hubSettingsSections";
+import { applySubstitutions, operatorValues, splitDraftNotes } from "../../../../src/shared/documentTemplate";
+import { Button } from "../../kit";
+import { LegalBody } from "../../components/LegalPage";
+import DocumentEditor from "./document/DocumentEditor";
 import { listProcesses, uploadHubImage, type ProcessSummary } from "../../services/api";
 import type { FormApi } from "./SectionForm";
 
@@ -129,9 +133,11 @@ export function MarkdownField({ f, k, label, hint, placeholder, rows = 5 }: Comm
 }
 
 /**
- * A whole page: the markdown editor, the placeholders it may use, and — where
- * there is a shared default — whether the hub is using it, and a button to go
- * back to it.
+ * A whole page, as a normal form (pilot readiness 2, Adam 2026-11-02). The
+ * preview comes first, rendered with this hub's values and the wording in the
+ * form, saved or not. "Edit the wording" opens the structured editor: labelled
+ * fields, locked chips, nothing in braces. Where there is a shared default it
+ * says whether the hub is using it, with a button to go back to it.
  */
 export function DocumentField({
   f,
@@ -139,59 +145,85 @@ export function DocumentField({
   label,
   hint,
   emptyNote,
-  rows = 16,
-}: Common & { rows?: number; emptyNote?: string }) {
-  const id = useId();
+}: Common & { emptyNote?: string }) {
+  const [editing, setEditing] = useState(false);
+  // A new key starts the editor again from the restored text.
+  const [opened, setOpened] = useState({ at: 0, value: "" });
+  const labelId = useId();
   const template = f.template(k);
   const value = f.value(k);
   const usingDefault = template !== undefined && value.trim() === template.trim();
+  const values = documentPreviewValues(f);
+  const preview = splitDraftNotes(applySubstitutions(value, values)).body.trim();
+
+  function open(from = value) {
+    setOpened((o) => ({ at: o.at + 1, value: from }));
+    setEditing(true);
+  }
 
   return (
-    <div className="settings-field settings-document">
-      <Label id={id} k={k} label={label} hint={hint} />
-      <MarkdownTextarea
-        id={id}
-        className="form-textarea settings-document-editor"
-        rows={rows}
-        value={value}
-        onChange={(e) => f.set(k, e.target.value)}
-        disabled={f.disabled}
-      />
-      <div className="settings-document-meta">
-        <p className="form-hint settings-placeholders">
-          Filled in for you when the page is shown:{" "}
-          {DOCUMENT_PLACEHOLDERS.map((p, i) => (
-            <span key={p}>
-              {i > 0 && " "}
-              <code>{p}</code>
-            </span>
-          ))}
-        </p>
-        {template !== undefined ? (
-          <div className="settings-document-status">
-            <span className="form-hint">
-              {usingDefault
-                ? "Using the shared default. It stays in step when the shared text is updated."
-                : "This hub's own version."}
-            </span>
-            {!usingDefault && (
-              <button
-                type="button"
-                className="admin-remove-section"
-                onClick={() => f.set(k, template)}
-                disabled={f.disabled}
-              >
-                Restore default
-              </button>
-            )}
-          </div>
-        ) : (
-          value.trim() === "" &&
-          emptyNote && <p className="form-hint">{emptyNote}</p>
+    <div className="settings-field settings-document" role="group" aria-labelledby={labelId}>
+      <div className="settings-field-label-row">
+        <span id={labelId} className="form-label settings-field-label">
+          {label}
+        </span>
+        <HelpButton k={k} label={label} />
+      </div>
+      {hint && <p className="form-hint">{hint}</p>}
+      {editing ? (
+        <DocumentEditor
+          key={opened.at}
+          value={opened.value}
+          kind={values.HUB_KIND}
+          byParagraph={k === "legal.who_runs_this"}
+          values={values}
+          disabled={f.disabled}
+          onChange={(next) => f.set(k, next)}
+        />
+      ) : preview ? (
+        <div className="doc-preview legal-prose" tabIndex={0} aria-label={`Preview of ${label}`}>
+          <LegalBody>{preview}</LegalBody>
+        </div>
+      ) : (
+        emptyNote && <p className="form-hint">{emptyNote}</p>
+      )}
+      <div className="doc-actions">
+        <Button size="sm" disabled={f.disabled} onClick={() => (editing ? setEditing(false) : open())}>
+          {editing ? "Back to the preview" : "Edit the wording"}
+        </Button>
+        {template !== undefined && (
+          <span className="form-hint">
+            {usingDefault ? "Using the shared default. It stays in step when the shared text is updated." : "This hub's own version."}
+          </span>
+        )}
+        {template !== undefined && !usingDefault && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              f.set(k, template);
+              if (editing) open(template);
+            }}
+            disabled={f.disabled}
+          >
+            Restore default
+          </Button>
         )}
       </div>
     </div>
   );
+}
+
+/** The hub's values, with what this form has changed and not yet saved. */
+function documentPreviewValues(f: FormApi): Record<string, string> {
+  const values: Record<string, string> = { ...f.data.document_values };
+  if (!f.inSection("legal.operator_name")) return values;
+  Object.assign(values, operatorValues(f.value("legal.operator_name")));
+  const contact = f.value("legal.contact_email").trim();
+  if (contact) values.CONTACT_EMAIL = contact;
+  const who = f.value("legal.who_runs_this");
+  if (who.trim()) values.WHO_RUNS_THIS = applySubstitutions(who, values).trim();
+  return values;
 }
 
 /**

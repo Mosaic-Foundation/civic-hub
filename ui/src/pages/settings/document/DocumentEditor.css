@@ -1,0 +1,114 @@
+/* The structured document editor and its preview (DocumentEditor.tsx, DocumentField). */
+
+.doc-preview {
+  max-height: calc(var(--tap-target) * 10);
+  overflow: auto;
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.doc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.doc-actions .form-hint {
+  flex: 1;
+  margin: 0;
+}
+
+.doc-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.doc-field-label {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+.doc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.doc-toolbar-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
+}
+
+.doc-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-1);
+}
+
+.doc-link-row .form-input {
+  flex: 1;
+}
+
+.doc-field-box {
+  min-height: calc(var(--tap-target) * 2);
+  height: auto;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  overflow-wrap: anywhere;
+}
+
+.doc-field-box p {
+  margin: 0 0 var(--space-sm);
+}
+
+.doc-field-box ul,
+.doc-field-box ol {
+  margin: 0 0 var(--space-sm);
+  padding-left: var(--space-lg);
+}
+
+.doc-chip {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-wash);
+  color: var(--color-text);
+  font-size: var(--text-small-size);
+  line-height: var(--line-height-normal);
+  user-select: all;
+  white-space: nowrap;
+}
+
+.doc-chip-button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.doc-chip-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.doc-locked {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: var(--border-width) dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}

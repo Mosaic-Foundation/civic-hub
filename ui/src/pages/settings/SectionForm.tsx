@@ -37,6 +37,8 @@ export interface FormApi {
   fallback: (key: string) => string | undefined;
   /** The shared default for a document, when it has one and it has loaded. */
   template: (key: string) => string | undefined;
+  /** Is this key one of this section's, so value() reads the form? */
+  inSection: (key: string) => boolean;
   disabled: boolean;
   data: HubSettings;
 }
@@ -186,6 +188,7 @@ export default function SectionForm({
     },
     fallback: (k) => data.fallbacks[k],
     template: (k) => templates[k],
+    inSection: (k) => keys.includes(k),
     disabled: saving,
     data,
   };

@@ -61,6 +61,15 @@ function CustomLink({
   );
 }
 
+/** A document's words as the public page shows them (Hub settings' preview too). */
+export function LegalBody({ children }: { children: string }) {
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: CustomLink }}>
+      {children}
+    </ReactMarkdown>
+  );
+}
+
 export default function LegalPage({ document: doc, title }: Props) {
   const hub = useHub();
   const { isAdmin } = useAuth();

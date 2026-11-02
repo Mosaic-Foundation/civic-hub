@@ -50,6 +50,13 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    // The structured document editor leans on the browser's own editing
+    // commands, so it also runs here (pilot readiness 2). Only that spec.
+    {
+      name: "webkit",
+      use: { ...devices["Desktop Safari"] },
+      testMatch: /legalEditor\.spec\.ts/,
+    },
     // Uncomment to add more browsers:
     // {
     //   name: "firefox",

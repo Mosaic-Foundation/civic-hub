@@ -24,7 +24,8 @@ import { fileURLToPath } from "node:url";
 import { stateNameForHub } from "../db/hubs.js";
 import { fetchHubDocuments } from "../db/hubSettingsStore.js";
 import { getSettingSync } from "./hubSettings.js";
-import { HUB_KINDS, hubKindOf } from "../shared/hubKind.js";
+import { hubKindOf } from "../shared/hubKind.js";
+import { applySubstitutions, operatorValues, resolveKindSections, splitDraftNotes } from "../shared/documentTemplate.js";
 import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
 import { theName } from "../shared/hubCopy.js";
 import { KEYS, asBoolean } from "../models/hubSettings.js";
@@ -216,20 +217,8 @@ export async function hubGoverningLaw(hub: Hub): Promise<{
   return { state: fallback, source: fallback_source, fallback, fallback_source };
 }
 
-/**
- * {OPERATOR} with nobody named reads as the sentence it was written for:
- * "operated by its administrators". The two places that phrase doesn't fit
- * have their own forms: {OPERATOR_NOUN} in mid-sentence, and {OPERATOR_LINE},
- * the contact block's line, which is dropped.
- */
-export const NO_OPERATOR = { OPERATOR: "its administrators", OPERATOR_NOUN: "the Hub's administrators", OPERATOR_LINE: "" } as const;
-
 function withOperator(out: Record<string, string>, locatedState: string): Record<string, string> {
-  const operator = getSettingSync(KEYS.LEGAL_OPERATOR_NAME)?.trim();
-  Object.assign(out, operator ? { OPERATOR: operator, OPERATOR_NOUN: operator, OPERATOR_LINE: `${operator}\n` } : NO_OPERATOR);
-  // The name the admin panel shows beside the editor, matching the key.
-  // {OPERATOR} is what the shared templates were written with; both work.
-  out.OPERATOR_NAME = out.OPERATOR;
+  Object.assign(out, operatorValues(getSettingSync(KEYS.LEGAL_OPERATOR_NAME)));
 
   out.CONTACT_EMAIL = getSettingSync(KEYS.LEGAL_CONTACT_EMAIL)?.trim() || PLATFORM_CONTACT_EMAIL;
 
@@ -286,68 +275,17 @@ export function whoRunsThisDefault(hub: Hub | null): string {
     : template.trim();
 }
 
-const KIND_SECTION = new RegExp(
-  `\\{\\{([#^])(${HUB_KINDS.map((k) => k.id).join("|")})\\}\\}([\\s\\S]*?)\\{\\{\\/\\2\\}\\}`,
-  "g",
-);
+// Moved to src/shared/documentTemplate.ts, for Hub settings' live preview.
+export { applySubstitutions, resolveKindSections, splitDraftNotes };
 
 /**
- * Keep the sections that apply to this kind of hub and drop the rest:
- * `{{#place}}…{{/place}}` is for place hubs, `{{^place}}…{{/place}}` for every
- * other kind (2026-09-27). Any kind works the same way since 2026-10-07
- * (`{{^issue}}` — About's "not an advocacy effort" is untrue of a campaign).
- * A section may span lines. `kind` unset = place.
+ * Every value a shared document's placeholders read, as it reads them now: for
+ * Hub settings' preview, which fills in the form's unsaved wording with them.
  */
-export function resolveKindSections(template: string, kind: string | undefined): string {
-  const actual = hubKindOf(kind);
-  return template.replace(KIND_SECTION, (_m, flag: string, name: string, body: string) =>
-    (flag === "#") === (actual === name) ? body : "",
-  );
-}
-
-/**
- * Take the `{{#draft}}…{{/draft}}` notes out of a rendered document
- * (2026-10-07, review R15). "Draft starter content — review before launch"
- * is a reminder for the hub's admins, not something an evaluator should read
- * on the public terms page, so the document is served without it and the
- * notes travel beside it for the page to show admins only. A hub's stored
- * copy from before the markers existed carries the note as a bare blockquote;
- * that is taken out the same way.
- */
-export function splitDraftNotes(text: string): { body: string; notes: string[] } {
-  const notes: string[] = [];
-  const take = (_m: string, note: string) => {
-    notes.push(note.trim().replace(/^>\s*/, ""));
-    return "";
-  };
-  const body = text
-    .replace(/\{\{#draft\}\}([\s\S]*?)\{\{\/draft\}\}\n*/g, take)
-    .replace(/^(> \*\*Draft starter content[^\n]*)\n*/m, take);
-  return { body, notes };
-}
-
-/**
- * Replace `{NAME}` with its value, leaving unknown placeholders untouched,
- * after keeping only the kind sections that apply (values.HUB_KIND).
- */
-export function applySubstitutions(
-  template: string,
-  values: Readonly<Record<string, string>>,
-): string {
-  // The article forms follow HUB_NAME unless the caller supplied them.
-  const all: Record<string, string> = { ...values };
-  if (values.HUB_NAME) {
-    all.THE_HUB_NAME ??= theName(values.HUB_NAME);
-    all.THE_HUB_NAME_CAP ??= theName(values.HUB_NAME, true);
-  }
-  // So do the operator's other forms (withOperator sets all three for a hub).
-  if (values.OPERATOR) {
-    all.OPERATOR_NOUN ??= values.OPERATOR;
-    all.OPERATOR_LINE ??= `${values.OPERATOR}\n`;
-  }
-  return resolveKindSections(template, values.HUB_KIND).replace(/\{([A-Z_]+)\}/g, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(all, name) ? all[name] : match,
-  );
+export async function documentValues(hub: Hub): Promise<Record<string, string>> {
+  const values = substitutions(hub, await hubListedState(hub));
+  resolveWhoRunsThis(values, getSettingSync(KEYS.LEGAL_WHO_RUNS_THIS));
+  return values;
 }
 
 /** The documents a person agrees to, with their titles as the notice names them. */

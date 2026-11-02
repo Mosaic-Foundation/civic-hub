@@ -41,7 +41,7 @@ import {
   EDITABLE_SETTING_KEYS,
   fieldSpec,
 } from "../shared/hubSettingsSections.js";
-import { documentSettingDefault, hubGoverningLaw, documentTemplate } from "../services/hubDocuments.js";
+import { documentSettingDefault, documentTemplate, documentValues, hubGoverningLaw } from "../services/hubDocuments.js";
 import { getUser } from "../modules/civic.auth/index.js";
 import { renameHub } from "../db/hubs.js";
 import { processTypeDisplays } from "../processes/registry.js";
@@ -67,6 +67,8 @@ export interface HubSettingsResponse {
   fallbacks: Record<string, string>;
   /** Whose law this hub's Terms use, and why (Legal shows it). */
   governing_law: Awaited<ReturnType<typeof hubGoverningLaw>> | null;
+  /** What the documents' placeholders read, for the live preview. */
+  document_values: Record<string, string>;
   /** Per key, when the hub's own row last changed and who changed it. */
   changed: Record<string, { at: string; by: string | null }>;
   /**
@@ -149,6 +151,7 @@ async function loadHubSettings(): Promise<HubSettingsResponse> {
     },
     restorable,
     governing_law: hub ? await hubGoverningLaw(hub) : null,
+    document_values: hub ? await documentValues(hub) : {},
     console_may_edit: consoleOwnsHandoverKeys(hub?.mode),
   };
 }

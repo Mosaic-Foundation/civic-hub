@@ -294,6 +294,12 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
           ))}
         </select>
         <small className="cx-muted">A jurisdiction's hub needs its jurisdiction; any other kind may have a location, or none.</small>
+        {form.hub_kind !== saved.hub_kind && (
+          <small className="cx-alert cx-alert-warn" role="status">
+            Any legal or About wording this hub has edited was written for its old kind and stays as it is. Its admins should
+            read it again under Hub settings → Legal, and Copy &amp; pages.
+          </small>
+        )}
       </label>
       <JurisdictionPicker
         optional={!isPlace}

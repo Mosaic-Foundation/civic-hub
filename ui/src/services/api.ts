@@ -1716,6 +1716,7 @@ export interface HubSettings {
   /** Document keys with a shared default to restore. */
   restorable: string[];
   /** While the hub is a demo, the platform's console may also set what residents see. */
+  document_values: Record<string, string>;
   governing_law: {
     state: string;
     source: "place" | "setting" | "location" | "platform_default";

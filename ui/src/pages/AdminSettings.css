@@ -324,31 +324,6 @@
   box-sizing: border-box;
 }
 
-.settings-document-editor {
-  font-family: var(--font-mono);
-  font-size: var(--text-small-size);
-  line-height: var(--line-height-normal);
-}
-
-.settings-document-meta {
-  margin-top: var(--space-1);
-}
-
-.settings-placeholders code {
-  font-size: var(--text-caption-size);
-}
-
-.settings-document-status {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.settings-document-status .form-hint {
-  margin: 0;
-}
-
 .settings-image--logo .post-image-picker img {
   max-height: calc(2 * var(--space-12));
   width: auto;

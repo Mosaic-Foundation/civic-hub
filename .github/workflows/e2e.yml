@@ -48,7 +48,7 @@ jobs:
           npm ci --include=dev --prefix ui
 
       - name: Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
 
       # As in ci.yml's api-tests job: the CLI's fixed, public, local-only keys.
       - name: Seed hub settings
