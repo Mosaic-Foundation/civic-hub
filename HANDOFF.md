@@ -7,9 +7,10 @@ Updated after every Claude Code session. Records what was built, what's incomple
 ## Pilot readiness 1: from the invite to a working hub; Neighbourhood or association — 2026-10-30
 
 **State:**
-- **Dev:** `f515e80`, via `release.sh dev --yes`. No migrations. Health ok, 9 of 9 packages mounted, CI, E2E and Smoke
-  green.
-- **Not on production.**
+- **Dev and production:** `ed960b9`, released 2026-10-30. No migrations. Health ok, 9 of 9 packages mounted and signed.
+  CI green on `multi-tenant` and `main`, E2E and Smoke green on dev.
+- **Smoke:** failed once on `ed960b9`, in two vote-draft tests in code this release does not touch; the rerun passed 30
+  of 30. Cause not diagnosed.
 - **Reports:** `~/Documents/Mosaic/0 Management/Civic Social/Pilot-Readiness-1-Session-Report-2026-10-30.md` and
   `Pilot-Readiness-1-Handoff-to-Management-2026-10-30.md`.
 
