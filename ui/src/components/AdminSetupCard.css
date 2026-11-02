@@ -1,0 +1,71 @@
+/* The admin's "Set up your hub" card: the visitor's welcome card's place and
+   frame (WelcomeBanner.css), with a list of steps. */
+
+.setup-card {
+  max-width: var(--max-width-shell);
+  margin: var(--space-md) auto 0;
+  padding: var(--space-lg);
+  background: var(--color-primary-wash);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+}
+
+.setup-card-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-tight);
+  margin: 0 0 var(--space-sm);
+}
+
+.setup-card-body {
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  line-height: var(--line-height-normal);
+}
+
+.setup-card-steps {
+  list-style: none;
+  margin: 0 0 var(--space-md);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.setup-card-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+}
+
+.setup-card-tick {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-lg);
+  height: var(--space-lg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-weight: 600;
+}
+
+.setup-card-step.is-done .setup-card-tick {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.setup-card-note {
+  color: var(--color-text-muted);
+}
+
+.setup-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}

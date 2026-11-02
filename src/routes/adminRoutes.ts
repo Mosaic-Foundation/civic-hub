@@ -32,6 +32,7 @@ import {
   handleRestoreComment,
 } from "../controllers/moderationController.js";
 import { handleGetHubAdminLog } from "../controllers/hubAdminLogController.js";
+import { handleGetSetupCard, handlePostSetupCard } from "../controllers/hubSetupCardController.js";
 import {
   handleArchiveProcess,
   handleRestoreProcess,
@@ -137,6 +138,10 @@ router.delete("/hub/sample-content/:id", handleDeleteOneSample);
 // Settings → Admin log: what this hub's admins did with a fresh code, and
 // the other actions recordHubAdminAudit() keeps. Read-only.
 router.get("/hub/admin-log", handleGetHubAdminLog);
+
+// The home page's "Set up your hub" card: its ticks, Dismiss and Skip (per admin).
+router.get("/hub/setup-card", handleGetSetupCard);
+router.post("/hub/setup-card", handlePostSetupCard);
 
 // What the hub is called, what its pages say, its legal documents and its
 // mail — every key checked against the build plan's list. See

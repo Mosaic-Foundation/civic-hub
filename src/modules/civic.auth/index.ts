@@ -822,6 +822,19 @@ export async function setAppearance(userId: string, appearance: Appearance): Pro
   return rowToUser(data);
 }
 
+/** What this admin pressed on the home page's "Set up your hub" card (pilot readiness 2). */
+export async function readSetupCardMarks(userId: string): Promise<{ dismissed: boolean; skippedSecondAdmin: boolean }> {
+  const row = await authStore.get().userById(userId);
+  if (!row) throw new NotFoundError("User not found", "user_not_found");
+  return { dismissed: Boolean(row.setup_card_dismissed_at), skippedSecondAdmin: Boolean(row.setup_second_admin_skipped_at) };
+}
+
+export async function setSetupCardMark(userId: string, mark: "dismiss" | "skip_second_admin"): Promise<void> {
+  const column = mark === "dismiss" ? "setup_card_dismissed_at" : "setup_second_admin_skipped_at";
+  const data = await authStore.get().updateUser(userId, { [column]: new Date().toISOString() });
+  if (!data) throw new NotFoundError("User not found", "user_not_found");
+}
+
 /**
  * Record that a digest was successfully delivered to a user. Updates the
  * "since" cursor so the next run picks up only new activity. Called by

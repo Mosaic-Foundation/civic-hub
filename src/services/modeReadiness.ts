@@ -27,12 +27,14 @@ import { forHub } from "../db/forHub.js";
 import { readAll } from "../db/readAll.js";
 import { currentHubId } from "../config/hubContext.js";
 import { KEYS, asBoolean, asEmailList } from "../models/hubSettings.js";
+import { hubKindOf } from "../shared/hubKind.js";
 import type { HubMode } from "../models/hub.js";
 import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
 import { isValidTimeZone } from "../utils/hubTime.js";
 import {
   effectivePostalAddressSync,
   getAdminEmailsSync,
+  getAllSettings,
   getBoardEmailsSync,
   getSettingSync,
   hubDisplayNameSync,
@@ -80,6 +82,47 @@ export interface ModeReadiness {
   /** Empty for a move that has no readiness list (live → beta, or no move). */
   items: ReadinessItem[];
   consequences: ModeConsequences;
+}
+
+/** One line of the home page's "Set up your hub" card (pilot readiness 2). */
+export interface SetupStep {
+  id: "name_and_place" | "legal" | "second_admin" | "beta";
+  label: string;
+  done: boolean;
+  /** Ticked because this admin pressed Skip, not because it happened. */
+  skipped: boolean;
+  /** Offers Skip while it isn't done. */
+  can_skip: boolean;
+  link: string;
+}
+
+/**
+ * The card's first steps, read from the hub's state. Legal counts as reviewed
+ * or saved by a person on this hub: what creation and the console wrote
+ * (updated_by "start:…", "console:…") is not this hub's admins having looked.
+ */
+export async function setupSteps(skippedSecondAdmin: boolean): Promise<SetupStep[]> {
+  const hub = currentHub();
+  const kindIsPlace = hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)) === "place";
+  const named = hubDisplayNameSync().trim() !== "";
+  const placed = !kindIsPlace || (hub?.jurisdiction_name?.trim() ?? "") !== "";
+  const rows = await getAllSettings(currentHubId());
+  const legalSaved = Object.entries(rows).some(
+    ([key, row]) => key.startsWith("legal.") && row.updated_by !== null && !/^(start|console):/.test(row.updated_by),
+  );
+  const reviewed = asBoolean(getSettingSync(KEYS.LEGAL_REVIEWED), false);
+  const twoAdmins = getAdminEmailsSync().length >= 2;
+  const step = (id: SetupStep["id"], label: string, done: boolean, link: string): SetupStep => ({ id, label, done, skipped: false, can_skip: false, link });
+  return [
+    step("name_and_place", kindIsPlace ? "Name and place set" : "Name set", named && placed, "/admin/settings/identity"),
+    step("legal", "Legal reviewed or saved", reviewed || legalSaved, "/admin/settings/legal"),
+    {
+      ...step("second_admin", "A second admin added", twoAdmins || skippedSecondAdmin, "/admin/settings/people"),
+      skipped: skippedSecondAdmin && !twoAdmins,
+      can_skip: !twoAdmins,
+    },
+    step("beta", "Moved to beta", hubModeSync() !== "demo", "/admin/settings/mode"),
+  ];
 }
 
 /** Moves that get the readiness list: every move up. */

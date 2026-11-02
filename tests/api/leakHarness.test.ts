@@ -441,6 +441,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /admin/hub/mode/readiness": { query: ["?to=beta", "?to=live"] },
   // Settings → Admin log (admin menu slice, 2026-10-13).
   "GET /admin/hub/admin-log": {},
+  "GET /admin/hub/setup-card": {},
   "GET /admin/hub/settings": {},
   "GET /admin/hub/settings/template/:key": {},
   "GET /admin/hub/plugins/live": {},

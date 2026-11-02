@@ -1,6 +1,8 @@
 import { useState } from "react";
 import HubInfo from "../components/HubInfo";
 import WelcomeBanner from "../components/WelcomeBanner";
+import AdminSetupCard from "../components/AdminSetupCard";
+import { useAuth } from "../context/authState";
 import MemberStack from "../components/MemberStack";
 import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
@@ -18,6 +20,7 @@ export default function Home() {
     useRequireAuth();
   const { active, setActive } = useFeedFilter();
   const [showPicker, setShowPicker] = useState(false);
+  const { isAdmin } = useAuth();
 
   return (
     <div className="page page-home">
@@ -39,7 +42,8 @@ export default function Home() {
             Raise something
           </button>
       </div>
-      <WelcomeBanner />
+      {/* An admin's card takes the visitor's place, and stays away once dismissed. */}
+      {isAdmin ? <AdminSetupCard /> : <WelcomeBanner />}
 
       {showAuthModal && (
         <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />

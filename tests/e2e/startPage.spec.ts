@@ -144,6 +144,15 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   expect(me.user.tos_version_accepted).toBe(CURRENT_LEGAL_VERSION);
   await page.reload();
   await expect(page.getByRole("dialog", { name: /is ready/ })).toHaveCount(0);
+  // An admin's home page has the setup card in place of the visitor's welcome.
+  const card = page.getByRole("region", { name: "Set up your hub" });
+  await expect(card).toBeVisible();
+  await expect(card.getByRole("link", { name: "Legal reviewed or saved" })).toBeVisible();
+  await expect(page.locator(".welcome-banner")).toHaveCount(0);
+  await card.getByRole("button", { name: "Dismiss" }).click();
+  await expect(card).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Set up your hub" })).toHaveCount(0);
   const settings = (await localRest(`hub_settings?hub_id=eq.${slug}&key=eq.legal.operator_name&select=value`)) as Array<{ value: string }>;
   expect(settings[0]!.value).toBe(`The ${run} Group`);
   const zone = (await localRest(`hub_settings?hub_id=eq.${slug}&key=eq.identity.timezone&select=value`)) as Array<{ value: string }>;

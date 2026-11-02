@@ -2061,6 +2061,19 @@ export interface HubAdminLogEntry {
   after: unknown;
 }
 
+export interface SetupCard {
+  dismissed: boolean;
+  steps: Array<{ id: string; label: string; done: boolean; skipped: boolean; can_skip: boolean; link: string }>;
+}
+
+export function adminGetSetupCard(): Promise<SetupCard> {
+  return request("GET", "/admin/hub/setup-card");
+}
+
+export function adminPostSetupCard(action: "dismiss" | "skip_second_admin"): Promise<SetupCard> {
+  return request("POST", "/admin/hub/setup-card", { action });
+}
+
 export function adminGetHubAdminLog(): Promise<{ entries: HubAdminLogEntry[] }> {
   return request("GET", "/admin/hub/admin-log");
 }
