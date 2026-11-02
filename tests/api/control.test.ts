@@ -419,9 +419,8 @@ describe("handover", () => {
       },
     });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    // Operator and from-name still read the old name, so they follow; the registry name too.
+    // The from-name still reads the old name, so it follows; the registry name too. No operator was set.
     expect(res.body.follow_on.carried).toEqual({
-      "legal.operator_name": "Handed Over Hub",
       "email.from_name": "Handed Over Hub",
       "hubs.name": "Handed Over Hub",
     });
@@ -430,7 +429,7 @@ describe("handover", () => {
     expect(res.body.handover.changed["email.postal_address"].by).toBe(`console:${OPERATOR}`);
     const site = await call("GET", "/hub-config", oldHost);
     expect(site.body.settings["identity.name"]).toBe("Handed Over Hub");
-    expect(site.body.settings["legal.operator_name"]).toBe("Handed Over Hub");
+    expect(site.body.settings["legal.operator_name"]).toBeUndefined();
     expect((await auditFor(slug)).at(-1)).toMatchObject({ action: "hub.handover", after: { "identity.name": "Handed Over Hub" } });
   });
 

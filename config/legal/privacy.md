@@ -149,8 +149,7 @@ We may update this policy as the Hub evolves. Material changes will be announced
 
 For privacy questions, data requests, or concerns about this policy:
 
-{OPERATOR}
-{CONTACT_EMAIL}
+{OPERATOR_LINE}{CONTACT_EMAIL}
 
 ---
 

@@ -309,9 +309,10 @@ export interface CreateHubInput {
   /**
    * Who answers for the hub (review R48, 2026-10-08): legal.operator_name,
    * legal.contact_email, legal.who_runs_this, email.from_name,
-   * email.postal_address and plugin.feedback.contact_email. Operator and
-   * from-name default to the hub's name, as before; the rest stay unset
-   * (the shared paragraph, the platform's addresses) unless given.
+   * email.postal_address and plugin.feedback.contact_email. From-name defaults
+   * to the hub's name; the rest stay unset unless given (the shared paragraph,
+   * the platform's addresses, and since 2026-11-02 an operator that the
+   * documents read as "its administrators").
    */
   ownership?: Partial<Record<OwnershipKey, string>>;
   /**
@@ -515,9 +516,8 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
     [KEYS.IDENTITY_NAME]: input.name,
     [KEYS.IDENTITY_LABEL]: "Civic Hub",
     [KEYS.PEOPLE_ADMIN_EMAILS]: encodeList(input.admins),
-    [KEYS.LEGAL_OPERATOR_NAME]: input.name,
     [KEYS.EMAIL_FROM_NAME]: input.name,
-    // What the form gave for who answers for the hub; the two above unless replaced.
+    // What the form gave for who answers for the hub; the from-name above unless replaced.
     ...(input.ownership ?? {}),
     [KEYS.IDENTITY_HUB_KIND]: kind,
     // A banner from the start (Adam, 2026-10-08), so the admin sees there is

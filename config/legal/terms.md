@@ -79,7 +79,7 @@ If your content is removed, we'll tell you why when we can identify how to reach
 
 ## Limitation of liability
 
-To the fullest extent allowed by law, {OPERATOR} and its contributors are not liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Hub. Our total liability for any claim related to the Hub is limited to $100.
+To the fullest extent allowed by law, {OPERATOR_NOUN} and its contributors are not liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Hub. Our total liability for any claim related to the Hub is limited to $100.
 
 Some jurisdictions don't allow these limitations. In those jurisdictions, our liability is limited to the minimum allowed.
 
@@ -106,8 +106,7 @@ We may update these Terms as the Hub evolves. Material changes will be announced
 
 For questions about these Terms or to report a concern:
 
-{OPERATOR}
-{CONTACT_EMAIL}
+{OPERATOR_LINE}{CONTACT_EMAIL}
 
 ---
 

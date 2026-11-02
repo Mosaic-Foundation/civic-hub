@@ -131,8 +131,8 @@ export function documentSettingDefault(key: string): string | undefined {
  * EVERY PLACEHOLDER THE TEMPLATES USE HAS A VALUE (2026-10-07, review R15).
  * Until then a missing value was left visible on purpose, for review — and an
  * evaluator on a new hub read a literal `{CONTACT_EMAIL}` on the terms page.
- * The fallbacks: the operator is the hub's name (Adam, 2026-10-07: keep the
- * hub name until a hub names its own), the contact address is the platform's,
+ * The fallbacks: the operator reads "its administrators" (Adam, 2026-11-02;
+ * until then the hub's name), the contact address is the platform's,
  * a place hub with no governing body says "local government", and a place
  * with no state in its name uses the governing state's default. A hub's own
  * text can still use a placeholder nobody defines; that one stays visible.
@@ -181,14 +181,20 @@ export function substitutions(hub: Hub): Record<string, string> {
   return withOperator(out);
 }
 
+/**
+ * {OPERATOR} with nobody named reads as the sentence it was written for:
+ * "operated by its administrators". The two places that phrase doesn't fit
+ * have their own forms: {OPERATOR_NOUN} in mid-sentence, and {OPERATOR_LINE},
+ * the contact block's line, which is dropped.
+ */
+export const NO_OPERATOR = { OPERATOR: "its administrators", OPERATOR_NOUN: "the Hub's administrators", OPERATOR_LINE: "" } as const;
+
 function withOperator(out: Record<string, string>): Record<string, string> {
-  const operator = getSettingSync(KEYS.LEGAL_OPERATOR_NAME)?.trim() || out.HUB_NAME;
-  if (operator) {
-    out.OPERATOR = operator;
-    // The name the admin panel shows beside the editor, matching the key.
-    // {OPERATOR} is what the shared templates were written with; both work.
-    out.OPERATOR_NAME = operator;
-  }
+  const operator = getSettingSync(KEYS.LEGAL_OPERATOR_NAME)?.trim();
+  Object.assign(out, operator ? { OPERATOR: operator, OPERATOR_NOUN: operator, OPERATOR_LINE: `${operator}\n` } : NO_OPERATOR);
+  // The name the admin panel shows beside the editor, matching the key.
+  // {OPERATOR} is what the shared templates were written with; both work.
+  out.OPERATOR_NAME = out.OPERATOR;
 
   out.CONTACT_EMAIL = getSettingSync(KEYS.LEGAL_CONTACT_EMAIL)?.trim() || PLATFORM_CONTACT_EMAIL;
 
@@ -297,6 +303,11 @@ export function applySubstitutions(
   if (values.HUB_NAME) {
     all.THE_HUB_NAME ??= theName(values.HUB_NAME);
     all.THE_HUB_NAME_CAP ??= theName(values.HUB_NAME, true);
+  }
+  // So do the operator's other forms (withOperator sets all three for a hub).
+  if (values.OPERATOR) {
+    all.OPERATOR_NOUN ??= values.OPERATOR;
+    all.OPERATOR_LINE ??= `${values.OPERATOR}\n`;
   }
   return resolveKindSections(template, values.HUB_KIND).replace(/\{([A-Z_]+)\}/g, (match, name: string) =>
     Object.prototype.hasOwnProperty.call(all, name) ? all[name] : match,

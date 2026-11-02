@@ -41,6 +41,8 @@ const FLOYD_NAMES = {
   // Floyd, a place, never renders them.
   GOVERNING_STATE: "Virginia",
   OPERATOR: "Adam Lake",
+  OPERATOR_NOUN: "Adam Lake",
+  OPERATOR_LINE: "Adam Lake\n",
   CONTACT_EMAIL: "contact@civic.social",
 };
 
@@ -286,18 +288,19 @@ describe("a hub's substitutions come from its own row", () => {
     expect(values.STATE).toBe("Virginia");
   });
 
-  it("falls back to the hub's name and the platform's address (review R15)", () => {
+  it("reads the operator as its administrators, and the platform's address, when none is set (review R15; Adam 2026-11-02)", () => {
     // Outside a request there is no settings snapshot. Until 2026-10-07 the
     // operator and contact address were then left as visible placeholders,
     // and an evaluator read a literal {CONTACT_EMAIL} on the terms page.
     const values = substitutions(hubRow({ jurisdiction_name: null }));
-    expect(values.OPERATOR).toBe("Athens Civic Hub");
+    expect(values.OPERATOR).toBe("its administrators");
     expect(values.CONTACT_EMAIL).toBe("contact@civic.social");
     expect(values.PLACE).toBe("Athens Civic Hub");
     expect(values.GOVERNING_BODY).toBe("local government");
-    expect(applySubstitutions("operated by {OPERATOR}", values)).toBe(
-      "operated by Athens Civic Hub",
-    );
+    expect(applySubstitutions("operated by {OPERATOR}", values)).toBe("operated by its administrators");
+    // The two places that phrase doesn't fit.
+    expect(applySubstitutions("{OPERATOR_NOUN} and its contributors", values)).toBe("the Hub's administrators and its contributors");
+    expect(applySubstitutions("{OPERATOR_LINE}{CONTACT_EMAIL}", values)).toBe("contact@civic.social");
   });
 });
 

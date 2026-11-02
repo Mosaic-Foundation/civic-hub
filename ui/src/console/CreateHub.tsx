@@ -228,7 +228,7 @@ export default function CreateHub() {
                 plugins,
                 // Untouched suggestions are submitted as shown; empty fields fall back on the hub.
                 ownership: {
-                  "legal.operator_name": form.operator_name || name,
+                  "legal.operator_name": form.operator_name,
                   "email.from_name": form.from_name || name,
                   "legal.contact_email": form.contact_email,
                   "legal.who_runs_this": form.who_runs_this,
@@ -479,10 +479,10 @@ export default function CreateHub() {
             <div className="cx-two">
               <label className="cx-field">
                 <span>Operated by</span>
-                <SuggestInput value={form.operator_name} suggestion={name} onChange={(v) => set("operator_name", v)} />
+                <input value={form.operator_name} onChange={(e) => set("operator_name", e.target.value)} />
                 <small className="cx-muted">
-                  The entity responsible for governing this hub: an organization, a group or a person. Named in the legal documents.
-                  <SuggestNote value={form.operator_name} suggestion={name} />
+                  The entity responsible for governing this hub: an organization, a group or a person. Named in the legal
+                  documents. Left empty, they read "operated by its administrators".
                 </small>
               </label>
               <label className="cx-field">

@@ -46,7 +46,8 @@ beforeAll(async () => {
       hostname: HOST,
       admin_email: ADMIN,
       hub_kind: "organization",
-      ownership: { "legal.contact_email": `contact-${run}@example.test` },
+      // An operator that reads the hub's name, as a hub made before 2026-11-02 has: it follows a rename.
+      ownership: { "legal.contact_email": `contact-${run}@example.test`, "legal.operator_name": "Handover Side Hub" },
     },
   });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
