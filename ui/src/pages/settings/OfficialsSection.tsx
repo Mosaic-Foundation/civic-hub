@@ -154,23 +154,23 @@ export default function OfficialsSection() {
       {error && <p className="form-error">{error}</p>}
 
       <p className="form-hint">
-        Accounts that hold a public office, such as the members of a board or
-        council. The title shows as a pill next
-        to their name everywhere they post — announcements, proposals,
-        projects, and comments — and they can post announcements and
-        respond to briefs. Leave name blank to use the person's own
-        account name. Admins can always post and only need to be listed
-        here if they also hold an office (they will show both badges).
+        Officials are the people who hold a public office, such as the members of
+        a board or council. Their title shows beside their name wherever they post,
+        and they can post announcements and respond to briefs.
       </p>
       <p className="form-hint">
-        Officials marked <strong>Receives briefs</strong> get an email
-        from the hub each time a brief is published. You can add or remove
-        recipients for a particular brief while reviewing it.
+        Leave a name blank to use the name on their account. Admins can already post,
+        so list an admin here only if they also hold an office. They'll show both badges.
+      </p>
+      <p className="form-hint">
+        Mark <strong>Receives briefs</strong> for anyone who should get an email
+        each time a brief is published. You can still add or remove people for a
+        particular brief when you review it.
       </p>
 
       {officials.length === 0 && (
         <p className="empty-state-inline" style={{ margin: "var(--space-sm) 0" }}>
-          No officials configured. Only admins can post announcements.
+          No officials yet. Until you add some, only admins can post announcements.
         </p>
       )}
 
@@ -284,7 +284,7 @@ export default function OfficialsSection() {
           <label className="form-label" htmlFor="extra-brief-recipients">
             Also send briefs to{" "}
             <span className="official-col-note">
-              (standing addresses that aren't a person's office — a clerk, a shared board inbox)
+              (addresses that aren't one person's office, such as a clerk or a shared board inbox)
             </span>
           </label>
           <HelpButton k="officials.extra_recipients" label="Also send briefs to" />

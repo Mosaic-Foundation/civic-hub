@@ -41,17 +41,17 @@
     "anchor": "settings-sample"
   },
   "settings.admin-log": {
-    "text": "A read-only list of what this hub's admins did that the hub records, newest first, last 100. Comment hides are in the Moderation log instead.",
+    "text": "A record of what this hub's admins did, newest first, the last 100: settings saved (fields, not values), admins and mode changed, samples removed and more. Useful when several people run a hub. Comment hides are in the Moderation log.",
     "page": "/reference/settings/",
     "anchor": "settings-admin-log"
   },
   "settings.people": {
-    "text": "Who administers the hub. Admins reach the admin pages and can post announcements. Board members and other office holders go under Officials. Changing the list needs a fresh code.",
+    "text": "Who runs this hub. Admin rights are per hub, and the same person can be an admin on several. Board members and other office holders go under Officials. Changing this list takes a code emailed to you.",
     "page": "/reference/settings/",
     "anchor": "settings-people"
   },
   "settings.officials": {
-    "text": "People with a public title, shown as a pill beside their name. Officials can post announcements, and those marked Receives briefs get each published brief by email.",
+    "text": "People who hold a public office, such as a board or council member. Their title shows beside their name, they can post announcements, and those marked Receives briefs get each published brief by email.",
     "page": "/reference/settings/",
     "anchor": "settings-officials"
   },
@@ -188,7 +188,7 @@
     "anchor": "mode-waitlist"
   },
   "people.admins": {
-    "text": "Email addresses of this hub's admins. They reach every admin page and can post announcements. A new admin gets an email. Changing the list needs a fresh code.",
+    "text": "The email addresses of this hub's admins. They can open every admin page and post announcements. A new admin gets an email saying so. Changing this list takes a code emailed to you.",
     "page": "/reference/settings/",
     "anchor": "people-admins"
   },
@@ -323,7 +323,7 @@
     "anchor": "legal-contact-email"
   },
   "legal.governing_state": {
-    "text": "For a hub that is not a place, the state whose law governs its Terms. A place hub uses its own state. Left empty, the platform default applies.",
+    "text": "The state whose law governs this hub's Terms. A place hub uses its own state. Any other hub may choose one; left empty, it uses its location's state, or the platform's default if it has no location.",
     "page": "/reference/settings/legal",
     "anchor": "legal-governing-state"
   },
@@ -338,7 +338,7 @@
     "anchor": "email-from-name"
   },
   "email.postal_address": {
-    "text": "Printed in the footer of digests, because anti-spam law asks for one. Left empty, the platform's address is used.",
+    "text": "Optional. Printed in the footer of this hub's digests, because anti-spam law requires a postal address on them. Left empty, the platform's address is used.",
     "page": "/reference/settings/email",
     "anchor": "email-postal-address"
   },

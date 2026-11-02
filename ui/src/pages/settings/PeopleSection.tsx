@@ -109,15 +109,16 @@ export default function PeopleSection() {
       </h2>
 
       <p className="form-hint">
-        Admins reach every page under /admin and can post announcements. The
-        list belongs to this hub: an admin here is not an admin on any other
-        hub. Board members and other office holders go under{" "}
+        Admins run this hub: they can open every admin page, change its settings
+        and post announcements. Admin rights are per hub, so this list only covers
+        this one, and the same person can be an admin on several hubs. Board members
+        and other office holders don't need to be admins: they go under{" "}
         <Link to="/admin/settings/officials">Officials</Link>.
       </p>
       <p className="form-hint">
-        A new admin gets an email saying so, with a link and the first steps.
-        The platform operator can also add or remove admins, so a hub that
-        loses all of its own can be handed back.
+        When you add someone, they get an email saying so, with a link and the
+        first steps. The platform operator can also add or remove admins, so a hub
+        that loses all of its own can be handed back.
       </p>
 
       <EmailListEditor
@@ -148,8 +149,8 @@ export default function PeopleSection() {
       )}
 
       <p className="form-hint" style={{ marginTop: "var(--space-md)" }}>
-        Changing who administers a hub takes a code emailed to you now —
-        an open admin tab is not enough on its own.
+        Changing who runs a hub takes a code we email to you, even though you're
+        signed in. It's a second check on a change that matters.
       </p>
       <div className="admin-settings-actions settings-savebar is-floating" role="group" aria-label="Save this section">
         {!peopleCodeSent ? (
