@@ -12,7 +12,7 @@
 // dark-blue Submit of the Events form and the Activity page's chip
 // (theme.css says which is which; tests/unit/buttonInk.test.ts holds it).
 
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, type Ref } from "react";
 import type {
   ButtonHTMLAttributes,
   HTMLAttributes,
@@ -34,6 +34,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
    */
   variant?: "primary" | "secondary" | "accent" | "ghost" | "danger";
   size?: "md" | "sm";
+  ref?: Ref<HTMLButtonElement>;
 };
 
 /** The hub's button. `type` defaults to "button" (a form's Submit says type="submit"). */

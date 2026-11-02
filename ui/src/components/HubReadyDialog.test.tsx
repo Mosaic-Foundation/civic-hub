@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 import HubReadyDialog from "./HubReadyDialog";
 import { PLATFORM_SETUP_GUIDE_URL } from "../../../src/shared/platform";
 
+// The kit re-exports it, and it brings every package's UI, which this test has no use for.
+vi.mock("./DraftShell", () => ({ default: () => null }));
 vi.mock("../config/hub", () => ({ useHub: () => ({ name: "Sample Hub" }) }));
 
 describe("HubReadyDialog", () => {
@@ -18,8 +20,24 @@ describe("HubReadyDialog", () => {
     expect(dialog.querySelectorAll("ol li")).toHaveLength(3);
     expect(dialog.textContent).toContain("Under Admins, add anyone");
     expect(dialog.textContent).toContain("new@example.test");
-    const guide = screen.getByRole("link", { name: "Learn how to set up your hub" });
+    const guide = screen.getByRole("link", { name: "Setup guide" });
     expect(guide.getAttribute("href")).toBe(PLATFORM_SETUP_GUIDE_URL);
     expect(guide.getAttribute("target")).toBe("_blank");
+    // Beside Open Hub settings, with the same weight.
+    const settings = screen.getByRole("button", { name: "Open Hub settings" });
+    expect(guide.className).toBe(settings.className);
+    expect(guide.parentElement).toBe(settings.parentElement);
+  });
+
+  it("says the work keeps", () => {
+    render(
+      <MemoryRouter>
+        <HubReadyDialog email="new@example.test" onDismiss={() => {}} />
+      </MemoryRouter>,
+    );
+    const text = screen.getByRole("dialog").textContent;
+    expect(text).toContain("also in the email we sent to new@example.test");
+    expect(text).toContain("its own Save");
+    expect(text).toContain("what you've saved stays");
   });
 });

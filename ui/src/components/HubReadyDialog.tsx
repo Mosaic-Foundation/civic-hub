@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { theName } from "../../../src/shared/hubCopy";
 import { PLATFORM_SETUP_GUIDE_URL } from "../../../src/shared/platform";
 import { useHub } from "../config/hub";
+import { Button } from "../kit";
 import { clearHubJustCreated } from "../utils/hubJustCreated";
 import Modal from "./Modal";
 import "./IntroPopup.css";
@@ -48,18 +49,18 @@ export default function HubReadyDialog({ email, onDismiss }: { email: string; on
         <li>When it's ready, Hub settings → Mode moves it to beta.</li>
       </ol>
       <p className="intro-popup-text">
-        <a href={PLATFORM_SETUP_GUIDE_URL} target="_blank" rel="noopener">
-          Learn how to set up your hub
-        </a>
-        . We've also sent these steps to {email ? <strong>{email}</strong> : "your email"}.
+        These steps are also in the email we sent to {email ? <strong>{email}</strong> : "you"}. There's no need to do it
+        all at once: each section of Hub settings has its own Save, and what you've saved stays, so you can come back any
+        time. The bar at the bottom of a section tells you when something isn't saved yet.
       </p>
       <div className="intro-popup-actions">
-        <button ref={primary} type="button" className="intro-popup-primary" onClick={() => close("/admin/settings")}>
+        <Button ref={primary} variant="primary" onClick={() => close("/admin/settings")}>
           Open Hub settings
-        </button>
-        <button type="button" className="intro-popup-secondary" onClick={() => close()}>
-          Look around first
-        </button>
+        </Button>
+        <a className="btn-primary" href={PLATFORM_SETUP_GUIDE_URL} target="_blank" rel="noopener">
+          Setup guide
+        </a>
+        <Button onClick={() => close()}>Look around first</Button>
       </div>
     </Modal>
   );
