@@ -4,6 +4,67 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Pilot readiness 2: from the invite email to a set-up hub — 2026-11-02
+
+**State:**
+- **Dev:** via `release.sh dev --yes`. Two additive migrations (`20261102120000_invite_links`,
+  `20261102130000_users_setup_card`). Health ok, 9 of 9 packages signed. CI, E2E and Smoke (30 of 30) green on `0b9fc69`.
+- **Not on production.** Production is still `ed960b9`.
+- **Reports:** `~/Documents/Mosaic/0 Management/Civic Social/Pilot-Readiness-2-Session-Report-2026-11-02.md` and
+  `Pilot-Readiness-2-Handoff-to-Management-2026-11-02.md`. The report ends with the checklist Adam walks as an invitee.
+
+**What changed:**
+- **Items 1, 2, invite:** an invite the console emails carries `#invite=<token>`, one per send, bound to the address, ending
+  with the code (`entitlement_links`, `createInviteLink`, `spendInviteLink`, `POST /start/invite-link`). Following it opens a
+  start session that is already that address's. A later click gets one answer and points to the code in the same email;
+  a typed code keeps the sign-in code. The proof level stays `code`, so `src/authz` and `authzParity` did not change. The
+  admins-change code is the shared step-up and stays.
+- **Items 3-5, creation:** Operated by starts empty on both create forms, with no default on the hub. `operatorValues`
+  gives `{OPERATOR}`, `{OPERATOR_NOUN}` and `{OPERATOR_LINE}`. `GET /start/slug-check` checks a typed address; the
+  state-qualified slug now comes before the type-qualified one, on the console too. "Creating your hub" already existed.
+- **Items 6-8, onboarding:** the pop-up's guide is a button and it says the work keeps. `AdminSetupCard` replaces the
+  visitor's card for an admin (`GET`/`POST /admin/hub/setup-card`, `setupSteps` in `modeReadiness.ts`); Dismiss and Skip
+  are on the account. After Dismiss an admin sees no card at all.
+- **Items 9, 10, saving:** `askDiscard` (ConfirmDialog) for links, the section list and Back (one extra history entry);
+  `beforeunload` keeps the browser's prompt. The Save bar is always in view, Save is disabled when nothing changed, and
+  a plain "Saved." goes after five seconds.
+- **Item 11, documents:** `src/shared/documentTemplate.ts` (moved) and `documentFields.ts` (a document as fields).
+  `DocumentField` previews first; `settings/document/DocumentEditor.tsx` edits with chips, on Legal and Copy & pages.
+  The console warns on a kind change.
+- **Item 12, governing law:** `hubGoverningLaw`, `stateNameForHub`. A whole state, or a name without a comma, really did get the
+  platform default in its Terms. Fixed. A non-place hub with a listed location uses that state.
+- **Items 13-16:** Postal address optional; the admin log records settings saves (`settings.save`: section and field
+  keys, never values) and says what it holds; Admins per hub; Officials and Admins copy.
+
+**Decisions made without asking:**
+- The blank-operator note is under **Legal**, where the field is, not Identity as the brief said.
+- Smoke's 170-second cap stays (its header says the run must stay under three minutes).
+- The WebKit project runs only `legalEditor.spec.ts`.
+
+**Found on the way:**
+- **Smoke stayed red after a cut-off run.** The global timeout skips `afterAll`, which left the Members threshold at
+  100000, and the threshold test then read that as the hub's own value. `beforeAll` now repairs it, as it does `nav.layout`.
+- **The home feed reads the whole event log in sequential pages:** 20+ requests, about 6 seconds, on dev's smoke hub. This
+  slice didn't change it. Smoke's two 5-second waits on the home page failed on it.
+- **WebKit:** a click on a chip put the caret inside it; fixed, and pinned in the spec.
+
+**Invariants:**
+- **Wire:** 6,047 local events before; 5,816 byte-identical, 231 removed by the API suite's own sample tests, **0 changed**.
+- **`authzParity`, `src/authz`, `packages/`:** no diff from `ed960b9`.
+- **Migrations:** additive.
+
+**Checks:** `npm test` (lint, unit, API service role) 3,256 passed; API minted tokens 1,077; UI 86; Playwright the CI way 221
+passed, 9 skipped (Chromium, plus the editor in WebKit); token ratchet and place names clean.
+
+**Not verified:** a real invite email through Resend (no mailer locally or in CI). Nobody has followed a real link on dev.
+
+**Left:**
+- **Adam:** the checklist; push the ADR-011 amendment if he accepts the wording in the report.
+- **Production:** `release.sh prod` applies the two migrations; nothing needs approving in the catalog.
+- **Docs:** listed in the report.
+
+---
+
 ## Pilot readiness 1: from the invite to a working hub; Neighbourhood or association — 2026-10-30
 
 **State:**
