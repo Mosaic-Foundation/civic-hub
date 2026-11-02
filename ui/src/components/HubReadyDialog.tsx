@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { theName } from "../../../src/shared/hubCopy";
 import { PLATFORM_SETUP_GUIDE_URL } from "../../../src/shared/platform";
 import { useHub } from "../config/hub";
-import { Button } from "../kit";
+import { Button } from "../kit/Button";
 import { clearHubJustCreated } from "../utils/hubJustCreated";
 import Modal from "./Modal";
 import "./IntroPopup.css";

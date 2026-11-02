@@ -12,9 +12,8 @@
 // dark-blue Submit of the Events form and the Activity page's chip
 // (theme.css says which is which; tests/unit/buttonInk.test.ts holds it).
 
-import { useId, useRef, useState, type Ref } from "react";
+import { useId, useRef, useState } from "react";
 import type {
-  ButtonHTMLAttributes,
   HTMLAttributes,
   InputHTMLAttributes,
   ReactNode,
@@ -26,27 +25,9 @@ import type {
 
 export { default as DraftShell } from "../components/DraftShell";
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  /**
-   * primary: the page's one main action; secondary: the others; accent: an
-   * invitation to take part ("Raise something", "Going"); ghost: a quiet
-   * action in a row; danger: what cannot be undone.
-   */
-  variant?: "primary" | "secondary" | "accent" | "ghost" | "danger";
-  size?: "md" | "sm";
-  ref?: Ref<HTMLButtonElement>;
-};
+import { Button } from "./Button";
 
-/** The hub's button. `type` defaults to "button" (a form's Submit says type="submit"). */
-export function Button({ variant = "secondary", size = "md", className, type = "button", ...rest }: ButtonProps) {
-  return (
-    <button
-      type={type}
-      className={cx(`btn-${variant}`, size === "sm" && "btn-sm", className)}
-      {...rest}
-    />
-  );
-}
+export { Button };
 
 function cx(...names: Array<string | false | null | undefined>): string {
   return names.filter(Boolean).join(" ");

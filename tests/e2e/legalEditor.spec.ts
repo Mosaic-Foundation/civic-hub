@@ -88,7 +88,11 @@ test("an admin edits the Terms without seeing a brace, and the preview follows",
   // Change one field, with Bold and a chip, and read it in the preview.
   const contact = terms.getByRole("textbox", { name: "Contact" });
   await expect(contact.locator(".doc-chip", { hasText: "contact email" })).toHaveCount(1);
-  await contact.click();
+  // Clicking a chip leaves the caret beside it, and typing lands in the field.
+  await contact.locator(".doc-chip", { hasText: "contact email" }).click();
+  await page.keyboard.type("x");
+  await expect(contact).toContainText("x");
+  await expect(contact.locator(".doc-chip", { hasText: "contact email" })).toHaveText("contact email");
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.type("Write to our volunteers at ");
   await terms.getByRole("toolbar", { name: "Format Contact" }).getByRole("button", { name: "contact email" }).click();

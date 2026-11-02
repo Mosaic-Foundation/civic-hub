@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "../kit";
+import { Button } from "../kit/Button";
 import { PLATFORM_SETUP_GUIDE_URL } from "../../../src/shared/platform";
 import { adminGetSetupCard, adminPostSetupCard, type SetupCard } from "../services/api";
 import "./AdminSetupCard.css";

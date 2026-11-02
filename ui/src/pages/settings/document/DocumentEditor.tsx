@@ -13,6 +13,16 @@ import { applySubstitutions } from "../../../../../src/shared/documentTemplate";
 import { chipHtml, domToMarkdown, markdownToHtml } from "./editorMarkdown";
 import "./DocumentEditor.css";
 
+/** Nothing goes inside a chip: a caret that lands in one moves to just after it. */
+function caretAfterChip(chip: Element) {
+  const sel = window.getSelection();
+  const at = document.createRange();
+  at.setStartAfter(chip);
+  at.collapse(true);
+  sel?.removeAllRanges();
+  sel?.addRange(at);
+}
+
 function RichField({
   label,
   text,
@@ -60,6 +70,8 @@ function RichField({
       sel?.removeAllRanges();
       sel?.addRange(range.current);
     }
+    const inChip = (window.getSelection()?.anchorNode?.parentElement ?? null)?.closest(".doc-chip");
+    if (inChip) caretAfterChip(inChip);
   }
 
   function command(name: string, value?: string) {
@@ -168,6 +180,14 @@ function RichField({
         contentEditable={!disabled}
         suppressContentEditableWarning
         onInput={report}
+        onMouseDown={(e) => {
+          const chip = (e.target as Element).closest(".doc-chip");
+          if (!chip) return;
+          // Safari would otherwise put the caret in the locked chip, where typing goes nowhere.
+          e.preventDefault();
+          box.current?.focus();
+          caretAfterChip(chip);
+        }}
         onBlur={keepSelection}
         onKeyUp={keepSelection}
         onMouseUp={keepSelection}

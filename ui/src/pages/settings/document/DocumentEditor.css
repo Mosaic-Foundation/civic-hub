@@ -92,7 +92,6 @@
   color: var(--color-text);
   font-size: var(--text-small-size);
   line-height: var(--line-height-normal);
-  user-select: all;
   white-space: nowrap;
 }
 

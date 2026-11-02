@@ -4,8 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import HubReadyDialog from "./HubReadyDialog";
 import { PLATFORM_SETUP_GUIDE_URL } from "../../../src/shared/platform";
 
-// The kit re-exports it, and it brings every package's UI, which this test has no use for.
-vi.mock("./DraftShell", () => ({ default: () => null }));
 vi.mock("../config/hub", () => ({ useHub: () => ({ name: "Sample Hub" }) }));
 
 describe("HubReadyDialog", () => {
