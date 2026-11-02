@@ -44,9 +44,9 @@ export default function EmailSection() {
           <TextAreaField
             f={f}
             k="email.postal_address"
-            label="Postal address"
+            label="Postal address (optional)"
             rows={2}
-            hint="Printed in the footer of digests (anti-spam law asks for one). Leave it empty to use the platform's address."
+            hint="Printed in the footer of this hub's digests, because anti-spam law requires a postal address on them. Leave it empty and the platform's address is used."
           />
           <ReadOnlyField
             label="Address in use"
