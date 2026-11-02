@@ -21,6 +21,7 @@
 import { CivicError, codeForStatus } from "../errors/index.js";
 import { createHash, randomInt } from "node:crypto";
 import { getDb } from "../db/client.js";
+import { randomToken, sha256Hex } from "../utils/hash.js";
 import { generateId } from "../utils/id.js";
 
 /** The kinds of entitlement. Checked here, not by a database constraint. */
@@ -250,6 +251,56 @@ export async function checkInviteCode(raw: unknown, kind: EntitlementKind = "hub
   const row = data as EntitlementRow | null;
   if (!row || !usable(row, kind)) throw new EntitlementError(INVITE_REFUSED, 403);
   return row;
+}
+
+// --- An emailed invite's link (pilot readiness 2, 2026-11-02) ------------------
+
+/** The one answer for every link that cannot be used: it says where to go next. */
+export const INVITE_LINK_REFUSED =
+  "That link has been used or has expired. If your invite is still good, enter the code from the same email here. We'll then email you a sign-in code.";
+
+/**
+ * A link for one email of this invite, bound to the address it goes to and
+ * ending with the code. The token is shown to the mail only and stored hashed.
+ * Each send has its own, so one address's click doesn't spend another's.
+ */
+export async function createInviteLink(entitlement: Pick<EntitlementRow, "id" | "expires_at">, email: string): Promise<string> {
+  const token = randomToken();
+  const { error } = await getDb().from("entitlement_links").insert({
+    token_hash: sha256Hex(token),
+    entitlement_id: entitlement.id,
+    email,
+    expires_at: entitlement.expires_at,
+  });
+  if (error) throw new Error(`entitlement_links write failed: ${error.message}`);
+  return token;
+}
+
+/**
+ * Spend a link: one conditional update, so of two followers one gets the row.
+ * Refused, with one answer, when it is unknown, spent or expired, or its code
+ * can no longer be used; a refused follow does not spend it.
+ */
+export async function spendInviteLink(raw: unknown): Promise<{ entitlement_id: string; email: string }> {
+  const refused = new EntitlementError(INVITE_LINK_REFUSED, 403);
+  if (typeof raw !== "string" || !raw || raw.length > 128) throw refused;
+  const db = getDb();
+  const hash = sha256Hex(raw);
+  const { data: found, error: readErr } = await db.from("entitlement_links").select("entitlement_id").eq("token_hash", hash).maybeSingle();
+  if (readErr) throw new Error(`entitlement_links read failed: ${readErr.message}`);
+  if (!found || !(await entitlementStillUsable((found as { entitlement_id: string }).entitlement_id))) throw refused;
+  const now = new Date().toISOString();
+  const { data, error } = await db
+    .from("entitlement_links")
+    .update({ spent_at: now })
+    .eq("token_hash", hash)
+    .is("spent_at", null)
+    .gt("expires_at", now)
+    .select("entitlement_id, email")
+    .maybeSingle();
+  if (error) throw new Error(`entitlement_links write failed: ${error.message}`);
+  if (!data) throw refused;
+  return data as { entitlement_id: string; email: string };
 }
 
 /** Is this entitlement still usable (the start page re-checks before each step)? */

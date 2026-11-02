@@ -8,6 +8,8 @@
 // console's hostname.
 //
 //   POST /start/invite        the invite code → a start session (cookie)
+//   POST /start/invite-link   an emailed invite's link → a start session that
+//                             is already that address's (no sign-in code)
 //   POST /start/request-code  an emailed code to the address given
 //   POST /start/verify        the emailed code → the session is that address's
 //   GET  /start/session       which step the page is on
@@ -40,6 +42,7 @@ import {
   INVITE_REFUSED,
   checkInviteCode,
   claimEntitlement,
+  spendInviteLink,
   entitlementStillUsable,
   redeemEntitlement,
   releaseClaim,
@@ -263,6 +266,22 @@ export function startRouter(): Router {
     const token = await openStartSession(entitlement.id);
     setSessionCookie(req, res, token);
     res.json({ step: "sign_in" });
+  }));
+
+  // A link the console emailed: following it is the mailbox's proof, as an
+  // emailed code is, so the session is that address's from the start.
+  r.post("/start/invite-link", route(async (req, res) => {
+    await rateLimit("invite", clientIp(req));
+    const link = await spendInviteLink((req.body as { token?: unknown })?.token);
+    const token = await openStartSession(link.entitlement_id, link.email);
+    setSessionCookie(req, res, token);
+    await audited({
+      actor: link.email,
+      action: "invite.link_follow",
+      before: null,
+      after: { entitlement_id: link.entitlement_id },
+    });
+    res.json({ step: "form", email: link.email });
   }));
 
   r.post("/start/request-code", route(async (req, res) => {

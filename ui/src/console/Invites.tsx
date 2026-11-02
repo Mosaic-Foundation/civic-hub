@@ -87,6 +87,9 @@ function Minted({
               {sentTo.length > 0 ? "Also email it to" : "Email it to"} <em>optional</em>
             </span>
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.org" />
+            <small className="cx-muted">
+              The email's link signs them in as that address, with no second code. A code typed by hand still asks for one.
+            </small>
           </label>
           <button className="cx-btn" disabled={sending || !email.trim()}>
             {sending ? "Sending…" : "Send"}

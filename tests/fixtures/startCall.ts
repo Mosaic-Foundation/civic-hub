@@ -95,6 +95,23 @@ export async function plantStartCode(email: string, code: string): Promise<void>
 }
 
 /**
+ * Put a known emailed-invite link in place, as if the console had sent it: the
+ * mail itself is not readable from a test, and the token is stored only hashed.
+ */
+export async function plantInviteLink(entitlementId: string, email: string, token: string, expiresAt?: string): Promise<void> {
+  await localRest("entitlement_links", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      token_hash: sha256(token),
+      entitlement_id: entitlementId,
+      email,
+      expires_at: expiresAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    }),
+  });
+}
+
+/**
  * The start page as far as the form: a good invite code, then a sign-in
  * with a planted code. Returns the session cookie.
  */

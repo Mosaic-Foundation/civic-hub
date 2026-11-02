@@ -78,6 +78,7 @@ export interface LegalSummary {
 export const startApi = {
   session: () => request<StartSessionView>("GET", "/session"),
   invite: (code: string) => request<{ step: Step }>("POST", "/invite", { code }),
+  inviteLink: (token: string) => request<{ step: Step; email: string }>("POST", "/invite-link", { token }),
   requestCode: (email: string) => request<{ message: string }>("POST", "/request-code", { email, tz: browserTimeZone() }),
   verify: (email: string, code: string) =>
     request<{ step: Step; email: string }>("POST", "/verify", { email, code, tz: browserTimeZone() }),

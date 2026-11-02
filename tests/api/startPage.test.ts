@@ -16,7 +16,7 @@ import { call } from "../fixtures/hostCall.js";
 import { CURRENT_LEGAL_VERSION } from "../../src/shared/legal.js";
 import { localRest } from "../fixtures/adminSession.js";
 import { OPERATOR, auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
-import { START_HOST, cookieFrom, freshIp, plantStartCode, signedInStart, startCall } from "../fixtures/startCall.js";
+import { START_HOST, cookieFrom, freshIp, plantInviteLink, plantStartCode, signedInStart, startCall } from "../fixtures/startCall.js";
 
 const run = Date.now().toString(36);
 const created: string[] = [];
@@ -223,6 +223,106 @@ describe("a code that cannot be used gets one answer", () => {
     expect(r.setCookie).toMatch(/^civic_start=[^;]+;/);
     expect(r.setCookie).toContain("HttpOnly");
     expect(r.setCookie).toContain("SameSite=Strict");
+  });
+});
+
+describe("an invite the console emailed", () => {
+  const LINK_REFUSED = /That link has been used or has expired/;
+
+  it("sending records a link for that address, by hash, ending with the code", async () => {
+    const { code, id } = await mint();
+    const email = `linked-${run}@example.test`;
+    const sent = await consoleCall("POST", `/control/invites/${id}/send`, { cookie: consoleCookie, body: { email, code } });
+    expect(sent.status, JSON.stringify(sent.body)).toBe(200);
+    const rows = (await localRest(`entitlement_links?entitlement_id=eq.${id}&select=*`)) as Array<Record<string, string | null>>;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.email).toBe(email);
+    expect(rows[0]!.spent_at).toBeNull();
+    expect(Date.parse(rows[0]!.expires_at!)).toBe(Date.parse((await localRest(`entitlements?id=eq.${id}&select=expires_at`) as Array<{ expires_at: string }>)[0]!.expires_at));
+    expect(rows[0]!.token_hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("following the link signs in as that address with no code, and makes the hub", async () => {
+    const { id } = await mint();
+    const email = `follower-${run}@example.test`;
+    const token = `link-${run}-a`;
+    await plantInviteLink(id, email, token);
+    const ip = freshIp();
+    const followed = await startCall("POST", "/start/invite-link", { body: { token }, ip });
+    expect(followed.status, JSON.stringify(followed.body)).toBe(200);
+    expect(followed.body).toEqual({ step: "form", email });
+    const cookie = cookieFrom(followed.setCookie);
+    const view = await startCall("GET", "/start/session", { cookie, ip });
+    expect(view.body.step).toBe("form");
+    expect(view.body.email).toBe(email);
+
+    const slug = `link-${run}`.slice(0, 30);
+    const made = await startCall("POST", "/start/hubs", { cookie, ip, body: hubBody(slug) });
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    created.push(made.body.hub.id);
+    // The handoff into the hub is an ordinary admin session: the proof is the mailbox's, as an emailed code's is.
+    const handoff = decodeURIComponent(/#handoff=(.+)$/.exec(made.body.redirect)![1]!);
+    const swapped = await call("POST", "/auth/handoff", `${slug}.localhost`, { handoff });
+    expect(swapped.status, JSON.stringify(swapped.body)).toBe(200);
+    expect(swapped.body.user.email).toBe(email);
+    const audit = await inviteAudit(id);
+    expect(audit.map((a) => a.action)).toContain("invite.link_follow");
+  });
+
+  it("works once; a later click is refused and points to the code, which still works and asks for a sign-in code", async () => {
+    const { code, id } = await mint();
+    const token = `link-${run}-b`;
+    await plantInviteLink(id, `once-${run}@example.test`, token);
+    const ip = freshIp();
+    expect((await startCall("POST", "/start/invite-link", { body: { token }, ip })).status).toBe(200);
+    const again = await startCall("POST", "/start/invite-link", { body: { token }, ip });
+    expect(again.status).toBe(403);
+    expect(again.body.error).toMatch(LINK_REFUSED);
+    expect(again.setCookie).toBeUndefined();
+    const typed = await startCall("POST", "/start/invite", { body: { code }, ip });
+    expect(typed.status).toBe(200);
+    expect(typed.body.step).toBe("sign_in");
+    const view = await startCall("GET", "/start/session", { cookie: cookieFrom(typed.setCookie), ip });
+    expect(view.body.step).toBe("sign_in");
+    expect(view.body.email).toBeNull();
+  });
+
+  it("two followers at once: one gets the session", async () => {
+    const { id } = await mint();
+    const token = `link-${run}-race`;
+    await plantInviteLink(id, `race-${run}@example.test`, token);
+    const ip = freshIp();
+    const both = await Promise.all([1, 2].map(() => startCall("POST", "/start/invite-link", { body: { token }, ip })));
+    expect(both.map((r) => r.status).sort()).toEqual([200, 403]);
+  });
+
+  it("an unknown, expired, revoked or used-up link gets the same answer", async () => {
+    const ip = freshIp();
+    for (const token of ["nope", "", 42]) {
+      const res = await startCall("POST", "/start/invite-link", { body: { token }, ip });
+      expect(res.status).toBe(403);
+      expect(res.body.error).toMatch(LINK_REFUSED);
+    }
+    const old = await mint();
+    await plantInviteLink(old.id, `old-${run}@example.test`, `link-${run}-old`, new Date(Date.now() - 1000).toISOString());
+    expect((await startCall("POST", "/start/invite-link", { body: { token: `link-${run}-old` }, ip })).body.error).toMatch(LINK_REFUSED);
+
+    const revoked = await mint();
+    await plantInviteLink(revoked.id, `rev-${run}@example.test`, `link-${run}-rev`);
+    await consoleCall("POST", `/control/invites/${revoked.id}/revoke`, { cookie: consoleCookie, body: {} });
+    expect((await startCall("POST", "/start/invite-link", { body: { token: `link-${run}-rev` }, ip })).body.error).toMatch(LINK_REFUSED);
+    // A refused follow leaves it unspent.
+    const rows = (await localRest(`entitlement_links?entitlement_id=eq.${revoked.id}&select=spent_at`)) as Array<{ spent_at: string | null }>;
+    expect(rows[0]!.spent_at).toBeNull();
+  });
+
+  it("needs the start page's header, as every write does", async () => {
+    const res = await startCall("POST", "/start/invite-link", { body: { token: "x" }, csrf: false });
+    expect(res.status).toBe(403);
+  });
+
+  it("is on the start page only", async () => {
+    expect((await startCall("POST", "/start/invite-link", { body: { token: "x" }, host: "athens.localhost" })).status).toBe(404);
   });
 });
 

@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { startApi, type StartSessionView } from "./api";
 import CreateForm from "./CreateForm";
-import { codeFromFragment } from "../../../src/shared/hubInvite";
+import { codeFromFragment, inviteTokenFromFragment } from "../../../src/shared/hubInvite";
 
 /**
  * The code an invite link carries (#code=…). Read once, as the page loads, and
@@ -18,7 +18,21 @@ function takeLinkedCode(): string {
   if (code) window.history.replaceState(null, "", window.location.pathname + window.location.search);
   return code ?? "";
 }
+const LINKED_INVITE = inviteTokenFromFragment(window.location.hash);
+if (LINKED_INVITE) window.history.replaceState(null, "", window.location.pathname + window.location.search);
 const LINKED_CODE = takeLinkedCode();
+
+/**
+ * An emailed invite's link, followed once as the page loads: it is spent by the
+ * first request, so this is outside React and its double effects. What it
+ * resolves to is the refusal to show, or null.
+ */
+const INVITE_FOLLOWED: Promise<string | null> = LINKED_INVITE
+  ? startApi.inviteLink(LINKED_INVITE).then(
+      () => null,
+      (e: Error) => e.message,
+    )
+  : Promise.resolve(null);
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -58,7 +72,7 @@ function useBusy() {
   return { busy, error, setError, run };
 }
 
-function CodeStep({ refused, onDone }: { refused: boolean; onDone: () => void }) {
+function CodeStep({ refused, linkRefused, onDone }: { refused: boolean; linkRefused: string | null; onDone: () => void }) {
   const [code, setCode] = useState(LINKED_CODE);
   const { busy, error, run } = useBusy();
   return (
@@ -68,6 +82,11 @@ function CodeStep({ refused, onDone }: { refused: boolean; onDone: () => void })
           ? "Your invite code is filled in from your link. It lets you create one hub."
           : "Enter the invite code you were given. It lets you create one hub."}
       </p>
+      {linkRefused && (
+        <p className="cx-alert cx-alert-warn" role="status">
+          {linkRefused}
+        </p>
+      )}
       {refused && (
         <p className="cx-alert cx-alert-warn" role="status">
           The code you used earlier can no longer be used. If you have another, enter it here.
@@ -187,10 +206,13 @@ function SignInStep({ onDone, onLeave }: { onDone: () => void; onLeave: () => vo
 export default function App() {
   const [session, setSession] = useState<StartSessionView | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [linkRefused, setLinkRefused] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    startApi
-      .session()
+    void INVITE_FOLLOWED.then((refusal) => {
+      setLinkRefused(refusal);
+      return startApi.session();
+    })
       .then((s) => {
         setSession(s);
         setFailed(null);
@@ -212,7 +234,7 @@ export default function App() {
     );
   }
   if (!session) return <main className="cx-center cx-muted">Loading…</main>;
-  if (session.step === "code") return <CodeStep refused={session.code_refused} onDone={load} />;
+  if (session.step === "code") return <CodeStep refused={session.code_refused} linkRefused={linkRefused} onDone={load} />;
   if (session.step === "sign_in") return <SignInStep onDone={load} onLeave={leave} />;
   return <CreateForm email={session.email ?? ""} onSessionEnded={load} onLeave={leave} />;
 }

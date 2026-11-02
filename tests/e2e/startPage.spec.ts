@@ -17,7 +17,7 @@ import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 import { test, expect } from "@playwright/test";
 import { localRest } from "../fixtures/adminSession.js";
 import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
-import { plantStartCode } from "../fixtures/startCall.js";
+import { plantInviteLink, plantStartCode } from "../fixtures/startCall.js";
 
 const UI = new URL(process.env.CIVIC_E2E_UI_ORIGIN?.trim() || "http://localhost:5173");
 const at = (host: string, path: string) => `${UI.protocol}//${host}${UI.port ? `:${UI.port}` : ""}${path}`;
@@ -159,6 +159,34 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
 
   await adam.close();
   await colleague.close();
+});
+
+test("an emailed invite's link goes straight to the form, once; a later click points to the code", async ({ browser }) => {
+  const cookie = await mintConsoleSession();
+  const minted = await consoleCall("POST", "/control/invites", { cookie, body: { note: `Link ${run}` } });
+  const email = `linked-${run}@example.test`;
+  const token = `e2e-link-${run}`;
+  await plantInviteLink(minted.body.invite.id, email, token);
+
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.goto(`${START_PAGE}#invite=${token}`);
+  // No code step and no sign-in step: signed in as the address it went to.
+  await expect(page.getByRole("heading", { name: "Create your hub" })).toBeVisible();
+  await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
+  expect(new URL(page.url()).hash).toBe("");
+  // A reload resumes the session; the fragment is gone, so nothing is followed twice.
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Create your hub" })).toBeVisible();
+
+  const other = await browser.newContext();
+  const later = await other.newPage();
+  await later.goto(`${START_PAGE}#invite=${token}`);
+  await expect(later.getByRole("heading", { name: "Start your Civic Hub" })).toBeVisible();
+  await expect(later.getByRole("status").filter({ hasText: "That link has been used or has expired" })).toBeVisible();
+  await expect(later.getByLabel("Invite code")).toBeVisible();
+  await ctx.close();
+  await other.close();
 });
 
 test("the start page on a phone fits the width", async ({ browser }) => {

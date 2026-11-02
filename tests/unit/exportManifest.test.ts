@@ -104,7 +104,9 @@ describe("export manifest", () => {
     // calendar_attendance and calendar_drafts (hub data, exported).
     // 57 since 20261028160000 (Events 0.3.0): calendar_announcements (hub
     // data, exported: the messages the people going were sent).
-    expect(schema.tables.size).toBe(57);
+    // 58 since 20261102120000 (pilot readiness 2): entitlement_links (platform,
+    // not in a hub's export).
+    expect(schema.tables.size).toBe(58);
     expect(schema.withHubId.size).toBe(45);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);

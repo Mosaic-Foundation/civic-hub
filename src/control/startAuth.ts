@@ -1,7 +1,8 @@
 // @civic-raw-client-importer: the start page's codes, sessions and rate-limit counters are platform data, held before any hub exists.
 // The start page's sign-in (session 4b, 2026-10-08): a session opened by a
 // good invite code, then an emailed code to whatever address the person
-// gives, then the create.
+// gives, then the create. An invite the console emailed skips the emailed code:
+// its link is bound to the address it went to (pilot readiness 2, 2026-11-02).
 //
 // The code's rules (lifetime, throttle, wrong-guess cap, lockout, the email
 // itself) are a hub's, from src/modules/civic.auth/otp.ts, as the console's
@@ -94,11 +95,15 @@ export interface StartSession {
   expires_at: string;
 }
 
-/** Open a session for a good invite code. Returns the token, which is never stored. */
-export async function openStartSession(entitlementId: string): Promise<string> {
+/**
+ * Open a session for a good invite code, or for an emailed invite's link, which
+ * brings the address it proved. Returns the token, which is never stored.
+ */
+export async function openStartSession(entitlementId: string, email: string | null = null): Promise<string> {
   const token = randomToken();
   const { error } = await getDb().from("start_sessions").insert({
     token_hash: sha256(token),
+    email,
     entitlement_id: entitlementId,
     expires_at: new Date(Date.now() + START_SESSION_TTL_MS).toISOString(),
   });

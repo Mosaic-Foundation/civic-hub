@@ -24,6 +24,22 @@ export function codeFromFragment(hash: string): string | null {
   }
 }
 
+/**
+ * The link an emailed invite carries (pilot readiness 2): a token bound to the
+ * address it went to, not the code. Following it signs that address in, so it
+ * asks for no second code. In the fragment for the same reasons as the code,
+ * and because a mail scanner fetching the page does not send it anywhere.
+ */
+export function inviteSignInLink(startHost: string, token: string): string {
+  return `https://${startHost}/#invite=${encodeURIComponent(token)}`;
+}
+
+/** The start page's own part of that link: the token in a fragment, or null. */
+export function inviteTokenFromFragment(hash: string): string | null {
+  const m = /^#invite=([A-Za-z0-9_-]+)$/.exec(hash);
+  return m ? m[1] : null;
+}
+
 /** What the console's copy button puts on the clipboard. */
 export function inviteMessage(startHost: string, code: string): string {
   return `${INVITE_SUBJECT}. Open this link: ${inviteLink(startHost, code)}\n\nOr go to https://${startHost} and enter this code: ${code}`;
