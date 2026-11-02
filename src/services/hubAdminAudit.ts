@@ -22,6 +22,8 @@ export type HubAdminAuditAction =
   // The starter word cloud was added and chosen (src/services/starterWordcloud.ts).
   | "wordcloud.starter"
   | "hub.mode"
+  // A section of Hub settings saved: its name and the fields' keys, never the values.
+  | "settings.save"
   | "people.admins"
   | "people.board"
   // An admin closed a process before its deadline, with a note (Actions slice).

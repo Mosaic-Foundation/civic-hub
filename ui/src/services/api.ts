@@ -1716,6 +1716,12 @@ export interface HubSettings {
   /** Document keys with a shared default to restore. */
   restorable: string[];
   /** While the hub is a demo, the platform's console may also set what residents see. */
+  governing_law: {
+    state: string;
+    source: "place" | "setting" | "location" | "platform_default";
+    fallback: string;
+    fallback_source: "location" | "platform_default";
+  } | null;
   console_may_edit: boolean;
   /** After a save: what else it changed (a rename's followers), in words. */
   follow_on?: string;

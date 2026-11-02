@@ -65,6 +65,14 @@ describe("the Set up your hub card", () => {
     expect(step(res.body, "legal").done).toBe(true);
   });
 
+  it("the save is in the admin log, by section and field, without the value", async () => {
+    const log = await call("GET", "/admin/hub/admin-log", HOST, undefined, token);
+    const row = (log.body.entries as Array<{ action: string; after: unknown; actor_email: string }>).find((e) => e.action === "settings.save");
+    expect(row?.after).toEqual({ section: "legal", fields: ["legal.operator_name"] });
+    expect(row?.actor_email).toBe(ADMIN);
+    expect(JSON.stringify(log.body)).not.toContain("Our Group");
+  });
+
   it("Skip ticks the second admin for this admin, marked as skipped", async () => {
     const res = await call("POST", "/admin/hub/setup-card", HOST, { action: "skip_second_admin" }, token);
     expect(res.status, JSON.stringify(res.body)).toBe(200);

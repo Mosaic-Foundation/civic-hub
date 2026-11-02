@@ -3,12 +3,15 @@ import HelpButton from "../../components/HelpButton";
 import { Link } from "react-router-dom";
 import { adminGetHubAdminLog, type HubAdminLogEntry } from "../../services/api";
 import { localTimestamp } from "../../utils/dates";
+import { SETTINGS_NAV } from "../../../../src/shared/adminAnchors";
+import { SETTING_LABELS } from "../../../../src/shared/settingOwners";
 
 /**
  * Settings → Admin log (admin menu slice, 2026-10-13): what this hub's admins
- * did that the hub keeps a record of: removing samples, changing the mode
- * (with what was accepted for the switch) or the admins and board, marking the
- * Terms and Privacy reviewed, closing a process early, making a brief again.
+ * did that the hub keeps a record of: saving settings (the fields, never the
+ * values), removing samples, changing the mode (with what was accepted for the
+ * switch) or the admins and board, marking the Terms and Privacy reviewed,
+ * closing a process early, making a brief again.
  * Newest first, the last 100. A list rather than a table, so it reads on a
  * phone. The console shows the same rows to the operator.
  */
@@ -24,8 +27,14 @@ export default function AdminLogSection() {
         <HelpButton k="settings.admin-log" label="Admin log" />
       </h2>
       <p className="settings-section-intro">
-        What admins of this hub have done that the hub keeps a record of, newest first. Hiding a comment or removing an
-        announcement is in the <Link to="/admin/moderation">Moderation</Link> log instead.
+        A record of what this hub's admins have done, newest first, the last 100 entries. When several people run a hub,
+        it's how you see who changed what, and when.
+      </p>
+      <p className="settings-section-intro">
+        It lists settings saved (which fields, not what they said), admins and the board changed, the mode changed,
+        samples removed, the Terms marked reviewed, processes closed early, briefs made again or republished, feedback
+        sent on, member invites, and plugins installed, updated or removed. Hiding a comment or removing an announcement
+        is in the <Link to="/admin/moderation">Moderation</Link> log instead.
       </p>
       {error ? (
         <p className="form-error">{error}</p>
@@ -73,6 +82,8 @@ function describe(e: HubAdminLogEntry): string {
       return (e.after as { reviewed?: unknown } | null)?.reviewed === true
         ? "Marked the Terms and Privacy Policy as reviewed"
         : "Marked the Terms and Privacy Policy as not reviewed";
+    case "settings.save":
+      return describeSave(e.after);
     case "people.admins":
       return "Changed the admins";
     case "people.board":
@@ -104,6 +115,20 @@ function describe(e: HubAdminLogEntry): string {
     default:
       return e.action;
   }
+}
+
+/** "Saved Legal: Operated by, Contact address". Names only: the log never holds the values. */
+function describeSave(after: unknown): string {
+  const section = SETTINGS_NAV.find((s) => s.id === field(after, "section"))?.label ?? field(after, "section") ?? "settings";
+  const v = (after as Record<string, unknown> | null)?.fields;
+  const fields = Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").map(fieldName) : [];
+  return fields.length ? `Saved ${section}: ${fields.join(", ")}` : `Saved ${section}`;
+}
+
+/** A setting's label, or its key in words where it has none. */
+function fieldName(key: string): string {
+  const words = (SETTING_LABELS[key] ?? key.split(".").slice(1).join(" ").replace(/_/g, " ")).replace(/^"|"$/g, "");
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /**

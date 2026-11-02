@@ -41,7 +41,7 @@ import {
   EDITABLE_SETTING_KEYS,
   fieldSpec,
 } from "../shared/hubSettingsSections.js";
-import { documentSettingDefault, documentTemplate } from "../services/hubDocuments.js";
+import { documentSettingDefault, hubGoverningLaw, documentTemplate } from "../services/hubDocuments.js";
 import { getUser } from "../modules/civic.auth/index.js";
 import { renameHub } from "../db/hubs.js";
 import { processTypeDisplays } from "../processes/registry.js";
@@ -65,6 +65,8 @@ export interface HubSettingsResponse {
    * placeholder, never as a value the admin must keep.
    */
   fallbacks: Record<string, string>;
+  /** Whose law this hub's Terms use, and why (Legal shows it). */
+  governing_law: Awaited<ReturnType<typeof hubGoverningLaw>> | null;
   /** Per key, when the hub's own row last changed and who changed it. */
   changed: Record<string, { at: string; by: string | null }>;
   /**
@@ -146,6 +148,7 @@ async function loadHubSettings(): Promise<HubSettingsResponse> {
       postal_address: await effectivePostalAddress(hubId),
     },
     restorable,
+    governing_law: hub ? await hubGoverningLaw(hub) : null,
     console_may_edit: consoleOwnsHandoverKeys(hub?.mode),
   };
 }
@@ -245,6 +248,17 @@ export const handlePutHubSettings = route(async (req, res) => {
       action: "legal.reviewed",
       before: { reviewed: reviewedBefore },
       after: { reviewed: reviewed.value === "true" },
+    });
+  }
+
+  // The admin log's record of a save: which section and fields, never the
+  // values (Adam, 2026-11-02). "Reviewed" has its own row above.
+  const savedKeys = entries.map((e) => e.key).filter((k) => k !== KEYS.LEGAL_REVIEWED);
+  if (savedKeys.length > 0) {
+    await recordHubAdminAudit({
+      actor: auditActor(actor),
+      action: "settings.save",
+      after: { section: result.section, fields: savedKeys },
     });
   }
 
