@@ -3,6 +3,7 @@
 // `value` is what was chosen; until something is, the dropdown shows
 // `suggestion` (from the place, or the browser) and that is what is saved.
 
+import { NO_FILL } from "./noFill";
 import { US_TIME_ZONES, otherTimeZones } from "../../../src/shared/stateTimeZones";
 
 export function TimeZoneSelect({
@@ -18,7 +19,7 @@ export function TimeZoneSelect({
 }) {
   const shown = value || suggestion;
   return (
-    <select id={id} value={shown} onChange={(e) => onChange(e.target.value)}>
+    <select {...NO_FILL} name="cs-tz" id={id} value={shown} onChange={(e) => onChange(e.target.value)}>
       {!shown && <option value="">Choose…</option>}
       <optgroup label="United States">
         {US_TIME_ZONES.map((z) => (

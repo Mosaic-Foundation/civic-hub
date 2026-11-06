@@ -170,7 +170,7 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   await colleague.close();
 });
 
-test("an emailed invite's link goes straight to the form, once; a later click points to the code", async ({ browser }) => {
+test("an emailed invite's link goes straight to the form, once; a later click offers a fresh link", async ({ browser }) => {
   const cookie = await mintConsoleSession();
   const minted = await consoleCall("POST", "/control/invites", { cookie, body: { note: `Link ${run}` } });
   const email = `linked-${run}@example.test`;
@@ -188,12 +188,36 @@ test("an emailed invite's link goes straight to the form, once; a later click po
   await page.reload();
   await expect(page.getByRole("heading", { name: "Create your hub" })).toBeVisible();
 
+  // Pilot readiness 3, item 3: a value put into the place search, as a password manager
+  // does (no focus, no typing), is dropped; only a pick from the list is a place.
+  const selects = page.locator("fieldset", { hasText: "Jurisdiction" }).locator("select");
+  await selects.nth(0).selectOption({ label: "Virginia" });
+  await selects.nth(1).selectOption({ label: "County" });
+  const search = page.getByRole("combobox", { name: "Name" });
+  await expect(search).toBeEnabled();
+  await page.getByRole("heading", { name: "Create your hub" }).click();
+  await search.evaluate((el: HTMLInputElement) => {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    set.call(el, "Injected Place, XA");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await expect(search).toHaveValue("");
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+  for (const field of await page.locator("form input:not([type=radio]):not([type=checkbox]), form select").all()) {
+    const type = await field.getAttribute("type");
+    await expect(field).toHaveAttribute("autocomplete", type === "email" ? "email" : "off");
+  }
+
+  // Item 2: the same link in another browser says it was used and offers a fresh one, to the same address.
   const other = await browser.newContext();
   const later = await other.newPage();
   await later.goto(`${START_PAGE}#invite=${token}`);
-  await expect(later.getByRole("heading", { name: "Start your Civic Hub" })).toBeVisible();
-  await expect(later.getByRole("status").filter({ hasText: "That link has been used or has expired" })).toBeVisible();
-  await expect(later.getByLabel("Invite code")).toBeVisible();
+  await expect(later.getByRole("heading", { name: "This link has been used" })).toBeVisible();
+  await expect(later.getByText(`we can email a fresh link to ${email}`)).toBeVisible();
+  await expect(later.getByLabel("Invite code")).toHaveCount(0);
+  await later.getByRole("button", { name: "Send me a fresh link" }).click();
+  await expect(later.getByRole("status")).toContainText(`We sent a fresh link to ${email}`);
   await ctx.close();
   await other.close();
 });

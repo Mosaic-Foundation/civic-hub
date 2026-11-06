@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CreateForm from "./CreateForm";
 import { startApi } from "./api";
@@ -147,5 +147,45 @@ describe("Create my hub", () => {
     await user.click(screen.getByRole("button", { name: "Create my hub" }));
     const busy = await screen.findByRole("button", { name: /Creating your hub/ });
     expect((busy as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("the creation form and form fill (pilot readiness 3)", () => {
+  it("asks browsers and password managers not to fill any field but the contact address", async () => {
+    const user = userEvent.setup();
+    const { container } = form();
+    await pickPlace(user);
+    const fields = [...container.querySelectorAll("input, select")].filter(
+      (el) => !["radio", "checkbox", "hidden"].includes((el as HTMLInputElement).type),
+    ) as HTMLInputElement[];
+    expect(fields.length).toBeGreaterThanOrEqual(8);
+    for (const el of fields) {
+      const label = el.labels?.[0]?.textContent ?? el.name;
+      if (el.type === "email") {
+        expect(el.getAttribute("autocomplete"), label).toBe("email");
+        continue;
+      }
+      expect(el.getAttribute("autocomplete"), label).toBe("off");
+      expect(el.getAttribute("data-1p-ignore"), label).toBe("true");
+      expect(el.getAttribute("data-lpignore"), label).toBe("true");
+      // No name an address book would recognise.
+      expect(el.name, label).not.toMatch(/name|state|city|address|org|company|street|zip|postal|country|tel/i);
+    }
+  });
+
+  it("the place search ignores a value put into it rather than typed, and takes only a pick from its list", async () => {
+    const user = userEvent.setup();
+    form();
+    await user.selectOptions(await screen.findByLabelText("State"), "XA");
+    await user.selectOptions(screen.getByLabelText("Type"), "county");
+    const search = screen.getByRole("combobox", { name: "Name" }) as HTMLInputElement;
+    expect(document.activeElement).not.toBe(search);
+    // What a password manager does: set the value and fire the event, without focusing the field.
+    fireEvent.change(search, { target: { value: "Alder County, Xland" } });
+    fireEvent.input(search, { target: { value: "Alder County, Xland" } });
+    await waitFor(() => expect(search.value).toBe(""));
+    expect(screen.queryByRole("option", { name: /Alder/ })).toBeNull();
+    expect(screen.getByLabelText(/^Hub name/).getAttribute("placeholder") ?? "").not.toContain("Alder");
+    expect(screen.queryByLabelText("Place name")).toBeNull();
   });
 });

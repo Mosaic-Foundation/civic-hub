@@ -9,6 +9,7 @@
 // Hubs already serving the chosen jurisdiction are shown as information:
 // several hubs may serve one place.
 
+import { NO_FILL } from "./noFill";
 import { useEffect, useId, useRef, useState } from "react";
 import { api, type Jurisdiction, type JurisdictionMatch } from "./api";
 import { REFERENCE_JURISDICTION_TYPES, stateOfOcdId, type ReferenceJurisdictionType } from "../../../src/shared/jurisdictionType";
@@ -187,6 +188,8 @@ export function JurisdictionPicker({
             <label className="cx-field">
               <span>State</span>
               <select
+                {...NO_FILL}
+                name={`${listId}-st`}
                 value={state}
                 onChange={(e) => {
                   setState(e.target.value);
@@ -204,6 +207,8 @@ export function JurisdictionPicker({
             <label className="cx-field">
               <span>Type</span>
               <select
+                {...NO_FILL}
+                name={`${listId}-ty`}
                 value={type}
                 onChange={(e) => {
                   setType(e.target.value);
@@ -237,13 +242,17 @@ export function JurisdictionPicker({
                 aria-controls={`${listId}-list`}
                 aria-autocomplete="list"
                 aria-activedescendant={open && shown[active] ? `${listId}-opt-${active}` : undefined}
-                autoComplete="off"
+                {...NO_FILL}
+                name={`${listId}-find`}
                 disabled={!state || !type}
                 placeholder={state && type ? "Start typing…" : "Choose a state and a type first"}
                 // The chosen place sits in the field itself; typing replaces it and reopens the search.
                 value={chosen ? chosen.display_name : q}
                 className={chosen ? "cx-combo-chosen" : undefined}
                 onChange={(e) => {
+                  // Only typing counts: a value put in while the field isn't focused (a browser's
+                  // or password manager's fill) is dropped, and only a pick from the list is a place.
+                  if (document.activeElement !== e.currentTarget) return;
                   if (chosen) release(typedOver(e.target.value, chosen.display_name));
                   else setQ(e.target.value);
                   setOpen(true);
