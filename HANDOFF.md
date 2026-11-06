@@ -4,6 +4,81 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Pilot readiness 3: one way in, no form fill, one admin rail, the setup checklist — 2026-11-06
+
+**State:**
+- **Dev:** this entry's commit, via `release.sh dev --yes` (three releases in the session; the last carries the E2E
+  card fix and the screenshot baselines). One additive migration,
+  `20261106120000_invite_link_refreshed` (`entitlement_links.refreshed`). Health ok, 9 of 9 packages signed.
+- **Not on production.** Production is still `ed960b9`.
+- **Shared checkout:** the sample-refresh session committed eight commits (`1882c6f..f5308f1`) in this checkout
+  mid-session. Its `parity.json` change is its own; this slice's commits touch nothing under `src/authz`,
+  `tests/fixtures/manifests` or `packages/`.
+- **Reports:** `~/Documents/Mosaic/0 Management/Civic Social/Pilot-Readiness-3-Session-Report-2026-11-06.md` and
+  `Pilot-Readiness-3-Handoff-to-Management-2026-11-06.md`. The report ends with the checklist Adam walks as an invitee.
+
+**What changed (Adam's seven decisions, his Q1–Q5 answers):**
+- **Item 1, the email:** an invite sent to an address carries only the link (`inviteEmail.ts`). A link lasts seven
+  days, never past the invite's end (`inviteLinkExpiry`); the email shows the link's date. An invite with no address
+  is still the code the console shows and copies.
+- **Item 2, a fresh link:** a refused link says spent, expired, ended, redeemed or unknown (`inviteLinkState`,
+  `describeRefusedLink`). While the invite is good the start page offers "Send me a fresh link"
+  (`POST /start/invite-link/refresh`, `inviteRefresh.ts`), to the same address, one a minute and three a day per
+  invite (counting `refreshed` links only), audited `invite.link_refresh`. A redeemed invite links to its hub's
+  `/sign-in`; an ended one points to contact@civic.social. A browser already on the form keeps the form.
+- **Item 3, form fill:** `NO_FILL` (`ui/src/console/noFill.ts`): `autocomplete="off"` plus the 1Password, LastPass
+  and Bitwarden opt-outs, neutral `name`s; `autocomplete="email"` on the contact address only. The place search
+  drops a value that arrives without focus; only a pick from its list is a place.
+- **Item 4:** the demo sentence, word for word.
+- **Items 5, 6, the rail:** `AdminRail.tsx` in the column for every admin page at desktop width, whatever
+  `nav.layout`; `AdminDrawer.tsx` on a phone (an Admin button at the top of the admin page, the shared Modal).
+  `AdminBar` is gone. `useAdminNav` returns groups: Review (summed count), Community, Activity, Hub settings (its
+  sections under it only while in it), and a small foot (Archived, Setup guide, Contact Civic.Social). It fits
+  1280x768 with every admin plugin on and 13 settings sections.
+- **Item 7, the checklist:** `setupChecklist` (`modeReadiness.ts`), eleven steps, returned as `checklist` beside the
+  card's `steps` (its first four) on `GET /admin/hub/setup-card`. Hub settings → Getting started is first
+  (`GettingStartedSection.tsx`); the rail's Setup guide opens it; the card has "View your setup checklist" and
+  Dismiss. `settings.getting-started` is in the help registry, `pending` until the docs publish the anchor.
+
+**Decisions made without asking:**
+- **The start page's new card uses the start page's own classes**, not the kit: `kit.css`'s `:where()` baseline
+  would restyle every input on the start page, which Q3 ruled out.
+- **The banner tick is "a banner of your own":** creation sets the platform's banner, so set and not the default.
+- **Email starts ticked** on a new hub: creation writes the sender's name (the hub's name).
+- **Group counts:** the Review and Community heads carry the sum of their items' counts; each item keeps its own.
+- **Inside admin the header's Admin menu is hidden in both layouts** (it already was in the sidebar layout); the rail
+  replaces it.
+- **The drawer gives focus back to its button itself:** WebKit doesn't focus a clicked button.
+- **Items 5 and 6 are one commit:** the rail is one new component.
+
+**Found on the way:**
+- **CI caught a component-test race:** the creation form's address check fires on a timer, which with item 3's longer
+  tests ran after a test ended against a mock that returned nothing. The mock now answers with a promise.
+- **WebKit:** focus was lost when the phone drawer closed (Safari doesn't focus a clicked button). Fixed in the drawer.
+
+**Invariants:**
+- **Wire:** local snapshot at `f5308f1` and after: 9,246 events compared, all byte-identical (39 new from the test runs).
+- **`authzParity`, `src/authz`, `packages/`:** no diff from `f5308f1` in this slice's commits.
+- **Migrations:** additive.
+
+**Checks:** `npm test` (lint, unit, API service role) 3,272 passed, 1 failed (`feedMeta`: samples the sample-refresh
+rehearsal left on local Floyd); API minted tokens 1,089 passed, 2 failed (`feedMeta`, and `dashboard` once). Both files
+pass in both modes after `local-stack.sh reset`. Unit 2,186; UI 99. Playwright the CI way 230 passed, 9 skipped, 1
+failed (the start page's card expectation, fixed in the last commit; the spec 3 of 3 after). `adminRail.spec.ts` green in
+Chromium and WebKit. Screenshots re-baselined on a reset stack (19 images). Token ratchet and place names clean.
+
+**Not verified:** a real email through Resend (no mailer locally or in CI); a real password manager on the form (the
+test injects a value the way one does).
+
+**Left:**
+- **Adam:** the checklist in the report.
+- **Production:** `release.sh prod` applies the one migration; nothing to approve in the catalog.
+- **ADR-018** still describes the admin bar; an amendment for the rail is drafted in the report for Adam.
+- **Docs:** listed in the report (Set up your hub page and the `settings-getting-started` anchor, the simpler invite
+  and the fresh link, changing an admin's sign-in address today, what Edits is for).
+
+---
+
 ## Fresh samples on demo and beta hubs, starting with Floyd — 2026-11-06
 
 **State:**

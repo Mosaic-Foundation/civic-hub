@@ -87,6 +87,51 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Pilot readiness 3: one way in, no form fill, one admin rail, the setup checklist (2026-11-06)
+
+- **Unit:** `hubInvite.test.ts`: the emailed invite carries the link, the address, the link's date, the guide and the
+  questions line, and no code or words about one; the console's copied message for an invite with no address still
+  carries the code.
+- **UI (jsdom):**
+  - `start/App.test.tsx`: a used link offers "Send me a fresh link" and says where it went; a redeemed invite links
+    to its hub's sign-in with no fresh link; an ended invite has no button.
+  - `CreateForm.test.tsx`: every field asks browsers and the managers (1Password, LastPass, Bitwarden) not to fill
+    it, with no address-book name, except the contact address (`autocomplete="email"`); a value put into the place
+    search without focus (a password manager's fill) is dropped; the demo sentence in Adam's words.
+  - `AdminRail.test.tsx` (replaces `AdminBar.test.tsx`): the order, the Review head's summed count, Hub settings'
+    sections only while in it, Setup guide to the checklist.
+  - `GettingStartedSection.test.tsx`, `AdminSetupCard.test.tsx`: the ticks, the setting and docs links, Skip; the card
+    has only "View your setup checklist" and Dismiss.
+- **API, both modes:**
+  - `startPage.test.ts`: a link lasts seven days within the invite's end; a refused link says spent, expired, ended,
+    redeemed (with the hub's sign-in) or unknown; spent and expired each to a fresh link that signs in (run in-process
+    with the fake mail transport, since the token exists only in the email); a fresh link for a link that still works
+    is refused (409); the limit per invite, one a minute and three a day, counts only `refreshed` links, all to the
+    same address, each audited `invite.link_refresh`.
+  - `setupCard.test.ts`: the checklist's eleven steps, each with a setting link and a help key; the card's four are
+    its first four; what creation set (the name, the email sender) starts ticked, the platform's default banner does
+    not; banner, logo, Appearance, Copy and Plugins tick from an admin's save; Email needs only the sender's name.
+- **Playwright:**
+  - `adminRail.spec.ts` runs in **Chromium and WebKit** (the `webkit` project now matches it and `legalEditor`):
+    both public layouts become the rail inside admin; the rail fits 1280x768 with every admin plugin on and Hub
+    settings open (13 sections); the phone keeps its bottom bar and opens the rail as a drawer, focus back on the
+    Admin button (WebKit doesn't focus a clicked button, which the drawer now handles); Setup guide opens Getting
+    started with eleven steps, each linked.
+  - `startPage.spec.ts`: a value injected into the place search is dropped, every field's `autocomplete`; the same
+    link in another browser offers a fresh link and sends it.
+  - `adminMenu.spec.ts` and `hubNavigation.spec.ts` follow the rail (inside admin the header's Admin menu is hidden).
+- **Found by WebKit only:** focus lost when the drawer closed. Keep `adminRail.spec.ts` in both.
+- **Screenshots:** re-baselined on a reset stack (19 images): the admin ones for the rail, Getting started and the short
+  card; the signed-out vote and announcement had moved since the design pass for other slices' reasons.
+- **Wire:** 9,246 local events compared before (`f5308f1`) and after, all byte-identical.
+- **Results, local:** `npm test` 3,272 passed, 1 failed; API minted tokens 1,089 passed, 2 failed. The failures were
+  `feedMeta` and `dashboard` reading data another session's rehearsal left on local Floyd; both pass in both modes after
+  `local-stack.sh reset`. Playwright the CI way 230 passed, 9 skipped (then the start page's card fix, 3 of 3).
+- **Running the API suite in both modes from zsh:** zsh doesn't split `$var` into words, so a `for m in "3000 …"; set
+  -- $m` loop silently points at a bad URL and every test skips. Name the two runs explicitly.
+
+---
+
 ## Fresh samples on demo and beta hubs (2026-11-06)
 
 - **Unit:** `sampleRefresh.test.ts`: which modes refresh (`refreshesSamples`, `src/shared/sampleRefresh.ts`: demo and
