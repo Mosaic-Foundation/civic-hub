@@ -20,7 +20,8 @@ vi.mock("./api", () => ({
   startApi: {
     config: () => Promise.resolve({ hub_domain: "example.test", sample_kinds: [] }),
     suggestSlug: () => Promise.resolve({ slug: "alder", available: true }),
-    checkSlug: vi.fn(),
+    // A promise by default: the form checks a typed address on a timer, which can fire after a test ends.
+    checkSlug: vi.fn(() => Promise.resolve({ available: true, reason: null, suggestion: null })),
     createHub: vi.fn(),
     legal: vi.fn(),
   },
