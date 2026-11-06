@@ -2098,9 +2098,27 @@ export interface HubAdminLogEntry {
   after: unknown;
 }
 
+/** One step of the setup checklist (src/services/modeReadiness.ts, setupChecklist). */
+export interface SetupStep {
+  id: string;
+  label: string;
+  /** What it is for, in a sentence. */
+  hint: string;
+  done: boolean;
+  skipped: boolean;
+  can_skip: boolean;
+  /** Where in the hub it is set. */
+  link: string;
+  /** Its help registry key, for the docs link. */
+  help: string;
+}
+
 export interface SetupCard {
   dismissed: boolean;
-  steps: Array<{ id: string; label: string; done: boolean; skipped: boolean; can_skip: boolean; link: string }>;
+  /** The home page card's first steps. */
+  steps: SetupStep[];
+  /** All of them: Hub settings → Getting started (pilot readiness 3). */
+  checklist: SetupStep[];
 }
 
 export function adminGetSetupCard(): Promise<SetupCard> {

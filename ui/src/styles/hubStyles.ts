@@ -94,6 +94,7 @@ import "../components/LegalPage.css";
 import "../pages/Search.css";
 import "../pages/Members.css";
 import "../pages/AdminSettings.css";
+import "../pages/settings/GettingStartedSection.css";
 import "../pages/Settings.css";
 import "../pages/Feedback.css";
 import "../pages/Welcome.css";

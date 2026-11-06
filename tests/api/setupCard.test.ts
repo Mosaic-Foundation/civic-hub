@@ -15,8 +15,20 @@ const LATER = `card-later-${run}@example.test`;
 let cookie = "";
 let token = "";
 
-type Step = { id: string; done: boolean; skipped: boolean; can_skip: boolean; link: string };
-const step = (body: { steps: Step[] }, id: string) => body.steps.find((s) => s.id === id)!;
+type Step = { id: string; label: string; hint: string; done: boolean; skipped: boolean; can_skip: boolean; link: string; help: string };
+const step = (body: { checklist: Step[] }, id: string) => body.checklist.find((s) => s.id === id)!;
+const CHECKLIST = ["name_and_place", "banner", "logo", "theme", "copy", "legal", "email", "second_admin", "officials", "plugins", "beta"];
+
+async function view() {
+  const res = await call("GET", "/admin/hub/setup-card", HOST, undefined, token);
+  expect(res.status, JSON.stringify(res.body)).toBe(200);
+  return res.body as { dismissed: boolean; steps: Step[]; checklist: Step[] };
+}
+
+async function save(section: string, values: Record<string, string>) {
+  const res = await call("PUT", "/admin/hub/settings", HOST, { section, values }, token);
+  expect(res.status, JSON.stringify(res.body)).toBe(200);
+}
 
 beforeAll(async () => {
   cookie = await mintConsoleSession();
@@ -47,27 +59,55 @@ describe("the Set up your hub card", () => {
     expect((await call("GET", "/admin/hub/setup-card", HOST)).status).toBe(401);
   });
 
-  it("starts with the name ticked and the rest open", async () => {
-    const res = await call("GET", "/admin/hub/setup-card", HOST, undefined, token);
-    expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.dismissed).toBe(false);
-    expect(res.body.steps.map((s: Step) => s.id)).toEqual(["name_and_place", "legal", "second_admin", "beta"]);
-    expect(step(res.body, "name_and_place").done).toBe(true);
-    expect(step(res.body, "legal").done).toBe(false);
-    expect(step(res.body, "second_admin")).toMatchObject({ done: false, can_skip: true, skipped: false });
-    expect(step(res.body, "beta").done).toBe(false);
+  it("the checklist has every step, each with a link to its setting and a help key; the card has its first four", async () => {
+    const body = await view();
+    expect(body.dismissed).toBe(false);
+    expect(body.checklist.map((s) => s.id)).toEqual(CHECKLIST);
+    expect(body.steps).toEqual(body.checklist.slice(0, 4));
+    for (const s of body.checklist) {
+      expect(s.link, s.id).toMatch(/^\/admin\/settings\/[a-z-]+$/);
+      expect(s.help, s.id).toMatch(/^[a-z_-]+\.[a-z_-]+$/);
+      expect(s.hint.length, s.id).toBeGreaterThan(10);
+    }
+  });
+
+  it("starts with what creation set ticked, and the rest open", async () => {
+    const body = await view();
+    // Creation names the hub and its email sender (the hub's name).
+    expect(step(body, "name_and_place").done).toBe(true);
+    expect(step(body, "email").done).toBe(true);
+    for (const id of ["banner", "logo", "theme", "copy", "legal", "officials", "plugins", "beta"]) expect(step(body, id).done, id).toBe(false);
+    expect(step(body, "second_admin")).toMatchObject({ done: false, can_skip: true, skipped: false });
   });
 
   it("ticks Legal when an admin saves it", async () => {
-    const saved = await call("PUT", "/admin/hub/settings", HOST, { section: "legal", values: { "legal.operator_name": "Our Group" } }, token);
-    expect(saved.status, JSON.stringify(saved.body)).toBe(200);
-    const res = await call("GET", "/admin/hub/setup-card", HOST, undefined, token);
-    expect(step(res.body, "legal").done).toBe(true);
+    await save("legal", { "legal.operator_name": "Our Group" });
+    expect(step(await view(), "legal").done).toBe(true);
+  });
+
+  it("ticks the banner, the logo, Appearance, Copy and Plugins from what an admin saves", async () => {
+    await save("identity", { "identity.banner_url": "https://example.test/banner.png", "identity.logo_url": "https://example.test/logo.png" });
+    await save("theme", { "nav.layout": "top_tabs" });
+    await save("copy", { "copy.resident_noun": "member" });
+    await save("plugins", { "plugin.feedback.enabled": "true" });
+    const body = await view();
+    for (const id of ["banner", "logo", "theme", "copy", "plugins"]) expect(step(body, id).done, id).toBe(true);
+    // The card's four are the checklist's.
+    expect(body.steps.map((s) => s.done)).toEqual([true, true, true, true]);
+  });
+
+  it("Email needs only the sender's name", async () => {
+    await save("email", { "email.from_name": "", "email.postal_address": "" });
+    expect(step(await view(), "email").done).toBe(false);
+    await save("email", { "email.from_name": "Card Hub" });
+    expect(step(await view(), "email").done).toBe(true);
   });
 
   it("the save is in the admin log, by section and field, without the value", async () => {
     const log = await call("GET", "/admin/hub/admin-log", HOST, undefined, token);
-    const row = (log.body.entries as Array<{ action: string; after: unknown; actor_email: string }>).find((e) => e.action === "settings.save");
+    const row = (log.body.entries as Array<{ action: string; after: { section?: string }; actor_email: string }>).find(
+      (e) => e.action === "settings.save" && e.after?.section === "legal",
+    );
     expect(row?.after).toEqual({ section: "legal", fields: ["legal.operator_name"] });
     expect(row?.actor_email).toBe(ADMIN);
     expect(JSON.stringify(log.body)).not.toContain("Our Group");

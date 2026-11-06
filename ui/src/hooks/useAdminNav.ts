@@ -24,7 +24,7 @@ import { useApi } from "./useApi";
 import { adminQueueCounts, ADMIN_QUEUES_CHANGED, type AdminQueueCounts } from "../services/api";
 import { useHub } from "../config/hub";
 import { FEATURE_UI } from "../features";
-import { helpEntry, helpUrl } from "../../../src/shared/helpRegistry";
+import { SETUP_CHECKLIST_PATH } from "../../../src/shared/adminAnchors";
 import type { NavItem } from "./useNavGroups";
 
 const EMPTY: AdminQueueCounts = { reviews: 0, briefs: 0, meeting_summaries: 0, feedback: 0, edits: 0, total: 0 };
@@ -101,7 +101,8 @@ export function useAdminNav(): AdminNav {
 
   const foot: NavItem[] = [
     item("archived", "Archived", "archived", "/admin/archived"),
-    { id: "setup-guide", label: "Setup guide", icon: "guide", href: helpUrl(helpEntry("admin.setup_guide")!) },
+    // The checklist in Hub settings (pilot readiness 3); the guide on the docs site is linked from there.
+    { ...item("setup-guide", "Setup guide", "guide", SETUP_CHECKLIST_PATH), current: pathname.startsWith(SETUP_CHECKLIST_PATH) },
     item("contact", "Contact Civic.Social", "contact", "/admin/contact-civic-social"),
   ];
   return { groups: [group("review", review, "Review"), group("community", community, "Community"), group("main", main)], foot };

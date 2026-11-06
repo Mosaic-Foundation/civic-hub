@@ -126,3 +126,27 @@ test("a phone keeps its bottom bar and opens the rail as a drawer from the Admin
   // No sideways scroll at phone width.
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });
+
+test("Setup guide opens Hub settings → Getting started: every step with its tick, its setting and its docs page", async ({ page, request }) => {
+  await setLayout(request, "top_tabs");
+  await page.setViewportSize(SHORT);
+  await visitAs(page, adminToken);
+  await page.goto("/admin/reviews");
+  await rail(page).getByRole("link", { name: "Setup guide" }).click();
+  await expect(page).toHaveURL(/\/admin\/settings\/getting-started$/);
+  await expect(page.getByRole("heading", { name: "Getting started" })).toBeVisible();
+  // First in Hub settings, and current in the rail's sections.
+  const sections = rail(page).getByRole("navigation", { name: "Hub settings sections" });
+  await expect(sections.getByRole("link").first()).toHaveText("Getting started");
+  await expect(sections.getByRole("link", { name: "Getting started" })).toHaveAttribute("aria-current", "page");
+  const steps = page.locator(".getting-started-step");
+  await expect(steps).toHaveCount(11);
+  await expect(page.getByText(/^\d+ of 11 done$/)).toBeVisible();
+  for (const step of await steps.all()) {
+    await expect(step.locator("a.getting-started-label")).toHaveAttribute("href", /^\/admin\/settings\/[a-z-]+$/);
+    await expect(step.locator("a.getting-started-docs")).toHaveAttribute("href", /^https:\/\/docs\.civic\.social\//);
+  }
+  // Still no scrolling rail with the extra section open.
+  const fit = await page.locator(".hub-sidebar").evaluate((el) => el.scrollHeight - el.clientHeight);
+  expect(fit).toBeLessThanOrEqual(0);
+});

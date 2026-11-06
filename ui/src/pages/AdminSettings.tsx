@@ -13,6 +13,7 @@ import { useScrollToHash } from "../hooks/useAnchor";
 import { useColumnSlot } from "../context/columnSlot";
 import { HubSettingsProvider } from "./settings/HubSettingsContext";
 import { replaceGuardEntry, useHubSettings } from "./settings/hubSettingsState";
+import GettingStartedSection from "./settings/GettingStartedSection";
 import IdentitySection from "./settings/IdentitySection";
 import ThemeSection from "./settings/ThemeSection";
 import CopySection from "./settings/CopySection";
@@ -38,6 +39,7 @@ interface SectionEntry {
 // The ids, labels and order are shared with the anchors and the help
 // registry (src/shared/adminAnchors.ts); each id's form is here.
 const RENDER: Record<SettingsNavId, () => React.ReactNode> = {
+  "getting-started": () => <GettingStartedSection />,
   identity: () => <IdentitySection />,
   theme: () => <ThemeSection />,
   copy: () => <CopySection />,

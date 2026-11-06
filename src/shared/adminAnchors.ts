@@ -35,6 +35,8 @@ export const ADMIN_PAGES = [
 
 /** Settings' sections, in the order of its menu. Each is /admin/settings/<id>. */
 export const SETTINGS_NAV = [
+  // The setup checklist, first (pilot readiness 3, Adam 2026-11-06).
+  { id: "getting-started", label: "Getting started" },
   { id: "identity", label: "Identity" },
   { id: "theme", label: "Appearance" },
   { id: "copy", label: "Copy & pages" },
@@ -48,6 +50,9 @@ export const SETTINGS_NAV = [
   { id: "participation", label: "Participation" },
   { id: "plugins", label: "Plugins" },
 ] as const;
+
+/** Hub settings → Getting started, the setup checklist (pilot readiness 3). */
+export const SETUP_CHECKLIST_PATH = "/admin/settings/getting-started";
 
 export type SettingsNavId = (typeof SETTINGS_NAV)[number]["id"];
 

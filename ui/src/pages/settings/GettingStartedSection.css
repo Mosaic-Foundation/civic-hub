@@ -1,0 +1,83 @@
+/* Hub settings → Getting started (GettingStartedSection.tsx). Tokens only. */
+
+.getting-started-progress {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+}
+
+.getting-started-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: var(--border-width) solid var(--color-border-subtle);
+}
+
+.getting-started-step {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width) solid var(--color-border-subtle);
+}
+
+.getting-started-tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-weight: var(--font-weight-semibold);
+}
+
+.getting-started-step.is-done .getting-started-tick {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.getting-started-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  min-width: 0;
+}
+
+.getting-started-label {
+  font-weight: var(--font-weight-semibold);
+}
+
+.getting-started-hint {
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
+}
+
+.getting-started-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.getting-started-docs {
+  font-size: var(--text-small-size);
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .getting-started-step {
+    grid-template-columns: auto 1fr;
+  }
+
+  .getting-started-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}

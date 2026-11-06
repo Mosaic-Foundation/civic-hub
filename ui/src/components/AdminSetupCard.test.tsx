@@ -3,7 +3,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AdminSetupCard from "./AdminSetupCard";
-import { PLATFORM_SETUP_GUIDE_URL } from "../../../src/shared/platform";
 
 const { get, post } = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 vi.mock("../services/api", () => ({ adminGetSetupCard: get, adminPostSetupCard: post }));
@@ -27,13 +26,14 @@ beforeEach(() => {
 });
 
 describe("AdminSetupCard", () => {
-  it("shows the steps with their ticks, Hub settings, the guide and Dismiss", async () => {
+  it("shows the steps with their ticks, the way to the checklist and Dismiss, and nothing else", async () => {
     card();
     expect(await screen.findByRole("heading", { name: "Set up your hub" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Name and place set" }).closest("li")?.className).toContain("is-done");
     expect(screen.getByRole("link", { name: "A second admin added" }).closest("li")?.className).not.toContain("is-done");
-    expect(screen.getByRole("button", { name: "Hub settings" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Setup guide" }).getAttribute("href")).toBe(PLATFORM_SETUP_GUIDE_URL);
+    expect(screen.getByRole("link", { name: "View your setup checklist" }).getAttribute("href")).toBe("/admin/settings/getting-started");
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Skip", "Dismiss"]);
+    expect(screen.queryByRole("link", { name: "Setup guide" })).toBeNull();
   });
 
   it("goes away on Dismiss, which is stored", async () => {

@@ -5,6 +5,12 @@
     "anchor": "admin-setup-guide",
     "pending": true
   },
+  "settings.getting-started": {
+    "text": "The setup checklist: each step with its tick, filled from the hub's own state, a link to the setting and a link to its page here.",
+    "page": "/start/setup",
+    "anchor": "settings-getting-started",
+    "pending": true
+  },
   "settings.identity": {
     "text": "What this hub is called and how it looks: the header, the browser tab and the card a shared link shows.",
     "page": "/reference/settings/identity",

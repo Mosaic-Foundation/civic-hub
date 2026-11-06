@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AdminRail from "./AdminRail";
-import { PLATFORM_SETUP_GUIDE_URL } from "../../../src/shared/platform";
 
 vi.mock("../config/hub", () => ({ useHub: () => ({ plugins: { enabled: () => true } }) }));
 vi.mock("../features", () => ({
@@ -51,10 +50,10 @@ describe("the admin rail (pilot readiness 3)", () => {
     expect(inSettings.container.querySelector('[data-group="main"] .admin-rail-subnav')).not.toBeNull();
   });
 
-  it("the setup guide opens in a new tab", () => {
+  it("the setup guide is the checklist in Hub settings", () => {
     rail();
     const link = screen.getByRole("link", { name: "Setup guide" });
-    expect(link.getAttribute("href")).toBe(PLATFORM_SETUP_GUIDE_URL);
-    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("href")).toBe("/admin/settings/getting-started");
+    expect(link.getAttribute("target")).toBeNull();
   });
 });

@@ -29,7 +29,7 @@ import { currentHubId } from "../config/hubContext.js";
 import { KEYS, asBoolean, asEmailList } from "../models/hubSettings.js";
 import { hubKindOf } from "../shared/hubKind.js";
 import type { HubMode } from "../models/hub.js";
-import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
+import { DEFAULT_HUB_BANNER, PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
 import { isValidTimeZone } from "../utils/hubTime.js";
 import {
   effectivePostalAddressSync,
@@ -43,6 +43,7 @@ import {
 } from "./hubSettings.js";
 import { sampleContentSummary } from "./sampleContent.js";
 import { listOfficials } from "./officials.js";
+import { SETTINGS_SECTIONS } from "../shared/hubSettingsSections.js";
 
 export type ReadinessItemId =
   | "name_and_place"
@@ -84,45 +85,132 @@ export interface ModeReadiness {
   consequences: ModeConsequences;
 }
 
-/** One line of the home page's "Set up your hub" card (pilot readiness 2). */
+/**
+ * One line of the setup checklist (pilot readiness 3, Adam 2026-11-06): the
+ * "Getting started" section first in Hub settings, and its first four on the
+ * home page's "Set up your hub" card (pilot readiness 2).
+ */
 export interface SetupStep {
-  id: "name_and_place" | "legal" | "second_admin" | "beta";
+  id:
+    | "name_and_place"
+    | "banner"
+    | "logo"
+    | "theme"
+    | "copy"
+    | "legal"
+    | "email"
+    | "second_admin"
+    | "officials"
+    | "plugins"
+    | "beta";
   label: string;
+  /** What it is for, in a sentence, for the checklist. */
+  hint: string;
   done: boolean;
   /** Ticked because this admin pressed Skip, not because it happened. */
   skipped: boolean;
   /** Offers Skip while it isn't done. */
   can_skip: boolean;
+  /** Where in the hub it is set (a path). */
   link: string;
+  /** Its page on docs.civic.social: a key of the help registry (src/shared/helpRegistry.json). */
+  help: string;
 }
 
+/** How many of the checklist's first steps the home page's card shows. */
+export const SETUP_CARD_STEPS = 4;
+
 /**
- * The card's first steps, read from the hub's state. Legal counts as reviewed
- * or saved by a person on this hub: what creation and the console wrote
- * (updated_by "start:…", "console:…") is not this hub's admins having looked.
+ * Saved by a person on this hub, not written by creation or the console
+ * (updated_by "start:…", "console:…"), which isn't this hub's admins having
+ * looked.
  */
-export async function setupSteps(skippedSecondAdmin: boolean): Promise<SetupStep[]> {
+function savedByAdmin(rows: Record<string, { updated_by: string | null }>, keys: readonly string[]): boolean {
+  return keys.some((key) => {
+    const by = rows[key]?.updated_by ?? null;
+    return by !== null && !/^(start|console):/.test(by);
+  });
+}
+
+const keysOf = (section: keyof typeof SETTINGS_SECTIONS) => SETTINGS_SECTIONS[section].map((f) => f.key);
+
+/**
+ * The whole checklist, read from the hub's state; every tick fills itself.
+ * The sections that work as they ship (Appearance, Copy & pages, Plugins)
+ * tick once an admin has saved them; Email needs only the sender's name (the
+ * postal address is optional, and the platform's is used when it is empty).
+ */
+export async function setupChecklist(skippedSecondAdmin: boolean): Promise<SetupStep[]> {
   const hub = currentHub();
   const kindIsPlace = hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)) === "place";
   const named = hubDisplayNameSync().trim() !== "";
   const placed = !kindIsPlace || (hub?.jurisdiction_name?.trim() ?? "") !== "";
   const rows = await getAllSettings(currentHubId());
-  const legalSaved = Object.entries(rows).some(
-    ([key, row]) => key.startsWith("legal.") && row.updated_by !== null && !/^(start|console):/.test(row.updated_by),
-  );
+  const filled = (key: string) => (getSettingSync(key)?.trim() ?? "") !== "";
   const reviewed = asBoolean(getSettingSync(KEYS.LEGAL_REVIEWED), false);
   const twoAdmins = getAdminEmailsSync().length >= 2;
-  const step = (id: SetupStep["id"], label: string, done: boolean, link: string): SetupStep => ({ id, label, done, skipped: false, can_skip: false, link });
+  const officials = (await listOfficials()).length > 0;
+  const step = (id: SetupStep["id"], label: string, hint: string, done: boolean, link: string, help: string): SetupStep => ({
+    id,
+    label,
+    hint,
+    done,
+    skipped: false,
+    can_skip: false,
+    link,
+    help,
+  });
   return [
-    step("name_and_place", kindIsPlace ? "Name and place set" : "Name set", named && placed, "/admin/settings/identity"),
-    step("legal", "Legal reviewed or saved", reviewed || legalSaved, "/admin/settings/legal"),
+    step(
+      "name_and_place",
+      kindIsPlace ? "Name and place set" : "Name set",
+      "What the hub is called, on every page and in its emails.",
+      named && placed,
+      "/admin/settings/identity",
+      "identity.name",
+    ),
+    // Every hub starts with the platform's banner; the tick is for the hub's own.
+    step(
+      "banner",
+      "A banner image of your own",
+      "The wide picture at the top of the home page.",
+      filled(KEYS.IDENTITY_BANNER_URL) && getSettingSync(KEYS.IDENTITY_BANNER_URL)!.trim() !== DEFAULT_HUB_BANNER.url,
+      "/admin/settings/identity",
+      "identity.banner_url",
+    ),
+    step("logo", "A logo", "Beside the hub's name in the header and on shared links.", filled(KEYS.IDENTITY_LOGO_URL), "/admin/settings/identity", "identity.logo_url"),
+    step("theme", "Appearance chosen", "Colours, font and how the sections are laid out.", savedByAdmin(rows, keysOf("theme")), "/admin/settings/theme", "settings.theme"),
+    step("copy", "Copy and pages saved", "The welcome, the About page and the words people see first.", savedByAdmin(rows, keysOf("copy")), "/admin/settings/copy", "settings.copy"),
+    step(
+      "legal",
+      "Legal reviewed or saved",
+      "The Terms, Privacy Notice and Code of Conduct, and who runs the hub.",
+      reviewed || savedByAdmin(rows, keysOf("legal")),
+      "/admin/settings/legal",
+      "settings.legal",
+    ),
+    step("email", "Email sender name set", "The name the hub's emails come from.", filled(KEYS.EMAIL_FROM_NAME), "/admin/settings/email", "email.from_name"),
     {
-      ...step("second_admin", "A second admin added", twoAdmins || skippedSecondAdmin, "/admin/settings/people"),
+      ...step(
+        "second_admin",
+        "A second admin added",
+        "Someone who can keep the hub running when you can't.",
+        twoAdmins || skippedSecondAdmin,
+        "/admin/settings/people",
+        "people.admins",
+      ),
       skipped: skippedSecondAdmin && !twoAdmins,
       can_skip: !twoAdmins,
     },
-    step("beta", "Moved to beta", hubModeSync() !== "demo", "/admin/settings/mode"),
+    step("officials", "Officials added", "The people your hub's results and briefs go to.", officials, "/admin/settings/officials", "settings.officials"),
+    step("plugins", "Plugins chosen", "Which kinds of participation the hub offers.", savedByAdmin(rows, keysOf("plugins")), "/admin/settings/plugins", "settings.plugins"),
+    step("beta", "Moved to beta", "Real sign-ins and real email, once the samples are gone.", hubModeSync() !== "demo", "/admin/settings/mode", "settings.mode"),
   ];
+}
+
+/** The home page's card: the checklist's first steps. */
+export async function setupSteps(skippedSecondAdmin: boolean): Promise<SetupStep[]> {
+  return (await setupChecklist(skippedSecondAdmin)).slice(0, SETUP_CARD_STEPS);
 }
 
 /** Moves that get the readiness list: every move up. */
