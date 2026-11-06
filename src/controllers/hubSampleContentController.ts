@@ -5,6 +5,9 @@
 //   POST /admin/hub/sample-content/remove        { code } removes it all
 //   DELETE /admin/hub/sample-content/:id         deletes one sample, no code
 //                                                 (admin menu slice, 2026-10-13)
+//   POST /admin/hub/sample-content/refresh       the console's "Refresh samples"
+//                                                 for this hub, demo and beta, no
+//                                                 code (2026-11-05)
 //
 // The same step-up as a mode or roster change (controllers/adminStepUp.ts):
 // removal cannot be undone, and it can take real people's input with it.
@@ -22,11 +25,25 @@ import {
   sampleContentSummary,
 } from "../services/sampleContent.js";
 import { processDetailPath } from "../processes/registry.js";
+import { currentHub } from "../config/hubContext.js";
+import { refreshesSamples } from "../shared/sampleRefresh.js";
+import { refreshSamplesAsAdmin, samplesTakenOut } from "../services/sampleRefresh.js";
+import { sampleTemplateTitles } from "../services/sampleTemplates.js";
+import { sampleNames } from "../services/sampleNames.js";
 
-/** The summary, and each sample an admin can delete on its own, with its page. */
+/**
+ * The summary, each sample an admin can delete on its own with its page, and
+ * whether "Refresh samples" is offered: on demo and beta hubs, unless the
+ * admins removed every sample (then it would put back nothing).
+ */
 async function summaryWithItems() {
-  const [summary, items] = await Promise.all([sampleContentSummary(), listSampleItems()]);
-  return { ...summary, items: items.map((i) => ({ ...i, path: processDetailPath(i.type, i.id) })) };
+  const [summary, items, out] = await Promise.all([sampleContentSummary(), listSampleItems(), samplesTakenOut()]);
+  const refreshable = refreshesSamples(currentHub()?.mode) && !(out.all && summary.processes === 0);
+  return {
+    ...summary,
+    items: items.map((i) => ({ ...i, path: processDetailPath(i.type, i.id) })),
+    refresh: { available: refreshable },
+  };
 }
 
 export { handleRequestStepUpCode as handleRequestSampleRemovalCode } from "./adminStepUp.js";
@@ -54,4 +71,15 @@ export const handleRemoveSampleContent = route(async (req, res) => {
   await requireStepUpCode(req, res, body.code);
   const result = await removeSampleContent(auditActor(user));
   res.json({ removed: result.summary, deleted: result.deleted, summary: await summaryWithItems() });
+});
+
+export const handleRefreshSamples = route(async (_req, res) => {
+  const user = caller(res);
+  if (!user) {
+    throw new UnauthorizedError("Authentication required");
+  }
+  const refresh = await refreshSamplesAsAdmin(auditActor(user));
+  // Titles beside the template keys, filled with this hub's names, so the
+  // card says what changed by name (as the console does).
+  res.json({ refresh, titles: sampleTemplateTitles(sampleNames()), summary: await summaryWithItems() });
 });

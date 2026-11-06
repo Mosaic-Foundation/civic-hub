@@ -1856,6 +1856,28 @@ export interface SampleContentSummary {
   other_processes: number;
   /** Each sample an admin can delete on its own, with its page. */
   items: SampleItem[];
+  /** Whether Refresh samples is offered (demo and beta hubs, 2026-11-05). */
+  refresh?: { available: boolean };
+}
+
+/** What Refresh samples changed, by template key (src/services/sampleRefresh.ts). */
+export interface SampleRefreshReport {
+  skipped?: string;
+  replaced: Array<{ key: string; reason: string }>;
+  added: string[];
+  minutes_added: string[];
+}
+
+export interface SampleRefreshResult {
+  refresh: SampleRefreshReport;
+  /** Each template key's title, with this hub's names. */
+  titles: Record<string, string>;
+  summary: SampleContentSummary;
+}
+
+/** Refresh samples (2026-11-05): demo and beta hubs, no code, in the admin log. */
+export function adminRefreshSamples(): Promise<SampleRefreshResult> {
+  return request("POST", "/admin/hub/sample-content/refresh", {});
 }
 
 export interface SampleItem {

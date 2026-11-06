@@ -58,6 +58,7 @@ import {
   handleGetSampleContent,
   handleRemoveSampleContent,
   handleDeleteOneSample,
+  handleRefreshSamples,
   handleRequestSampleRemovalCode,
 } from "../controllers/hubSampleContentController.js";
 import { handleAdminListMembers } from "../controllers/membersController.js";
@@ -134,6 +135,8 @@ router.post("/hub/sample-content/request-code", handleRequestSampleRemovalCode);
 router.post("/hub/sample-content/remove", handleRemoveSampleContent);
 // One sample at a time, no code (Adam, 2026-10-13).
 router.delete("/hub/sample-content/:id", handleDeleteOneSample);
+// "Refresh samples", demo and beta hubs, no code (2026-11-05).
+router.post("/hub/sample-content/refresh", handleRefreshSamples);
 
 // Settings → Admin log: what this hub's admins did with a fresh code, and
 // the other actions recordHubAdminAudit() keeps. Read-only.

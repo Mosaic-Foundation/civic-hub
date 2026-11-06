@@ -36,7 +36,7 @@
     "anchor": "settings-mode"
   },
   "settings.sample": {
-    "text": "Illustrative content a new hub starts with, each marked Sample. It never reaches the public feed, the export or digests. Removing it cannot be undone and needs a fresh code.",
+    "text": "Illustrative content a new hub starts with, each marked Sample. It never reaches the public feed, the export or digests. Demo and beta hubs keep it fresh. Removing it cannot be undone and needs a fresh code.",
     "page": "/reference/settings/sample-content",
     "anchor": "settings-sample"
   },

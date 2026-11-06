@@ -12,6 +12,10 @@
 // sample goes, "Next: set up your hub" takes the list's place. Since the
 // leaving-demo slice (2026-10-15) it also heads the section while the hub is a
 // demo, samples or not, and a new admin's first sign-in lands on it.
+//
+// Refresh samples (2026-11-05, SampleRefresh.tsx): on demo and beta hubs, the
+// console's button for the hub's own admin, shown whether or not samples are
+// left, unless they were all removed.
 
 import HelpButton from "../../components/HelpButton";
 import { useState } from "react";
@@ -28,6 +32,7 @@ import {
   type SampleContentSummary,
 } from "../../services/api";
 import { SampleRemovalWarning } from "./sampleWarning";
+import SampleRefresh from "./SampleRefresh";
 
 export default function SampleContentSection() {
   const hub = useHub();
@@ -95,6 +100,7 @@ export default function SampleContentSection() {
       ) : summary.processes + (summary.added_in_demo ?? 0) === 0 ? (
         <>
           <p className="form-hint">This hub has no sample content.</p>
+          {summary.refresh?.available && <SampleRefresh onRefreshed={setSummary} />}
           {message && !message.error && (
             <p className="admin-settings-message" role="status">
               {message.text}
@@ -140,6 +146,15 @@ export default function SampleContentSection() {
             ))}
           </ul>
           {summary.processes === 0 && !demo && <NextSteps />}
+
+          {summary.refresh?.available && !confirming && (
+            <SampleRefresh
+              onRefreshed={(after) => {
+                setSummary(after);
+                setMessage(null);
+              }}
+            />
+          )}
 
           {confirming && <SampleRemovalWarning summary={summary} />}
 

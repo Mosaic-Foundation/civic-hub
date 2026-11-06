@@ -67,6 +67,13 @@ function describe(e: HubAdminLogEntry): string {
   switch (e.action) {
     case "sample_content.remove":
       return "Removed the sample content";
+    case "sample_content.refresh": {
+      const after = e.after as { replaced?: unknown[]; added?: unknown[] } | null;
+      const replaced = Array.isArray(after?.replaced) ? after.replaced.length : 0;
+      const added = Array.isArray(after?.added) ? after.added.length : 0;
+      const parts = [replaced ? `${replaced} replaced` : "", added ? `${added} added` : ""].filter(Boolean);
+      return parts.length ? `Refreshed the samples: ${parts.join(", ")}` : "Refreshed the samples (nothing changed)";
+    }
     case "sample_content.delete_one": {
       const title = field(e.before, "title");
       return title ? `Deleted a sample: “${title}”` : "Deleted a sample";

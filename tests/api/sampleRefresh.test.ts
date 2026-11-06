@@ -24,6 +24,7 @@ const LIVE = `srl-${run}`;
 const EMPTY = `sre-${run}`;
 const ORG = `sro-${run}`;
 const ISSUE = `sri-${run}`;
+const ADMIN_BETA = `sra-${run}`;
 const host = (slug: string) => `${slug}.localhost`;
 const ADMIN = `refresh-admin-${run}@example.test`;
 const VISITOR = `refresh-visitor-${run}@example.test`;
@@ -287,6 +288,83 @@ describe("the console's Refresh samples", () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/demo and beta hubs only/);
     expect((await localRest(`processes?select=id&hub_id=eq.${LIVE}&is_sample=eq.true`)) as Row[]).toHaveLength(0);
+  });
+});
+
+describe("the hub admin's Refresh samples (2026-11-05)", () => {
+  const refresh = (slug: string, session?: string) =>
+    call("POST", "/admin/hub/sample-content/refresh", host(slug), {}, session);
+
+  it("refreshes a beta hub's samples for its own admin, with no code, and logs it", async () => {
+    await createHub(ADMIN_BETA, { ...placeHub("Refresh Admin Beta Civic Hub"), sample_content: true, mode: "beta" });
+    const admin = await mintSession(ADMIN_BETA, ADMIN);
+    const before = await call("GET", "/admin/hub/sample-content", host(ADMIN_BETA), undefined, admin);
+    expect(before.body.refresh).toEqual({ available: true });
+
+    // The open vote is a day from closing: the button replaces it, as the job would.
+    const open = await processRow(pid(ADMIN_BETA, "vote_internet"));
+    const soon = new Date(Date.now() + DAY).toISOString();
+    await localRest(`processes?id=eq.${pid(ADMIN_BETA, "vote_internet")}`, {
+      method: "PATCH",
+      body: JSON.stringify({ state: { ...open!.state, voting_closes_at: soon } }),
+    });
+    const res = await refresh(ADMIN_BETA, admin);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.refresh.replaced.map((r: Row) => r.key)).toEqual(["vote_internet"]);
+    expect(res.body.refresh.added).toEqual([]);
+    expect(res.body.titles.vote_internet).toMatch(/internet/i);
+    expect(res.body.summary.processes).toBeGreaterThanOrEqual(11);
+    const after = await processRow(pid(ADMIN_BETA, "vote_internet"));
+    expect(new Date(after!.state.voting_closes_at).getTime()).toBeGreaterThan(Date.now() + 3 * DAY);
+
+    const audit = (await localRest(
+      `hub_admin_audit_log?select=action,actor_email,after&hub_id=eq.${ADMIN_BETA}&action=eq.sample_content.refresh`,
+    )) as Row[];
+    expect(audit).toHaveLength(1);
+    expect(audit[0].actor_email).toBe(ADMIN);
+    expect(audit[0].after.replaced.map((r: Row) => r.key)).toEqual(["vote_internet"]);
+  });
+
+  it("refuses a resident, and a live hub's admin", async () => {
+    const resident = await mintSession(ADMIN_BETA, `refresh-resident-${run}@example.test`);
+    expect((await refresh(ADMIN_BETA, resident)).status).toBe(403);
+    expect((await refresh(ADMIN_BETA)).status).toBe(401);
+    const liveAdmin = await mintSession(LIVE, ADMIN);
+    const live = await refresh(LIVE, liveAdmin);
+    expect(live.status).toBe(400);
+    expect(live.body.error).toMatch(/demo and beta hubs only/);
+    const summary = await call("GET", "/admin/hub/sample-content", host(LIVE), undefined, liveAdmin);
+    expect(summary.body.refresh).toEqual({ available: false });
+  });
+
+  it("never puts back a sample the admin deleted, though the console's button does", async () => {
+    const admin = await mintSession(ADMIN_BETA, ADMIN);
+    const cloud = pid(ADMIN_BETA, "wordcloud_value");
+    expect((await call("DELETE", `/admin/hub/sample-content/${cloud}`, host(ADMIN_BETA), undefined, admin)).status).toBe(200);
+    const res = await refresh(ADMIN_BETA, admin);
+    expect(res.status).toBe(200);
+    expect(res.body.refresh.added).toEqual([]);
+    expect(await processRow(cloud)).toBeUndefined();
+    const [row] = (await localRest(
+      `hub_admin_audit_log?select=after&hub_id=eq.${ADMIN_BETA}&action=eq.sample_content.refresh&order=at.desc&limit=1`,
+    )) as Row[];
+    expect(row.after.not_added).toEqual(["wordcloud_value"]);
+    // The operator can still put it back.
+    const console = await consoleCall("POST", `/control/hubs/${ADMIN_BETA}/samples/refresh`, { cookie, body: {} });
+    expect(console.body.refresh.added).toEqual(["wordcloud_value"]);
+  });
+
+  it("offers nothing once the admin has removed every sample", async () => {
+    const admin = await mintSession(ADMIN_BETA, ADMIN);
+    const code = String(100000 + Math.floor(Math.random() * 899999));
+    await plantHubCode(ADMIN_BETA, ADMIN, code);
+    expect((await call("POST", "/admin/hub/sample-content/remove", host(ADMIN_BETA), { code }, admin)).status).toBe(200);
+    const summary = await call("GET", "/admin/hub/sample-content", host(ADMIN_BETA), undefined, admin);
+    expect(summary.body.refresh).toEqual({ available: false });
+    const res = await refresh(ADMIN_BETA, admin);
+    expect(res.status).toBe(200);
+    expect(res.body.refresh.added).toEqual([]);
+    expect((await localRest(`processes?select=id&hub_id=eq.${ADMIN_BETA}&is_sample=is.true`)) as Row[]).toHaveLength(0);
   });
 });
 

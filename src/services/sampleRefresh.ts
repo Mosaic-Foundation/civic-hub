@@ -28,15 +28,25 @@
 //
 // The button also adds any template the hub does not have (a hub seeded with
 // an older list), and gives an older sample meeting summary its minutes.
+//
+// A hub's own admin has the same button in Settings → Sample content
+// (2026-11-05, refreshSamplesAsAdmin): demo and beta hubs, no fresh code, one
+// hub_admin_audit_log row per press. It never puts back a sample this hub's
+// admins took out (one deleted, or all removed): taking one out is a choice
+// about this hub, and the console's button stays the operator's way to undo it.
 
 import { currentHub, currentHubId } from "../config/hubContext.js";
 import { forHub } from "../db/forHub.js";
 import { refreshesSamples } from "../shared/sampleRefresh.js";
+import { ValidationError } from "../errors/index.js";
 import { KEYS } from "../models/hubSettings.js";
 import { sampleProcessId } from "../models/sampleContent.js";
 import { hubKindOf } from "../shared/hubKind.js";
 import { isJurisdictionType } from "../shared/jurisdictionType.js";
 import { getSettingSync } from "./hubSettings.js";
+import { recordHubAdminAudit } from "./hubAdminAudit.js";
+import { describeJobRun } from "../jobs/describe.js";
+import { recordJobRun } from "./jobRuns.js";
 import { deleteSampleProcesses } from "./sampleContent.js";
 import { sampleNames } from "./sampleNames.js";
 import {
@@ -124,7 +134,14 @@ function hubTemplates(): SampleTemplate[] {
  * console button: also seed any fitting template the hub lacks, and give a
  * sample meeting summary seeded before 2026-10-07 its minutes.
  */
-export async function refreshSamples(opts: { now?: Date; addMissing?: boolean } = {}): Promise<SampleRefreshReport> {
+export async function refreshSamples(
+  opts: {
+    now?: Date;
+    addMissing?: boolean;
+    /** Template keys `addMissing` must not add back (the ones this hub's admins took out). */
+    notAdding?: readonly string[];
+  } = {},
+): Promise<SampleRefreshReport> {
   const report: SampleRefreshReport = { replaced: [], added: [], minutes_added: [] };
   const hub = currentHub();
   if (!refreshesSamples(hub?.mode)) {
@@ -156,7 +173,9 @@ export async function refreshSamples(opts: { now?: Date; addMissing?: boolean } 
   }
 
   if (opts.addMissing) {
-    const seeded = await seedSampleContent({ now });
+    const skip = new Set(opts.notAdding ?? []);
+    const only = skip.size ? templates.map((t) => t.key).filter((k) => !skip.has(k)) : undefined;
+    const seeded = await seedSampleContent({ now, only });
     report.added = seeded.created;
     report.minutes_added = await addMissingMinutes(templates);
   }
@@ -178,4 +197,55 @@ async function addMissingMinutes(templates: SampleTemplate[]): Promise<string[]>
     added.push(t.key);
   }
   return added;
+}
+
+/**
+ * The samples this hub's admins took out in Settings → Sample content: each
+ * one deleted on its own (by template key), and whether they ever removed
+ * them all. Read from the hub's admin log, which records both.
+ */
+export async function samplesTakenOut(): Promise<{ keys: string[]; all: boolean }> {
+  const hubId = currentHubId();
+  const rows = await forHub(hubId)
+    .from("hub_admin_audit_log")
+    .select<{ action: string; before: unknown }>("action, before")
+    .in("action", ["sample_content.delete_one", "sample_content.remove"]);
+  const prefix = sampleProcessId(hubId, "");
+  const keys = new Set<string>();
+  let all = false;
+  for (const r of rows) {
+    if (r.action === "sample_content.remove") all = true;
+    const id = (r.before as { id?: unknown } | null)?.id;
+    if (typeof id === "string" && id.startsWith(prefix)) keys.add(id.slice(prefix.length));
+  }
+  return { keys: [...keys].sort(), all };
+}
+
+/**
+ * "Refresh samples" in the hub admin's Settings → Sample content (2026-11-05):
+ * the console's button for this hub's own admin. Demo and beta hubs only.
+ *
+ * No fresh code, unlike removing them all: it touches nothing but sample
+ * processes (never a real one, never a visitor's own item), what it deletes is
+ * a sample that would be replaced by the daily job anyway, and it adds only
+ * samples. Deleting one sample takes no code either (Adam, 2026-10-13).
+ *
+ * Recorded in hub_admin_audit_log (who, and what changed) and, like the
+ * console's press, as a sample_refresh job run when something changed.
+ */
+export async function refreshSamplesAsAdmin(actor: string, now: Date = new Date()): Promise<SampleRefreshReport> {
+  const hub = currentHub();
+  if (!refreshesSamples(hub?.mode)) {
+    throw new ValidationError(`Samples are refreshed on demo and beta hubs only; this hub is ${hub?.mode ?? "in no mode"}.`);
+  }
+  const out = await samplesTakenOut();
+  const report = await refreshSamples({ now, addMissing: !out.all, notAdding: out.keys });
+  await recordHubAdminAudit({
+    actor,
+    action: "sample_content.refresh",
+    after: { replaced: report.replaced, added: report.added, minutes_added: report.minutes_added, not_added: out.all ? "all" : out.keys },
+  });
+  const run = describeJobRun("sample_refresh", { status: 200, body: report as unknown as Record<string, unknown> });
+  if (run) await recordJobRun("sample_refresh", now, run, { ...report, trigger: "admin", actor });
+  return report;
 }
