@@ -14,7 +14,7 @@ import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { CURRENT_LEGAL_VERSION } from "../../src/shared/legal.js";
-import { localRest } from "../fixtures/adminSession.js";
+import { localRest, localStack } from "../fixtures/adminSession.js";
 import { OPERATOR, auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
 import { START_HOST, cookieFrom, freshIp, plantInviteLink, plantStartCode, signedInStart, startCall } from "../fixtures/startCall.js";
 
@@ -227,19 +227,35 @@ describe("a code that cannot be used gets one answer", () => {
 });
 
 describe("an invite the console emailed", () => {
-  const LINK_REFUSED = /That link has been used or has expired/;
+  const DAY = 86_400_000;
 
-  it("sending records a link for that address, by hash, ending with the code", async () => {
-    const { code, id } = await mint();
+  async function refused(token: unknown, ip: string) {
+    const res = await startCall("POST", "/start/invite-link", { body: { token }, ip });
+    expect(res.status, JSON.stringify(res.body)).toBe(403);
+    expect(res.setCookie).toBeUndefined();
+    return res.body as { error: string; link_state: string; email: string | null; hub_url: string | null };
+  }
+
+  it("sending records a link for that address, by hash, for seven days within the invite's end", async () => {
+    const { code, id } = await mint(`seven-${run}`, 30);
     const email = `linked-${run}@example.test`;
     const sent = await consoleCall("POST", `/control/invites/${id}/send`, { cookie: consoleCookie, body: { email, code } });
     expect(sent.status, JSON.stringify(sent.body)).toBe(200);
-    const rows = (await localRest(`entitlement_links?entitlement_id=eq.${id}&select=*`)) as Array<Record<string, string | null>>;
+    const rows = (await localRest(`entitlement_links?entitlement_id=eq.${id}&select=*`)) as Array<Record<string, string | boolean | null>>;
     expect(rows).toHaveLength(1);
     expect(rows[0]!.email).toBe(email);
     expect(rows[0]!.spent_at).toBeNull();
-    expect(Date.parse(rows[0]!.expires_at!)).toBe(Date.parse((await localRest(`entitlements?id=eq.${id}&select=expires_at`) as Array<{ expires_at: string }>)[0]!.expires_at));
+    expect(rows[0]!.refreshed).toBe(false);
+    const lasts = Date.parse(rows[0]!.expires_at as string) - Date.parse(rows[0]!.created_at as string);
+    expect(Math.abs(lasts - 7 * DAY)).toBeLessThan(60_000);
     expect(rows[0]!.token_hash).toMatch(/^[0-9a-f]{64}$/);
+
+    // An invite ending sooner than seven days: the link ends with it.
+    const short = await mint(`short-${run}`, 2);
+    await consoleCall("POST", `/control/invites/${short.id}/send`, { cookie: consoleCookie, body: { email, code: short.code } });
+    const [link] = (await localRest(`entitlement_links?entitlement_id=eq.${short.id}&select=expires_at`)) as Array<{ expires_at: string }>;
+    const invite = (await entitlement(short.id)) as unknown as { expires_at: string };
+    expect(Date.parse(link!.expires_at)).toBe(Date.parse(invite.expires_at));
   });
 
   it("following the link signs in as that address with no code, and makes the hub", async () => {
@@ -267,24 +283,31 @@ describe("an invite the console emailed", () => {
     expect(swapped.body.user.email).toBe(email);
     const audit = await inviteAudit(id);
     expect(audit.map((a) => a.action)).toContain("invite.link_follow");
+
+    // The same link again: the invite made its hub, so it points to the hub's sign-in.
+    const after = await refused(token, ip);
+    expect(after.link_state).toBe("redeemed");
+    expect(after.error).toMatch(/already been used to create a hub/);
+    expect(after.hub_url).toMatch(new RegExp(`^https?://${slug}\\.localhost(:\\d+)?/sign-in$`));
+    // And it offers no fresh link.
+    const fresh = await startCall("POST", "/start/invite-link/refresh", { body: { token }, ip });
+    expect(fresh.status).toBe(403);
   });
 
-  it("works once; a later click is refused and points to the code, which still works and asks for a sign-in code", async () => {
-    const { code, id } = await mint();
+  it("works once; a later click says so and offers a fresh link to the same address", async () => {
+    const { id } = await mint();
     const token = `link-${run}-b`;
-    await plantInviteLink(id, `once-${run}@example.test`, token);
+    const email = `once-${run}@example.test`;
+    await plantInviteLink(id, email, token);
     const ip = freshIp();
     expect((await startCall("POST", "/start/invite-link", { body: { token }, ip })).status).toBe(200);
-    const again = await startCall("POST", "/start/invite-link", { body: { token }, ip });
-    expect(again.status).toBe(403);
-    expect(again.body.error).toMatch(LINK_REFUSED);
-    expect(again.setCookie).toBeUndefined();
-    const typed = await startCall("POST", "/start/invite", { body: { code }, ip });
-    expect(typed.status).toBe(200);
-    expect(typed.body.step).toBe("sign_in");
-    const view = await startCall("GET", "/start/session", { cookie: cookieFrom(typed.setCookie), ip });
-    expect(view.body.step).toBe("sign_in");
-    expect(view.body.email).toBeNull();
+    const again = await refused(token, ip);
+    expect(again).toEqual({
+      error: `This link has already been used. Your invite is still good, so we can email a fresh link to ${email}.`,
+      link_state: "spent",
+      email,
+      hub_url: null,
+    });
   });
 
   it("two followers at once: one gets the session", async () => {
@@ -296,33 +319,128 @@ describe("an invite the console emailed", () => {
     expect(both.map((r) => r.status).sort()).toEqual([200, 403]);
   });
 
-  it("an unknown, expired, revoked or used-up link gets the same answer", async () => {
+  it("an unknown, expired, revoked or ended link each says what happened; a refused follow does not spend it", async () => {
     const ip = freshIp();
     for (const token of ["nope", "", 42]) {
-      const res = await startCall("POST", "/start/invite-link", { body: { token }, ip });
-      expect(res.status).toBe(403);
-      expect(res.body.error).toMatch(LINK_REFUSED);
+      const body = await refused(token, ip);
+      expect(body.link_state).toBe("unknown");
+      expect(body.error).toMatch(/contact@civic\.social/);
     }
     const old = await mint();
     await plantInviteLink(old.id, `old-${run}@example.test`, `link-${run}-old`, new Date(Date.now() - 1000).toISOString());
-    expect((await startCall("POST", "/start/invite-link", { body: { token: `link-${run}-old` }, ip })).body.error).toMatch(LINK_REFUSED);
+    expect((await refused(`link-${run}-old`, ip)).link_state).toBe("expired");
 
     const revoked = await mint();
     await plantInviteLink(revoked.id, `rev-${run}@example.test`, `link-${run}-rev`);
     await consoleCall("POST", `/control/invites/${revoked.id}/revoke`, { cookie: consoleCookie, body: {} });
-    expect((await startCall("POST", "/start/invite-link", { body: { token: `link-${run}-rev` }, ip })).body.error).toMatch(LINK_REFUSED);
-    // A refused follow leaves it unspent.
+    const ended = await refused(`link-${run}-rev`, ip);
+    expect(ended.link_state).toBe("ended");
+    expect(ended.error).toBe("This invite has ended. To ask for a new one, write to contact@civic.social.");
     const rows = (await localRest(`entitlement_links?entitlement_id=eq.${revoked.id}&select=spent_at`)) as Array<{ spent_at: string | null }>;
     expect(rows[0]!.spent_at).toBeNull();
+
+    const lapsed = await mint();
+    await plantInviteLink(lapsed.id, `lapsed-${run}@example.test`, `link-${run}-lapsed`);
+    await localRest(`entitlements?id=eq.${lapsed.id}`, { method: "PATCH", body: JSON.stringify({ expires_at: new Date(Date.now() - 1000).toISOString() }) });
+    expect((await refused(`link-${run}-lapsed`, ip)).link_state).toBe("ended");
+    const noFresh = await startCall("POST", "/start/invite-link/refresh", { body: { token: `link-${run}-lapsed` }, ip });
+    expect(noFresh.status).toBe(403);
+    expect(noFresh.body.error).toMatch(/This invite has ended/);
   });
 
+  it("a fresh link for a link that still works is refused", async () => {
+    const { id } = await mint();
+    await plantInviteLink(id, `good-${run}@example.test`, `link-${run}-good`);
+    const res = await startCall("POST", "/start/invite-link/refresh", { body: { token: `link-${run}-good` }, ip: freshIp() });
+    expect(res.status).toBe(409);
+  });
+
+  it("fresh links are limited per invite: one a minute, three a day", async () => {
+    const { id } = await mint();
+    const email = `limited-${run}@example.test`;
+    const token = `link-${run}-limit`;
+    await plantInviteLink(id, email, token, new Date(Date.now() - 1000).toISOString());
+    const ask = () => startCall("POST", "/start/invite-link/refresh", { body: { token }, ip: freshIp() });
+    const first = await ask();
+    expect(first.status, JSON.stringify(first.body)).toBe(200);
+    expect(first.body).toEqual({ sent_to: email });
+    const soon = await ask();
+    expect(soon.status).toBe(429);
+    expect(soon.body.error).toMatch(/ask again in a minute/);
+
+    // Two minutes on, twice more; then the day's three are used.
+    const age = async () =>
+      localRest(`entitlement_links?entitlement_id=eq.${id}&refreshed=eq.true`, {
+        method: "PATCH",
+        body: JSON.stringify({ created_at: new Date(Date.now() - 2 * 60_000).toISOString() }),
+      });
+    await age();
+    expect((await ask()).status).toBe(200);
+    await age();
+    expect((await ask()).status).toBe(200);
+    await age();
+    const fourth = await ask();
+    expect(fourth.status).toBe(429);
+    expect(fourth.body.error).toMatch(/Three fresh links have been sent today.*contact@civic\.social/);
+
+    // Every fresh link went to the same address, and the console's own send never counts.
+    const rows = (await localRest(`entitlement_links?entitlement_id=eq.${id}&select=email,refreshed`)) as Array<{ email: string; refreshed: boolean }>;
+    expect(rows.filter((r) => r.refreshed)).toHaveLength(3);
+    expect(new Set(rows.map((r) => r.email))).toEqual(new Set([email]));
+    expect((await inviteAudit(id)).filter((a) => a.action === "invite.link_refresh")).toHaveLength(3);
+  });
+
+  // The fresh link's token exists only in the email, so this one runs the
+  // send in-process with the fake mail transport and follows what it sent.
+  for (const how of ["spent", "expired"] as const) {
+    it(`${how} → a fresh link → it signs in`, async () => {
+      const { id } = await mint();
+      const email = `fresh-${how}-${run}@example.test`;
+      const token = `link-${run}-fresh-${how}`;
+      const ip = freshIp();
+      if (how === "spent") {
+        await plantInviteLink(id, email, token);
+        expect((await startCall("POST", "/start/invite-link", { body: { token }, ip })).status).toBe(200);
+      } else {
+        await plantInviteLink(id, email, token, new Date(Date.now() - 1000).toISOString());
+      }
+      expect((await refused(token, ip)).link_state).toBe(how);
+
+      const { url, key } = localStack();
+      process.env.SUPABASE_URL = url;
+      process.env.SUPABASE_SERVICE_ROLE_KEY = key;
+      const { installAdapters } = await import("../../src/adapters/index.js");
+      const { fakeMail } = await import("../../src/adapters/fakes/mail.js");
+      const { sendFreshInviteLink } = await import("../../src/control/inviteRefresh.js");
+      const mail = fakeMail({ configured: true });
+      installAdapters({ mail });
+      try {
+        expect(await sendFreshInviteLink(token, START_HOST)).toEqual({ sent_to: email, entitlement_id: id });
+      } finally {
+        installAdapters({ mail: fakeMail() });
+      }
+      expect(mail.outbox.map((m) => m.to)).toEqual([email]);
+      const text = mail.outbox[0]!.text ?? "";
+      expect(text).not.toMatch(/code/i);
+      const fresh = /#invite=([A-Za-z0-9_-]+)/.exec(text)![1]!;
+      expect(fresh).not.toBe(token);
+
+      const followed = await startCall("POST", "/start/invite-link", { body: { token: fresh }, ip });
+      expect(followed.status, JSON.stringify(followed.body)).toBe(200);
+      expect(followed.body).toEqual({ step: "form", email });
+    });
+  }
+
   it("needs the start page's header, as every write does", async () => {
-    const res = await startCall("POST", "/start/invite-link", { body: { token: "x" }, csrf: false });
-    expect(res.status).toBe(403);
+    for (const path of ["/start/invite-link", "/start/invite-link/refresh"]) {
+      expect((await startCall("POST", path, { body: { token: "x" }, csrf: false })).status).toBe(403);
+    }
   });
 
   it("is on the start page only", async () => {
-    expect((await startCall("POST", "/start/invite-link", { body: { token: "x" }, host: "athens.localhost" })).status).toBe(404);
+    for (const path of ["/start/invite-link", "/start/invite-link/refresh"]) {
+      expect((await startCall("POST", path, { body: { token: "x" }, host: "athens.localhost" })).status).toBe(404);
+    }
   });
 });
 

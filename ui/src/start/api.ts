@@ -7,10 +7,21 @@ import type { JurisdictionSource } from "../console/JurisdictionPicker";
 
 export class StartApiError extends Error {
   readonly status: number;
-  constructor(message: string, status: number) {
+  /** The whole answer, for a refusal that says more than its message (a refused link). */
+  readonly body: Record<string, unknown>;
+  constructor(message: string, status: number, body: Record<string, unknown> = {}) {
     super(message);
     this.status = status;
+    this.body = body;
   }
+}
+
+/** A link from an emailed invite that can't be followed, and why (pilot readiness 3). */
+export interface RefusedLink {
+  error: string;
+  link_state: "unknown" | "spent" | "expired" | "ended" | "redeemed";
+  email: string | null;
+  hub_url: string | null;
 }
 
 function plainFailure(status: number | null): string {
@@ -36,7 +47,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const said = typeof data.error === "string" && !/^[a-z_]+$/.test(data.error) ? data.error : "";
-    throw new StartApiError(said || plainFailure(res.status), res.status);
+    throw new StartApiError(said || plainFailure(res.status), res.status, data);
   }
   return data as T;
 }
@@ -85,6 +96,7 @@ export const startApi = {
   session: () => request<StartSessionView>("GET", "/session"),
   invite: (code: string) => request<{ step: Step }>("POST", "/invite", { code }),
   inviteLink: (token: string) => request<{ step: Step; email: string }>("POST", "/invite-link", { token }),
+  freshLink: (token: string) => request<{ sent_to: string }>("POST", "/invite-link/refresh", { token }),
   requestCode: (email: string) => request<{ message: string }>("POST", "/request-code", { email, tz: browserTimeZone() }),
   verify: (email: string, code: string) =>
     request<{ step: Step; email: string }>("POST", "/verify", { email, code, tz: browserTimeZone() }),

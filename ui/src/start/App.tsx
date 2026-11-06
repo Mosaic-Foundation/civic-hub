@@ -4,7 +4,7 @@
 // step the page is on (GET /start/session), so a reload resumes.
 
 import { useCallback, useEffect, useState } from "react";
-import { startApi, type StartSessionView } from "./api";
+import { StartApiError, startApi, type RefusedLink, type StartSessionView } from "./api";
 import CreateForm from "./CreateForm";
 import { codeFromFragment, inviteTokenFromFragment } from "../../../src/shared/hubInvite";
 
@@ -27,10 +27,15 @@ const LINKED_CODE = takeLinkedCode();
  * first request, so this is outside React and its double effects. What it
  * resolves to is the refusal to show, or null.
  */
-const INVITE_FOLLOWED: Promise<string | null> = LINKED_INVITE
+const INVITE_FOLLOWED: Promise<RefusedLink | null> = LINKED_INVITE
   ? startApi.inviteLink(LINKED_INVITE).then(
       () => null,
-      (e: Error) => e.message,
+      (e: Error): RefusedLink => {
+        const body = e instanceof StartApiError ? e.body : {};
+        return typeof body.link_state === "string"
+          ? (body as unknown as RefusedLink)
+          : { error: e.message, link_state: "unknown", email: null, hub_url: null };
+      },
     )
   : Promise.resolve(null);
 
@@ -72,7 +77,7 @@ function useBusy() {
   return { busy, error, setError, run };
 }
 
-function CodeStep({ refused, linkRefused, onDone }: { refused: boolean; linkRefused: string | null; onDone: () => void }) {
+function CodeStep({ refused, onDone }: { refused: boolean; onDone: () => void }) {
   const [code, setCode] = useState(LINKED_CODE);
   const { busy, error, run } = useBusy();
   return (
@@ -82,11 +87,6 @@ function CodeStep({ refused, linkRefused, onDone }: { refused: boolean; linkRefu
           ? "Your invite code is filled in from your link. It lets you create one hub."
           : "Enter the invite code you were given. It lets you create one hub."}
       </p>
-      {linkRefused && (
-        <p className="cx-alert cx-alert-warn" role="status">
-          {linkRefused}
-        </p>
-      )}
       {refused && (
         <p className="cx-alert cx-alert-warn" role="status">
           The code you used earlier can no longer be used. If you have another, enter it here.
@@ -120,6 +120,56 @@ function CodeStep({ refused, linkRefused, onDone }: { refused: boolean; linkRefu
           {busy ? "Checking…" : "Continue"}
         </button>
       </form>
+      <ErrorLine error={error} />
+    </Card>
+  );
+}
+
+/**
+ * A link from an emailed invite that can't be followed (pilot readiness 3,
+ * Adam 2026-11-06): what happened, in plain words, and the one thing to do.
+ * While the invite is good, that is "Send me a fresh link", to the same
+ * address; once it made a hub, that hub's sign-in.
+ */
+function LinkRefusedStep({ refusal, token }: { refusal: RefusedLink; token: string }) {
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const { busy, error, run } = useBusy();
+  const canRefresh = refusal.link_state === "spent" || refusal.link_state === "expired";
+  const title =
+    refusal.link_state === "redeemed"
+      ? "Your hub is already made"
+      : refusal.link_state === "ended" || refusal.link_state === "unknown"
+        ? "This invite can't be used"
+        : "This link has been used";
+  return (
+    <Card title={refusal.link_state === "expired" ? "This link has expired" : title}>
+      {sentTo ? (
+        <p className="cx-alert cx-alert-ok" role="status">
+          We sent a fresh link to <strong>{sentTo}</strong>. Open it from that email; it works once, for seven days.
+        </p>
+      ) : (
+        <p className="cx-muted">{refusal.error}</p>
+      )}
+      {canRefresh && !sentTo && (
+        <button
+          type="button"
+          className="cx-btn cx-btn-primary cx-block"
+          disabled={busy}
+          onClick={() =>
+            void run(async () => {
+              const r = await startApi.freshLink(token);
+              setSentTo(r.sent_to);
+            })
+          }
+        >
+          {busy ? "Sending…" : "Send me a fresh link"}
+        </button>
+      )}
+      {refusal.link_state === "redeemed" && refusal.hub_url && (
+        <a className="cx-btn cx-btn-primary cx-block" href={refusal.hub_url}>
+          Go to your hub's sign-in
+        </a>
+      )}
       <ErrorLine error={error} />
     </Card>
   );
@@ -206,7 +256,7 @@ function SignInStep({ onDone, onLeave }: { onDone: () => void; onLeave: () => vo
 export default function App() {
   const [session, setSession] = useState<StartSessionView | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
-  const [linkRefused, setLinkRefused] = useState<string | null>(null);
+  const [linkRefused, setLinkRefused] = useState<RefusedLink | null>(null);
 
   const load = useCallback(() => {
     void INVITE_FOLLOWED.then((refusal) => {
@@ -234,7 +284,9 @@ export default function App() {
     );
   }
   if (!session) return <main className="cx-center cx-muted">Loading…</main>;
-  if (session.step === "code") return <CodeStep refused={session.code_refused} linkRefused={linkRefused} onDone={load} />;
+  // A second click on a link this browser already followed: the form is still theirs.
+  if (linkRefused && LINKED_INVITE && session.step !== "form") return <LinkRefusedStep refusal={linkRefused} token={LINKED_INVITE} />;
+  if (session.step === "code") return <CodeStep refused={session.code_refused} onDone={load} />;
   if (session.step === "sign_in") return <SignInStep onDone={load} onLeave={leave} />;
   return <CreateForm email={session.email ?? ""} onSessionEnded={load} onLeave={leave} />;
 }

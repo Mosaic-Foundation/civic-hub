@@ -9,7 +9,11 @@
 //
 //   POST /start/invite        the invite code → a start session (cookie)
 //   POST /start/invite-link   an emailed invite's link → a start session that
-//                             is already that address's (no sign-in code)
+//                             is already that address's (no sign-in code);
+//                             refused, it says why and what to do next
+//   POST /start/invite-link/refresh
+//                             a used or expired link → a fresh one, emailed
+//                             to the same address (./inviteRefresh.ts)
 //   POST /start/request-code  an emailed code to the address given
 //   POST /start/verify        the emailed code → the session is that address's
 //   GET  /start/session       which step the page is on
@@ -37,7 +41,8 @@ import { recordAudit } from "./audit.js";
 import { CivicError } from "../errors/index.js";
 import { logUnexpected, newRef } from "../http/route.js";
 import { flushErrors } from "../utils/errorTracking.js";
-import { consoleAdminEmail, consoleHostname, isStartHost, startHubDomain } from "./config.js";
+import { consoleAdminEmail, consoleHostname, isStartHost, startHostname, startHubDomain } from "./config.js";
+import { describeRefusedLink, sendFreshInviteLink } from "./inviteRefresh.js";
 import {
   EntitlementError,
   INVITE_REFUSED,
@@ -45,6 +50,7 @@ import {
   claimEntitlement,
   spendInviteLink,
   entitlementStillUsable,
+  inviteLinkState,
   redeemEntitlement,
   releaseClaim,
 } from "./entitlements.js";
@@ -273,7 +279,16 @@ export function startRouter(): Router {
   // emailed code is, so the session is that address's from the start.
   r.post("/start/invite-link", route(async (req, res) => {
     await rateLimit("invite", clientIp(req));
-    const link = await spendInviteLink((req.body as { token?: unknown })?.token);
+    const raw = (req.body as { token?: unknown })?.token;
+    let link: Awaited<ReturnType<typeof spendInviteLink>>;
+    try {
+      link = await spendInviteLink(raw);
+    } catch (e) {
+      // Refused: say what happened and what to do next (pilot readiness 3).
+      if (!(e instanceof EntitlementError)) throw e;
+      res.status(403).json(await describeRefusedLink(await inviteLinkState(raw)));
+      return;
+    }
     const token = await openStartSession(link.entitlement_id, link.email);
     setSessionCookie(req, res, token);
     await audited({
@@ -283,6 +298,22 @@ export function startRouter(): Router {
       after: { entitlement_id: link.entitlement_id },
     });
     res.json({ step: "form", email: link.email });
+  }));
+
+  // "Send me a fresh link" (pilot readiness 3): a new single-use link for the
+  // same invite, to the same address. Per invite: one a minute, three a day.
+  r.post("/start/invite-link/refresh", route(async (req, res) => {
+    await rateLimit("invite", clientIp(req));
+    const host = startHostname();
+    if (!host) throw new EntitlementError("This page is not open here.", 404);
+    const sent = await sendFreshInviteLink((req.body as { token?: unknown })?.token, host);
+    await audited({
+      actor: sent.sent_to,
+      action: "invite.link_refresh",
+      before: null,
+      after: { entitlement_id: sent.entitlement_id },
+    });
+    res.json({ sent_to: sent.sent_to });
   }));
 
   r.post("/start/request-code", route(async (req, res) => {

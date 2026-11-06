@@ -57,6 +57,11 @@ export async function inviteAdmins(hubId: string, emails: readonly string[]): Pr
  * a two-minute handoff token in the fragment, which the hub's page swaps
  * for a session (POST /auth/handoff). Creates their account on the hub.
  */
+/** A hub's own sign-in page, for an invite that has already made it (pilot readiness 3). */
+export async function hubSignInUrl(hubId: string): Promise<string> {
+  return inHubScope(hubId, async () => `${uiBaseUrl()}/sign-in`);
+}
+
 export async function handoffUrl(hubId: string, email: string, agreedLegalVersion?: string): Promise<string> {
   return inHubScope(hubId, async () => {
     const token = await createHandoffSession(email, agreedLegalVersion);
