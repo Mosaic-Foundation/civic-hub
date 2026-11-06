@@ -20,7 +20,11 @@
 //     (the read-as-closed deadline, the hourly close, its events);
 //   - the closed vote and its outcome, the project, the announcements, the
 //     meeting summary and the word cloud are left alone;
-//   - visitors' own items (`added_in_demo`) are never touched.
+//   - visitors' own items (`added_in_demo`) are never touched;
+//   - a live sample that is missing is seeded again (2026-11-06), since a
+//     replacement deletes before it re-seeds and a re-seed that failed would
+//     otherwise lose it for good; unless this hub's admins took it out (or
+//     removed them all), or the hub has no samples at all (never seeded).
 //
 // Demo and beta hubs only (refreshesSamples, src/shared/sampleRefresh.ts): on a live hub
 // it does nothing, since input there is real. No hub_admin_audit_log rows for
@@ -54,6 +58,7 @@ import { recordJobRun } from "./jobRuns.js";
 import { deleteSampleProcesses } from "./sampleContent.js";
 import { sampleNames } from "./sampleNames.js";
 import {
+  countSeededSampleProcesses,
   replaceProcessState,
   sampleProcessIdsMadeFrom,
   sampleProcessLiveRow,
@@ -72,7 +77,7 @@ export interface SampleRefreshReport {
   skipped?: string;
   /** Template keys replaced, each with why. */
   replaced: Array<{ key: string; reason: string }>;
-  /** Templates added that the hub did not have (the console button only). */
+  /** Templates added that the hub did not have: a live sample that went missing, and (the buttons) any other. */
   added: string[];
   /** Sample meeting summaries given their minutes (the console button only). */
   minutes_added: string[];
@@ -162,12 +167,23 @@ export async function refreshSamples(
   const db = forHub(hubId);
   const now = opts.now ?? new Date();
   const templates = hubTemplates();
+  // Read once, and only when a live sample is missing.
+  let restorable: ((key: string) => boolean) | null = null;
+  const restored: string[] = [];
 
   for (const t of liveTemplates(templates)) {
     const id = sampleProcessId(hubId, t.key);
     const row = await sampleProcessLiveRow(id);
-    // Not seeded here (or removed with the samples): the job adds nothing.
-    if (!row || !row.is_sample || row.added_in_demo) continue;
+    if (!row) {
+      restorable ??= await missingSamplesRestorable(hubId);
+      if (restorable(t.key)) {
+        const seeded = await seedSampleContent({ now, only: [t.key] });
+        restored.push(...seeded.created);
+      }
+      continue;
+    }
+    // A real process or a visitor's own under this id: never touched.
+    if (!row.is_sample || row.added_in_demo) continue;
     let closesAt: string | null = null;
     if (t.kind === "proposal") {
       const p = await db.from("proposals").select<{ closes_at: string | null }>("closes_at").eq("id", id).maybeSingle();
@@ -186,10 +202,25 @@ export async function refreshSamples(
     const skip = new Set(opts.notAdding ?? []);
     const only = skip.size ? templates.map((t) => t.key).filter((k) => !skip.has(k)) : undefined;
     const seeded = await seedSampleContent({ now, only });
-    report.added = seeded.created;
+    report.added = [...restored, ...seeded.created.filter((k) => !restored.includes(k))];
     report.minutes_added = await addMissingMinutes(templates);
+  } else {
+    report.added = restored;
   }
   return report;
+}
+
+/**
+ * Which missing live samples a refresh seeds again (2026-11-06): none on a hub
+ * with no samples left (never seeded, or all removed), and never one this
+ * hub's admins took out in Settings → Sample content.
+ */
+async function missingSamplesRestorable(hubId: string): Promise<(key: string) => boolean> {
+  if ((await countSeededSampleProcesses(hubId)) === 0) return () => false;
+  const out = await samplesTakenOut();
+  if (out.all) return () => false;
+  const keys = new Set(out.keys);
+  return (key) => !keys.has(key);
 }
 
 /** Sample meeting summaries seeded before they had minutes get them. */

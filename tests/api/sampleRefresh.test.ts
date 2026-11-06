@@ -248,6 +248,24 @@ describe("the daily sample refresh", () => {
     expect((await processRow(pid(BETA, "vote_library_hours")))?.status).toBe("finalized");
   });
 
+  it("seeds a live sample again when it went missing, as a failed re-seed would leave it (2026-11-06)", async (ctx) => {
+    if (!cronsEnabled) return ctx.skip();
+    // A replacement deletes before it re-seeds; one whose seed threw left nothing.
+    const id = pid(BETA, "vote_internet");
+    await localRest(`events?process_id=eq.${id}`, { method: "DELETE" });
+    await localRest(`processes?id=eq.${id}`, { method: "DELETE" });
+    expect(await processRow(id)).toBeUndefined();
+    const res = await runJob(BETA);
+    expect(res.status).toBe(200);
+    expect(res.body.hubs[BETA]).toMatchObject({ replaced: [], added: ["vote_internet"] });
+    const back = await processRow(id);
+    expect(back).toMatchObject({ status: "active", is_sample: true, added_in_demo: false });
+    const [last] = (await localRest(
+      `job_runs?select=summary&hub_id=eq.${BETA}&job_id=eq.sample_refresh&order=started_at.desc&limit=1`,
+    )) as Row[];
+    expect(last.summary).toBe("1 missing sample added");
+  });
+
   it("never touches a live hub", async (ctx) => {
     if (!cronsEnabled) return ctx.skip();
     const res = await runJob(LIVE);
@@ -260,6 +278,8 @@ describe("the daily sample refresh", () => {
 describe("the console's Refresh samples", () => {
   it("adds every missing template to a demo hub, and gives an old sample summary its minutes", async () => {
     await createHub(EMPTY, { ...placeHub("Refresh Empty Civic Hub"), sample_content: false });
+    // The daily job never seeds a hub that has no samples (2026-11-06).
+    if (cronsEnabled) expect((await runJob(EMPTY)).body.hubs[EMPTY]).toMatchObject({ replaced: [], added: [] });
     // Only the starter word cloud every new hub gets (2026-10-13), which is real content.
     expect((await localRest(`processes?select=type,is_sample&hub_id=eq.${EMPTY}`)) as Row[]).toEqual([
       { type: "civic.wordcloud", is_sample: false },
@@ -349,9 +369,16 @@ describe("the hub admin's Refresh samples (2026-11-05)", () => {
       `hub_admin_audit_log?select=after&hub_id=eq.${ADMIN_BETA}&action=eq.sample_content.refresh&order=at.desc&limit=1`,
     )) as Row[];
     expect(row.after.not_added).toEqual(["wordcloud_value"]);
-    // The operator can still put it back.
+    // Nor does the daily job, for a live sample the admin deleted (2026-11-06).
+    const endorsing = pid(ADMIN_BETA, "vote_fire_rescue");
+    expect((await call("DELETE", `/admin/hub/sample-content/${endorsing}`, host(ADMIN_BETA), undefined, admin)).status).toBe(200);
+    if (cronsEnabled) {
+      expect((await runJob(ADMIN_BETA)).body.hubs[ADMIN_BETA].added).toEqual([]);
+      expect(await processRow(endorsing)).toBeUndefined();
+    }
+    // The operator can still put them back.
     const console = await consoleCall("POST", `/control/hubs/${ADMIN_BETA}/samples/refresh`, { cookie, body: {} });
-    expect(console.body.refresh.added).toEqual(["wordcloud_value"]);
+    expect([...console.body.refresh.added].sort()).toEqual(["vote_fire_rescue", "wordcloud_value"]);
   });
 
   it("lets the admin turn the daily refresh off, which the job then respects, and logs it", async () => {
