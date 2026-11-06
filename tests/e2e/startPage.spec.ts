@@ -147,7 +147,10 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   // An admin's home page has the setup card in place of the visitor's welcome.
   const card = page.getByRole("region", { name: "Set up your hub" });
   await expect(card).toBeVisible();
-  await expect(card.getByRole("link", { name: "Legal reviewed or saved" })).toBeVisible();
+  // The checklist's first four, the way to the whole checklist, and Dismiss (pilot readiness 3).
+  await expect(card.getByRole("listitem")).toHaveCount(4);
+  await expect(card.getByRole("link", { name: "Name and place set" })).toBeVisible();
+  await expect(card.getByRole("link", { name: "View your setup checklist" })).toHaveAttribute("href", "/admin/settings/getting-started");
   await expect(page.locator(".welcome-banner")).toHaveCount(0);
   await card.getByRole("button", { name: "Dismiss" }).click();
   await expect(card).toHaveCount(0);
