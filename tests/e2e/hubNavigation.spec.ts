@@ -224,18 +224,18 @@ test("Hub settings → Theme: Sidebar and a new order take effect at once, every
   await page.getByRole("button", { name: /^Save/ }).click();
   await expect(page.getByText(/^Saved\./)).toBeVisible();
 
-  // The column, at once, as the admin area's: the way back, Admin, Hub
-  // settings current with its sections under it; the header stays, the tabs go.
-  await expect(sidebar(page)).toBeVisible();
+  // Admin is the rail (pilot readiness 3): the way back, Admin, Hub settings
+  // current with its sections under it; the header stays, the tabs go.
+  const adminRail = page.getByRole("navigation", { name: "Admin sections" });
+  await expect(adminRail).toBeVisible();
   await expect(page.locator(".civic-nav")).toBeVisible();
   await expect(page.locator(".feed-votes-tabs")).toBeHidden();
-  await expect(page.getByTestId("admin-bar")).toHaveCount(0);
-  await expect(sidebar(page).getByText("Admin", { exact: true })).toBeVisible();
-  await expect(sidebar(page).locator('[data-nav-id="hub-settings"]')).toHaveAttribute("aria-current", "page");
-  await expect(sidebar(page).getByRole("navigation", { name: "Hub settings sections" })).toBeVisible();
+  await expect(adminRail.getByText("Admin", { exact: true })).toBeVisible();
+  await expect(adminRail.locator('[data-nav-id="hub-settings"]')).toHaveAttribute("aria-current", "page");
+  await expect(adminRail.getByRole("navigation", { name: "Hub settings sections" })).toBeVisible();
 
   // Back to the hub: the sections in the new order, and one Admin entry.
-  await sidebar(page).getByRole("link", { name: "Back to the hub" }).click();
+  await adminRail.getByRole("link", { name: "Back to the hub" }).click();
   const sections = sidebar(page).getByRole("list", { name: "Sections" }).locator(".nav-item-label");
   await expect(sections).toHaveText(["Feed", "Votes", "Conversations", "Proposals", "Events", "Projects", "Outcomes", "Members"]);
   await expect(sidebar(page).locator('[data-nav-id="admin"]')).toBeVisible();

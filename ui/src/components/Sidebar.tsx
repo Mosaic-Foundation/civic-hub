@@ -5,17 +5,17 @@
 // and Share; the column keeps the sections in the hub's order, Admin for
 // admins, and the hub's own pages (Feedback, Welcome, About) at its foot.
 //
-// Inside admin it becomes the admin area's navigation: the way back to the
-// hub, an Admin heading and the admin list (useAdminNav, the same list the
-// admin bar draws in the other layout), with Hub settings' section rail
-// under its item (context/columnSlot.ts).
+// Inside admin it is the admin rail (AdminRail.tsx), in either public layout
+// (pilot readiness 3): App.tsx draws this column for every admin page at
+// desktop width, with Hub settings' section rail under its item
+// (context/columnSlot.ts).
 
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useContext } from "react";
 import NavItemList from "./NavItemList";
-import NavIcon from "./navIcons";
+import AdminRail from "./AdminRail";
 import { useNavGroups, type NavItem } from "../hooks/useNavGroups";
-import { isAdminPath, useAdminNav } from "../hooks/useAdminNav";
+import { isAdminPath } from "../hooks/useAdminNav";
 import { useNavData } from "../context/navDataState";
 import { useAuth } from "../context/authState";
 import { ColumnSlotContext } from "../context/columnSlot";
@@ -66,36 +66,6 @@ function HubColumn() {
 }
 
 function AdminColumn() {
-  const items = useAdminNav();
   const { setSlot } = useContext(ColumnSlotContext);
-  const { pathname } = useLocation();
-  const inSettings = pathname.startsWith("/admin/settings");
-  const contact: NavItem = {
-    id: "contact",
-    label: "Contact Civic.Social",
-    icon: "contact",
-    to: "/admin/contact-civic-social",
-    current: pathname.startsWith("/admin/contact-civic-social"),
-  };
-
-  return (
-    <nav className="hub-sidebar-nav" aria-label="Hub">
-      <Link to="/" className="nav-item hub-sidebar-back">
-        <NavIcon name="back" size={20} />
-        <span className="nav-item-text">
-          <span className="nav-item-label">Back to the hub</span>
-        </span>
-      </Link>
-      <h2 className="hub-sidebar-heading" id="hub-sidebar-admin">
-        Admin
-      </h2>
-      <NavItemList className="hub-sidebar-list" items={items} labelledBy="hub-sidebar-admin" />
-      {/* Hub settings' sections, drawn here by the page (AdminSettings.tsx). */}
-      {inSettings && <div className="hub-sidebar-subnav" ref={setSlot} />}
-      {/* Writing to Civic.Social is the admin's, but not a page of the hub's own. */}
-      <div className="hub-sidebar-foot">
-        <NavItemList className="hub-sidebar-list hub-sidebar-list--quiet" items={[contact]} label="Civic.Social" />
-      </div>
-    </nav>
-  );
+  return <AdminRail slotRef={setSlot} />;
 }

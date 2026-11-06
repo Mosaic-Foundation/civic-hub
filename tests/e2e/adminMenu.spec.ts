@@ -128,6 +128,9 @@ test("1. the Admin menu and the review icon (desktop, Top tabs)", async ({ page 
     await page.getByRole("button", { name: "Admin", exact: true }).click();
     await menu.getByRole("menuitem", { name: "Plugins" }).click();
     await expect(page).toHaveURL(/\/admin\/settings\/plugins$/);
+    // Inside admin the rail replaces the header's Admin menu, in either layout (pilot readiness 3).
+    await expect(page.getByRole("button", { name: "Admin", exact: true })).toBeHidden();
+    await page.goto(`${HUB}/`);
     await page.getByRole("button", { name: "Admin", exact: true }).click();
     await menu.getByRole("menuitem", { name: /^Reviews/ }).click();
     await expect(page).toHaveURL(/\/admin\/(reviews|briefs|meeting-summaries)$/);
@@ -164,9 +167,11 @@ test("1. the Admin group in More (phone) and in the sidebar (desktop), Reviews w
   if (reviews > 0) await expect(admin.locator(".nav-item-count")).toHaveText(String(reviews));
   await admin.click();
   await expect(page).toHaveURL(/\/admin\/(reviews|briefs|meeting-summaries)$/);
-  await expect(side.getByRole("link", { name: "Back to the hub" })).toBeVisible();
+  // Inside admin the column is the admin rail (pilot readiness 3).
+  const rail = page.getByRole("navigation", { name: "Admin sections" });
+  await expect(rail.getByRole("link", { name: "Back to the hub" })).toBeVisible();
   for (const label of ["Processes", "Moderation", "Activity", "Hub settings"]) {
-    await expect(side.locator(".nav-item", { hasText: label }).first()).toBeVisible();
+    await expect(rail.locator(".nav-item", { hasText: label }).first()).toBeVisible();
   }
 });
 

@@ -11,7 +11,7 @@ import ShareBanner from "./components/ShareBanner";
 import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
 import Nav from "./components/Nav";
 import Sidebar from "./components/Sidebar";
-import AdminBar from "./components/AdminBar";
+import AdminDrawer from "./components/AdminDrawer";
 import { isAdminPath } from "./hooks/useAdminNav";
 import { ColumnSlotContext } from "./context/columnSlot";
 import { ChipGroup } from "./kit";
@@ -180,15 +180,15 @@ function AppContent() {
   // Where the sections are drawn at desktop width (Hub settings → Theme →
   // Navigation); phones get the bottom bar under either (navigation slice,
   // 2026-10-14). The layout rules are in App.css.
-  const layout = navLayout();
+  // Admin always uses the left rail, whatever the public layout (pilot
+  // readiness 3, Adam 2026-11-06): the hub header stays, the section tabs are
+  // not drawn, and the column is the admin rail. On a phone the bottom bar
+  // keeps the hub's tabs and the rail is a drawer (AdminDrawer.tsx).
+  const inAdmin = isAdmin && isAdminPath(pathname);
+  const layout = inAdmin ? "sidebar" : navLayout();
   // Beside the sidebar, the hub's bars head the content column, so the
   // sidebar starts at the top of the screen and its foot is never pushed off.
   const bannersInColumn = layout === "sidebar" && wide;
-  // Admin is its own place (design pass, decision 4): under the hub header,
-  // one admin bar replaces the section tabs and nothing else is stacked; in
-  // the left-column layout the column carries the admin list instead.
-  const inAdmin = isAdmin && isAdminPath(pathname);
-  const adminBar = inAdmin && !(layout === "sidebar" && wide);
   const [columnSlot, setColumnSlot] = useState<HTMLElement | null>(null);
   forgetClosedNoticeOnLive(hub.config?.hub.mode);
   const hubBanners = (
@@ -224,12 +224,13 @@ function AppContent() {
           {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
           {!inAdmin && hub.plugins.enabled("wordcloud") && <WordcloudTeaser />}
           <BannerSlot />
-          {adminBar ? <AdminBar /> : !inAdmin && <FeedVotesTabs />}
+          {!inAdmin && <FeedVotesTabs />}
 
           {/* One share banner for the hub: a page's share moment, when its bar is off screen. */}
           {!inAdmin && <ShareBanner />}
 
           <main className="page-shell">
+            {inAdmin && !wide && <AdminDrawer />}
             {/* Every page but the feed loads its code when first needed (lazyPages.ts). */}
             <Suspense fallback={<p className="page-loading" aria-busy="true">Loading…</p>}>
               <Routes>

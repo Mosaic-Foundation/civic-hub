@@ -1,10 +1,16 @@
-// The admin area's own navigation, one list for every layout (design pass,
-// decision 4, 2026-10-29): the admin bar draws it under the hub header, and
-// the left column draws it under an Admin heading. Ordered by function: the
-// publication queues first (Processes, Briefs, Meeting summaries), then
-// oversight (Moderation, Feedback, Edits, Archived), the switched-on
-// features' pages (Activity), then Hub settings, and last the setup guide on
-// the docs site, which opens in a new tab.
+// The admin area's own navigation, one rail for every layout (pilot readiness
+// 3, Adam 2026-11-06; it replaces the design pass's admin bar). Grouped, so it
+// fits the window without scrolling:
+//
+//   Review     Processes, Briefs, Meeting summaries, Edits; the group's head
+//              carries the sum of their counts
+//   Community  Moderation, Feedback
+//   Activity   (a feature's page, when switched on)
+//   Hub settings, whose sections open under it only while you're in it
+//   and at the foot, in small type: Archived, Setup guide, Contact Civic.Social.
+//
+// The desktop rail (Sidebar.tsx) and the phone's drawer (AdminDrawer.tsx)
+// draw the same groups.
 //
 // Counts (Adam, 2026-09-06): each item shows what is NEW in its queue since
 // this admin last opened it — "new is defined by items that I haven't
@@ -28,7 +34,22 @@ export function isAdminPath(pathname: string): boolean {
   return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
-export function useAdminNav(): NavItem[] {
+export interface AdminNavGroup {
+  id: "review" | "community" | "main";
+  /** The group's small heading; none for the single items. */
+  label?: string;
+  items: NavItem[];
+  /** The sum of the items' counts, for the heading. */
+  count: number;
+}
+
+export interface AdminNav {
+  groups: AdminNavGroup[];
+  /** Small type at the rail's foot. */
+  foot: NavItem[];
+}
+
+export function useAdminNav(): AdminNav {
   const hub = useHub();
   const { pathname } = useLocation();
   // A failed read shows no counts (best-effort); each navigation reads again,
@@ -51,24 +72,37 @@ export function useAdminNav(): NavItem[] {
     current: pathname.startsWith(to),
     ...(count !== undefined ? { count, countLabel: `${count} new since you last looked` } : {}),
   });
+  const group = (id: AdminNavGroup["id"], items: NavItem[], label?: string): AdminNavGroup => ({
+    id,
+    ...(label ? { label } : {}),
+    items,
+    count: items.reduce((n, i) => n + (i.count ?? 0), 0),
+  });
 
-  const items: NavItem[] = [item("processes", "Processes", "reviews", "/admin/reviews", counts.reviews)];
+  const review: NavItem[] = [item("processes", "Processes", "reviews", "/admin/reviews", counts.reviews)];
   // Hidden when the hub switched the plugin off (config/plugins.tsx).
-  if (hub.plugins.enabled("brief")) items.push(item("briefs", "Briefs", "outcome", "/admin/briefs", counts.briefs));
+  if (hub.plugins.enabled("brief")) review.push(item("briefs", "Briefs", "outcome", "/admin/briefs", counts.briefs));
   if (hub.plugins.enabled("meeting_summary")) {
-    items.push(item("meeting-summaries", "Meeting summaries", "meeting", "/admin/meeting-summaries", counts.meeting_summaries));
+    review.push(item("meeting-summaries", "Meeting summaries", "meeting", "/admin/meeting-summaries", counts.meeting_summaries));
   }
-  items.push(item("moderation", "Moderation", "moderation", "/admin/moderation"));
+  review.push(item("edits", "Edits", "edits", "/admin/edits", counts.edits));
+
+  const community: NavItem[] = [item("moderation", "Moderation", "moderation", "/admin/moderation")];
   if (hub.plugins.enabled("feedback")) {
-    items.push(item("admin-feedback", "Feedback", "feedback", "/admin/feedback", counts.feedback));
+    community.push(item("admin-feedback", "Feedback", "feedback", "/admin/feedback", counts.feedback));
   }
-  items.push(item("edits", "Edits", "edits", "/admin/edits", counts.edits));
-  items.push(item("archived", "Archived", "archived", "/admin/archived"));
+
   // Feature packages' pages (ui/src/features.ts): Activity.
+  const main: NavItem[] = [];
   for (const u of FEATURE_UI) {
-    if (u.adminTab && hub.plugins.enabled(u.feature)) items.push(item(u.feature, u.adminTab.label, u.adminTab.icon, u.adminTab.path));
+    if (u.adminTab && hub.plugins.enabled(u.feature)) main.push(item(u.feature, u.adminTab.label, u.adminTab.icon, u.adminTab.path));
   }
-  items.push(item("hub-settings", "Hub settings", "settings", "/admin/settings"));
-  items.push({ id: "setup-guide", label: "Setup guide", icon: "guide", href: helpUrl(helpEntry("admin.setup_guide")!) });
-  return items;
+  main.push(item("hub-settings", "Hub settings", "settings", "/admin/settings"));
+
+  const foot: NavItem[] = [
+    item("archived", "Archived", "archived", "/admin/archived"),
+    { id: "setup-guide", label: "Setup guide", icon: "guide", href: helpUrl(helpEntry("admin.setup_guide")!) },
+    item("contact", "Contact Civic.Social", "contact", "/admin/contact-civic-social"),
+  ];
+  return { groups: [group("review", review, "Review"), group("community", community, "Community"), group("main", main)], foot };
 }

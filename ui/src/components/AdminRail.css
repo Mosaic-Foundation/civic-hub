@@ -1,0 +1,179 @@
+/* The admin rail (AdminRail.tsx), in the left column and in the phone's
+   drawer. Compact on purpose: with every plugin on and Hub settings open it
+   fits a window 768px tall without scrolling (pilot readiness 3). Tokens
+   only. */
+
+.admin-rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  box-sizing: border-box;
+}
+
+.admin-rail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-height: var(--space-6);
+  padding: 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-small-size);
+  text-decoration: none;
+}
+
+.admin-rail-back:hover {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.admin-rail-back:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--space-px);
+}
+
+.admin-rail-title {
+  margin: var(--space-1) 0 0;
+  padding: 0 var(--space-2);
+  font-family: var(--font-heading);
+  font-size: var(--text-heading-size);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-strong);
+}
+
+.admin-rail-group + .admin-rail-group {
+  margin-top: var(--space-1-5);
+}
+
+.admin-rail-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-0-5);
+  padding: 0 var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--text-eyebrow-size);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--text-eyebrow-spacing);
+  line-height: var(--line-height-tight);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.admin-rail-group-count {
+  min-width: var(--space-5);
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-tint);
+  color: var(--color-primary-ink);
+  font-size: var(--text-caption-size);
+  letter-spacing: normal;
+  text-align: center;
+}
+
+.admin-rail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+/* The base stylesheet spaces list items apart; the rail sets its own rhythm. */
+.admin-rail li {
+  margin: 0;
+}
+
+.admin-rail-list .nav-item {
+  min-height: calc(var(--space-6) + var(--space-1));
+  padding: var(--space-0-5) var(--space-2);
+  line-height: var(--line-height-snug);
+  gap: var(--space-2);
+  font-size: var(--text-small-size);
+}
+
+.admin-rail-list .nav-item svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+/* The foot: small type, one wrapped line, no icons. */
+.admin-rail-foot {
+  margin-top: auto;
+  padding-top: var(--space-3);
+}
+
+.admin-rail-list--small {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-3);
+  row-gap: 0;
+  padding: 0 var(--space-2);
+}
+
+.admin-rail-list--small .nav-item {
+  width: auto;
+  min-height: 0;
+  padding: var(--space-0-5) 0;
+  font-size: var(--text-caption-size);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+.admin-rail-list--small .nav-item.is-current {
+  background: none;
+  box-shadow: none;
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+}
+
+.admin-rail-list--small .nav-item svg {
+  display: none;
+}
+
+/* Hub settings' sections, under its item (AdminSettings.tsx draws them). */
+.admin-rail-subnav .settings-nav {
+  position: static;
+  margin: 0 0 0 var(--space-6);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.admin-rail-subnav .settings-nav ul {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border-left: var(--border-width) solid var(--color-border-subtle);
+}
+
+.admin-rail-subnav .settings-nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--space-5);
+  padding: var(--space-px) var(--space-3);
+  margin-left: calc(-1 * var(--border-width));
+  border-left: var(--indicator-width) solid transparent;
+  border-radius: 0;
+  background: none;
+  font-size: var(--text-caption-size);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-muted);
+}
+
+.admin-rail-subnav .settings-nav-link:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  text-decoration: none;
+}
+
+.admin-rail-subnav .settings-nav-link.is-active {
+  border-left-color: var(--color-primary);
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-semibold);
+  background: none;
+}

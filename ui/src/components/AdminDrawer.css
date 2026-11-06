@@ -1,0 +1,79 @@
+/* The admin rail as a phone's drawer (AdminDrawer.tsx). Tokens only. */
+
+.admin-drawer-head {
+  margin: 0 0 var(--space-4);
+}
+
+.admin-drawer-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-height: var(--tap-target);
+  padding: 0 var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.admin-drawer-button:hover {
+  background: var(--color-surface-hover);
+}
+
+.admin-drawer-button:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--space-px);
+}
+
+.modal.admin-drawer {
+  width: min(calc(var(--width-sidebar) + var(--space-8)), 88vw);
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 auto 0 0;
+}
+
+.admin-drawer .admin-drawer-body {
+  height: 100%;
+  max-height: 100dvh;
+  padding: 0;
+  overflow-y: auto;
+  border-radius: 0;
+  background: var(--color-column-bg);
+  box-shadow: var(--shadow-lg);
+  animation: admin-drawer-in var(--duration-fast) var(--ease-default);
+}
+
+.admin-drawer .admin-rail {
+  min-height: 100%;
+}
+
+/* A finger needs more room than a pointer. */
+.admin-drawer .admin-rail-list .nav-item {
+  min-height: var(--tap-target);
+}
+
+.admin-drawer .admin-rail-list--small .nav-item {
+  min-height: var(--control-height-sm);
+}
+
+@keyframes admin-drawer-in {
+  from {
+    transform: translateX(calc(-1 * var(--space-10)));
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-drawer .admin-drawer-body {
+    animation: none;
+  }
+}

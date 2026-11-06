@@ -51,11 +51,12 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
     // The structured document editor leans on the browser's own editing
-    // commands, so it also runs here (pilot readiness 2). Only that spec.
+    // commands, so it also runs here (pilot readiness 2); and the admin rail,
+    // which must fit Safari's window too (pilot readiness 3). Only those specs.
     {
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
-      testMatch: /legalEditor\.spec\.ts/,
+      testMatch: /(legalEditor|adminRail)\.spec\.ts/,
     },
     // Uncomment to add more browsers:
     // {
