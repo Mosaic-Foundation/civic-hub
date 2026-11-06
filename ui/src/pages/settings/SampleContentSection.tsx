@@ -100,7 +100,7 @@ export default function SampleContentSection() {
       ) : summary.processes + (summary.added_in_demo ?? 0) === 0 ? (
         <>
           <p className="form-hint">This hub has no sample content.</p>
-          {summary.refresh?.available && <SampleRefresh onRefreshed={setSummary} />}
+          {summary.refresh?.available && <SampleRefresh auto={summary.refresh.auto} onRefreshed={setSummary} />}
           {message && !message.error && (
             <p className="admin-settings-message" role="status">
               {message.text}
@@ -149,6 +149,7 @@ export default function SampleContentSection() {
 
           {summary.refresh?.available && !confirming && (
             <SampleRefresh
+              auto={summary.refresh.auto}
               onRefreshed={(after) => {
                 setSummary(after);
                 setMessage(null);

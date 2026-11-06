@@ -64,7 +64,7 @@ const HOST_JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
     };
   },
   sample_refresh: async ({ now }) => {
-    const r = await refreshSamples({ now });
+    const r = await refreshSamples({ now, automatic: true });
     return { status: 200, body: r as unknown as Record<string, unknown> };
   },
 };

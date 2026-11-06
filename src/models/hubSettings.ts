@@ -126,6 +126,13 @@ export const KEYS = {
   EMAIL_FROM_ADDRESS: "email.from_address",
   EMAIL_POSTAL_ADDRESS: "email.postal_address",
 
+  // "Keep sample content fresh automatically" (2026-11-05, Adam): "false"
+  // stops the daily sample_refresh job on this hub; unset or "true" lets it
+  // run. Read only on demo and beta hubs (a live hub is never refreshed). Set
+  // in Settings → Sample content, and shown on the console's hub page. The
+  // hub's own "Refresh samples" button still works with it off. Admin-only.
+  SAMPLES_AUTO_REFRESH: "samples.auto_refresh",
+
   BETA_ALLOWLIST: "beta.allowlist",
   BETA_WAITLIST_ENABLED: "beta.waitlist_enabled",
   // NOTE: there is no beta.enabled, beta.demo_mode or beta.demo_bypass_code.

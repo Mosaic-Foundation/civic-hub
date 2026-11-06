@@ -114,6 +114,8 @@ export interface HubDetail {
   plugins: PluginState[];
   admins: string[];
   ai_limits: { defaults: AiLimits; overrides: Partial<AiLimits>; effective: AiLimits };
+  /** The hub admin's "Keep sample content fresh automatically" (2026-11-05). */
+  samples?: { auto_refresh: boolean };
 }
 
 export interface ConsoleConfig {

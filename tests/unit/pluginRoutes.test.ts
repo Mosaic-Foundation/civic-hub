@@ -28,6 +28,7 @@ const BEFORE: string[] = JSON.parse(readFileSync(join(here, "../fixtures/plugins
 const ADDED: Record<string, string> = {
   // Sample content for demo and beta hubs (2026-11-05).
   "POST /admin/hub/sample-content/refresh": "Settings → Sample content: Refresh samples",
+  "POST /admin/hub/sample-content/auto-refresh": "Settings → Sample content: Keep sample content fresh automatically",
   // Pilot readiness 2 (2026-11-02): the home page's "Set up your hub" card.
   "GET /admin/hub/setup-card": "the admin's setup card: its ticks",
   "POST /admin/hub/setup-card": "the admin's setup card: Dismiss and Skip",

@@ -725,6 +725,10 @@ function SamplesSection({ detail }: { detail: HubDetail }) {
         proposal, the conversation) are replaced with a fresh copy. Anything visitors or testers added to those items
         goes with them. Refresh now does the same, and also adds any sample this hub is missing.
       </p>
+      <p className="cx-small">
+        Kept fresh automatically: <strong>{detail.samples?.auto_refresh === false ? "off" : "on"}</strong>. The hub’s
+        admins set this in Settings → Sample content; Refresh now works either way.
+      </p>
       <div className="cx-actions">
         <button
           type="button"

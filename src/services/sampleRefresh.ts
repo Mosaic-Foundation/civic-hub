@@ -29,6 +29,10 @@
 // The button also adds any template the hub does not have (a hub seeded with
 // an older list), and gives an older sample meeting summary its minutes.
 //
+// The daily job also respects the hub's "Keep sample content fresh
+// automatically" (`samples.auto_refresh`, 2026-11-05): on by default, and
+// when its admin turns it off the job skips the hub. The buttons still work.
+//
 // A hub's own admin has the same button in Settings → Sample content
 // (2026-11-05, refreshSamplesAsAdmin): demo and beta hubs, no fresh code, one
 // hub_admin_audit_log row per press. It never puts back a sample this hub's
@@ -37,13 +41,13 @@
 
 import { currentHub, currentHubId } from "../config/hubContext.js";
 import { forHub } from "../db/forHub.js";
-import { refreshesSamples } from "../shared/sampleRefresh.js";
+import { autoRefreshOn, refreshesSamples } from "../shared/sampleRefresh.js";
 import { ValidationError } from "../errors/index.js";
 import { KEYS } from "../models/hubSettings.js";
 import { sampleProcessId } from "../models/sampleContent.js";
 import { hubKindOf } from "../shared/hubKind.js";
 import { isJurisdictionType } from "../shared/jurisdictionType.js";
-import { getSettingSync } from "./hubSettings.js";
+import { getSetting, getSettingSync, setSetting } from "./hubSettings.js";
 import { recordHubAdminAudit } from "./hubAdminAudit.js";
 import { describeJobRun } from "../jobs/describe.js";
 import { recordJobRun } from "./jobRuns.js";
@@ -140,12 +144,18 @@ export async function refreshSamples(
     addMissing?: boolean;
     /** Template keys `addMissing` must not add back (the ones this hub's admins took out). */
     notAdding?: readonly string[];
+    /** The daily job, which a hub can turn off (`samples.auto_refresh`); the buttons are not. */
+    automatic?: boolean;
   } = {},
 ): Promise<SampleRefreshReport> {
   const report: SampleRefreshReport = { replaced: [], added: [], minutes_added: [] };
   const hub = currentHub();
   if (!refreshesSamples(hub?.mode)) {
     report.skipped = `not a demo or beta hub (${hub?.mode ?? "no mode"})`;
+    return report;
+  }
+  if (opts.automatic && !autoRefreshOn(getSettingSync(KEYS.SAMPLES_AUTO_REFRESH))) {
+    report.skipped = "automatic refresh is off for this hub";
     return report;
   }
   const hubId = currentHubId();
@@ -248,4 +258,27 @@ export async function refreshSamplesAsAdmin(actor: string, now: Date = new Date(
   const run = describeJobRun("sample_refresh", { status: 200, body: report as unknown as Record<string, unknown> });
   if (run) await recordJobRun("sample_refresh", now, run, { ...report, trigger: "admin", actor });
   return report;
+}
+
+/**
+ * "Keep sample content fresh automatically", from Settings → Sample content
+ * (2026-11-05). Demo and beta hubs only; recorded in the hub's admin log.
+ */
+export async function setAutoRefresh(actor: string, on: boolean): Promise<boolean> {
+  const hub = currentHub();
+  if (!refreshesSamples(hub?.mode)) {
+    throw new ValidationError(`Samples are kept fresh on demo and beta hubs only; this hub is ${hub?.mode ?? "in no mode"}.`);
+  }
+  const hubId = currentHubId();
+  const before = autoRefreshOn(await getSetting(hubId, KEYS.SAMPLES_AUTO_REFRESH));
+  if (before !== on) {
+    await setSetting(hubId, KEYS.SAMPLES_AUTO_REFRESH, on ? "true" : "false", actor);
+    await recordHubAdminAudit({ actor, action: "sample_content.auto_refresh", before: { on: before }, after: { on } });
+  }
+  return on;
+}
+
+/** The hub's `samples.auto_refresh`, read fresh (not the request's cached settings). */
+export async function autoRefreshSetting(): Promise<boolean> {
+  return autoRefreshOn(await getSetting(currentHubId(), KEYS.SAMPLES_AUTO_REFRESH));
 }

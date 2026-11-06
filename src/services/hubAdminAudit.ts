@@ -22,6 +22,8 @@ export type HubAdminAuditAction =
   // "Refresh samples" pressed in Settings → Sample content (2026-11-05): what
   // was replaced and added, and what it left out because an admin took it out.
   | "sample_content.refresh"
+  // "Keep sample content fresh automatically" switched: { on } before and after.
+  | "sample_content.auto_refresh"
   // The starter word cloud was added and chosen (src/services/starterWordcloud.ts).
   | "wordcloud.starter"
   | "hub.mode"

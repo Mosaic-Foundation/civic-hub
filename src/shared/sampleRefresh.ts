@@ -10,6 +10,15 @@
 
 export const SAMPLE_REFRESH_MODES: readonly string[] = ["demo", "beta"];
 
+/**
+ * Does the daily job refresh this hub's samples, by `samples.auto_refresh`
+ * (2026-11-05)? On unless it is "false", so every demo and beta hub is kept
+ * fresh until its admin says otherwise.
+ */
+export function autoRefreshOn(setting: string | null | undefined): boolean {
+  return setting !== "false";
+}
+
 /** Does a hub in this mode have its samples refreshed? */
 export function refreshesSamples(mode: unknown): boolean {
   return typeof mode === "string" && SAMPLE_REFRESH_MODES.includes(mode);

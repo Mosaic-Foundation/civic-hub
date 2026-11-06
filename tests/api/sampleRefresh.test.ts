@@ -299,7 +299,7 @@ describe("the hub admin's Refresh samples (2026-11-05)", () => {
     await createHub(ADMIN_BETA, { ...placeHub("Refresh Admin Beta Civic Hub"), sample_content: true, mode: "beta" });
     const admin = await mintSession(ADMIN_BETA, ADMIN);
     const before = await call("GET", "/admin/hub/sample-content", host(ADMIN_BETA), undefined, admin);
-    expect(before.body.refresh).toEqual({ available: true });
+    expect(before.body.refresh).toMatchObject({ available: true });
 
     // The open vote is a day from closing: the button replaces it, as the job would.
     const open = await processRow(pid(ADMIN_BETA, "vote_internet"));
@@ -334,7 +334,7 @@ describe("the hub admin's Refresh samples (2026-11-05)", () => {
     expect(live.status).toBe(400);
     expect(live.body.error).toMatch(/demo and beta hubs only/);
     const summary = await call("GET", "/admin/hub/sample-content", host(LIVE), undefined, liveAdmin);
-    expect(summary.body.refresh).toEqual({ available: false });
+    expect(summary.body.refresh).toMatchObject({ available: false });
   });
 
   it("never puts back a sample the admin deleted, though the console's button does", async () => {
@@ -354,13 +354,52 @@ describe("the hub admin's Refresh samples (2026-11-05)", () => {
     expect(console.body.refresh.added).toEqual(["wordcloud_value"]);
   });
 
+  it("lets the admin turn the daily refresh off, which the job then respects, and logs it", async () => {
+    const admin = await mintSession(ADMIN_BETA, ADMIN);
+    const before = await call("GET", "/admin/hub/sample-content", host(ADMIN_BETA), undefined, admin);
+    expect(before.body.refresh.auto).toBe(true);
+    const off = await call("POST", "/admin/hub/sample-content/auto-refresh", host(ADMIN_BETA), { on: false }, admin);
+    expect(off.status, JSON.stringify(off.body)).toBe(200);
+    expect(off.body.summary.refresh).toEqual({ available: true, auto: false });
+    const [log] = (await localRest(
+      `hub_admin_audit_log?select=before,after&hub_id=eq.${ADMIN_BETA}&action=eq.sample_content.auto_refresh`,
+    )) as Row[];
+    expect(log).toMatchObject({ before: { on: true }, after: { on: false } });
+    // The console's card shows it.
+    const detail = await consoleCall("GET", `/control/hubs/${ADMIN_BETA}`, { cookie });
+    expect(detail.body.samples).toEqual({ auto_refresh: false });
+
+    if (cronsEnabled) {
+      const open = await processRow(pid(ADMIN_BETA, "vote_internet"));
+      const soon = new Date(Date.now() + DAY).toISOString();
+      await localRest(`processes?id=eq.${pid(ADMIN_BETA, "vote_internet")}`, {
+        method: "PATCH",
+        body: JSON.stringify({ state: { ...open!.state, voting_closes_at: soon } }),
+      });
+      const job = await runJob(ADMIN_BETA);
+      expect(job.body.hubs[ADMIN_BETA].skipped).toMatch(/automatic refresh is off/);
+      expect((await processRow(pid(ADMIN_BETA, "vote_internet")))?.state.voting_closes_at).toBe(soon);
+      // The button still works with it off.
+      const pressed = await refresh(ADMIN_BETA, admin);
+      expect(pressed.body.refresh.replaced.map((r: Row) => r.key)).toEqual(["vote_internet"]);
+    }
+
+    const on = await call("POST", "/admin/hub/sample-content/auto-refresh", host(ADMIN_BETA), { on: true }, admin);
+    expect(on.body.summary.refresh.auto).toBe(true);
+    expect((await call("POST", "/admin/hub/sample-content/auto-refresh", host(ADMIN_BETA), { on: "yes" }, admin)).status).toBe(400);
+    const resident = await mintSession(ADMIN_BETA, `refresh-resident-${run}@example.test`);
+    expect((await call("POST", "/admin/hub/sample-content/auto-refresh", host(ADMIN_BETA), { on: false }, resident)).status).toBe(403);
+    const liveAdmin = await mintSession(LIVE, ADMIN);
+    expect((await call("POST", "/admin/hub/sample-content/auto-refresh", host(LIVE), { on: false }, liveAdmin)).status).toBe(400);
+  });
+
   it("offers nothing once the admin has removed every sample", async () => {
     const admin = await mintSession(ADMIN_BETA, ADMIN);
     const code = String(100000 + Math.floor(Math.random() * 899999));
     await plantHubCode(ADMIN_BETA, ADMIN, code);
     expect((await call("POST", "/admin/hub/sample-content/remove", host(ADMIN_BETA), { code }, admin)).status).toBe(200);
     const summary = await call("GET", "/admin/hub/sample-content", host(ADMIN_BETA), undefined, admin);
-    expect(summary.body.refresh).toEqual({ available: false });
+    expect(summary.body.refresh).toMatchObject({ available: false });
     const res = await refresh(ADMIN_BETA, admin);
     expect(res.status).toBe(200);
     expect(res.body.refresh.added).toEqual([]);

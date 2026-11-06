@@ -67,6 +67,10 @@ function describe(e: HubAdminLogEntry): string {
   switch (e.action) {
     case "sample_content.remove":
       return "Removed the sample content";
+    case "sample_content.auto_refresh": {
+      const on = (e.after as { on?: unknown } | null)?.on;
+      return on === false ? "Turned off keeping samples fresh automatically" : "Turned on keeping samples fresh automatically";
+    }
     case "sample_content.refresh": {
       const after = e.after as { replaced?: unknown[]; added?: unknown[] } | null;
       const replaced = Array.isArray(after?.replaced) ? after.replaced.length : 0;

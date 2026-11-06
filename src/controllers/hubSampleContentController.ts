@@ -8,13 +8,15 @@
 //   POST /admin/hub/sample-content/refresh       the console's "Refresh samples"
 //                                                 for this hub, demo and beta, no
 //                                                 code (2026-11-05)
+//   POST /admin/hub/sample-content/auto-refresh  { on } "Keep sample content
+//                                                 fresh automatically" (2026-11-05)
 //
 // The same step-up as a mode or roster change (controllers/adminStepUp.ts):
 // removal cannot be undone, and it can take real people's input with it.
 // Graduating out of demo asks the same question through POST /admin/hub/mode
 // (`remove_sample_content`), which calls the same service.
 
-import { NotFoundError, UnauthorizedError } from "../errors/index.js";
+import { NotFoundError, UnauthorizedError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { caller, requireStepUpCode } from "./adminStepUp.js";
 import { auditActor } from "../services/hubAdminAudit.js";
@@ -27,22 +29,28 @@ import {
 import { processDetailPath } from "../processes/registry.js";
 import { currentHub } from "../config/hubContext.js";
 import { refreshesSamples } from "../shared/sampleRefresh.js";
-import { refreshSamplesAsAdmin, samplesTakenOut } from "../services/sampleRefresh.js";
+import { autoRefreshSetting, refreshSamplesAsAdmin, samplesTakenOut, setAutoRefresh } from "../services/sampleRefresh.js";
 import { sampleTemplateTitles } from "../services/sampleTemplates.js";
 import { sampleNames } from "../services/sampleNames.js";
 
 /**
  * The summary, each sample an admin can delete on its own with its page, and
  * whether "Refresh samples" is offered: on demo and beta hubs, unless the
- * admins removed every sample (then it would put back nothing).
+ * admins removed every sample (then it would put back nothing). `auto` is
+ * "Keep sample content fresh automatically", shown beside it.
  */
 async function summaryWithItems() {
-  const [summary, items, out] = await Promise.all([sampleContentSummary(), listSampleItems(), samplesTakenOut()]);
+  const [summary, items, out, auto] = await Promise.all([
+    sampleContentSummary(),
+    listSampleItems(),
+    samplesTakenOut(),
+    autoRefreshSetting(),
+  ]);
   const refreshable = refreshesSamples(currentHub()?.mode) && !(out.all && summary.processes === 0);
   return {
     ...summary,
     items: items.map((i) => ({ ...i, path: processDetailPath(i.type, i.id) })),
-    refresh: { available: refreshable },
+    refresh: { available: refreshable, auto },
   };
 }
 
@@ -82,4 +90,15 @@ export const handleRefreshSamples = route(async (_req, res) => {
   // Titles beside the template keys, filled with this hub's names, so the
   // card says what changed by name (as the console does).
   res.json({ refresh, titles: sampleTemplateTitles(sampleNames()), summary: await summaryWithItems() });
+});
+
+export const handleSetAutoRefresh = route(async (req, res) => {
+  const user = caller(res);
+  if (!user) {
+    throw new UnauthorizedError("Authentication required");
+  }
+  const on = (req.body ?? {}).on;
+  if (typeof on !== "boolean") throw new ValidationError("Say on: true or on: false.");
+  await setAutoRefresh(auditActor(user), on);
+  res.json({ summary: await summaryWithItems() });
 });

@@ -15,7 +15,8 @@ import { CivicError } from "../errors/index.js";
 import { logUnexpected, newRef } from "../http/route.js";
 import { flushErrors } from "../utils/errorTracking.js";
 import { RESERVED_HUB_SLUG_PURPOSES, type HubMode } from "../models/hub.js";
-import { refreshesSamples } from "../shared/sampleRefresh.js";
+import { autoRefreshOn, refreshesSamples } from "../shared/sampleRefresh.js";
+import { KEYS } from "../models/hubSettings.js";
 import { PLUGINS_OWNER_NOTE } from "../shared/settingOwners.js";
 import { PLUGIN_IDS } from "../models/hubSettings.js";
 import { listAudit, listHubAdminAudit, recordAudit } from "./audit.js";
@@ -267,6 +268,9 @@ async function hubDetail(hub: ControlHub) {
     plugins: await hubPlugins(hub.id),
     admins: await hubAdmins(hub.id),
     ai_limits: await hubAiLimits(hub),
+    // "Keep sample content fresh automatically" (2026-11-05): the hub admin's
+    // switch, shown on the Sample content card.
+    samples: { auto_refresh: autoRefreshOn((await fetchHubSettings(hub.id))[KEYS.SAMPLES_AUTO_REFRESH]) },
   };
 }
 
