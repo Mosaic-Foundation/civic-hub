@@ -87,6 +87,27 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Fresh samples on demo and beta hubs (2026-11-06)
+
+- **Unit:** `sampleRefresh.test.ts`: which modes refresh (`refreshesSamples`, `src/shared/sampleRefresh.ts`: demo and
+  beta, never live or anything else) and the floor on a sample vote's endorsements (`sampleSupportThreshold`: five beyond
+  the seeded ones, whatever the hub's threshold). `hubWording.test.ts`: the beta bar's default ends "reset from time to
+  time." only while samples are left. `pluginRoutes.test.ts` lists `POST /admin/hub/sample-content/refresh` and
+  `/auto-refresh`; `parity.json` has the job's new description.
+- **UI (jsdom):** `SampleRefresh.test.tsx`: what a press replaced and added, by title; nothing changed; the server's
+  refusal; the switch saves off and hands back the summary.
+- **API, both modes:** `sampleRefresh.test.ts` adds a beta hub (refreshed like demo), a live hub (the job skips it, the
+  console refuses it), the hub admin's Refresh (no code, one `sample_content.refresh` audit row, 403/401/400 for a
+  resident, signed out and live), a deleted sample that neither the admin's button nor the daily job puts back while the
+  console's button does, the switch (`samples.auto_refresh`: the job skips the hub, the buttons still work, the console's
+  detail shows it), a lost live sample the job seeds again, a hub with no samples the job never seeds, and the sample
+  endorsement vote's threshold of 8 on a hub whose own is 0. The leak harness's skip text names demo and beta.
+- **Rehearsed by hand** on a local Floyd in beta mode: seed, refresh three weeks and two months ahead, the switch, a
+  resident voting, endorsing, commenting and in the conversation; the admin's card. **Not verified:** the console card
+  in a browser.
+
+---
+
 ## Pilot readiness 2: from the invite email to a set-up hub (2026-11-02)
 
 - **Unit:**
@@ -2794,6 +2815,8 @@ Each row tracks a user flow, which layer covers it, and which slice introduced i
 | Admin: manage meeting summaries | | | — | Needs test |
 | Admin: moderation actions | | | — | Needs test |
 | Admin: hub settings | | | — | Needs test |
+| Admin: Refresh samples (Settings → Sample content) | :white_check_mark: | | Fresh samples | jsdom `SampleRefresh.test.tsx`; demo and beta only |
+| Admin: keep sample content fresh automatically | :white_check_mark: | | Fresh samples | `samples.auto_refresh`; the daily job respects it |
 | Admin: post announcement | | | — | Needs test |
 | Admin: create conversation (POST /deliberations) | | | D | Needs test |
 | Admin: start conversation (POST /deliberations/:id/start) | | | D | Needs test |

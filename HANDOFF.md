@@ -4,6 +4,66 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Fresh samples on demo and beta hubs, starting with Floyd — 2026-11-06
+
+**State:**
+- **Dev:** `2c2b597`, pushed to `multi-tenant` and served by dev. No migration. CI, E2E and Smoke (30 of 30) green.
+- **Not on production.** Production is still `ed960b9`. A production release ships all of `origin/multi-tenant`, so it
+  also carries Pilot readiness 2 and its two migrations (below).
+- **Floyd production is untouched.** It has no samples yet. Adam adds them with the button after the release.
+
+**What changed (seven commits):**
+- **One rule** for which hubs have samples refreshed: `refreshesSamples` in `src/shared/sampleRefresh.ts`, which covers
+  demo and beta, never live. The service, the daily `sample_refresh` job, the console route, the console card and
+  Settings all read it.
+- **Beta bar:** while samples are left, the default sentence ends "…and is reset from time to time." A hub with its own
+  `copy.beta_banner` keeps its own words, and so won't say it.
+- **Settings → Sample content → Refresh samples** (`POST /admin/hub/sample-content/refresh`) is for demo and beta hubs.
+  - **No fresh code.** It only touches samples, and the job would replace them anyway.
+  - Each press writes one `sample_content.refresh` row to `hub_admin_audit_log`, plus a job run when something changed.
+  - **It never adds back a sample the hub's admins deleted** (read from the admin log), and it is not offered after they
+    removed them all. The console's button still adds them back.
+- **"Keep sample content fresh automatically"** (`samples.auto_refresh`): unset means on.
+  - Off makes the daily job skip the hub; both buttons still work.
+  - Each change writes a `sample_content.auto_refresh` row to the admin log.
+  - The console's card shows on or off.
+- **A missing live sample is seeded again.** A replacement deletes before it re-seeds, and a seed that threw used to lose
+  the sample for good. It happened twice in the rehearsal.
+  - The job and both buttons now seed it again.
+  - Except: one the admins deleted, anything after a removal of all samples, or a hub with no samples.
+- **Sample endorsement floor:** a sample vote gathering endorsements now needs five endorsements beyond its seeded ones,
+  whatever the hub's threshold (`sampleSupportThreshold`).
+  - Floyd's threshold is 0, so one tester used to open it into a live vote.
+  - Samples already seeded keep their old threshold until they are next replaced.
+
+**Rehearsal (local Floyd in beta mode, not hosted dev):**
+- **Seed:** created 11.
+- **Refresh three weeks ahead:** only the open vote was replaced.
+- **Refresh two months ahead:** the proposal and the conversation were replaced too.
+- **Untouched:** the closed vote and its outcome, the project, the announcements and the meeting summary.
+- **As a resident:** voting, endorsing, commenting and the conversation all work.
+
+**Open, for Adam:**
+- **Feed order on Floyd:** samples are backdated 2–18 days, so Floyd's newer real announcements sit above them. The
+  samples do not lead the feed.
+- **The sample conversation feels canned.**
+  - Statements carry a "Seed" label, which is jargon for a tester.
+  - Opinion Groups stays at 21 participants and 8 statements, whatever a tester does.
+- **Topic overlaps on Floyd:**
+  - the word-cloud sample and the real "What do you love about Floyd?";
+  - the short-term-rentals conversation and the real STR vote `proc_0eb92c8a8c814660`;
+  - the library-hours vote and `proc_b1b6085d5797437c`;
+  - the trail-map project and `proc_861a092e431845a3`.
+  
+  Deleting one sticks.
+- **Help docs** (the public help page) don't mention the beta refresh or the switch yet. The in-app help note does.
+- **Not verified:** the console card in a browser, and the Playwright E2E locally (CI runs it).
+- **Shared checkout:** another session (invite-link refresh: `src/control/inviteRefresh.ts`, migration
+  `20261106120000_invite_link_refreshed.sql`) is editing this checkout, uncommitted. These commits hold none of its
+  files. The local stack was left running for it.
+
+---
+
 ## Pilot readiness 2: from the invite email to a set-up hub — 2026-11-02
 
 **State:**
