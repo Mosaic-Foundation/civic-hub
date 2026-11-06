@@ -18,6 +18,7 @@ import { jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
 import { HUB_KINDS } from "../../../src/shared/hubKind";
 import { AI_LIMIT_FIELDS, type AiLimits } from "../../../src/shared/aiLimits";
+import { refreshesSamples } from "../../../src/shared/sampleRefresh";
 import { href } from "./route";
 import { useStepUp } from "./StepUp";
 import { ModeBadge, StatusBadge } from "./ui";
@@ -108,7 +109,7 @@ export default function HubDetailPage({ id }: { id: string }) {
         <PluginsSection detail={detail} />
         <AdminsSection detail={detail} onSaved={reload} withStepUp={withStepUp} />
         <AiLimitsSection key={JSON.stringify(detail.ai_limits)} detail={detail} onSaved={reload} />
-        {detail.hub.mode === "demo" && !detail.hub.archived_at && <SamplesSection detail={detail} />}
+        {refreshesSamples(detail.hub.mode) && !detail.hub.archived_at && <SamplesSection detail={detail} />}
         <ExportSection detail={detail} onExported={load} withStepUp={withStepUp} />
         <LifecycleSection detail={detail} onSaved={reload} withStepUp={withStepUp} />
       </div>
@@ -703,7 +704,10 @@ function sizeLabel(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** "Refresh samples" (2026-10-07): demo hubs only, so it is not rendered otherwise. */
+/**
+ * "Refresh samples" (2026-10-07): demo and beta hubs (2026-11-05), so it is not
+ * rendered on a live hub. The rule is src/shared/sampleRefresh.ts.
+ */
 function SamplesSection({ detail }: { detail: HubDetail }) {
   const { busy, save, note } = useSave(() => {});
   const [done, setDone] = useState<SampleRefreshReport | null>(null);
@@ -718,8 +722,8 @@ function SamplesSection({ detail }: { detail: HubDetail }) {
       <h2 className="cx-h2">Sample content</h2>
       <p className="cx-muted cx-small">
         Every day, samples that close within three days (the open vote, the vote gathering endorsements, the open
-        proposal, the conversation) are replaced with a fresh copy. Anything visitors added to those items goes with
-        them. Refresh now does the same, and also adds any sample this hub is missing.
+        proposal, the conversation) are replaced with a fresh copy. Anything visitors or testers added to those items
+        goes with them. Refresh now does the same, and also adds any sample this hub is missing.
       </p>
       <div className="cx-actions">
         <button
