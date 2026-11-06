@@ -408,9 +408,9 @@ export default function CreateForm({
         </fieldset>
 
         <div className="st-demo-note">
-          <strong>Your hub starts as a demo.</strong> Sample content shows what it can do, visitors can sign in with any
-          six digits, and no email goes to them. When you're ready, remove the samples and move it to beta in its
-          Hub settings.
+          <strong>Your hub starts as a demo.</strong> Sample content shows what it can do; visitors can sign in with any
+          six-digit code, and no email goes to them. When you're ready, remove the samples and move it to beta in Hub
+          settings.
         </div>
 
         {error && (

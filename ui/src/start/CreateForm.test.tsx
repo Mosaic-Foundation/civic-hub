@@ -188,4 +188,11 @@ describe("the creation form and form fill (pilot readiness 3)", () => {
     expect(screen.getByLabelText(/^Hub name/).getAttribute("placeholder") ?? "").not.toContain("Alder");
     expect(screen.queryByLabelText("Place name")).toBeNull();
   });
+
+  it("says what a demo is in Adam's words", () => {
+    form();
+    expect(document.querySelector(".st-demo-note")?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "Your hub starts as a demo. Sample content shows what it can do; visitors can sign in with any six-digit code, and no email goes to them. When you're ready, remove the samples and move it to beta in Hub settings.",
+    );
+  });
 });
