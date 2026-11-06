@@ -180,7 +180,7 @@ function describeVoteClose(b: Body): JobRunDescription | null {
 
 /**
  * The sample refresh (2026-10-07): a row only when it replaced or added
- * something. A hub that is not in demo, or whose samples are all current,
+ * something. A live hub (never refreshed), or one whose samples are all current,
  * records nothing.
  */
 function describeSampleRefresh(b: Body): JobRunDescription | null {

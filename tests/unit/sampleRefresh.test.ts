@@ -7,6 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { SAMPLE_TEMPLATES, templatesFor, type SampleTemplate } from "../../src/services/sampleTemplates.js";
 import { REFRESH_WINDOW_DAYS, refreshReason } from "../../src/services/sampleRefresh.js";
+import { refreshesSamples, SAMPLE_REFRESH_MODES } from "../../src/shared/sampleRefresh.js";
 import { describeJobRun } from "../../src/jobs/describe.js";
 import { codeOfConductVerdict } from "../../src/services/codeOfConduct.js";
 import { CHECK_UNAVAILABLE_RESULT } from "../../src/modules/civic.assistant/index.js";
@@ -69,6 +70,23 @@ describe("samples for every kind of hub", () => {
   });
 });
 
+describe("which hubs have their samples refreshed (2026-11-05)", () => {
+  it("refreshes beta hubs", () => {
+    expect(refreshesSamples("beta")).toBe(true);
+  });
+  it("leaves demo hubs as they were", () => {
+    expect(refreshesSamples("demo")).toBe(true);
+  });
+  it("skips live hubs, and anything that is not a mode", () => {
+    expect(refreshesSamples("live")).toBe(false);
+    expect(refreshesSamples(undefined)).toBe(false);
+    expect(refreshesSamples("archived")).toBe(false);
+  });
+  it("keeps the rule in one list", () => {
+    expect([...SAMPLE_REFRESH_MODES].sort()).toEqual(["beta", "demo"]);
+  });
+});
+
 describe("when a live sample is replaced", () => {
   const now = new Date("2026-10-07T12:00:00Z");
   const inDays = (d: number) => new Date(now.getTime() + d * DAY).toISOString();
@@ -108,8 +126,8 @@ describe("when a live sample is replaced", () => {
 describe("the sample refresh's run log", () => {
   const outcome = (body: Record<string, unknown>) => ({ status: 200, body });
 
-  it("records nothing for a hub that is not a demo, or with nothing to do", () => {
-    expect(describeJobRun("sample_refresh", outcome({ skipped: "not a demo hub (live)", replaced: [], added: [], minutes_added: [] }))).toBeNull();
+  it("records nothing for a live hub, or with nothing to do", () => {
+    expect(describeJobRun("sample_refresh", outcome({ skipped: "not a demo or beta hub (live)", replaced: [], added: [], minutes_added: [] }))).toBeNull();
     expect(describeJobRun("sample_refresh", outcome({ replaced: [], added: [], minutes_added: [] }))).toBeNull();
   });
 

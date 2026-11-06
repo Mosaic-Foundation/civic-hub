@@ -3,7 +3,7 @@
 //
 // A sample's deadlines are fixed when it is seeded, so a demo hub goes stale:
 // the open vote closes, the proposal's window ends, the conversation stops.
-// A demo hub must always show an open vote, a vote gathering endorsements, an
+// A demo or beta hub must always show an open vote, a vote gathering endorsements, an
 // open proposal and an active conversation (and the closed vote with its
 // published outcome, which never goes stale). So, once a day (the
 // `sample_refresh` job, src/jobs/registry.ts) and when the operator presses
@@ -13,21 +13,25 @@
 //     has already left the phase it is there to show (the endorsement vote an
 //     evaluator's endorsement opened), is REPLACED: deleted with everything
 //     attached (visitors' input on it too; the demo bar says so) and seeded
-//     again from its template under the same id, so links to it still work;
+//     again from its template under the same id, so links to it still work
+//     (testers' input on a beta hub's sample goes the same way; Adam accepted
+//     this, 2026-11-05);
 //   - deadlines are never moved in place: that would fight the vote lifecycle
 //     (the read-as-closed deadline, the hourly close, its events);
 //   - the closed vote and its outcome, the project, the announcements, the
 //     meeting summary and the word cloud are left alone;
 //   - visitors' own items (`added_in_demo`) are never touched.
 //
-// Demo hubs only: on beta or live it does nothing. No hub_admin_audit_log rows
-// (Adam): the job's job_runs row is the record.
+// Demo and beta hubs only (refreshesSamples, src/shared/sampleRefresh.ts): on a live hub
+// it does nothing, since input there is real. No hub_admin_audit_log rows for
+// the job or the console (Adam): the job's job_runs row is the record.
 //
 // The button also adds any template the hub does not have (a hub seeded with
 // an older list), and gives an older sample meeting summary its minutes.
 
 import { currentHub, currentHubId } from "../config/hubContext.js";
 import { forHub } from "../db/forHub.js";
+import { refreshesSamples } from "../shared/sampleRefresh.js";
 import { KEYS } from "../models/hubSettings.js";
 import { sampleProcessId } from "../models/sampleContent.js";
 import { hubKindOf } from "../shared/hubKind.js";
@@ -66,7 +70,7 @@ interface LiveRow {
   state: Record<string, unknown> | null;
 }
 
-/** The live samples a demo hub must keep showing: what each is there to show. */
+/** The live samples a hub must keep showing: what each is there to show. */
 function liveTemplates(templates: SampleTemplate[]): SampleTemplate[] {
   return templates.filter(
     (t) =>
@@ -123,8 +127,8 @@ function hubTemplates(): SampleTemplate[] {
 export async function refreshSamples(opts: { now?: Date; addMissing?: boolean } = {}): Promise<SampleRefreshReport> {
   const report: SampleRefreshReport = { replaced: [], added: [], minutes_added: [] };
   const hub = currentHub();
-  if (hub?.mode !== "demo") {
-    report.skipped = `not a demo hub (${hub?.mode ?? "no mode"})`;
+  if (!refreshesSamples(hub?.mode)) {
+    report.skipped = `not a demo or beta hub (${hub?.mode ?? "no mode"})`;
     return report;
   }
   const hubId = currentHubId();

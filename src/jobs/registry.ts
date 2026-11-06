@@ -134,7 +134,7 @@ const HOST_JOBS: readonly JobSpec[] = [
     plugin: null,
     path: "/sample-refresh/run",
     schedule: "45 6 * * *",
-    description: "Replace demo hubs' live samples near their deadline (demo hubs only)",
+    description: "Replace demo and beta hubs' live samples near their deadline (never live hubs)",
   },
   {
     id: "hub_exports_sweep",

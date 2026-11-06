@@ -1,4 +1,4 @@
-// Demo hubs stay current, for every kind, and a visitor's submission goes
+// Demo and beta hubs stay current, for every kind, and a visitor's submission goes
 // live (2026-10-07, session 3b; review issue #9, R18, R25, R46, issue #7).
 //
 // Through the paths an operator and a visitor use: hubs made by the console's
@@ -228,7 +228,7 @@ describe("the daily sample refresh", () => {
     expect(audit.map((a) => a.action)).not.toContain("sample_refresh");
   });
 
-  it("never touches a beta or live hub", async (ctx) => {
+  it("refreshes a beta hub's samples the same way (2026-11-05)", async (ctx) => {
     if (!cronsEnabled) return ctx.skip();
     const open = await processRow(pid(BETA, "vote_internet"));
     const soon = new Date(Date.now() + DAY).toISOString();
@@ -238,9 +238,21 @@ describe("the daily sample refresh", () => {
     });
     const res = await runJob(BETA);
     expect(res.status).toBe(200);
-    expect(res.body.hubs[BETA].skipped).toMatch(/not a demo hub/);
-    expect((await processRow(pid(BETA, "vote_internet")))?.state.voting_closes_at).toBe(soon);
-    expect((await localRest(`job_runs?select=id&hub_id=eq.${BETA}&job_id=eq.sample_refresh`)) as Row[]).toHaveLength(0);
+    expect(res.body.hubs[BETA].skipped).toBeUndefined();
+    expect(res.body.hubs[BETA].replaced.map((r: Row) => r.key)).toEqual(["vote_internet"]);
+    const after = await processRow(pid(BETA, "vote_internet"));
+    expect(after?.status).toBe("active");
+    expect(new Date(after!.state.voting_closes_at).getTime()).toBeGreaterThan(Date.now() + 3 * DAY);
+    // The closed vote is a completed example and stays.
+    expect((await processRow(pid(BETA, "vote_library_hours")))?.status).toBe("finalized");
+  });
+
+  it("never touches a live hub", async (ctx) => {
+    if (!cronsEnabled) return ctx.skip();
+    const res = await runJob(LIVE);
+    expect(res.status).toBe(200);
+    expect(res.body.hubs[LIVE].skipped).toMatch(/not a demo or beta hub \(live\)/);
+    expect((await localRest(`job_runs?select=id&hub_id=eq.${LIVE}&job_id=eq.sample_refresh`)) as Row[]).toHaveLength(0);
   });
 });
 
@@ -270,10 +282,10 @@ describe("the console's Refresh samples", () => {
     expect(runs.length).toBe(2);
   });
 
-  it("refuses a hub that is not a demo", async () => {
+  it("refuses a live hub", async () => {
     const res = await consoleCall("POST", `/control/hubs/${LIVE}/samples/refresh`, { cookie, body: {} });
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/demo hubs only/);
+    expect(res.body.error).toMatch(/demo and beta hubs only/);
     expect((await localRest(`processes?select=id&hub_id=eq.${LIVE}&is_sample=eq.true`)) as Row[]).toHaveLength(0);
   });
 });

@@ -15,6 +15,7 @@ import { CivicError } from "../errors/index.js";
 import { logUnexpected, newRef } from "../http/route.js";
 import { flushErrors } from "../utils/errorTracking.js";
 import { RESERVED_HUB_SLUG_PURPOSES, type HubMode } from "../models/hub.js";
+import { refreshesSamples } from "../shared/sampleRefresh.js";
 import { PLUGINS_OWNER_NOTE } from "../shared/settingOwners.js";
 import { PLUGIN_IDS } from "../models/hubSettings.js";
 import { listAudit, listHubAdminAudit, recordAudit } from "./audit.js";
@@ -535,13 +536,13 @@ export function controlRouter(): Router {
     res.json({ ...(await hubDetail(hub)), invites, message: describeInvites(invites) });
   }));
 
-  // Demo hubs only: a beta or live hub never gets samples back.
+  // Demo and beta hubs (refreshesSamples): a live hub never gets samples back.
   r.post("/control/hubs/:id/samples/refresh", route(async (req, res) => {
     const hub = await loadHub(req, res);
     if (!hub) return;
     if (hub.archived_at) throw new ControlInputError("This hub is archived.");
-    if (hub.mode !== "demo") {
-      throw new ControlInputError("Samples are refreshed on demo hubs only; this hub is in " + hub.mode + " mode.");
+    if (!refreshesSamples(hub.mode)) {
+      throw new ControlInputError("Samples are refreshed on demo and beta hubs only; this hub is in " + hub.mode + " mode.");
     }
     // Titles beside ids, so the console names what it added (3b follow-up).
     res.json(await refreshSamplesInHub(hub.id));
