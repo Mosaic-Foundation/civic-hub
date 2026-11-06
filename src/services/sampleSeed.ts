@@ -198,6 +198,22 @@ async function seedInScope(opts: { dryRun?: boolean; now?: Date; only?: readonly
   return report;
 }
 
+/**
+ * Endorsements a tester must add, beyond the seeded ones, before a sample vote
+ * gathering endorsements opens (Adam, 2026-11-06): one tester's endorsement
+ * must not open it into a live vote by accident.
+ */
+export const SAMPLE_ENDORSEMENT_FLOOR = 5;
+
+/**
+ * A sample vote's endorsement threshold: the hub's, but never fewer than
+ * SAMPLE_ENDORSEMENT_FLOOR beyond its seeded endorsers, whatever the hub's
+ * threshold (a hub's may be 0). Pure.
+ */
+export function sampleSupportThreshold(hubThreshold: number, seededEndorsers: number): number {
+  return Math.max(hubThreshold, seededEndorsers + SAMPLE_ENDORSEMENT_FLOOR);
+}
+
 class SeedRun {
   private readonly db: HubDb;
 
@@ -353,7 +369,7 @@ class SeedRun {
   private async seedVote(t: SampleVote): Promise<void> {
     const author = this.user(t.by);
     const options = t.options.map((o) => this.fill(o));
-    const threshold = Math.max(await getSupportThreshold(this.hubId), (t.endorsed_by?.length ?? 0) + 1);
+    const threshold = sampleSupportThreshold(await getSupportThreshold(this.hubId), t.endorsed_by?.length ?? 0);
     const p = await this.create(t, {
       title: this.fill(t.title),
       description: this.fill(t.description),

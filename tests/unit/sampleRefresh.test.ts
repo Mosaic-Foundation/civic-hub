@@ -7,6 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { SAMPLE_TEMPLATES, templatesFor, type SampleTemplate } from "../../src/services/sampleTemplates.js";
 import { REFRESH_WINDOW_DAYS, refreshReason } from "../../src/services/sampleRefresh.js";
+import { SAMPLE_ENDORSEMENT_FLOOR, sampleSupportThreshold } from "../../src/services/sampleSeed.js";
 import { refreshesSamples, SAMPLE_REFRESH_MODES } from "../../src/shared/sampleRefresh.js";
 import { describeJobRun } from "../../src/jobs/describe.js";
 import { codeOfConductVerdict } from "../../src/services/codeOfConduct.js";
@@ -171,5 +172,15 @@ describe("the Code of Conduct gate for demo publishing", () => {
     // An old outage is tried again; the run that just found it down fails open.
     expect(status({ last_review_result: [{ ...CHECK_UNAVAILABLE_RESULT }], coc_checked_hash: H })).toBe("unchecked");
     expect(status({ last_review_result: [{ ...CHECK_UNAVAILABLE_RESULT }], coc_checked_hash: H }, H, true)).toBe("unavailable");
+  });
+});
+
+describe("a sample vote gathering endorsements (2026-11-06)", () => {
+  it("needs five endorsements beyond its seeded ones, whatever the hub's threshold", () => {
+    expect(SAMPLE_ENDORSEMENT_FLOOR).toBe(5);
+    expect(sampleSupportThreshold(0, 3)).toBe(8);
+    expect(sampleSupportThreshold(1, 3)).toBe(8);
+    expect(sampleSupportThreshold(20, 3)).toBe(20);
+    expect(sampleSupportThreshold(0, 0)).toBe(5);
   });
 });

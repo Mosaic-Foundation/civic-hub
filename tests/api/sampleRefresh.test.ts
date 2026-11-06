@@ -192,6 +192,9 @@ describe("the daily sample refresh", () => {
     const [proposal] = (await localRest(`proposals?select=closes_at&id=eq.${PROPOSAL()}`)) as Row[];
     expect(new Date(proposal.closes_at).getTime()).toBeGreaterThan(Date.now() + 3 * DAY);
     expect((await processRow(ENDORSING()))?.status).toBe("proposed");
+    // Five endorsements beyond its three seeded ones, though the hub's
+    // threshold is 0 (2026-11-06): one tester's cannot open it.
+    expect((await processRow(ENDORSING()))?.state.config.support_threshold).toBe(8);
   });
 
   it("takes the visitor's input on a replaced sample with it", async (ctx) => {
