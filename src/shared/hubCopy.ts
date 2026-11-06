@@ -133,11 +133,13 @@ export function defaultIntroBody(ctx: HubCopyContext): string {
 /**
  * The beta bar when the hub has written none (`copy.beta_banner`). It says
  * the content is sample content only while some is left (review R45): after
- * removal that sentence would be false.
+ * removal that sentence would be false. Samples on a beta hub are refreshed
+ * like a demo hub's (2026-11-05), taking a tester's input on a replaced one
+ * with them, so it ends the way the demo bar does: "reset from time to time".
  */
 export function defaultBetaBanner(ctx: HubCopyContext & { hasSamples: boolean }): string {
   const lead = `You're browsing the ${ctx.hubName} beta.`;
   return ctx.hasSamples
-    ? `${lead} Content marked Sample is illustrative, not real community input.`
+    ? `${lead} Content marked Sample is illustrative, not real community input, and is reset from time to time.`
     : `${lead} It's early, and things will change as we build it with you.`;
 }

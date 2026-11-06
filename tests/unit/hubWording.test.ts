@@ -72,6 +72,14 @@ function hubRow(c: Case): Hub {
   } as Hub;
 }
 
+describe("the beta bar's default sentence (2026-11-05)", () => {
+  it("tells testers that samples are reset, in the demo bar's words, only while samples are left", () => {
+    const c = CASES[0];
+    expect(defaultBetaBanner({ ...ctx(c), hasSamples: true })).toMatch(/reset from time to time\.$/);
+    expect(defaultBetaBanner({ ...ctx(c), hasSamples: false })).not.toMatch(/reset/);
+  });
+});
+
 describe.each(CASES)("a $label hub's own words", (c) => {
   it("welcome strip, tagline, intro and beta bar carry no placeholder or other kind's wording", () => {
     const texts = [
