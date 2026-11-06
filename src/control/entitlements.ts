@@ -23,6 +23,7 @@ import { createHash, randomInt } from "node:crypto";
 import { getDb } from "../db/client.js";
 import { randomToken, sha256Hex } from "../utils/hash.js";
 import { generateId } from "../utils/id.js";
+import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
 
 /** The kinds of entitlement. Checked here, not by a database constraint. */
 export const ENTITLEMENT_KINDS = ["hub.create"] as const;
@@ -255,25 +256,116 @@ export async function checkInviteCode(raw: unknown, kind: EntitlementKind = "hub
 
 // --- An emailed invite's link (pilot readiness 2, 2026-11-02) ------------------
 
-/** The one answer for every link that cannot be used: it says where to go next. */
-export const INVITE_LINK_REFUSED =
-  "That link has been used or has expired. If your invite is still good, enter the code from the same email here. We'll then email you a sign-in code.";
+/** The one answer for every link that cannot be used; the start page adds what to do next. */
+export const INVITE_LINK_REFUSED = "That link has been used or has expired.";
+
+/** How long an emailed link works (Adam, 2026-11-06): seven days, never past the invite's end. */
+export const INVITE_LINK_DAYS = 7;
+
+/** When a link minted now stops working. */
+export function inviteLinkExpiry(entitlementExpiresAt: string, now = Date.now()): string {
+  return new Date(Math.min(now + INVITE_LINK_DAYS * 86_400_000, Date.parse(entitlementExpiresAt))).toISOString();
+}
 
 /**
- * A link for one email of this invite, bound to the address it goes to and
- * ending with the code. The token is shown to the mail only and stored hashed.
- * Each send has its own, so one address's click doesn't spend another's.
+ * A link for one email of this invite, bound to the address it goes to. The
+ * token is shown to the mail only and stored hashed. Each send has its own, so
+ * one address's click doesn't spend another's. `refreshed` marks one the
+ * invitee asked for from the start page, which the rate limit counts.
  */
-export async function createInviteLink(entitlement: Pick<EntitlementRow, "id" | "expires_at">, email: string): Promise<string> {
+export async function createInviteLink(
+  entitlement: Pick<EntitlementRow, "id" | "expires_at">,
+  email: string,
+  opts: { refreshed?: boolean } = {},
+): Promise<{ token: string; expiresAt: string }> {
   const token = randomToken();
+  const expiresAt = inviteLinkExpiry(entitlement.expires_at);
   const { error } = await getDb().from("entitlement_links").insert({
     token_hash: sha256Hex(token),
     entitlement_id: entitlement.id,
     email,
-    expires_at: entitlement.expires_at,
+    expires_at: expiresAt,
+    refreshed: opts.refreshed ?? false,
   });
   if (error) throw new Error(`entitlement_links write failed: ${error.message}`);
-  return token;
+  return { token, expiresAt };
+}
+
+/**
+ * What a link that cannot be followed means, for the start page to say
+ * (pilot readiness 3):
+ *   unknown   no such link;
+ *   good      it still works;
+ *   spent     followed once already, and the invite is still good;
+ *   expired   past its seven days, and the invite is still good;
+ *   ended     the invite was revoked or has passed its end date;
+ *   redeemed  the invite made a hub; `hub_id` names it when known.
+ * Only someone holding the link can ask, and they received the email.
+ */
+export type InviteLinkState = "unknown" | "good" | "spent" | "expired" | "ended" | "redeemed";
+
+export interface InviteLinkLookup {
+  state: InviteLinkState;
+  email: string | null;
+  entitlement: EntitlementRow | null;
+  hub_id: string | null;
+}
+
+export async function inviteLinkState(raw: unknown, now = Date.now()): Promise<InviteLinkLookup> {
+  const none: InviteLinkLookup = { state: "unknown", email: null, entitlement: null, hub_id: null };
+  if (typeof raw !== "string" || !raw || raw.length > 128) return none;
+  const { data, error } = await getDb()
+    .from("entitlement_links")
+    .select("entitlement_id, email, expires_at, spent_at")
+    .eq("token_hash", sha256Hex(raw))
+    .maybeSingle();
+  if (error) throw new Error(`entitlement_links read failed: ${error.message}`);
+  const link = data as { entitlement_id: string; email: string; expires_at: string; spent_at: string | null } | null;
+  if (!link) return none;
+  const entitlement = await getEntitlement(link.entitlement_id);
+  if (!entitlement) return none;
+  const found = { email: link.email, entitlement, hub_id: null };
+  const status = entitlementStatus(entitlement, now);
+  if (status === "used") {
+    const { data: made, error: madeErr } = await getDb()
+      .from("entitlement_redemptions")
+      .select("created_hub_id")
+      .eq("entitlement_id", entitlement.id)
+      .not("created_hub_id", "is", null)
+      .order("at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (madeErr) throw new Error(`entitlement_redemptions read failed: ${madeErr.message}`);
+    return { ...found, state: "redeemed", hub_id: (made as { created_hub_id: string } | null)?.created_hub_id ?? null };
+  }
+  if (status !== "unused") return { ...found, state: "ended" };
+  if (link.spent_at) return { ...found, state: "spent" };
+  if (Date.parse(link.expires_at) <= now) return { ...found, state: "expired" };
+  return { ...found, state: "good" };
+}
+
+/** The rate limit on fresh links (Adam, 2026-11-06), per invite. */
+export const FRESH_LINK_PER_MINUTE = 1;
+export const FRESH_LINK_PER_DAY = 3;
+export const FRESH_LINK_TOO_SOON = "A fresh link was just sent. Check your email, or ask again in a minute.";
+export const FRESH_LINK_DAILY_LIMIT = `Three fresh links have been sent today. Use the newest one, wait until tomorrow, or write to ${PLATFORM_CONTACT_EMAIL}.`;
+
+/**
+ * May this invite have another fresh link now? Throws, with the words to show,
+ * when it may not. Counts only links the invitee asked for.
+ */
+export async function checkFreshLinkLimit(entitlementId: string, now = Date.now()): Promise<void> {
+  const dayAgo = new Date(now - 86_400_000).toISOString();
+  const { data, error } = await getDb()
+    .from("entitlement_links")
+    .select("created_at")
+    .eq("entitlement_id", entitlementId)
+    .eq("refreshed", true)
+    .gt("created_at", dayAgo);
+  if (error) throw new Error(`entitlement_links read failed: ${error.message}`);
+  const times = ((data ?? []) as Array<{ created_at: string }>).map((r) => Date.parse(r.created_at));
+  if (times.filter((t) => t > now - 60_000).length >= FRESH_LINK_PER_MINUTE) throw new EntitlementError(FRESH_LINK_TOO_SOON, 429);
+  if (times.length >= FRESH_LINK_PER_DAY) throw new EntitlementError(FRESH_LINK_DAILY_LIMIT, 429);
 }
 
 /**

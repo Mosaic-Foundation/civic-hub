@@ -652,8 +652,8 @@ export function controlRouter(): Router {
     if (!host) throw new ControlInputError("No start page is configured on this deployment, so the code cannot be used yet.", 409);
     const entitlement = await checkInviteCode(code);
     if (entitlement.id !== String(req.params.id)) throw new EntitlementError(INVITE_REFUSED, 403);
-    const linkToken = await createInviteLink(entitlement, email);
-    const result = await sendEmail({ to: email, ...renderInviteEmail({ startHost: host, code, linkToken, email, expiresAt: entitlement.expires_at }) });
+    const link = await createInviteLink(entitlement, email);
+    const result = await sendEmail({ to: email, ...renderInviteEmail({ startHost: host, linkToken: link.token, email, expiresAt: link.expiresAt }) });
     if (!result.sent) {
       console.warn(`[control] invite email NOT sent (${unsentReason(result)}).`);
       // As the other flows: with no mailer at all (local development) it counts as sent.

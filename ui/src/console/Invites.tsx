@@ -88,7 +88,7 @@ function Minted({
             </span>
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.org" />
             <small className="cx-muted">
-              The email's link signs them in as that address, with no second code. A code typed by hand still asks for one.
+              The email carries only a link, which signs them in as that address and works for seven days. If it is used or runs out, the start page sends them a fresh one.
             </small>
           </label>
           <button className="cx-btn" disabled={sending || !email.trim()}>
@@ -239,7 +239,7 @@ export default function Invites() {
                 Email it to <em>optional</em>
               </span>
               <input type="email" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="name@example.org" />
-              <small className="cx-muted">We send the link and the code. The address goes in the audit log.</small>
+              <small className="cx-muted">We send a link only, which signs them in as that address. The address goes in the audit log.</small>
             </label>
           )}
           <button className="cx-btn cx-btn-primary" disabled={busy || !list}>

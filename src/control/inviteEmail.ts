@@ -4,10 +4,14 @@
 // guard does not apply.
 //
 // Pilot readiness 2 (2026-11-02): the link signs the person in as the address
-// it was sent to, so it asks for no second code. The code is there as text, for
-// a link already used or a person other than the addressee: typed by hand, it
-// keeps the emailed sign-in code, because the system doesn't know who holds it.
-// The email says which is which.
+// it was sent to, so it asks for no second code.
+//
+// Pilot readiness 3 (Adam, 2026-11-06): the email carries only the link. A
+// link used or past its date is mended on the start page ("Send me a fresh
+// link"), so the code and the two paragraphs about it are gone. The date is
+// the link's own (seven days, never past the invite's end). An invite the
+// console mints with no address is still a code, copied from the screen
+// (shared/hubInvite.ts inviteMessage).
 
 import { INVITE_SUBJECT, inviteSignInLink } from "../shared/hubInvite.js";
 import { PLATFORM_CONTACT_EMAIL, PLATFORM_SETUP_GUIDE_URL } from "../shared/platform.js";
@@ -17,22 +21,20 @@ function escapeHtml(s: string): string {
 }
 
 /** The invite, rendered. Pure, so a test reads exactly what is sent. */
-export function renderInviteEmail(input: { startHost: string; code: string; linkToken: string; email: string; expiresAt: string }): { subject: string; text: string; html: string } {
-  const { startHost, code, email } = input;
+export function renderInviteEmail(input: { startHost: string; linkToken: string; email: string; expiresAt: string }): { subject: string; text: string; html: string } {
+  const { startHost, email } = input;
   const link = inviteSignInLink(startHost, input.linkToken);
   const until = new Date(input.expiresAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+  const intro =
+    "You're invited to create a Civic Hub: a place for your community's votes, proposals and conversations. You'll be its first admin, and it starts as a demo you can look around in and make your own.";
   const text = [
     "Hello,",
     "",
-    "You're invited to create a Civic Hub: a place for your community's votes, proposals and conversations. You'll be its first admin, and it starts as a demo you can look around in and make your own.",
+    intro,
     "",
     `Create your hub: ${link}`,
     "",
-    `This link signs you in as ${email}, so you won't need another code. It works once, until ${until}.`,
-    "",
-    `If the link has been used, or someone else is creating the hub, go to https://${startHost} and enter this code: ${code}`,
-    "",
-    `Because anyone could type that code, we'll then email a six-digit sign-in code to the address you give. The code works once, until ${until}.`,
+    `This link signs you in as ${email} and works until ${until}.`,
     "",
     `The guide "Set up your hub" walks through what comes next: ${PLATFORM_SETUP_GUIDE_URL}`,
     "",
@@ -41,11 +43,9 @@ export function renderInviteEmail(input: { startHost: string; code: string; link
   const a = (href: string, label = href) => `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>`;
   const html = [
     `<p>Hello,</p>`,
-    `<p>You're invited to create a Civic Hub: a place for your community's votes, proposals and conversations. You'll be its first admin, and it starts as a demo you can look around in and make your own.</p>`,
+    `<p>${escapeHtml(intro)}</p>`,
     `<p><strong>${a(link, "Create your hub")}</strong></p>`,
-    `<p>This link signs you in as ${escapeHtml(email)}, so you won't need another code. It works once, until ${escapeHtml(until)}.</p>`,
-    `<p>If the link has been used, or someone else is creating the hub, go to ${a(`https://${startHost}`)} and enter this code: <strong>${escapeHtml(code)}</strong></p>`,
-    `<p>Because anyone could type that code, we'll then email a six-digit sign-in code to the address you give. The code works once, until ${escapeHtml(until)}.</p>`,
+    `<p>This link signs you in as ${escapeHtml(email)} and works until ${escapeHtml(until)}.</p>`,
     `<p>The guide ${a(PLATFORM_SETUP_GUIDE_URL, "Set up your hub")} walks through what comes next.</p>`,
     `<p>Questions? Write to ${a(`mailto:${PLATFORM_CONTACT_EMAIL}`, PLATFORM_CONTACT_EMAIL)}.</p>`,
   ].join("\n");

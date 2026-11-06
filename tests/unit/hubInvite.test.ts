@@ -37,30 +37,37 @@ describe("the emailed invite's sign-in link", () => {
   });
 });
 
-describe("the invite email", () => {
+describe("the invite email (pilot readiness 3: the link only)", () => {
   const mail = renderInviteEmail({
     startHost: "start.example.test",
-    code: CODE,
     linkToken: "tok123",
     email: "sam@example.test",
     expiresAt: "2026-11-13T12:00:00Z",
   });
 
-  it("has the sign-in link, the code as text and the end date, both ways", () => {
+  it("has the link, the address, the link's date, the guide and the questions line, both ways", () => {
     expect(mail.subject).toBe("Here's your invite to create a Civic Hub");
     for (const body of [mail.text, mail.html]) {
       expect(body).toContain(inviteSignInLink("start.example.test", "tok123"));
-      expect(body).not.toContain(inviteLink("start.example.test", CODE));
-      expect(body).toContain(CODE);
-      expect(body).toContain("November 13, 2026");
+      expect(body).toContain("Create your hub");
+      expect(body).toContain("This link signs you in as sam@example.test and works until November 13, 2026.");
       expect(body).toContain("https://docs.civic.social/start/setup");
+      expect(body).toContain("Questions? Write to");
     }
   });
 
-  it("says which way needs a second code", () => {
+  it("carries no code and no words about one", () => {
     for (const body of [mail.text, mail.html]) {
-      expect(body).toContain("signs you in as sam@example.test, so you won't need another code");
-      expect(body).toContain("we'll then email a six-digit sign-in code");
+      expect(body).not.toMatch(/code/i);
+      expect(body).not.toMatch(/[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}/);
+      expect(body).not.toContain("#code=");
     }
+  });
+});
+
+describe("the code a console copies, for an invite minted without an address", () => {
+  it("still carries the code and its link", () => {
+    expect(inviteMessage("start.example.test", CODE)).toContain(`enter this code: ${CODE}`);
+    expect(inviteMessage("start.example.test", CODE)).toContain(inviteLink("start.example.test", CODE));
   });
 });
