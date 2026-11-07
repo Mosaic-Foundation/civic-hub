@@ -24,43 +24,39 @@
   line-height: var(--line-height-normal);
 }
 
-.setup-card-steps {
-  list-style: none;
-  margin: 0 0 var(--space-md);
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.setup-card-step {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
+.setup-card-count {
+  margin: 0 0 var(--space-xs);
   font-size: var(--font-size-sm);
+  color: var(--color-text);
 }
 
-.setup-card-tick {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--space-lg);
-  height: var(--space-lg);
-  border: 1px solid var(--color-border-strong);
+/* How far along: the checklist's done steps out of all of them. */
+.setup-card-meter {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  height: var(--space-sm);
+  margin: 0 0 var(--space-md);
+  appearance: none;
+  border: 0;
   border-radius: var(--radius-pill);
   background: var(--color-surface);
-  font-weight: 600;
+  overflow: hidden;
 }
 
-.setup-card-step.is-done .setup-card-tick {
+.setup-card-meter::-webkit-progress-bar {
+  background: var(--color-surface);
+  border-radius: var(--radius-pill);
+}
+
+.setup-card-meter::-webkit-progress-value {
   background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-text);
+  border-radius: var(--radius-pill);
 }
 
-.setup-card-note {
-  color: var(--color-text-muted);
+.setup-card-meter::-moz-progress-bar {
+  background: var(--color-primary);
+  border-radius: var(--radius-pill);
 }
 
 .setup-card-actions {

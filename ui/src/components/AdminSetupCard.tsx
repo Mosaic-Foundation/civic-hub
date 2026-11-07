@@ -4,9 +4,10 @@
 // (src/services/modeReadiness.ts, setupChecklist); Dismiss and Skip are stored
 // on the admin's own account, so every later admin sees it too.
 //
-// Pilot readiness 3 (Adam, 2026-11-06): short. The checklist's first four
-// ticks, "View your setup checklist" to Hub settings → Getting started, and
-// Dismiss. The rail's "Setup guide" is the permanent way back.
+// Pilot readiness 3 (Adam, 2026-11-06): short. "View your setup checklist" to
+// Hub settings → Getting started, and Dismiss. The rail's "Setup guide" is the
+// permanent way back. After his walk the same day: no steps listed, only how
+// many of the checklist's are done ("4 of 11"), with a bar.
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -34,9 +35,12 @@ export default function AdminSetupCard() {
 
   if (!card || card.dismissed) return null;
 
-  function press(action: "dismiss" | "skip_second_admin") {
+  const total = card.checklist.length;
+  const done = card.checklist.filter((s) => s.done).length;
+
+  function dismiss() {
     setError(null);
-    adminPostSetupCard(action)
+    adminPostSetupCard("dismiss")
       .then(setCard)
       .catch(() => setError("That didn't save. Try again in a moment."));
   }
@@ -47,27 +51,12 @@ export default function AdminSetupCard() {
         Set up your hub
       </h2>
       <p className="setup-card-body">
-        The first steps. They tick themselves as you go, and what you've saved stays, so there's no need to do it all in one sitting.
+        The steps tick themselves as you go, and what you've saved stays, so there's no need to do it all in one sitting.
       </p>
-      <ul className="setup-card-steps" role="list">
-        {card.steps.map((s) => (
-          <li key={s.id} className={`setup-card-step${s.done ? " is-done" : ""}`}>
-            <span className="setup-card-tick" aria-hidden="true">
-              {s.done ? "✓" : ""}
-            </span>
-            <span>
-              <Link to={s.link}>{s.label}</Link>
-              <span className="visually-hidden">{s.done ? " (done)" : " (not done yet)"}</span>
-              {s.skipped && <span className="setup-card-note"> You skipped this.</span>}
-            </span>
-            {s.can_skip && !s.done && (
-              <Button variant="ghost" size="sm" onClick={() => press("skip_second_admin")}>
-                Skip
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
+      <p className="setup-card-count" id="setup-card-count">
+        <strong>{done} of {total}</strong> steps done
+      </p>
+      <progress className="setup-card-meter" max={total} value={done} aria-labelledby="setup-card-count" />
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -77,7 +66,7 @@ export default function AdminSetupCard() {
         <Link className="btn-primary" to={SETUP_CHECKLIST_PATH}>
           View your setup checklist
         </Link>
-        <Button variant="ghost" onClick={() => press("dismiss")}>
+        <Button variant="ghost" onClick={dismiss}>
           Dismiss
         </Button>
       </div>
