@@ -107,6 +107,9 @@ export function Checkbox({
   );
 }
 
+export { Switch } from "./Switch";
+export { SortableList, type SortableItem } from "./SortableList";
+
 /** One choice from a few, each a card with a line about it. */
 export function RadioCards<T extends string>({
   name,
