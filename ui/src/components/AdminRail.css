@@ -11,19 +11,25 @@
   box-sizing: border-box;
 }
 
+/* The way back, as a button in the hub's colour (Adam, 2026-11-06). */
 .admin-rail-back {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: var(--space-1-5);
-  min-height: var(--space-6);
-  padding: 0 var(--space-2);
-  color: var(--color-text-muted);
+  gap: var(--space-2);
+  min-height: calc(var(--space-6) + var(--space-1));
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
   font-size: var(--text-small-size);
+  font-weight: var(--font-weight-semibold);
   text-decoration: none;
+  transition: background var(--duration-fast) var(--ease-default);
 }
 
 .admin-rail-back:hover {
-  color: var(--color-text);
+  background: var(--color-primary-hover);
+  color: var(--color-primary-text);
   text-decoration: none;
 }
 
@@ -33,7 +39,7 @@
 }
 
 .admin-rail-title {
-  margin: var(--space-1) 0 0;
+  margin: var(--space-2) 0 0;
   padding: 0 var(--space-2);
   font-family: var(--font-heading);
   font-size: var(--text-heading-size);
@@ -43,6 +49,14 @@
 
 .admin-rail-group + .admin-rail-group {
   margin-top: var(--space-1-5);
+}
+
+/* The group without a heading (Activity, Hub settings) starts after a rule,
+   so the gap above it reads as the groups' and not as a stray space. */
+.admin-rail-group[data-group="main"] {
+  margin-top: var(--space-2);
+  padding-top: var(--space-1-5);
+  border-top: var(--border-width) solid var(--color-border-subtle);
 }
 
 .admin-rail-group-head {
@@ -89,16 +103,27 @@
   min-height: calc(var(--space-6) + var(--space-1));
   padding: var(--space-0-5) var(--space-2);
   line-height: var(--line-height-snug);
-  gap: var(--space-2);
+  gap: var(--space-2-5);
   font-size: var(--text-small-size);
 }
 
+/* Each icon on a small tile in the hub's colour; the current one filled. */
 .admin-rail-list .nav-item svg {
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
+  box-sizing: border-box;
+  width: calc(var(--space-5) + var(--space-0-5));
+  height: calc(var(--space-5) + var(--space-0-5));
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-wash);
+  color: var(--color-primary);
 }
 
-/* The foot: small type, one wrapped line, no icons. */
+.admin-rail-list .nav-item.is-current svg {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+/* The foot: small type, one wrapped line, no icons (and no tiles). */
 .admin-rail-foot {
   margin-top: auto;
   padding-top: var(--space-3);
@@ -154,7 +179,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: var(--space-5);
+  min-height: calc(var(--space-5) + var(--space-0-5));
   padding: var(--space-px) var(--space-3);
   margin-left: calc(-1 * var(--border-width));
   border-left: var(--indicator-width) solid transparent;
