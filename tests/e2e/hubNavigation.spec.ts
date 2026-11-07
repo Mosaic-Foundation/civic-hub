@@ -208,7 +208,8 @@ test("Hub settings → Theme: Sidebar and a new order take effect at once, every
   await page.setViewportSize(DESKTOP);
   await visitAs(page, adminToken);
   await page.goto("/admin/settings/theme");
-  await page.getByRole("radio", { name: /Sidebar/ }).check();
+  // Relabelled Left column on 2026-11-07; the stored value is still "sidebar".
+  await page.getByRole("radio", { name: /Left column/ }).check();
   // Votes up twice: Feed, Votes, Conversations, Proposals…
   const order = page.locator(".nav-order");
   await order.getByRole("button", { name: "Move Votes up" }).click();
