@@ -197,13 +197,28 @@ function AppContent() {
   // sit side by side, edge to edge, the feed centred between (the River's
   // layout, Adam 2026-11-07). Narrower, the right column goes first, on every
   // page; at phone width the left column gives way to the phone's bar, as in
-  // every layout. Its left column is a card (Sidebar.css, .app--layout-three).
+  // every layout.
   const layout = chosen === "three_columns" ? "sidebar" : chosen;
   const threeWide = useMediaQuery(THREE_COLUMN_QUERY);
   const asideColumn = chosen === "three_columns" && pageHasAside(pathname) && threeWide;
-  // Beside the sidebar, the hub's bars head the content column, so the
-  // sidebar starts at the top of the screen and its foot is never pushed off.
-  const bannersInColumn = layout === "sidebar" && wide;
+  // Left column and Three columns are one look on the public side (Adam,
+  // 2026-11-07, after dev): the navigation a rounded card, the feed between
+  // even gaps (--gap-columns), and a masthead (the beta or demo bar, the word cloud
+  // teaser, the banner photo) across the full width above the columns, as in
+  // Top navigation. Left column is Three columns without its right column.
+  // The rules are in App.css and Sidebar.css (.app--card-layout).
+  const cardLayout = !inAdmin && layout === "sidebar";
+  const masthead = cardLayout && wide;
+  // Beside the admin rail, the hub's bars head the content column, so the
+  // rail starts at the top of the screen and its foot is never pushed off.
+  const bannersInColumn = layout === "sidebar" && wide && !cardLayout;
+  const teaserAndBanner = (
+    <>
+      {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
+      {!inAdmin && hub.plugins.enabled("wordcloud") && <WordcloudTeaser />}
+      <BannerSlot />
+    </>
+  );
   const [columnSlot, setColumnSlot] = useState<HTMLElement | null>(null);
   forgetClosedNoticeOnLive(hub.config?.hub.mode);
   const hubBanners = (
@@ -222,7 +237,7 @@ function AppContent() {
   return (
     <ColumnSlotContext.Provider value={{ slot: layout === "sidebar" && wide ? columnSlot : null, setSlot: setColumnSlot }}>
     <div
-      className={`app app--nav-${layout === "sidebar" ? "sidebar" : "tabs"}${chosen === "three_columns" ? " app--layout-three" : ""}${asideColumn ? " app--three" : ""}${inAdmin ? " app--admin" : ""}`}
+      className={`app app--nav-${layout === "sidebar" ? "sidebar" : "tabs"}${cardLayout ? " app--card-layout" : ""}${asideColumn ? " app--three" : ""}${inAdmin ? " app--admin" : ""}`}
     >
       {showIntro && !inBetaPreview && !showReady && (
         <IntroPopup onDismiss={() => setShowIntro(false)} />
@@ -234,13 +249,12 @@ function AppContent() {
       {showWelcomeDialog && <BetaWelcomeDialog />}
 
       <Nav />
+      {masthead && <div className="app-masthead">{teaserAndBanner}</div>}
       <div className="app-frame">
         {layout === "sidebar" && <Sidebar />}
         <div className="app-column">
           {bannersInColumn && hubBanners}
-          {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
-          {!inAdmin && hub.plugins.enabled("wordcloud") && <WordcloudTeaser />}
-          <BannerSlot />
+          {!masthead && teaserAndBanner}
           {!inAdmin && <FeedVotesTabs />}
 
           {/* One share banner for the hub: a page's share moment, when its bar is off screen. */}
