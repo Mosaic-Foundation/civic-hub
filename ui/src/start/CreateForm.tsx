@@ -15,7 +15,7 @@ import type { SlugSuggestion } from "../console/api";
 import { JurisdictionPicker, type JurisdictionChoice } from "../console/JurisdictionPicker";
 import { choiceAfterKind } from "../console/jurisdictionChoice";
 import { SuggestInput } from "../console/SuggestInput";
-import { NO_FILL } from "../console/noFill";
+import { NO_FILL_TEXT } from "../console/noFill";
 import { TimeZoneSelect } from "../console/TimeZoneSelect";
 import { TermsAtCreate } from "./TermsAtCreate";
 import {
@@ -271,7 +271,7 @@ export default function CreateForm({
             <label className="cx-field">
               <span>{choice.kind === "custom" ? "Its name" : "Place name"}</span>
               <SuggestInput
-                {...NO_FILL}
+                {...NO_FILL_TEXT}
                 name="cs-place"
                 required={choice.kind === "custom"}
                 value={form.jurisdiction_name}
@@ -295,7 +295,7 @@ export default function CreateForm({
                   Governing body <em>optional</em>
                 </span>
                 <SuggestInput
-                  {...NO_FILL}
+                  {...NO_FILL_TEXT}
                   name="cs-body"
                   value={form.governing_body}
                   suggestion={suggest.governing_body}
@@ -309,7 +309,7 @@ export default function CreateForm({
               <label className="cx-field">
                 <span>Board label</span>
                 <SuggestInput
-                  {...NO_FILL}
+                  {...NO_FILL_TEXT}
                   name="cs-body-short"
                   maxLength={40}
                   value={form.governing_body_short}
@@ -330,8 +330,8 @@ export default function CreateForm({
           <label className="cx-field">
             <span>Hub name</span>
             <SuggestInput
-              {...NO_FILL}
-              name="cs-title"
+              {...NO_FILL_TEXT}
+              name="cs-hub"
               required={!suggest.name}
               value={form.name}
               suggestion={suggest.name}
@@ -348,7 +348,7 @@ export default function CreateForm({
             </label>
             <div className="cx-address">
               <SuggestInput
-                {...NO_FILL}
+                {...NO_FILL_TEXT}
                 name="cs-web"
                 id="st-slug"
                 className="cx-mono"
@@ -391,7 +391,7 @@ export default function CreateForm({
           <div className="cx-two">
             <label className="cx-field">
               <span>Operated by</span>
-              <input {...NO_FILL} name="cs-operator" value={form.operator_name} onChange={(e) => set("operator_name", e.target.value)} />
+              <input {...NO_FILL_TEXT} name="cs-operator" value={form.operator_name} onChange={(e) => set("operator_name", e.target.value)} />
               <small className="cx-muted">
                 The entity responsible for governing this hub: an organization, a group or a person. Named in the hub's terms.
                 Left empty, they read "operated by its administrators".

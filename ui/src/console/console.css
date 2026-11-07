@@ -102,6 +102,10 @@ input, select {
   border: 1px solid var(--cx-border); border-radius: 8px; padding: 8px 10px; width: 100%;
 }
 input[aria-invalid="true"] { border-color: var(--cx-danger); }
+/* A text field marked as a search only to keep password managers off it (noFill.ts): drawn as a plain field. */
+input[type="search"] { appearance: none; -webkit-appearance: none; box-sizing: border-box; }
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; display: none; }
 input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--cx-accent); }
 .cx-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .cx-radio { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; }

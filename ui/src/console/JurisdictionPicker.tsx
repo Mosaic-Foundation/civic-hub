@@ -9,7 +9,7 @@
 // Hubs already serving the chosen jurisdiction are shown as information:
 // several hubs may serve one place.
 
-import { NO_FILL } from "./noFill";
+import { NO_FILL, NO_FILL_TEXT } from "./noFill";
 import { useEffect, useId, useRef, useState } from "react";
 import { api, type Jurisdiction, type JurisdictionMatch } from "./api";
 import { REFERENCE_JURISDICTION_TYPES, stateOfOcdId, type ReferenceJurisdictionType } from "../../../src/shared/jurisdictionType";
@@ -242,7 +242,7 @@ export function JurisdictionPicker({
                 aria-controls={`${listId}-list`}
                 aria-autocomplete="list"
                 aria-activedescendant={open && shown[active] ? `${listId}-opt-${active}` : undefined}
-                {...NO_FILL}
+                {...NO_FILL_TEXT}
                 name={`${listId}-find`}
                 disabled={!state || !type}
                 placeholder={state && type ? "Start typing…" : "Choose a state and a type first"}
