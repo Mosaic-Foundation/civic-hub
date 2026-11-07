@@ -85,6 +85,12 @@ describe("the Set up your hub card", () => {
     expect(step(await view(), "legal").done).toBe(true);
   });
 
+  it("doesn't tick Plugins for a plugin's own setting, only for which plugins are on (Adam, 2026-11-06)", async () => {
+    // Removing a sample saves the word cloud the banner shows, under the admin's name.
+    await save("plugins", { "plugin.wordcloud.onboarding_id": "" });
+    expect(step(await view(), "plugins").done).toBe(false);
+  });
+
   it("ticks the banner, the logo, Appearance, Copy and Plugins from what an admin saves", async () => {
     await save("identity", { "identity.banner_url": "https://example.test/banner.png", "identity.logo_url": "https://example.test/logo.png" });
     await save("theme", { "nav.layout": "top_tabs" });

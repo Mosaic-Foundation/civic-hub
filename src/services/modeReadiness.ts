@@ -203,7 +203,17 @@ export async function setupChecklist(skippedSecondAdmin: boolean): Promise<Setup
       can_skip: !twoAdmins,
     },
     step("officials", "Officials added", "The people your hub's results and briefs go to.", officials, "/admin/settings/officials", "settings.officials"),
-    step("plugins", "Plugins chosen", "Which kinds of participation the hub offers.", savedByAdmin(rows, keysOf("plugins")), "/admin/settings/plugins", "settings.plugins"),
+    // Choosing means saving which plugins are on (Adam, 2026-11-06). A plugin's
+    // own setting doesn't count: removing a sample saves the word cloud the
+    // banner shows under the admin's name, which isn't choosing plugins.
+    step(
+      "plugins",
+      "Plugins chosen",
+      "Which kinds of participation the hub offers.",
+      savedByAdmin(rows, keysOf("plugins").filter((k) => /^plugin\.[a-z_]+\.enabled$/.test(k))),
+      "/admin/settings/plugins",
+      "settings.plugins",
+    ),
     step("beta", "Moved to beta", "Real sign-ins and real email, once the samples are gone.", hubModeSync() !== "demo", "/admin/settings/mode", "settings.mode"),
   ];
 }
