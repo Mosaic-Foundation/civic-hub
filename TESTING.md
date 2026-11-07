@@ -87,6 +87,20 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## The layout session, after Adam's look at dev (2026-11-07)
+
+- `threeColumns.spec.ts` (4 tests, Chromium and WebKit):
+  - The masthead runs the window's width with the banner photo on it, and the card starts under it, level with
+    the feed.
+  - The feed sits 48px from the card and 48px from the right column's cards.
+  - A new test checks that Left column is the same page without the right column: the masthead, the rounded card,
+    and 48px either side of the feed.
+- `adminRail`, `hubNavigation` and `frontendPass` pass unchanged; admin keeps its rail and its bars in the column.
+- **Screenshots:** six public baselines re-taken (Left column and Three columns, light and dark, home and a vote).
+  Every admin and Top navigation baseline is unchanged.
+- **Wire:** snapshots of the same local database before and after, identical: 794 events, release code `8b30284` in a worktree against this code, after a full Playwright run on a reset stack.
+- **Playwright locally:** 242 passed; the one failure is `conversationSummary`, the known local-only Briefs grant (see the entry below).
+
 ## The layout session: a dark admin rail, and three columns (2026-11-07)
 
 **Part one, the rail (ADR-018's Nov 7 amendment):**

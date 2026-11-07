@@ -4,6 +4,27 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The layout session, after Adam's look at dev — 2026-11-07
+
+- **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. No migration.
+- **ADR-019 amendment** in the mono repo (`568557a`), for Adam to push with `83355b4` and `c41c0b7`.
+
+**What changed:**
+1. **The masthead spans the columns.** In Left column and Three columns, the word cloud teaser and the banner photo
+   sit on `.app-masthead` across the window above the columns, and the beta or demo bar sits above the header, as
+   in Top navigation. The card, the feed and the cards start level under it.
+   - The banner photo is still on Feed and About only.
+   - The home page's hero stays in the feed column.
+   - Admin is unchanged: the rail runs the full height, with the bars in its column.
+2. **Left column is Three columns without the right column.** Both public layouts are `.app--card-layout`: the
+   rounded card, the masthead, and the feed between even gaps of `--gap-columns` (48px), as wide as the room
+   allows up to `--width-content`.
+   - The 680px centre is gone; Adam found it too narrow.
+   - In Three columns at 1440px the feed is 720px; in Left column it runs to 48px from the edge.
+
+**Open:** as in the entry below, plus whether section pages should show the banner photo too (for now they show the
+teaser bar at full width only).
+
 ## The layout session: a dark admin rail, and three columns — 2026-11-07
 
 **State:**
