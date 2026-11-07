@@ -3,8 +3,10 @@
  *
  * 6. Hub settings → Appearance → Navigation offers Top navigation, Left
  *    column and Three columns (the stored values unchanged).
- * 7. From 1280px: the left column a card, flush left; the centre column
- *    (feed, section pages) centred; the right column's cards flush right.
+ * 7. From 1280px: the left column a card, flush left; the feed between even
+ *    48px gaps; the right column's cards flush right. A masthead (bars, the
+ *    word cloud teaser, the banner photo) spans the window above the columns
+ *    (Adam, after dev). Left column is the same page without the right column.
  * 8. The cards: Coming up (events and closing dates, date first), the latest
  *    announcements, About. A card with nothing to show is not drawn.
  * 9. Appearance → Right column: each card switched on or off, put in order by
@@ -84,12 +86,15 @@ test("three columns at full width: a card on the left, the feed centred, the car
   const sidebar = page.locator(".hub-sidebar");
   expect(await sidebar.evaluate((el) => parseFloat(getComputedStyle(el).borderTopLeftRadius))).toBeGreaterThan(0);
   const left = (await sidebar.boundingBox())!;
-  const right = (await aside(page).boundingBox())!;
-  const centre = (await page.locator(".app-column").boundingBox())!;
+  const shell = (await page.locator(".page-shell").boundingBox())!;
+  const firstCard = (await aside(page).locator("[data-aside-card]").first().boundingBox())!;
   expect(left.x).toBeLessThan(40);
-  expect(WIDE.width - (right.x + right.width)).toBeLessThan(40);
-  expect(centre.width).toBeLessThanOrEqual(681);
-  expect(Math.abs(centre.x - (left.x + left.width) - (right.x - (centre.x + centre.width)))).toBeLessThan(60);
+  expect(WIDE.width - (firstCard.x + firstCard.width)).toBeLessThan(40);
+  // The same gap either side of the feed: twice the card's margin (Adam, 2026-11-07).
+  expect(Math.abs(shell.x - (left.x + left.width) - 48)).toBeLessThan(3);
+  expect(Math.abs(firstCard.x - (shell.x + shell.width) - 48)).toBeLessThan(3);
+  // The masthead spans the window above the columns; the card, the feed and the cards start level under it.
+  await expectMasthead(page);
   // The cards stay in view as the feed scrolls.
   await page.mouse.wheel(0, 1500);
   await expect(coming).toBeInViewport();
@@ -107,6 +112,34 @@ test("three columns at full width: a card on the left, the feed centred, the car
   await expect(page.getByRole("navigation", { name: "Admin sections" })).toBeVisible();
   await expect(aside(page)).toHaveCount(0);
 });
+
+test("Left column is Three columns without the right column", async ({ page, request }) => {
+  await setTheme(request, { "nav.layout": "sidebar", "nav.aside_cards": "" });
+  await page.setViewportSize(WIDE);
+  await visitAs(page, adminToken);
+  await page.goto("/");
+  await expect(page.locator(".feed").first()).toBeVisible();
+  await expect(aside(page)).toHaveCount(0);
+  const sidebar = page.locator(".hub-sidebar");
+  expect(await sidebar.evaluate((el) => parseFloat(getComputedStyle(el).borderTopLeftRadius))).toBeGreaterThan(0);
+  const left = (await sidebar.boundingBox())!;
+  const shell = (await page.locator(".page-shell").boundingBox())!;
+  expect(Math.abs(shell.x - (left.x + left.width) - 48)).toBeLessThan(3);
+  expect(Math.abs(WIDE.width - (shell.x + shell.width) - 48)).toBeLessThan(3);
+  await expectMasthead(page);
+});
+
+/** The masthead runs the window's width, and the columns start level under it. */
+async function expectMasthead(page: Page) {
+  const masthead = (await page.locator(".app-masthead").boundingBox())!;
+  expect(masthead.x).toBe(0);
+  expect(Math.abs(masthead.width - (page.viewportSize()!.width))).toBeLessThan(20);
+  await expect(page.locator(".app-masthead .hub-banner")).toBeVisible();
+  const card = (await page.locator(".hub-sidebar").boundingBox())!;
+  const column = (await page.locator(".app-column").boundingBox())!;
+  expect(card.y).toBeGreaterThanOrEqual(masthead.y + masthead.height);
+  expect(Math.abs(card.y - (column.y + 24))).toBeLessThan(3);
+}
 
 test("narrower, the right column goes first; a phone is the phone's layout", async ({ page, request }) => {
   await setTheme(request, { "nav.layout": "three_columns", "nav.aside_cards": "" });

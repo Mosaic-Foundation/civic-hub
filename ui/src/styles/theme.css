@@ -397,10 +397,10 @@
   --width-content: var(--max-width-shell);
   --width-prose: 720px;
   --width-sidebar: 248px;
-  /* The three-column layout (ADR-019): the centre column, feed and section
-     pages alike, and the right column's cards. */
-  --width-centre: 680px;
+  /* Left column and Three columns (ADR-019): the right column's cards, and
+     the gap either side of the feed (twice the navigation card's margin). */
   --width-aside: 320px;
+  --gap-columns: var(--space-12);
   /* Where the three columns sit side by side; the media query says 1280px too. */
   --width-three-columns: 1280px;
   /* The narrowest a tile in an auto-filling grid may get. */

@@ -23,12 +23,13 @@
   }
 }
 
-/* Three columns (ADR-019; Adam, 2026-11-07, after the River): the column is a
-   card, rounded, with the page's background round it, sticky under the
-   header and scrolling on its own when it is taller than the window. The
-   admin rail keeps its full-height column (.app--admin, below). */
+/* Left column and Three columns (ADR-019; Adam, 2026-11-07, after the River):
+   the column is a card, rounded, with the page's background round it, under
+   the masthead, sticky under the header and scrolling on its own when it is
+   taller than the window. The admin rail keeps its full-height column
+   (.app--admin, below). */
 @media (min-width: 769px) {
-  .app--layout-three:not(.app--admin) .hub-sidebar {
+  .app--card-layout .hub-sidebar {
     top: calc(var(--nav-h) + var(--space-6));
     height: auto;
     max-height: calc(100vh - var(--nav-h) - 2 * var(--space-6));
@@ -39,7 +40,7 @@
     box-shadow: var(--shadow-card);
   }
 
-  .app--layout-three:not(.app--admin) .hub-sidebar-nav {
+  .app--card-layout .hub-sidebar-nav {
     min-height: 0;
   }
 }
