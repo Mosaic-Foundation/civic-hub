@@ -4,6 +4,34 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Pilot readiness 3, after Adam's walk — 2026-11-06
+
+On dev at `89c8703`, not production (still `ed960b9`). No migration. Seven small commits, each named for its item.
+
+- **Item 1, the email:** the invite now says a hub is "a place for your community to make sense of issues, decide and
+  act together", Adam's words, in place of "votes, proposals and conversations".
+- **Item 3, LastPass:** it ignores `autocomplete="off"`, `data-lpignore` and the other opt-outs, and puts its offer on
+  the one field it thinks most like an address book's. Tried in Adam's own LastPass on a page with the form's labels:
+  first the place search ("Name" after "State"), then "Web address", then a field named `cs-title` ("title" is the
+  Mr/Ms field). A `type="search"` field is the one kind it leaves alone; names with "search" in them are not enough.
+  So every text field on the creation form is `type="search"` (`NO_FILL_TEXT` in `ui/src/console/noFill.ts`), drawn
+  as a plain field (`console.css`), and the hub name's field is `cs-hub`. Only the contact address gets LastPass's
+  offer, as intended. Not yet tried on the real start page in LastPass: Adam's next walk.
+- **Item 7, Plugins:** ticks only when an admin saves which plugins are on (`plugin.*.enabled`). It had ticked on
+  Adam's hub because removing a sample saves the word cloud the banner shows, a Plugins setting, under the admin.
+- **Item 7, the home card:** "N of 11 steps done" with a bar, **View your setup checklist** and **Dismiss**; no steps
+  listed. Skip for the second admin is on the checklist only.
+- **Items 5 and 6, the rail:** Back to the hub is a button in the hub's colour; each icon sits on a small tile in the
+  hub's colour, filled for the current page; a rule above Activity and Hub settings, so the gap there reads as
+  the groups'; Hub settings' sections 2px taller each. With every admin plugin on and Hub settings open the rail has
+  about 1px to spare at 1280x768, so more room there needs a structural change (Adam's call; see the report).
+- **Counters:** unchanged and working as Adam described: each queue's count is what's new since this admin last
+  opened it, and opening it clears it. Moderation (a log) and Activity have none.
+
+**Open, for Adam:** whether admins may tick or untick checklist steps by hand (he said no on Nov 6 before the walk,
+then "people should be able to uncheck stuff"); separate demo, beta and live checklists, with steps like making a
+few real processes before inviting beta users; more room in the rail (the 768px rule leaves none).
+
 ## Pilot readiness 3: one way in, no form fill, one admin rail, the setup checklist — 2026-11-06
 
 **State:**

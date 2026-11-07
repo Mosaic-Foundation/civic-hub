@@ -87,6 +87,25 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Pilot readiness 3, after Adam's walk (2026-11-06)
+
+- `tests/api/setupCard.test.ts`: saving a plugin's own setting (`plugin.wordcloud.onboarding_id`) leaves Plugins
+  unticked; saving `plugin.feedback.enabled` ticks it.
+- `AdminSetupCard.test.tsx`: the card says "2 of 5 steps done", its bar reads 2 of 5, it lists no steps, and its only
+  button is Dismiss. `startPage.spec.ts` reads the count instead of four list items.
+- `CreateForm.test.tsx` passes unchanged with the fields as `type="search"` (it checks `autocomplete`, the managers'
+  attributes and names, not the type).
+- **LastPass, by hand:** a throwaway page on the UI dev server, opened in Adam's Chrome with LastPass, field
+  variants side by side. LastPass marks one field per form and ignores every opt-out attribute; with all text fields
+  `type="search"` it marks only the email field. Not automated: LastPass isn't in Playwright's browsers.
+- `adminRail.spec.ts` still fits 1280x768 in Chromium and WebKit with the new rail (about 1px to spare).
+- **Screenshots:** 11 admin images re-taken on a reset stack (the rail, the card).
+- **Local Playwright without CI's variables:** Chromium's first test in a spec showed an empty "Civic Hub" with no
+  hub (WebKit passed). Run it with the variables under "Running Playwright locally as CI does"; it then passed 34 of 34.
+- **Results, local:** `npm test` 3,274 passed; typecheck and UI lint clean; token ratchet clean.
+
+---
+
 ## Pilot readiness 3: one way in, no form fill, one admin rail, the setup checklist (2026-11-06)
 
 - **Unit:** `hubInvite.test.ts`: the emailed invite carries the link, the address, the link's date, the guide and the
