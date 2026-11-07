@@ -29,7 +29,9 @@ import { BAR_SECTION_COUNT, parseSectionOrder } from "../../../../src/shared/nav
 import HelpButton from "../../components/HelpButton";
 import SectionForm, { type FormApi } from "./SectionForm";
 import { Link } from "react-router-dom";
-import { RadioCards } from "../../kit";
+import { RadioCards, SortableList, Switch } from "../../kit";
+import { ASIDE_SETTING_KEY, asideCardsInOrder } from "../../aside/registry";
+import { parseAsideCards, withOrder } from "../../../../src/shared/asideCards";
 import { useHub } from "../../config/hub";
 
 const KEY = "identity.theme";
@@ -370,16 +372,24 @@ function ThemePreview({ theme }: { theme: HubTheme }) {
 const LAYOUT_KEY = "nav.layout";
 const ORDER_KEY = "nav.section_order";
 
-const LAYOUTS: ReadonlyArray<{ id: "sidebar" | "top_tabs"; title: string; body: string }> = [
+type LayoutId = "sidebar" | "top_tabs" | "three_columns";
+
+// Relabelled on 2026-11-07 (Adam); the stored values are unchanged.
+const LAYOUTS: ReadonlyArray<{ id: LayoutId; title: string; body: string }> = [
+  {
+    id: "top_tabs",
+    title: "Top navigation",
+    body: "The hub's name and menu along the top, and the sections as tabs under the banner. New hubs start with this.",
+  },
   {
     id: "sidebar",
-    title: "Sidebar",
+    title: "Left column",
     body: "The hub's sections in a column on the left of the screen, always in view.",
   },
   {
-    id: "top_tabs",
-    title: "Top tabs",
-    body: "The hub's name and menu along the top, and the sections as tabs under the banner. New hubs start with this.",
+    id: "three_columns",
+    title: "Three columns",
+    body: "The sections on the left, the feed in the middle, and cards on the right: what's coming up, announcements and about the hub. On a smaller screen the cards go first.",
   },
 ];
 
@@ -389,8 +399,9 @@ const LAYOUTS: ReadonlyArray<{ id: "sidebar" | "top_tabs"; title: string; body: 
  * order (Adam, 2026-10-14).
  */
 function NavigationFields({ f }: { f: FormApi }) {
-  // Unset is Top tabs: a hub made before the choice existed is unchanged.
-  const layout = f.value(LAYOUT_KEY) === "sidebar" ? "sidebar" : "top_tabs";
+  // Unset is Top navigation: a hub made before the choice existed is unchanged.
+  const storedLayout = f.value(LAYOUT_KEY);
+  const layout: LayoutId = storedLayout === "sidebar" || storedLayout === "three_columns" ? storedLayout : "top_tabs";
   const stored = f.value(ORDER_KEY);
   // An admin orders Members even before its threshold shows it to residents.
   const sections = navSections({ order: parseSectionOrder(stored), admin: true });
@@ -443,6 +454,8 @@ function NavigationFields({ f }: { f: FormApi }) {
           ))}
         </fieldset>
       </div>
+
+      {layout === "three_columns" && <RightColumnFields f={f} />}
 
       <div className="settings-field" id="nav-section-order">
         <div className="settings-field-label-row">
@@ -503,6 +516,53 @@ function NavigationFields({ f }: { f: FormApi }) {
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * The right column's cards in the Three columns layout (ADR-019): each one
+ * shown or hidden, in the hub's order. One setting, nav.aside_cards.
+ */
+function RightColumnFields({ f }: { f: FormApi }) {
+  const stored = f.value(ASIDE_SETTING_KEY);
+  const cards = asideCardsInOrder(stored);
+  const save = (next: Array<{ id: string; shown: boolean }>) =>
+    f.set(ASIDE_SETTING_KEY, JSON.stringify(withOrder(parseAsideCards(stored), next)));
+  return (
+    <div className="settings-field" id="nav-aside-cards">
+      <div className="settings-field-label-row">
+        <span className="form-label settings-field-label" id="nav-aside-label">
+          Right column
+        </span>
+        <HelpButton k="nav.aside_cards" label="Right column" />
+      </div>
+      <p className="form-hint">
+        The cards beside the feed and the section pages, top to bottom. Drag a card, or use Up and Down, to change the
+        order. A card with nothing to show is left out on its own.
+      </p>
+      <SortableList
+        label="Right column cards"
+        disabled={f.disabled}
+        items={cards.map((c) => ({
+          id: c.id,
+          name: c.card.name,
+          extra: (
+            <Switch
+              label={<span className="visually-hidden">Show {c.card.name}</span>}
+              checked={c.shown}
+              disabled={f.disabled}
+              onChange={(e) => save(cards.map((x) => ({ id: x.id, shown: x.id === c.id ? e.target.checked : x.shown })))}
+            />
+          ),
+        }))}
+        onChange={(ids) => save(ids.map((id) => ({ id, shown: cards.find((c) => c.id === id)!.shown })))}
+      />
+      {stored && (
+        <button type="button" className="admin-remove-section" onClick={() => f.set(ASIDE_SETTING_KEY, "")} disabled={f.disabled}>
+          Show every card in the default order
+        </button>
+      )}
+    </div>
   );
 }
 
