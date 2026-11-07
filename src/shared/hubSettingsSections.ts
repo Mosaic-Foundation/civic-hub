@@ -69,7 +69,13 @@ export type SettingFieldKind =
    * (hubSettingsController), so it comes back at the end; any other id the
    * hub doesn't have is skipped when the order is drawn.
    */
-  | "section_order";
+  | "section_order"
+  /**
+   * The right column's cards (layout session, 2026-11-07; ADR-019): a JSON
+   * array of { id, shown } in order, ids distinct (src/shared/asideCards.ts).
+   * Ids the hub doesn't draw are kept, so a plugin's card keeps its place.
+   */
+  | "aside_cards";
 
 export interface SettingFieldSpec {
   key: string;
@@ -154,11 +160,14 @@ export const SETTINGS_SECTIONS: Readonly<
   ],
   // Its own section since 2026-09-24: a theme is a palette, not one colour.
   // Navigation joined it on 2026-10-14 (Adam): where the sections are drawn,
-  // and their one order.
+  // and their one order. The right column's cards joined it on 2026-11-07.
   theme: [
     { key: "identity.theme", kind: "theme" },
-    { key: "nav.layout", kind: "choice", options: ["sidebar", "top_tabs"] },
+    // Stored values kept when the choices were relabelled Left column, Top
+    // navigation and Three columns (Adam, 2026-11-07).
+    { key: "nav.layout", kind: "choice", options: ["sidebar", "top_tabs", "three_columns"] },
     { key: "nav.section_order", kind: "section_order" },
+    { key: "nav.aside_cards", kind: "aside_cards" },
   ],
   // Since Phase 2c (Adam, 2026-09-24): every plugin's on/off, and beneath it
   // the settings that plugin has. Settings another section already owns

@@ -19,6 +19,7 @@ import namespaceRoutes from "./routes/namespaceRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import audienceRoutes from "./routes/audienceRoutes.js";
 import feedRoutes from "./routes/feedRoutes.js";
+import asideRoutes from "./routes/asideRoutes.js";
 import discoveryRoutes from "./routes/discoveryRoutes.js";
 import debugRoutes from "./routes/debugRoutes.js";
 import inputRoutes from "./routes/inputRoutes.js";
@@ -251,6 +252,9 @@ app.use("/ns", namespaceRoutes);
 // working against a local dev server on :3000.
 app.use("/feed", feedRoutes);
 app.use("/api/feed", feedRoutes);
+// The right column's facts (ADR-019), mounted the same two ways.
+app.use("/aside", asideRoutes);
+app.use("/api/aside", asideRoutes);
 
 // Discovery manifest
 app.use("/.well-known", discoveryRoutes);

@@ -478,3 +478,28 @@ export async function archivedVotes(): Promise<Array<{ id: string; state: { voti
       .range(from, to),
   );
 }
+
+/** An open process's row, for the right column's Coming up (services/aside.ts). */
+export interface OpenProcessRow {
+  id: string;
+  type: string;
+  title: string;
+  state: Record<string, unknown> | null;
+  is_sample: boolean;
+  added_in_demo: boolean;
+}
+
+/**
+ * The open ("active") processes of these types, newest first, at most
+ * `limit`: those that can still close at a deadline. One request.
+ */
+export async function openProcessRows(types: readonly string[], limit: number): Promise<OpenProcessRow[]> {
+  if (types.length === 0) return [];
+  return db()
+    .from("processes")
+    .select<OpenProcessRow>("id, type, title, state, is_sample, added_in_demo")
+    .in("type", [...types])
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+}

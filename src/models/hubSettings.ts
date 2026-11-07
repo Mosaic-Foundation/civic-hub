@@ -52,7 +52,8 @@ export const KEYS = {
   IDENTITY_HUB_KIND: "identity.hub_kind",
 
   // Where the hub's sections are drawn, and in what order (navigation slice,
-  // 2026-10-14, Adam). `nav.layout` is "sidebar" or "top_tabs"; unset is
+  // 2026-10-14, Adam). `nav.layout` is "sidebar", "top_tabs" or (layout
+  // session, 2026-11-07) "three_columns"; unset is
   // top_tabs, so a hub made before the slice is unchanged until its admin
   // chooses, and a new hub is created with "top_tabs" (design pass, 2026-10-29)
   // (src/control/hubs.ts). Phones get the bottom bar under either.
@@ -61,6 +62,11 @@ export const KEYS = {
   // order drives every layout. Both public: every visitor's page draws them.
   NAV_LAYOUT: "nav.layout",
   NAV_SECTION_ORDER: "nav.section_order",
+  // The right column's cards in the "three_columns" layout (layout session,
+  // 2026-11-07; ADR-019): a JSON list of { id, shown } in order; unset is
+  // every card shown in the default order (src/shared/asideCards.ts). Public:
+  // every visitor's page draws the column.
+  NAV_ASIDE_CARDS: "nav.aside_cards",
 
   COPY_INTRO_BODY: "copy.intro_body",
   COPY_RESIDENCY_INTRO: "copy.residency_intro",
@@ -337,6 +343,7 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
 
   KEYS.NAV_LAYOUT,
   KEYS.NAV_SECTION_ORDER,
+  KEYS.NAV_ASIDE_CARDS,
 
   KEYS.COPY_INTRO_BODY,
   KEYS.COPY_RESIDENCY_INTRO,

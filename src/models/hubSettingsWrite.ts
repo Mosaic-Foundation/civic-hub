@@ -19,6 +19,7 @@ import {
 } from "../shared/hubSettingsSections.js";
 import { validateThemeValue } from "../shared/theme.js";
 import { parseWixFields } from "../shared/wixFields.js";
+import { ASIDE_CARDS_MAX, ASIDE_CARD_ID_SHAPE } from "../shared/asideCards.js";
 
 export type SettingsWriteResult =
   | {
@@ -172,6 +173,30 @@ export function normalizeValue(
         ids.push(id);
       }
       return ids.length === 0 ? "" : JSON.stringify(ids);
+    }
+
+    case "aside_cards": {
+      // An array or its JSON; stored as a JSON array of { id, shown }, "" for the default.
+      let list: unknown = raw;
+      if (typeof raw === "string") {
+        if (raw.trim() === "") return "";
+        try {
+          list = JSON.parse(raw);
+        } catch {
+          return { error: `${key} must be a list of cards.` };
+        }
+      }
+      if (!Array.isArray(list) || list.length > ASIDE_CARDS_MAX) return { error: `${key} must be a list of cards.` };
+      const cards: Array<{ id: string; shown: boolean }> = [];
+      for (const entry of list) {
+        const { id, shown } = (entry ?? {}) as { id?: unknown; shown?: unknown };
+        if (typeof id !== "string" || !ASIDE_CARD_ID_SHAPE.test(id) || typeof shown !== "boolean") {
+          return { error: `${key} must be a list of cards, each an id and whether it is shown.` };
+        }
+        if (cards.some((c) => c.id === id)) return { error: `${key} lists ${id} twice.` };
+        cards.push({ id, shown });
+      }
+      return cards.length === 0 ? "" : JSON.stringify(cards);
     }
 
     case "theme": {

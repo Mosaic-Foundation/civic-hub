@@ -471,6 +471,9 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /feed/meta": { query: ["", "?process=" /* + every floyd id, below */] },
   "GET /api/feed/": { query: ["", "?limit=200"] },
   "GET /api/feed/meta": { query: ["", "?process=" /* + every floyd id, below */] },
+  // The three-column layout's right column (ADR-019): titles, dates and a count, no one's account.
+  "GET /aside/": {},
+  "GET /api/aside/": {},
   // Activity (ADR-016): counts only. Athens keeps Public numbers off, so the
   // public route answers 404 here; tests/api/analytics walks it on, off and with a key.
   "GET /analytics/": { query: ["", "?period=week", "?period=quarter", "?period=all"] },
