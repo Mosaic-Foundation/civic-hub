@@ -58,6 +58,9 @@ import BetaWelcomeDialog from "./components/BetaWelcomeDialog";
 import { usePreviewMode } from "./hooks/usePreviewMode";
 import { useIsWideViewport } from "./hooks/useIsWideViewport";
 import { useTypingFocus } from "./hooks/useTypingFocus";
+import { useMediaQuery } from "./hooks/useMediaQuery";
+import AsideColumn from "./aside/AsideColumn";
+import { THREE_COLUMN_QUERY, pageHasAside } from "./aside/asidePages";
 import AuthModal from "./components/AuthModal";
 import "./App.css";
 
@@ -188,7 +191,16 @@ function AppContent() {
   // not drawn, and the column is the admin rail. On a phone the bottom bar
   // keeps the hub's tabs and the rail is a drawer (AdminDrawer.tsx).
   const inAdmin = isAdmin && isAdminPath(pathname);
-  const layout = inAdmin ? "sidebar" : navLayout();
+  const chosen = inAdmin ? "sidebar" : navLayout();
+  // Three columns is the left column plus a right column of cards (ADR-019),
+  // on the pages that have one (aside/asidePages.ts). From 1280px the three
+  // sit side by side, edge to edge, the feed centred between (the River's
+  // layout, Adam 2026-11-07). Narrower, the right column goes first, on every
+  // page; at phone width the left column gives way to the phone's bar, as in
+  // every layout. Its left column is a card (Sidebar.css, .app--layout-three).
+  const layout = chosen === "three_columns" ? "sidebar" : chosen;
+  const threeWide = useMediaQuery(THREE_COLUMN_QUERY);
+  const asideColumn = chosen === "three_columns" && pageHasAside(pathname) && threeWide;
   // Beside the sidebar, the hub's bars head the content column, so the
   // sidebar starts at the top of the screen and its foot is never pushed off.
   const bannersInColumn = layout === "sidebar" && wide;
@@ -209,7 +221,9 @@ function AppContent() {
 
   return (
     <ColumnSlotContext.Provider value={{ slot: layout === "sidebar" && wide ? columnSlot : null, setSlot: setColumnSlot }}>
-    <div className={`app app--nav-${layout === "sidebar" ? "sidebar" : "tabs"}${inAdmin ? " app--admin" : ""}`}>
+    <div
+      className={`app app--nav-${layout === "sidebar" ? "sidebar" : "tabs"}${chosen === "three_columns" ? " app--layout-three" : ""}${asideColumn ? " app--three" : ""}${inAdmin ? " app--admin" : ""}`}
+    >
       {showIntro && !inBetaPreview && !showReady && (
         <IntroPopup onDismiss={() => setShowIntro(false)} />
       )}
@@ -281,6 +295,7 @@ function AppContent() {
 
           <SiteFooter />
         </div>
+        {asideColumn && <AsideColumn />}
       </div>
 
       <BottomBar />

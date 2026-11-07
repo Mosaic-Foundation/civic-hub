@@ -2937,3 +2937,29 @@ export function sendInvites(emails: string, message: string): Promise<InviteResu
 export function adminGetHiddenMembers(): Promise<{ hidden: Array<Member & { joined_at: string }>; count: number }> {
   return request("GET", "/admin/hub/members");
 }
+
+/** GET /api/aside: the right column's facts (src/services/aside.ts; ADR-019). */
+export interface AsideFacts {
+  deadlines: Array<{ process_id: string; type: string; title: string; closes_at: string; url: string; sample?: true }>;
+  announcements: Array<{ process_id: string; title: string; published_at: string; url: string; sample?: true }>;
+  about: { member_count: number | null };
+}
+
+export function getAside(): Promise<AsideFacts> {
+  return request("GET", "/aside");
+}
+
+/** One event on the hub's calendar, as GET /calendar/events serves it (the Events plugin's). */
+export interface CalendarEventRow {
+  process_id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  cancelled: boolean;
+  time_zone: string | null;
+}
+
+/** The hub's calendar, earliest first: only while the Events plugin is on (its route). */
+export async function getCalendarEvents(): Promise<CalendarEventRow[]> {
+  return (await request<{ events: CalendarEventRow[] }>("GET", "/calendar/events")).events;
+}

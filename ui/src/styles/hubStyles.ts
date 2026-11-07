@@ -107,5 +107,7 @@ import "../pages/MySubmissions.css";
 import "../components/SharePrompt.css";
 import "../components/BetaBanner.css";
 import "../components/BetaWelcomeDialog.css";
+// The three-column layout's right column (ADR-019); its rules are its own.
+import "../aside/aside.css";
 import "../App.css";
 import "../kit/kit.css";

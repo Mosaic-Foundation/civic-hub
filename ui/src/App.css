@@ -85,6 +85,49 @@
   }
 }
 
+/* Three columns (ADR-019; the River's layout, Adam 2026-11-07): from 1280px
+   the navigation column sits flush left, the cards flush right, and the
+   centre column (the feed, a section page) is centred between them at
+   --width-centre. The gaps grow from narrow at 1280px to full by about
+   1400px. Narrower, the right column goes and it is the left-column layout,
+   its column still a card (Sidebar.css); a phone gets its bar (App.tsx). */
+@media (min-width: 1280px) {
+  .app--three .app-frame {
+    display: grid;
+    grid-template-columns: calc(var(--width-sidebar) + var(--space-6)) minmax(0, 1fr) var(--width-aside);
+    column-gap: clamp(var(--space-2), (100vw - var(--width-three-columns)) / 4, var(--space-8));
+    align-items: start;
+  }
+
+  .app--three .app-column {
+    justify-self: center;
+    margin: 0;
+  }
+}
+
+/* In three columns the centre column is --width-centre at every desktop
+   width, centred in the room beside the left column's card (the River's
+   feed between its breakpoints). */
+@media (min-width: 769px) {
+  .app--layout-three:not(.app--admin) .app-column {
+    width: 100%;
+    max-width: var(--width-centre);
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+    box-sizing: border-box;
+  }
+
+  .app--layout-three:not(.app--admin) .page-shell {
+    max-width: var(--width-centre);
+  }
+}
+
+@media (min-width: 1280px) {
+  .app--three .app-column {
+    padding: 0;
+  }
+}
+
 /* Page shell — caps content width on wide viewports while letting
    sticky/full-bleed surfaces (nav, banner, footer) stretch edge-to-edge.
    Inner pages provide their own horizontal padding (e.g. .feed,

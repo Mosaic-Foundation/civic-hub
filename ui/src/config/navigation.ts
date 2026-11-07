@@ -19,8 +19,13 @@ import type { ProcessTypeDisplay } from "../../../src/shared/typeDisplay";
 
 export type { NavSection };
 
-/** Where the sections are drawn at desktop width. Phones get the bottom bar under either. */
-export type NavLayout = "sidebar" | "top_tabs";
+/**
+ * Where the sections are drawn at desktop width: Left column ("sidebar"), Top
+ * navigation ("top_tabs") or Three columns ("three_columns": the left column,
+ * the feed and a right column of cards; ADR-019). Phones get the bottom bar
+ * under each.
+ */
+export type NavLayout = "sidebar" | "top_tabs" | "three_columns";
 
 /** Every registered type's display; empty when the config did not load. */
 export function processTypes(): ProcessTypeDisplay[] {
@@ -33,9 +38,10 @@ export function typeDisplay(type: string | undefined): ProcessTypeDisplay | unde
   return processTypes().find((t) => t.type === type);
 }
 
-/** Unset (a hub made before the slice) is top tabs; new hubs are created with sidebar. */
+/** Unset (a hub made before the slice) is top tabs, as is a new hub (src/control/hubs.ts). */
 export function navLayout(): NavLayout {
-  return setting("nav.layout") === "sidebar" ? "sidebar" : "top_tabs";
+  const stored = setting("nav.layout");
+  return stored === "sidebar" || stored === "three_columns" ? stored : "top_tabs";
 }
 
 /**
