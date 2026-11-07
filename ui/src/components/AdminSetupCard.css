@@ -34,7 +34,7 @@
 .setup-card-meter {
   display: block;
   width: 100%;
-  max-width: 24rem;
+  max-width: calc(var(--space-16) * 6);
   height: var(--space-sm);
   margin: 0 0 var(--space-md);
   appearance: none;
