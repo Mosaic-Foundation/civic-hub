@@ -57,6 +57,7 @@ import { forgetClosedNoticeOnLive } from "./components/modeNoticeState";
 import BetaWelcomeDialog from "./components/BetaWelcomeDialog";
 import { usePreviewMode } from "./hooks/usePreviewMode";
 import { useIsWideViewport } from "./hooks/useIsWideViewport";
+import { useTypingFocus } from "./hooks/useTypingFocus";
 import AuthModal from "./components/AuthModal";
 import "./App.css";
 
@@ -155,6 +156,8 @@ function AppContent() {
   const preview = usePreviewMode();
   const { pathname } = useLocation();
   const wide = useIsWideViewport();
+  // A phone hides its tab bar and folds the Save bar while you type.
+  useTypingFocus();
   // The page a bug report is about, whichever link opened the form.
   useEffect(() => recordPage(pathname), [pathname]);
 

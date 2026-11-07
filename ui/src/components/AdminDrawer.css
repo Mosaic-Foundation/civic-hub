@@ -1,4 +1,5 @@
-/* The admin rail as a phone's drawer (AdminDrawer.tsx). Tokens only. */
+/* The admin rail as a phone's drawer (AdminDrawer.tsx): the same dark rail
+   (ADR-018, Nov 7). Tokens only. */
 
 .admin-drawer-head {
   margin: 0 0 var(--space-4);
@@ -10,10 +11,11 @@
   gap: var(--space-1-5);
   min-height: var(--tap-target);
   padding: 0 var(--space-3);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-rail-bg);
   border-radius: var(--radius-pill);
-  background: var(--color-surface);
-  color: var(--color-text);
+  /* In the rail's own colours: the way into admin looks like admin. */
+  background: var(--color-rail-bg);
+  color: var(--color-rail-text);
   font-family: var(--font-body);
   font-size: var(--text-small-size);
   font-weight: var(--font-weight-semibold);
@@ -21,7 +23,7 @@
 }
 
 .admin-drawer-button:hover {
-  background: var(--color-surface-hover);
+  background: var(--color-rail-hover);
 }
 
 .admin-drawer-button:focus-visible {
@@ -43,7 +45,7 @@
   padding: 0;
   overflow-y: auto;
   border-radius: 0;
-  background: var(--color-column-bg);
+  background: var(--color-rail-bg);
   box-shadow: var(--shadow-lg);
   animation: admin-drawer-in var(--duration-fast) var(--ease-default);
 }
@@ -52,11 +54,7 @@
   min-height: 100%;
 }
 
-/* A finger needs more room than a pointer. */
-.admin-drawer .admin-rail-list .nav-item {
-  min-height: var(--tap-target);
-}
-
+/* The foot's links need a finger's room in the drawer. */
 .admin-drawer .admin-rail-list--small .nav-item {
   min-height: var(--control-height-sm);
 }

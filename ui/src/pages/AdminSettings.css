@@ -462,6 +462,38 @@
   }
 }
 
+/* While typing on a phone the Save bar is one short line: Save and Discard,
+   and a message only as one clipped line (hooks/useTypingFocus.ts; Adam's
+   Nov 7 walk). The bottom tab bar is hidden meanwhile (BottomBar.css). */
+@media (max-width: 768px) {
+  html.typing-focus .settings-savebar.is-floating {
+    flex-wrap: nowrap;
+    align-items: center;
+    padding-top: var(--space-1-5);
+    padding-bottom: var(--space-1-5);
+    box-shadow: none;
+  }
+
+  html.typing-focus .settings-savebar.is-floating .settings-unsaved {
+    display: none;
+  }
+
+  html.typing-focus .settings-savebar.is-floating .admin-settings-message,
+  html.typing-focus .settings-savebar.is-floating .form-error {
+    order: 0;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  html.typing-focus .settings-savebar.is-floating .settings-save-button {
+    flex: 0 0 auto;
+    min-height: var(--control-height-sm);
+  }
+}
+
 .settings-last-changed {
   margin: var(--space-2) 0 0;
   color: var(--color-text-subtle);

@@ -40,6 +40,16 @@
   html.drafting-focus {
     --bottom-bar-space: 0px;
   }
+
+  /* While a text field or editor has focus, the keyboard gets the room
+     (hooks/useTypingFocus.ts; Adam's Nov 7 walk). */
+  html.typing-focus .bottom-bar {
+    display: none;
+  }
+
+  html.typing-focus {
+    --bottom-bar-space: 0px;
+  }
 }
 
 .bottom-bar-tabs {

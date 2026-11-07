@@ -5,9 +5,12 @@
  *    header stays, "Back to the hub" and "Admin" head the rail, the public
  *    section tabs are hidden, and there is no admin bar. A phone keeps its
  *    bottom bar and opens the rail as a drawer from the Admin button.
- * 6. The rail never scrolls: Review, Community, Activity, Hub settings (its
- *    sections open under it only while you're in it) and the small foot fit
- *    a window 768px tall with every plugin on and Hub settings open.
+ * 6. (Nov 6) The rail fitted 768px without scrolling. Dropped on Nov 7
+ *    (ADR-018's amendment): the rail is dark, roomier, and may scroll; the
+ *    current item is kept in view. Review, Community and Hub settings fold
+ *    with a chevron; the group holding the page opens; what you open is
+ *    remembered in the browser. The phone drawer has the same look, and while
+ *    you type on a phone the bottom bar hides and the Save bar is one line.
  *
  * Acts on whichever hub `localhost` resolves to (Athens on the local stack
  * with CI's env), as its admin. Nothing it changes is left changed: the
@@ -60,7 +63,7 @@ for (const layout of ["top_tabs", "sidebar"]) {
     await expect(page.locator(".admin-bar")).toHaveCount(0);
     await expect(rail(page).getByRole("link").first()).toHaveText("Back to the hub");
     await expect(rail(page).getByRole("heading", { level: 2 })).toHaveText("Admin");
-    await expect(rail(page).getByRole("heading", { level: 3 })).toHaveText([/^Review/, /^Community/]);
+    await expect(rail(page).getByRole("heading", { level: 3 })).toHaveText([/^Review/, /^Community/, /^Hub settings/]);
     await expect(rail(page).locator('[data-nav-id="processes"]')).toHaveAttribute("aria-current", "page");
     // Hub settings' sections are not open outside it.
     await expect(rail(page).getByRole("navigation", { name: "Hub settings sections" })).toHaveCount(0);
@@ -70,10 +73,50 @@ for (const layout of ["top_tabs", "sidebar"]) {
     await expect(page).toHaveURL(/\/$/);
     await expect(rail(page)).toHaveCount(0);
     if (layout === "top_tabs") await expect(page.locator(".feed-votes-tabs")).toBeVisible();
+    // Dark means admin: the public left column stays light.
+    if (layout === "sidebar") expect(await luminanceOf(page, ".hub-sidebar")).toBeGreaterThan(0.8);
   });
 }
 
-test("the rail fits a window 768px tall without scrolling, Hub settings open", async ({ page, request }) => {
+/** The relative luminance of an element's background, 0 (black) to 1 (white). */
+async function luminanceOf(page: Page, selector: string): Promise<number> {
+  return page.locator(selector).first().evaluate((el) => {
+    const bg = getComputedStyle(el).backgroundColor;
+    // A color-mix() comes back as color(srgb r g b) in 0..1; rgb() in 0..255.
+    const scale = bg.startsWith("color(") ? 255 : 1;
+    const m = bg.match(/[\d.]+/g)!.map((n) => Number(n) * scale);
+    const lin = (c: number) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    return 0.2126 * lin(m[0]!) + 0.7152 * lin(m[1]!) + 0.0722 * lin(m[2]!);
+  });
+}
+
+test("the rail is dark, its groups fold and are remembered, and every row is the same size", async ({ page, request }) => {
+  await setLayout(request, "top_tabs");
+  await page.setViewportSize(SHORT);
+  await visitAs(page, adminToken);
+  await page.goto("/admin/reviews");
+  expect(await luminanceOf(page, ".hub-sidebar")).toBeLessThan(0.05);
+  const community = rail(page).getByRole("button", { name: /^Community/ });
+  const review = rail(page).getByRole("button", { name: /^Review/ });
+  await expect(review).toHaveAttribute("aria-expanded", "true");
+  await expect(community).toHaveAttribute("aria-expanded", "false");
+  await expect(rail(page).locator('[data-nav-id="moderation"]')).toBeHidden();
+  await community.click();
+  await expect(rail(page).locator('[data-nav-id="moderation"]')).toBeVisible();
+  // Remembered in this browser.
+  await page.reload();
+  await expect(rail(page).getByRole("button", { name: /^Community/ })).toHaveAttribute("aria-expanded", "true");
+  // Hub settings' sections are the same size as the other rows.
+  await page.goto("/admin/settings/identity");
+  const fontSize = (el: Element) => getComputedStyle(el).fontSize;
+  const section = rail(page).getByRole("link", { name: "Identity", exact: true });
+  await expect(section).toBeVisible();
+  const item = rail(page).locator('[data-nav-id="processes"]');
+  await expect(item).toBeVisible();
+  expect(await section.evaluate(fontSize)).toBe(await item.evaluate(fontSize));
+});
+
+test("on a short window the rail scrolls and keeps the page's item in view", async ({ page, request }) => {
   await setLayout(request, "top_tabs");
   // Every plugin that adds an admin item on, so the rail is as long as it gets.
   const plugins = ["brief", "meeting_summary", "feedback", "analytics"].map((p) => `plugin.${p}.enabled`);
@@ -82,21 +125,21 @@ test("the rail fits a window 768px tall without scrolling, Hub settings open", a
     request.put(`${API}/admin/hub/settings`, { headers: { Authorization: `Bearer ${adminToken}` }, data: { section: "plugins", values } });
   expect((await putPlugins(Object.fromEntries(plugins.map((k) => [k, "true"])))).ok()).toBeTruthy();
   try {
-  await page.setViewportSize(SHORT);
-  await visitAs(page, adminToken);
-  await page.goto("/admin/settings/identity");
-  const sections = rail(page).getByRole("navigation", { name: "Hub settings sections" });
-  await expect(sections).toBeVisible();
-  await expect(sections.getByRole("link", { name: "Identity" })).toHaveAttribute("aria-current", "page");
-  // Every group, item and foot link is drawn (the hub has every admin plugin on).
-  for (const id of ["processes", "briefs", "meeting-summaries", "edits", "admin-feedback", "analytics", "moderation", "hub-settings", "archived", "setup-guide", "contact"]) {
-    await expect(rail(page).locator(`[data-nav-id="${id}"]`)).toBeVisible();
-  }
-  const fit = await page.locator(".hub-sidebar").evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
-  expect(fit.scroll, `rail content ${fit.scroll}px in ${fit.client}px`).toBeLessThanOrEqual(fit.client);
-  // The foot's last link is inside the window.
-  const contact = await rail(page).locator('[data-nav-id="contact"]').boundingBox();
-  expect(contact!.y + contact!.height).toBeLessThanOrEqual(SHORT.height);
+    await page.setViewportSize({ width: 1280, height: 600 });
+    await visitAs(page, adminToken);
+    // Every group open, so the rail is longer than the window.
+    await page.goto("/admin/reviews");
+    await rail(page).getByRole("button", { name: /^Community/ }).click();
+    await page.goto("/admin/settings/plugins");
+    const sections = rail(page).getByRole("navigation", { name: "Hub settings sections" });
+    const current = sections.getByRole("link", { name: "Plugins" });
+    await expect(current).toHaveAttribute("aria-current", "page");
+    const fit = await page.locator(".hub-sidebar").evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
+    expect(fit.scroll, "the rail is longer than the window here").toBeGreaterThan(fit.client);
+    await expect(current).toBeInViewport();
+    for (const id of ["processes", "briefs", "meeting-summaries", "edits", "admin-feedback", "analytics", "moderation", "archived", "setup-guide", "contact"]) {
+      await expect(rail(page).locator(`[data-nav-id="${id}"]`)).toHaveCount(1);
+    }
   } finally {
     // An unset switch reads as its default, which is on for these.
     await putPlugins(Object.fromEntries(plugins.map((k, i) => [k, before[i] ?? "true"])));
@@ -114,6 +157,10 @@ test("a phone keeps its bottom bar and opens the rail as a drawer from the Admin
   const drawer = page.getByRole("dialog", { name: "Admin" });
   await expect(drawer).toBeVisible();
   await expect(rail(page)).toBeVisible();
+  // The same dark rail; Moderation's group is open, Review starts closed.
+  expect(await luminanceOf(page, ".admin-drawer-body")).toBeLessThan(0.05);
+  await expect(drawer.getByRole("button", { name: /^Community/ })).toHaveAttribute("aria-expanded", "true");
+  await drawer.getByRole("button", { name: /^Review/ }).click();
   await drawer.getByRole("link", { name: /^Edits/ }).click();
   await expect(page).toHaveURL(/\/admin\/edits$/);
   await expect(drawer).toHaveCount(0);
@@ -146,7 +193,27 @@ test("Setup guide opens Hub settings → Getting started: every step with its ti
     await expect(step.locator("a.getting-started-label")).toHaveAttribute("href", /^\/admin\/settings\/[a-z-]+$/);
     await expect(step.locator("a.getting-started-docs")).toHaveAttribute("href", /^https:\/\/docs\.civic\.social\//);
   }
-  // Still no scrolling rail with the extra section open.
-  const fit = await page.locator(".hub-sidebar").evaluate((el) => el.scrollHeight - el.clientHeight);
-  expect(fit).toBeLessThanOrEqual(0);
+});
+
+test("on a phone, typing hides the bottom bar and folds the Save bar to one line", async ({ page, request }) => {
+  await setLayout(request, "top_tabs");
+  await page.setViewportSize(PHONE);
+  await visitAs(page, adminToken);
+  await page.goto("/admin/settings/email");
+  const bar = page.getByRole("navigation", { name: "Sections", exact: true });
+  const save = page.getByRole("group", { name: "Save this section" });
+  await expect(bar).toBeVisible();
+  const field = page.locator(".settings-content input:not([type=checkbox]):not([type=radio]), .settings-content textarea").first();
+  await field.click();
+  await field.press("End");
+  await field.pressSequentially("x");
+  await expect(bar).toBeHidden();
+  await expect(save.getByRole("button", { name: "Save" })).toBeEnabled();
+  const box = await save.boundingBox();
+  expect(box!.height, "one line").toBeLessThanOrEqual(64);
+  // Leaving the field brings the bar back.
+  await page.locator("h1").click();
+  await expect(bar).toBeVisible();
+  // Nothing is saved: discard.
+  await save.getByRole("button", { name: "Discard changes" }).click();
 });
