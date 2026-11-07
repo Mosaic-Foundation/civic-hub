@@ -4,6 +4,71 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The layout session: a dark admin rail, and three columns — 2026-11-07
+
+**State:**
+- On dev at this entry's commit via `release.sh dev --yes` (CI, E2E and Smoke green on `03845dc`, the last code commit). Not production (still `ed960b9`).
+- No migration: the one new setting is a key/value row.
+- Commits from `b582ff0` to `03845dc`, each named for its item.
+- ADRs in the mono repo, committed for Adam to push: ADR-018's Nov 6 and Nov 7 amendments (`83355b4`) and ADR-019
+  (`c41c0b7`). ADR-011's Nov 2 amendment was already in.
+- The reports are `~/Documents/Mosaic/0 Management/Civic Social/Layout-Session-Report-2026-11-07.md` and
+  `Layout-Handoff-to-Management-2026-11-07.md`.
+
+**Part one, the admin rail (Adam's Nov 7 decisions; ADR-018 amendment):**
+- **The look:** the rail is dark, in `--color-rail-*`, the hub's darkest primary mixed with ink. Text is white and
+  muted white, the active item has the primary's light step as its mark, and icons sit on no tiles. "Back to the
+  hub" is a filled button.
+- **Roomier:** body-size rows at tap-target height, Hub settings' rows the same size as the rest, and uppercase
+  group headings. The column may scroll; the current item is scrolled into view, waiting for the lazily portalled
+  settings list.
+- **Folding groups:** Review, Community and Hub settings fold with a chevron. The current group opens, the others
+  start closed, and what is open is remembered per browser (`civic.admin-rail.open`). A closed heading carries its
+  group's counts. Activity sits between rules.
+- **The phone drawer** has the same look.
+- **Typing on a phone:** while a text field has focus (`useTypingFocus`, `html.typing-focus`), the bottom bar hides
+  and the floating Save bar folds to one line. A press held on a button keeps the bar hidden until it lifts, so a
+  tap on Post lands.
+- **The same rail in every public layout,** three columns included. The public left column stays light.
+
+**Part two, three columns (ADR-019):**
+- **Item 6:** Appearance → Navigation offers **Top navigation**, **Left column** and **Three columns**. Only the
+  labels changed: the stored values are `top_tabs`, `sidebar` and the new `three_columns`. Unset and new hubs are
+  still `top_tabs`.
+- **Item 7:** at 1280px and up, Adam's River layout (`~/Developer/river/ui/src/styles/modes.css`):
+  - the left column is a rounded card, flush left, sticky, scrolling on its own;
+  - the right column is flush right and sticky;
+  - the centre column (the feed, and section pages) is centred at `--width-centre` (680px);
+  - the gaps grow with the window.
+- **Item 8:** `GET /api/aside` (`src/services/aside.ts`) returns:
+  - open processes closing within 14 days, through each type's declared deadline, five, earliest first;
+  - the latest three announcements, as the feed's filter reads them;
+  - the member count, under the Members plugin's own rule.
+
+  The UI's card registry is `ui/src/aside/registry.ts`, with three cards. Coming up merges `GET /calendar/events`
+  while Events is on, date first. Announcements show title and date. About shows the place, the count, "Join or
+  sign in" and the About link. Each card is hidden when empty.
+- **Item 9:** with Three columns chosen, Appearance → Right column lists the cards with a kit `Switch` each and a
+  kit `SortableList` (pointer drag, plus Up and Down). The result is saved as `nav.aside_cards` (public, validated).
+  The kit controls are not in the SDK.
+- **Item 10, as Adam changed it at the stop:** from 769px to 1279px the right column is gone on every page, and the
+  left column card and the centred centre column stay. Phones are unchanged.
+- **Pages with the right column:** every public page except your settings, About, Terms, Privacy, Code of conduct,
+  Welcome, sign-in and search (`ui/src/aside/asidePages.ts`). Admin keeps the rail.
+
+**Checks:**
+- The wire is identical: the session-start code and this code on the same local database, 2,362 events.
+- `authzParity` is unchanged.
+- The tests are in TESTING.md.
+
+**Open:**
+- **Docs:** the `nav.aside_cards` anchor on the theme settings page (then take `pending` off its help key), the
+  three-column layout and its Right column, and the rail's folding groups.
+- **Plugin cards:** ADR-019's contract (declaration, gating, data, look, order, SDK) is written but not built.
+- **Locally,** `conversationSummary.spec.ts` fails on a freshly reset stack (Athens held to Briefs 0.1.0's grant).
+  CI passes it.
+- **Home-feed slice:** see the report for what it should know about the centre column's reads.
+
 ## Pilot readiness 3, after Adam's walk — 2026-11-06
 
 On dev at `89c8703`, not production (still `ed960b9`). No migration. Seven small commits, each named for its item.
