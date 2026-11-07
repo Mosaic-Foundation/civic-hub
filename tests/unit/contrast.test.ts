@@ -7,7 +7,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { contrast, mix } from "../../src/shared/theme";
+import { contrast, mix, resolveTheme, THEME_PRESETS } from "../../src/shared/theme";
 
 const STYLES = new URL("../../ui/src/styles/", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, STYLES), "utf8");
@@ -78,6 +78,23 @@ function colour(vars: Vars, token: string, under = "--color-surface"): string {
 const TEXT = 4.5;
 const UI = 3;
 
+/** The admin rail's pairs (ADR-018, Nov 7): white and muted text on each of its rows, the mark on the surface. */
+function RAIL_PAIRS(): Array<[string, string, number]> {
+  const rows = ["--color-rail-bg", "--color-rail-hover", "--color-rail-active-bg"];
+  return [
+    ...["--color-rail-text", "--color-rail-text-muted", "--color-rail-heading"].flatMap((fg) =>
+      rows.map((bg) => [fg, bg, TEXT] as [string, string, number]),
+    ),
+    ["--color-rail-mark", "--color-rail-bg", UI],
+    ["--color-rail-mark", "--color-rail-active-bg", UI],
+    ["--color-rail-focus", "--color-rail-bg", UI],
+    ["--color-rail-button-text", "--color-rail-button", TEXT],
+    ["--color-rail-button-text", "--color-rail-button-hover", TEXT],
+    ["--color-rail-button", "--color-rail-bg", UI],
+    ["--color-badge-text", "--color-badge-bg", TEXT],
+  ];
+}
+
 /** [foreground, background, minimum]: words, then edges that find a control. */
 const PAIRS: Array<[string, string, number]> = [
   ...["--color-text", "--color-text-strong", "--color-text-muted", "--color-text-subtle", "--color-link"].flatMap(
@@ -94,9 +111,7 @@ const PAIRS: Array<[string, string, number]> = [
   ["--color-accent-text", "--color-accent-hover", TEXT],
   ["--color-accent-ink", "--color-accent-wash", TEXT],
   ["--color-accent-ink", "--color-surface", TEXT],
-  ["--color-admin-bar-text", "--color-admin-bar-bg", TEXT],
-  ["--color-admin-bar-text-active", "--color-admin-bar-bg", TEXT],
-  ["--color-admin-bar-title", "--color-admin-bar-bg", TEXT],
+  ...RAIL_PAIRS(),
   ["--color-badge-text", "--color-badge-bg", TEXT],
   ["--color-success", "--color-success-bg", TEXT],
   ["--color-error", "--color-error-bg", TEXT],
@@ -132,6 +147,26 @@ describe("token contrast (WCAG AA)", () => {
       });
     });
   }
+
+  // The rail follows the hub's primary, so hold it for every preset and for
+  // primaries at the edges of what an admin may pick (theme.ts darkens a
+  // primary until white text on it passes, then derives the scale).
+  describe("the admin rail under a hub's own primary", () => {
+    const primaries = [
+      ...THEME_PRESETS.filter((p) => p.primary).map((p) => p.primary!),
+      "#ffff00", "#00ff00", "#ff00ff", "#00ffff", "#ff0000", "#0000ff", "#000000", "#777777", "#c8a2c8", "#f4a261",
+    ];
+    for (const primary of primaries) {
+      const themed = new Map(Object.entries(resolveTheme({ primary }).vars));
+      for (const [mode, layers] of [["light", [themed]], ["dark", [dark, themed]]] as const) {
+        it.each(RAIL_PAIRS())(`${primary} ${mode}: %s on %s ≥ %s`, (fg, bg, min) => {
+          const vars = tokenSet(...layers);
+          const ratio = contrast(colour(vars, fg, bg), colour(vars, bg));
+          expect(ratio, `${fg} on ${bg}: ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(min);
+        });
+      }
+    }
+  });
 
   it("every look's colour tokens resolve", () => {
     for (const vars of Object.values(SETS)) {

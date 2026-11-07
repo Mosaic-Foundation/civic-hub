@@ -86,13 +86,6 @@
   --color-header-border: var(--color-border-subtle);
   --color-column-bg: var(--color-bg);
   --color-column-border: var(--color-border-subtle);
-  --color-admin-bar-bg: #0e0f12;
-  --color-admin-bar-text: #c8cfdb;
-  --color-admin-bar-text-active: #ffffff;
-  --color-admin-bar-title: #ffffff;
-  --color-admin-bar-indicator: var(--ds-color-accent-400);
-  --color-admin-bar-hover: rgba(255, 255, 255, 0.06);
-  --color-admin-bar-active-bg: rgba(255, 255, 255, 0.1);
 
   /* --- Depth: hairlines, no shadow on a card; a deeper one for popovers --- */
   --card-shadow: none;

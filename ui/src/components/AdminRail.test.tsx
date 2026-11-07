@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AdminRail from "./AdminRail";
+import { RAIL_GROUPS_KEY } from "../hooks/useRailGroups";
 
 vi.mock("../config/hub", () => ({ useHub: () => ({ plugins: { enabled: () => true } }) }));
 vi.mock("../features", () => ({
@@ -12,42 +13,82 @@ vi.mock("../services/api", () => ({
   ADMIN_QUEUES_CHANGED: "admin-queues-changed",
 }));
 
-function rail(at = "/admin/reviews") {
+function rail(at = "/admin/reviews", slot = true) {
   return render(
     <MemoryRouter initialEntries={[at]}>
-      <AdminRail slotRef={() => {}} />
+      <AdminRail {...(slot ? { slotRef: () => {} } : {})} />
     </MemoryRouter>,
   );
 }
 
 const labels = (list: HTMLElement) => within(list).getAllByRole("link").map((a) => a.textContent?.replace(/\d+$/, "").trim());
+const toggle = (name: RegExp) => screen.getByRole("button", { name });
 
-describe("the admin rail (pilot readiness 3)", () => {
-  it("has the way back and Admin at the top, then Review, Community, Activity, Hub settings, and the small foot", async () => {
+beforeEach(() => window.localStorage.clear());
+
+describe("the admin rail (pilot readiness 3; folding groups, Nov 7)", () => {
+  it("has the way back and Admin at the top, then Review, Community, Activity, Hub settings, and the small foot", () => {
     rail();
     const nav = screen.getByRole("navigation", { name: "Admin sections" });
-    const links = within(nav).getAllByRole("link");
-    expect(links[0]!.textContent).toBe("Back to the hub");
+    expect(within(nav).getAllByRole("link")[0]!.textContent).toBe("Back to the hub");
     expect(within(nav).getByRole("heading", { level: 2 }).textContent).toBe("Admin");
-    expect(labels(screen.getByRole("list", { name: /^Review/ }))).toEqual(["Processes", "Briefs", "Meeting summaries", "Edits"]);
-    expect(labels(screen.getByRole("list", { name: /^Community/ }))).toEqual(["Moderation", "Feedback"]);
-    expect(labels(screen.getByRole("list", { name: "Admin" }))).toEqual(["Activity", "Hub settings"]);
+    expect(within(nav).getAllByRole("heading", { level: 3 }).map((h) => h.textContent?.replace(/\d+$/, ""))).toEqual([
+      "Review",
+      "Community",
+      "Hub settings",
+    ]);
+    expect(labels(screen.getByRole("list", { name: "Review" }))).toEqual(["Processes", "Briefs", "Meeting summaries", "Edits"]);
+    expect(labels(screen.getByRole("list", { name: "Activity" }))).toEqual(["Activity"]);
     expect(labels(screen.getByRole("list", { name: "More for admins" }))).toEqual(["Archived", "Setup guide", "Contact Civic.Social"]);
   });
 
-  it("rolls the Review items' counts, Edits included, up to the group's head", async () => {
-    rail();
-    const head = screen.getByRole("heading", { name: /^Review/ });
-    expect((await within(head).findByLabelText("6 new since you last looked")).textContent).toBe("6");
-    expect(within(screen.getByRole("heading", { name: /^Community/ })).getByText("4")).toBeTruthy();
+  it("opens the group holding the page and starts the others closed", () => {
+    rail("/admin/reviews");
+    expect(toggle(/^Review/).getAttribute("aria-expanded")).toBe("true");
+    expect(toggle(/^Community/).getAttribute("aria-expanded")).toBe("false");
+    expect(toggle(/^Hub settings/).getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("link", { name: /^Processes/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /^Moderation/ })).toBeNull();
   });
 
-  it("opens Hub settings' sections under its item only while you're in it", () => {
-    const { container, unmount } = rail("/admin/reviews");
-    expect(container.querySelector(".admin-rail-subnav")).toBeNull();
-    unmount();
-    const inSettings = rail("/admin/settings/identity");
-    expect(inSettings.container.querySelector('[data-group="main"] .admin-rail-subnav')).not.toBeNull();
+  it("rolls a closed group's counts up to its heading, and an open group leaves them on its items", async () => {
+    rail("/admin/reviews");
+    const community = toggle(/^Community/);
+    expect((await within(community).findByLabelText("4 new since you last looked")).textContent).toBe("4");
+    expect(within(toggle(/^Review/)).queryByLabelText(/new since/)).toBeNull();
+    expect(await screen.findByLabelText("2 new since you last looked")).toBeTruthy();
+  });
+
+  it("remembers what you open and close, in this browser", () => {
+    const first = rail("/admin/reviews");
+    fireEvent.click(toggle(/^Community/));
+    fireEvent.click(toggle(/^Review/));
+    expect(JSON.parse(window.localStorage.getItem(RAIL_GROUPS_KEY)!)).toMatchObject({ community: true, review: false });
+    first.unmount();
+    rail("/admin/archived");
+    expect(toggle(/^Community/).getAttribute("aria-expanded")).toBe("true");
+    expect(toggle(/^Review/).getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("lists Hub settings' sections as links away from its page, and gives its page the slot on it", () => {
+    const away = rail("/admin/reviews");
+    fireEvent.click(toggle(/^Hub settings/));
+    const list = screen.getByRole("list", { name: "Hub settings" });
+    expect(labels(list)[0]).toBe("Getting started");
+    expect(within(list).getByRole("link", { name: "Appearance" }).getAttribute("href")).toBe("/admin/settings/theme");
+    away.unmount();
+    const on = rail("/admin/settings/identity");
+    expect(toggle(/^Hub settings/).getAttribute("aria-expanded")).toBe("true");
+    expect(on.container.querySelector('[data-group="settings"] .admin-rail-subnav')).not.toBeNull();
+    // Closed, the slot stays, so the page doesn't draw its list again in its own column.
+    fireEvent.click(toggle(/^Hub settings/));
+    expect(on.container.querySelector('[data-group="settings"] .admin-rail-subnav')).not.toBeNull();
+  });
+
+  it("in the drawer (no slot), Hub settings' sections are plain links, the current one marked", () => {
+    rail("/admin/settings/legal", false);
+    const list = screen.getByRole("list", { name: "Hub settings" });
+    expect(within(list).getByRole("link", { name: "Legal" }).getAttribute("aria-current")).toBe("page");
   });
 
   it("the setup guide is the checklist in Hub settings", () => {

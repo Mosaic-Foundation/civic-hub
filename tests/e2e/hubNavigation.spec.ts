@@ -225,14 +225,16 @@ test("Hub settings → Theme: Sidebar and a new order take effect at once, every
   await expect(page.getByText(/^Saved\./)).toBeVisible();
 
   // Admin is the rail (pilot readiness 3): the way back, Admin, Hub settings
-  // current with its sections under it; the header stays, the tabs go.
+  // open with its sections, Appearance current; the header stays, the tabs go.
   const adminRail = page.getByRole("navigation", { name: "Admin sections" });
   await expect(adminRail).toBeVisible();
   await expect(page.locator(".civic-nav")).toBeVisible();
   await expect(page.locator(".feed-votes-tabs")).toBeHidden();
   await expect(adminRail.getByText("Admin", { exact: true })).toBeVisible();
-  await expect(adminRail.locator('[data-nav-id="hub-settings"]')).toHaveAttribute("aria-current", "page");
-  await expect(adminRail.getByRole("navigation", { name: "Hub settings sections" })).toBeVisible();
+  await expect(adminRail.getByRole("button", { name: /^Hub settings/ })).toHaveAttribute("aria-expanded", "true");
+  const settingsSections = adminRail.getByRole("navigation", { name: "Hub settings sections" });
+  await expect(settingsSections).toBeVisible();
+  await expect(settingsSections.getByRole("link", { name: "Appearance" })).toHaveAttribute("aria-current", "page");
 
   // Back to the hub: the sections in the new order, and one Admin entry.
   await adminRail.getByRole("link", { name: "Back to the hub" }).click();

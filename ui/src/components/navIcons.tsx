@@ -122,6 +122,7 @@ const PATHS: Record<string, ReactElement> = {
     </>
   ),
   back: <path d="M19 12H5M11 6l-6 6 6 6" />,
+  chevron: <path d="M6 9l6 6 6-6" />,
   plugins: (
     <>
       <path d="M9 3v4M15 3v4" />

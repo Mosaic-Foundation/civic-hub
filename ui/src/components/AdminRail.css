@@ -1,87 +1,118 @@
 /* The admin rail (AdminRail.tsx), in the left column and in the phone's
-   drawer. Compact on purpose: with every plugin on and Hub settings open it
-   fits a window 768px tall without scrolling (pilot readiness 3). Tokens
-   only. */
+   drawer. A flat dark column with white type (ADR-018, Nov 7): dark means
+   admin. Roomy on purpose: every row the same size, Hub settings' sections
+   included; the column scrolls on a short window. Tokens only (the --color-rail-*
+   roles in theme.css). */
 
 .admin-rail {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  padding: var(--space-3) var(--space-3) var(--space-2);
+  padding: var(--space-4) var(--space-3) var(--space-3);
   box-sizing: border-box;
+  background: var(--color-rail-bg);
+  color: var(--color-rail-text);
 }
 
-/* The way back, as a button in the hub's colour (Adam, 2026-11-06). */
+/* The way back, a filled button (Adam, 2026-11-06), in the primary's light step. */
 .admin-rail-back {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: calc(var(--space-6) + var(--space-1));
+  min-height: var(--tap-target);
   padding: 0 var(--space-3);
   border-radius: var(--radius-md);
-  background: var(--color-primary);
-  color: var(--color-primary-text);
-  font-size: var(--text-small-size);
+  background: var(--color-rail-button);
+  color: var(--color-rail-button-text);
+  font-size: var(--text-body-size);
   font-weight: var(--font-weight-semibold);
   text-decoration: none;
   transition: background var(--duration-fast) var(--ease-default);
 }
 
 .admin-rail-back:hover {
-  background: var(--color-primary-hover);
-  color: var(--color-primary-text);
+  background: var(--color-rail-button-hover);
+  color: var(--color-rail-button-text);
   text-decoration: none;
 }
 
-.admin-rail-back:focus-visible {
-  outline: var(--border-width-strong) solid var(--color-focus);
+.admin-rail :focus-visible {
+  outline: var(--border-width-strong) solid var(--color-rail-focus);
   outline-offset: var(--space-px);
 }
 
 .admin-rail-title {
-  margin: var(--space-2) 0 0;
-  padding: 0 var(--space-2);
+  margin: var(--space-4) 0 var(--space-1);
+  padding: 0 var(--space-3);
   font-family: var(--font-heading);
   font-size: var(--text-heading-size);
   line-height: var(--line-height-tight);
-  color: var(--color-text-strong);
+  color: var(--color-rail-text);
 }
 
-.admin-rail-group + .admin-rail-group {
-  margin-top: var(--space-1-5);
-}
-
-/* The group without a heading (Activity, Hub settings) starts after a rule,
-   so the gap above it reads as the groups' and not as a stray space. */
-.admin-rail-group[data-group="main"] {
+.admin-rail-group,
+.admin-rail-single {
   margin-top: var(--space-2);
-  padding-top: var(--space-1-5);
-  border-top: var(--border-width) solid var(--color-border-subtle);
 }
 
+/* A group's heading: the whole row opens and closes it. */
 .admin-rail-group-head {
+  margin: 0;
+  font-size: inherit;
+}
+
+.admin-rail-group-toggle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
-  margin: var(--space-2) 0 var(--space-0-5);
-  padding: 0 var(--space-2);
+  width: 100%;
+  min-height: var(--tap-target);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-rail-heading);
   font-family: var(--font-body);
-  font-size: var(--text-eyebrow-size);
+  font-size: var(--text-small-size);
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--text-eyebrow-spacing);
-  line-height: var(--line-height-tight);
   text-transform: uppercase;
-  color: var(--color-text-subtle);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
 }
 
-.admin-rail-group-count {
-  min-width: var(--space-5);
-  padding: 0 var(--space-1-5);
+.admin-rail-group-toggle:hover {
+  background: var(--color-rail-hover);
+  color: var(--color-rail-text);
+}
+
+.admin-rail-group-label {
+  flex: 1 1 auto;
+}
+
+.admin-rail-group-toggle svg {
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  transition: transform var(--duration-fast) var(--ease-default);
+}
+
+.admin-rail-group.is-open .admin-rail-group-toggle svg {
+  transform: rotate(180deg);
+}
+
+/* A closed group's counts, rolled up; an item's own count. */
+.admin-rail-count,
+.admin-rail .nav-item-count {
+  flex: none;
+  min-width: var(--space-6);
+  padding: var(--space-px) var(--space-2);
   border-radius: var(--radius-pill);
-  background: var(--color-primary-tint);
-  color: var(--color-primary-ink);
+  background: var(--color-badge-bg);
+  color: var(--color-badge-text);
   font-size: var(--text-caption-size);
+  font-weight: var(--font-weight-bold);
   letter-spacing: normal;
   text-align: center;
 }
@@ -91,7 +122,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0;
+  gap: var(--space-px);
 }
 
 /* The base stylesheet spaces list items apart; the rail sets its own rhythm. */
@@ -100,56 +131,90 @@
 }
 
 .admin-rail-list .nav-item {
-  min-height: calc(var(--space-6) + var(--space-1));
-  padding: var(--space-0-5) var(--space-2);
+  min-height: var(--tap-target);
+  padding: var(--space-2) var(--space-3);
+  gap: var(--space-3);
   line-height: var(--line-height-snug);
-  gap: var(--space-2-5);
-  font-size: var(--text-small-size);
+  font-size: var(--text-body-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-rail-text-muted);
 }
 
-/* Each icon on a small tile in the hub's colour; the current one filled. */
+.admin-rail-list .nav-item:hover {
+  background: var(--color-rail-hover);
+  color: var(--color-rail-text);
+}
+
+/* Icons straight on the dark surface, no tiles. */
 .admin-rail-list .nav-item svg {
-  box-sizing: border-box;
-  width: calc(var(--space-5) + var(--space-0-5));
-  height: calc(var(--space-5) + var(--space-0-5));
-  padding: var(--space-1);
-  border-radius: var(--radius-sm);
-  background: var(--color-primary-wash);
-  color: var(--color-primary);
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--color-rail-heading);
+}
+
+/* The page you're on: a lighter row, white words and the mark beside them. */
+.admin-rail-list .nav-item.is-current {
+  background: var(--color-rail-active-bg);
+  color: var(--color-rail-text);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: inset var(--indicator-width) 0 0 var(--color-rail-mark);
 }
 
 .admin-rail-list .nav-item.is-current svg {
-  background: var(--color-primary);
-  color: var(--color-primary-text);
+  color: var(--color-rail-mark);
 }
 
-/* The foot: small type, one wrapped line, no icons (and no tiles). */
+/* Hub settings' sections: the same size as every other row, no icons, a
+   rule down their left. */
+.admin-rail-list--sections,
+.admin-rail-subnav .settings-nav ul {
+  margin: var(--space-1) 0 0 var(--space-5);
+  padding: 0;
+  border-left: var(--border-width) solid var(--color-rail-rule);
+}
+
+.admin-rail-list--sections .nav-item svg {
+  display: none;
+}
+
+.admin-rail-list--sections .nav-item {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+/* The foot: small type, one wrapped line, no icons. */
 .admin-rail-foot {
   margin-top: auto;
-  padding-top: var(--space-3);
+  padding-top: var(--space-6);
 }
 
 .admin-rail-list--small {
   display: flex;
   flex-wrap: wrap;
-  column-gap: var(--space-3);
-  row-gap: 0;
-  padding: 0 var(--space-2);
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) 0;
+  border-top: var(--border-width) solid var(--color-rail-rule);
 }
 
 .admin-rail-list--small .nav-item {
   width: auto;
   min-height: 0;
-  padding: var(--space-0-5) 0;
-  font-size: var(--text-caption-size);
+  padding: var(--space-1) 0;
+  font-size: var(--text-small-size);
   font-weight: var(--font-weight-regular);
-  color: var(--color-text-muted);
+  color: var(--color-rail-text-muted);
+}
+
+.admin-rail-list--small .nav-item:hover {
+  background: none;
+  color: var(--color-rail-text);
+  text-decoration: underline;
 }
 
 .admin-rail-list--small .nav-item.is-current {
   background: none;
   box-shadow: none;
-  color: var(--color-text-strong);
+  color: var(--color-rail-text);
   font-weight: var(--font-weight-semibold);
   text-decoration: underline;
 }
@@ -158,10 +223,10 @@
   display: none;
 }
 
-/* Hub settings' sections, under its item (AdminSettings.tsx draws them). */
+/* Hub settings' own list, drawn here by its page (AdminSettings.tsx). */
 .admin-rail-subnav .settings-nav {
   position: static;
-  margin: 0 0 0 var(--space-6);
+  margin: 0;
   padding: 0;
   border: 0;
   background: none;
@@ -169,36 +234,48 @@
 
 .admin-rail-subnav .settings-nav ul {
   display: grid;
-  gap: 0;
+  gap: var(--space-px);
+  list-style: none;
+}
+
+.admin-rail-subnav .settings-nav li {
   margin: 0;
-  padding: 0;
-  border-left: var(--border-width) solid var(--color-border-subtle);
 }
 
 .admin-rail-subnav .settings-nav-link {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: calc(var(--space-5) + var(--space-0-5));
-  padding: var(--space-px) var(--space-3);
-  margin-left: calc(-1 * var(--border-width));
-  border-left: var(--indicator-width) solid transparent;
-  border-radius: 0;
+  min-height: var(--tap-target);
+  padding: var(--space-2) var(--space-3);
+  margin: 0;
+  border: 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
   background: none;
-  font-size: var(--text-caption-size);
-  line-height: var(--line-height-tight);
-  color: var(--color-text-muted);
+  font-size: var(--text-body-size);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-snug);
+  color: var(--color-rail-text-muted);
+  text-decoration: none;
 }
 
 .admin-rail-subnav .settings-nav-link:hover {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
+  color: var(--color-rail-text);
+  background: var(--color-rail-hover);
   text-decoration: none;
 }
 
 .admin-rail-subnav .settings-nav-link.is-active {
-  border-left-color: var(--color-primary);
-  color: var(--color-text-strong);
+  background: var(--color-rail-active-bg);
+  color: var(--color-rail-text);
   font-weight: var(--font-weight-semibold);
-  background: none;
+  box-shadow: inset var(--indicator-width) 0 0 var(--color-rail-mark);
+}
+
+.admin-rail-subnav .settings-nav-link.is-disabled {
+  color: var(--color-rail-heading);
+}
+
+.admin-rail-subnav .settings-nav-dot {
+  background: var(--color-rail-mark);
 }

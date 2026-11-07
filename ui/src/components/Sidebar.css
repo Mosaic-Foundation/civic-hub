@@ -23,6 +23,15 @@
   }
 }
 
+/* Inside admin the column is the dark admin rail (ADR-018, Nov 7); the
+   hub's own column stays light, so dark always means admin. */
+@media (min-width: 769px) {
+  .app--admin .hub-sidebar {
+    background: var(--color-rail-bg);
+    border-right-color: var(--color-rail-bg);
+  }
+}
+
 .hub-sidebar-nav {
   display: flex;
   flex-direction: column;

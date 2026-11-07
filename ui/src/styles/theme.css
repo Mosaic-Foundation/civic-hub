@@ -131,23 +131,32 @@
   --color-badge-bg: var(--ds-color-danger-700);
   --color-badge-text: var(--ds-color-paper-0);
 
-  /* --- Chrome: the hub header, the admin bar, the left column ---------- */
+  /* --- Chrome: the hub header, the left column, the admin rail ---------- */
   --color-header-bg: var(--color-surface);
   --color-header-border: var(--color-border-subtle);
   --color-column-bg: var(--color-surface);
   --color-column-border: var(--color-border-subtle);
-  /* The admin bar: a different tone from the hub's own pages, so an admin
-     always knows they are in admin (decision 4). */
-  --color-admin-bar-bg: var(--ds-color-ink-900);
-  --color-admin-bar-text: var(--ds-color-ink-200);
-  --color-admin-bar-text-active: var(--ds-color-paper-0);
-  --color-admin-bar-title: var(--ds-color-paper-0);
-  --color-admin-bar-indicator: var(--ds-color-accent-400);
-  --color-admin-bar-hover: rgba(255, 255, 255, 0.08);
-  /* The tab you are on: a lighter field and a thick accent rule, not only
-     a heavier word (Adam, 2026-10-29: "more obvious when selected"). */
-  --color-admin-bar-active-bg: rgba(255, 255, 255, 0.14);
-  --admin-bar-indicator-width: 3px;
+  /* The admin rail (ADR-018, Nov 7): a flat dark column, so an admin always
+     knows they are in admin; dark means admin. Its surface is mixed from the
+     hub primary's darkest step and the ink scale, so a themed hub's rail
+     follows its colour (src/shared/theme.ts derives the 950 step). The
+     current item's mark is the primary's light step, "Back to the hub" one
+     lighter.
+     tests/unit/contrast.test.ts holds every pair, and a range of primaries. */
+  --color-rail-bg: color-mix(in srgb, var(--ds-color-primary-950) 55%, var(--ds-color-ink-950));
+  --color-rail-hover: color-mix(in srgb, var(--ds-color-primary-800) 45%, var(--ds-color-ink-950));
+  --color-rail-active-bg: color-mix(in srgb, var(--ds-color-primary-700) 50%, var(--ds-color-ink-950));
+  --color-rail-text: var(--ds-color-paper-0);
+  --color-rail-text-muted: var(--ds-color-ink-200);
+  --color-rail-heading: var(--ds-color-ink-300);
+  --color-rail-rule: color-mix(in srgb, var(--ds-color-ink-300) 25%, var(--ds-color-ink-950));
+  --color-rail-mark: var(--ds-color-primary-300);
+  /* "Back to the hub": a step lighter than the mark, so dark text on it
+     passes under any primary (a black one included). */
+  --color-rail-button: var(--ds-color-primary-200);
+  --color-rail-button-hover: var(--ds-color-primary-100);
+  --color-rail-button-text: var(--ds-color-ink-950);
+  --color-rail-focus: var(--ds-color-paper-0);
 
   /* --- Colour: post-type pills (hub-specific) --- */
   --pill-vote-bg: var(--ds-color-primary-100);       --pill-vote-fg: var(--ds-color-primary-800);
