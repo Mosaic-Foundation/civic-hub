@@ -55,6 +55,15 @@
   margin-top: var(--space-2);
 }
 
+/* A plain item between groups (Activity) sits between rules, so it doesn't
+   read as the closed group's above it. */
+.admin-rail-group + .admin-rail-single,
+.admin-rail-single + .admin-rail-group {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--color-rail-rule);
+}
+
 /* A group's heading: the whole row opens and closes it. */
 .admin-rail-group-head {
   margin: 0;
