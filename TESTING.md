@@ -87,6 +87,72 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## The layout session: a dark admin rail, and three columns (2026-11-07)
+
+**Part one, the rail (ADR-018's Nov 7 amendment):**
+- `tests/unit/contrast.test.ts`: the `--color-rail-*` pairs in light and dark, under every preset and ten hostile
+  primaries (yellow, lime, black, grey and so on), at 4.5:1 for text and 3:1 for the mark, the focus ring and the
+  button.
+- `AdminRail.test.tsx` (7 tests): the order, the open and closed groups, counts rolled up on a closed heading, a
+  group remembered, Hub settings' links and slot, the drawer's links.
+- `useTypingFocus.test.tsx`: which fields bring up a keyboard, the class while one has focus, a press held until
+  it lifts, and cleanup on unmount.
+- `adminRail.spec.ts` (14 tests, Chromium and WebKit):
+  - the rail is dark, its groups fold and are remembered, and its rows are all one height;
+  - a short window scrolls with the current item in view;
+  - the phone drawer is dark;
+  - typing on a phone hides the bottom bar and folds the Save bar to one line.
+- `actions.spec` at 375px caught a real bug: tapping Post took focus away and brought the bar back under the
+  finger. Fixed by holding the bar hidden until the press lifts.
+
+**Part two, three columns (ADR-019):**
+- `tests/unit/asideCards.test.ts`:
+  - the stored list read, ordered and written back;
+  - a card the hub doesn't draw keeps its place;
+  - the endpoint's validation;
+  - `nav.layout`'s three options.
+- `ui/src/aside/comingUp.test.ts`:
+  - events and deadlines merged, earliest first;
+  - 14 days ahead, at most five rows;
+  - cancelled and past rows left out;
+  - an event's own deadline left out;
+  - the hub's time zone, with an unknown zone ignored;
+  - which pages have the column.
+- `ui/src/kit/SortableList.test.tsx`: Up and Down, the ends disabled, the live announcement; `Switch` reads as a
+  switch.
+- `tests/api/aside.test.ts` (both modes):
+  - closing within the fortnight is listed, earliest first, at most five;
+  - later, past, under review and another hub's are not;
+  - no account fields, and the member count follows `/members/summary`;
+  - the settings take `three_columns` and a list of cards, refuse four bad lists and an unknown layout, are
+    public, and are an admin's to change.
+- `leakHarness.test.ts` walks `GET /aside` and `GET /api/aside`. `pluginRoutes.test.ts` lists them as added.
+- `threeColumns.spec.ts` (3 tests, Chromium and WebKit):
+  - at 1440px: the left card is rounded and flush left, the cards are flush right, and the centre is at most
+    680px wide and centred;
+  - Coming up's rows are dated, and the cards stay in view while the page scrolls;
+  - Votes has the column; About, your settings and admin don't;
+  - at 1100px no page has it; at 375px it's the phone layout;
+  - the editor has the three labels, the Right column list appears with Three columns, and Up keeps focus;
+  - a pointer drag reorders, the switch hides Announcements, Save stores the list, and the home page draws it so.
+- **Spec pitfalls:**
+  - The column renders an `aria-busy` placeholder while it loads, so read the cards after `aria-busy` goes.
+  - Earlier runs' votes close sooner than a new one, so don't expect a given vote in Coming up's five rows.
+- **Screenshots:** ten `three-*` baselines (light and dark, the right column's dates masked), and the two
+  Appearance pages re-taken for the new labels.
+
+**Results, local:**
+- `npm test`: 3,756 passed, 2 failing until the route inventories listed `/aside` (fixed).
+- API: both modes green (1,097 passed with hub tokens; the service-role pass green on a rerun, after one flake).
+- UI unit: 111 passed. Typecheck, both lints and the token ratchet clean.
+- Playwright: 234 passed. Two failed:
+  - `hubNavigation` still picked "Sidebar" (fixed: "Left column").
+  - `conversationSummary` fails on a freshly reset local stack. Athens is held to Briefs 0.1.0's grant, which has
+    no `ai`, so the brief has no written summary; that is the case `pluginUpdate.spec.ts` tests on purpose. CI's
+    E2E passes it. Not this slice: nothing under `packages/` or `src/plugins/` changed.
+- **Wire:** the session-start code (`6ecf648`, in a worktree) and this code snapshotted the same local database
+  after the API passes: 2,362 events, all identical. `authzParity` unchanged.
+
 ## Pilot readiness 3, after Adam's walk (2026-11-06)
 
 - `tests/api/setupCard.test.ts`: saving a plugin's own setting (`plugin.wordcloud.onboarding_id`) leaves Plugins
