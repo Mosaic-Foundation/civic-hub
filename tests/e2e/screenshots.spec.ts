@@ -52,7 +52,8 @@ async function shoot(page: Page, name: string): Promise<void> {
     fullPage: true,
     animations: "disabled",
     caret: "hide",
-    mask: [page.locator("time"), page.locator(".feed-post-time, .relative-time")],
+    // The right column's dates move day to day (three columns, ADR-019).
+    mask: [page.locator("time"), page.locator(".feed-post-time, .relative-time, .aside-date, .aside-row-meta")],
     maxDiffPixelRatio: 0.002,
   });
 }
@@ -112,10 +113,13 @@ test.describe("screenshots", () => {
     });
   }
 
-  // The left-column layout and the dark mode, at desktop width (ADR-018).
+  // The left-column layout, the dark mode and three columns (ADR-019) in
+  // both, at desktop width (ADR-018).
   const VARIANTS = [
     { name: "sidebar", layout: "sidebar", mode: "light" },
     { name: "dark", layout: "top_tabs", mode: "dark" },
+    { name: "three", layout: "three_columns", mode: "light" },
+    { name: "three-dark", layout: "three_columns", mode: "dark" },
   ] as const;
   for (const v of VARIANTS) {
     test(`${v.name}: signed out and admin, desktop`, async ({ page, request }) => {
