@@ -104,8 +104,9 @@ test.describe("blocked storage", () => {
 test.describe("the phone layout when a field takes focus", () => {
   // The viewport allows zoom (ux-polish.spec.ts, Zoom); what keeps iOS from
   // zooming in on a field is the 16px rule (index.css), and the navigation
-  // slice's fixed header and bar must stay where they are.
-  test("the header and the bottom bar stay put, and every field is at least 16px", async ({ page, request }) => {
+  // slice's fixed header must stay where it is. Since Nov 7 (Adam's walk) the
+  // bottom bar steps aside while a field has focus (useTypingFocus.ts).
+  test("the header stays put, the bottom bar hides while typing, and every field is at least 16px", async ({ page, request }) => {
     const hub = await hubId(request);
     const admin = await session(hub, adminEmailFor(hub));
     const id = await liveVote(request, admin.token, `Focus ${run}`);
@@ -116,15 +117,18 @@ test.describe("the phone layout when a field takes focus", () => {
     const field = page.locator("main textarea").first();
     await expect(field).toBeVisible();
 
-    const bars = page.locator(".civic-nav, .bottom-bar");
-    const before = await bars.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+    const header = page.locator(".civic-nav");
+    const bottomBar = page.locator(".bottom-bar");
+    const before = await header.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
     expect(before.length).toBeGreaterThan(0);
+    await expect(bottomBar).toBeVisible();
 
     await field.click();
     await expect(field).toBeFocused();
     await page.waitForTimeout(400);
-    const after = await bars.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+    const after = await header.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
     expect(after).toEqual(before);
+    await expect(bottomBar).toBeHidden();
     expect(await page.evaluate(() => window.visualViewport?.scale ?? 1)).toBe(1);
 
     const small = await page.evaluate(() =>
@@ -134,6 +138,10 @@ test.describe("the phone layout when a field takes focus", () => {
         .filter((f) => f.size < 16),
     );
     expect(small).toEqual([]);
+
+    // Leaving the field brings the bar back.
+    await page.locator("main h1").first().click();
+    await expect(bottomBar).toBeVisible();
   });
 });
 

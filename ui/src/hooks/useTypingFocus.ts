@@ -22,14 +22,37 @@ export function isTypingTarget(el: Element | null): boolean {
 export function useTypingFocus(): void {
   useEffect(() => {
     const root = document.documentElement;
-    const sync = () => root.classList.toggle(TYPING_FOCUS_CLASS, isTypingTarget(document.activeElement));
-    // focusout fires before the next field's focusin; read where focus landed after both.
+    // A tap on a button below the field (Post, Save) takes focus away on its
+    // press; bringing the bar back then would put it under the finger before
+    // the click lands. So while a pointer is down, wait for it to lift: the
+    // click is dispatched with the lift, and the check runs after it.
+    let pressing = false;
+    const sync = () => {
+      const typing = isTypingTarget(document.activeElement);
+      if (pressing && !typing) return;
+      root.classList.toggle(TYPING_FOCUS_CLASS, typing);
+    };
     const later = () => window.setTimeout(sync, 0);
+    const down = () => {
+      pressing = true;
+    };
+    const up = () => {
+      pressing = false;
+      later();
+    };
+    // focusout fires before the next field's focusin; read where focus landed after both.
+    const out = () => later();
     document.addEventListener("focusin", sync);
-    document.addEventListener("focusout", later);
+    document.addEventListener("focusout", out);
+    document.addEventListener("pointerdown", down, true);
+    document.addEventListener("pointerup", up, true);
+    document.addEventListener("pointercancel", up, true);
     return () => {
       document.removeEventListener("focusin", sync);
-      document.removeEventListener("focusout", later);
+      document.removeEventListener("focusout", out);
+      document.removeEventListener("pointerdown", down, true);
+      document.removeEventListener("pointerup", up, true);
+      document.removeEventListener("pointercancel", up, true);
       root.classList.remove(TYPING_FOCUS_CLASS);
     };
   }, []);

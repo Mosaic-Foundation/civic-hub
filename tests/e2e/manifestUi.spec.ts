@@ -115,7 +115,8 @@ test.describe("the Plugins page and the link picker", () => {
       "Feedback",
     ];
     for (const name of names) {
-      await expect(page.getByText(name, { exact: true }).first(), name).toBeVisible();
+      // On the page, not the admin rail's folded Review group.
+      await expect(page.locator(".settings-content").getByText(name, { exact: true }).first(), name).toBeVisible();
     }
     // The vote plugin's own panel (its UI module's), under Votes once opened.
     await page.getByRole("region", { name: "Votes" }).locator(".plugin-card-head").click();

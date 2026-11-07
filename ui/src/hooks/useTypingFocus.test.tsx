@@ -42,6 +42,19 @@ describe("typing focus (Adam's Nov 7 walk)", () => {
       vi.runAllTimers();
     });
     expect(root.classList.contains(TYPING_FOCUS_CLASS)).toBe(false);
+    // A press that takes focus away keeps the bar hidden until it lifts.
+    act(() => getByLabelText("name").focus());
+    act(() => {
+      document.dispatchEvent(new Event("pointerdown"));
+      getByLabelText("tick").focus();
+      vi.runAllTimers();
+    });
+    expect(root.classList.contains(TYPING_FOCUS_CLASS)).toBe(true);
+    act(() => {
+      document.dispatchEvent(new Event("pointerup"));
+      vi.runAllTimers();
+    });
+    expect(root.classList.contains(TYPING_FOCUS_CLASS)).toBe(false);
     act(() => getByLabelText("name").focus());
     unmount();
     expect(root.classList.contains(TYPING_FOCUS_CLASS)).toBe(false);

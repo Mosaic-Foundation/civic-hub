@@ -170,12 +170,13 @@ test("1. the Admin group in More (phone) and in the sidebar (desktop), Reviews w
   // Inside admin the column is the admin rail (pilot readiness 3).
   const rail = page.getByRole("navigation", { name: "Admin sections" });
   await expect(rail.getByRole("link", { name: "Back to the hub" })).toBeVisible();
-  // Review is open (the page is in it); Community and Hub settings fold (Nov 7).
+  // Review is open (the page is in it); Community and Hub settings fold (Nov 7),
+  // open or closed as this browser last left them.
   for (const label of ["Processes", "Activity"]) {
     await expect(rail.locator(".nav-item", { hasText: label }).first()).toBeVisible();
   }
   for (const group of [/^Community/, /^Hub settings/]) {
-    await expect(rail.getByRole("button", { name: group })).toHaveAttribute("aria-expanded", "false");
+    await expect(rail.getByRole("button", { name: group })).toHaveAttribute("aria-expanded", /^(true|false)$/);
   }
 });
 
