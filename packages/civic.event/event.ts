@@ -184,6 +184,17 @@ export function defaultEnd(start: string, timeZone: string): string {
   return new Date(t).toISOString();
 }
 
+/**
+ * How long it runs as the form's two selects show it (Events 3): whole hours
+ * and a quarter of an hour, rounded to the nearest 15 minutes (the date
+ * picker's own step). Null when there is no valid duration.
+ */
+export function quarterHours(minutes: number | null): { hours: number; minutes: 0 | 15 | 30 | 45 } | null {
+  if (minutes === null || !Number.isFinite(minutes) || minutes <= 0) return null;
+  const q = Math.max(15, Math.round(minutes / 15) * 15);
+  return { hours: Math.floor(q / 60), minutes: (q % 60) as 0 | 15 | 30 | 45 };
+}
+
 /** "1 h 30 min", "45 min", "2 h", "1 day 2 h". */
 export function formatDuration(minutes: number): string {
   const d = Math.floor(minutes / 1440);

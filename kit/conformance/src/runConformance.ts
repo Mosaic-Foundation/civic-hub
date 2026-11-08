@@ -1030,11 +1030,11 @@ function ownLookStep(d: ProcessTypeDescriptor): void {
  */
 /**
  * Releases that came before step 22, by name and version, while their next
- * release is being made (Events 0.3.2, whose 0.4.0 moves onto the kit). A
- * new version of the same package is held to the step; the list empties
- * when Events 0.4.0 lands.
+ * release is being made. Empty since Events 0.4.0 moved onto the kit; a
+ * package that predates a new step goes here only for the one release that
+ * brings it up to it.
  */
-const BEFORE_STEP_22 = new Set(["civic.event@0.3.2"]);
+const BEFORE_STEP_22 = new Set<string>([]);
 
 function layoutOnlyStep(d: ProcessTypeDescriptor): void {
   describe("22. layout and spacing only; the look comes from the kit", () => {

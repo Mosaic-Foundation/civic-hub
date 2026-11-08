@@ -13,6 +13,7 @@ import {
   formatDuration,
   imageOf,
   parseDuration,
+  quarterHours,
   timeZoneOf,
   type EventState,
 } from "../../packages/civic.event/event.js";
@@ -108,5 +109,17 @@ describe("the checks", () => {
     for (const bad of ["https://elsewhere.example/a.png", "javascript:alert(1)", "not a url", "https://store.example/hub/types/civic.vote/a.png"]) {
       expect(() => imageOf(bad, ""), bad).toThrow();
     }
+  });
+});
+
+describe("the duration selects (Events 3)", () => {
+  it("show hours and a quarter hour, rounded to the nearest 15 minutes", () => {
+    expect(quarterHours(60)).toEqual({ hours: 1, minutes: 0 });
+    expect(quarterHours(97)).toEqual({ hours: 1, minutes: 30 });
+    expect(quarterHours(98)).toEqual({ hours: 1, minutes: 45 });
+    expect(quarterHours(5)).toEqual({ hours: 0, minutes: 15 });
+    expect(quarterHours(26 * 60)).toEqual({ hours: 26, minutes: 0 });
+    expect(quarterHours(null)).toBeNull();
+    expect(quarterHours(0)).toBeNull();
   });
 });

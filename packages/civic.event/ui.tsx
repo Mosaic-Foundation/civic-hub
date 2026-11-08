@@ -1,13 +1,52 @@
 // Events' UI module: the calendar, an event's page, and the form to propose
-// and edit one. Drawn with the hub's UI kit (@civic-social/plugin-sdk/ui:
-// its buttons, fields and drafting shell; engine 2, A7), so it looks like the
-// hub's own pages; it reads and acts through the hub's routes for every
-// process (/process/:id/state, /process/:id/action, /process/:id/edit), the
-// hub's drafts routes at /calendar/drafts, and its own /calendar routes.
+// and edit one. Composed of the hub's UI kit alone (@civic-social/plugin-sdk/ui;
+// Events 3: its page head, day groups, list cards, view toggle, month grid and
+// week strip, facts, notices, fields and drafting shell), so it looks exactly
+// like the hub's own pages in any theme and layout; styles.css sets layout
+// only (conformance step 22). Every time is shown in the hub's zone
+// (hubTimeZone()), named once on a page. It reads and acts through the hub's
+// routes for every process (/process/:id/state, /process/:id/action,
+// /process/:id/edit), the hub's drafts routes at /calendar/drafts, and its own
+// /calendar routes.
 
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Button, DateTimeInput, DraftShell, Field, Select, TextArea, TextInput, type ProcessUi } from "@civic-social/plugin-sdk/ui";
+import {
+  Button,
+  Card,
+  CardList,
+  Chip,
+  ChipGroup,
+  DateTimeInput,
+  DayGroup,
+  DraftShell,
+  EmptyState,
+  FactList,
+  Field,
+  Fieldset,
+  Group,
+  ImageUpload,
+  ListCard,
+  MonthGrid,
+  Note,
+  Notice,
+  Page,
+  PageAction,
+  PageHead,
+  Picture as KitPicture,
+  RadioCards,
+  Select,
+  StatusChip,
+  TextArea,
+  TextInput,
+  ViewToggle,
+  WeekStrip,
+  dayKey,
+  groupByDay,
+  hubTimeZone,
+  type CalendarItem,
+  type ProcessUi,
+} from "@civic-social/plugin-sdk/ui";
 import {
   ALT_MAX,
   CAPACITY_MAX,
@@ -16,9 +55,8 @@ import {
   defaultEnd,
   durationMinutes,
   endAfter,
-  formatDuration,
   locationLine,
-  parseDuration,
+  quarterHours,
   type EventImage,
   type EventLocation,
 } from "./event";
@@ -61,22 +99,6 @@ function useIsAdmin(): boolean {
 
 /** The reader's own zone, as the browser has it. */
 const readerZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-
-/**
- * The hub's time zone (its public identity.timezone; Events 2, E3): what a new
- * event's times are given in unless its proposer picks another, and what an
- * event from before 0.3.0 reads in. The reader's until it has loaded.
- */
-function useHubZone(): string {
-  const [zone, setZone] = useState<string | null>(null);
-  useEffect(() => {
-    api<{ settings?: Record<string, string> }>("/hub-config").then(
-      (c) => setZone(c.settings?.["identity.timezone"] || "UTC"),
-      () => setZone(null),
-    );
-  }, []);
-  return zone ?? readerZone();
-}
 
 /** Every zone the browser knows, the chosen one first if it doesn't. */
 function zoneChoices(current: string): string[] {
@@ -133,31 +155,50 @@ interface EventView {
   type_status?: { id: string; label: string };
 }
 
-// --- Dates: in the event's own zone (0.3.0), the reader's when none is given ---
+// --- Dates: every time in the hub's zone (Events 3) ------------------------------
 
-const dayKey = (iso: string, timeZone?: string) =>
-  new Date(iso).toLocaleDateString(undefined, { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
-const dayHeading = (iso: string, timeZone?: string) =>
-  new Date(iso).toLocaleDateString(undefined, { timeZone, weekday: "long", month: "long", day: "numeric", year: "numeric" });
-const timeOf = (iso: string, timeZone?: string, named = false) =>
-  new Date(iso).toLocaleTimeString(undefined, { timeZone, hour: "numeric", minute: "2-digit", ...(named ? { timeZoneName: "short" as const } : {}) });
+/** "7:00 PM", with the zone's short name ("CST") when `named`. */
+const timeOf = (iso: string, timeZone: string, named = false) =>
+  new Date(iso).toLocaleTimeString("en-US", { timeZone, hour: "numeric", minute: "2-digit", ...(named ? { timeZoneName: "short" as const } : {}) });
 
-/** "Saturday, June 1, 2030, 7:00 PM – 9:00 PM", the zone named when one is given. */
-function whenLine(start: string, end: string, timeZone?: string): string {
-  const named = Boolean(timeZone);
-  return dayKey(start, timeZone) === dayKey(end, timeZone)
-    ? `${dayHeading(start, timeZone)}, ${timeOf(start, timeZone)} – ${timeOf(end, timeZone, named)}`
-    : `${dayHeading(start, timeZone)}, ${timeOf(start, timeZone)} – ${dayHeading(end, timeZone)}, ${timeOf(end, timeZone, named)}`;
+/** "Sat, Nov 15": a day in a line of facts. */
+const shortDay = (iso: string, timeZone: string) =>
+  new Date(iso).toLocaleDateString("en-US", { timeZone, weekday: "short", month: "short", day: "numeric" });
+
+/** "Saturday, November 15, 2030": a day said in full. */
+const longDay = (iso: string, timeZone: string) =>
+  new Date(iso).toLocaleDateString("en-US", { timeZone, weekday: "long", month: "long", day: "numeric", year: "numeric" });
+
+/** The zone in words, once on a page: "Central Time"; "UTC" for UTC. */
+function zoneWords(timeZone: string): string {
+  if (timeZone === "UTC" || timeZone === "Etc/UTC") return "UTC";
+  const name = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "longGeneric" })
+    .formatToParts(new Date())
+    .find((p) => p.type === "timeZoneName")?.value;
+  return name ?? timeZone.replace(/_/g, " ");
 }
 
-/** Whether a reader's clock shows a different hour from the event's zone. */
+/** "7:00 PM – 9:00 PM", or across days "7:00 PM – Sun, Nov 16, 9:00 AM". */
+function timeRange(start: string, end: string, zone: string, named = false): string {
+  return dayKey(start, zone) === dayKey(end, zone)
+    ? `${timeOf(start, zone)} – ${timeOf(end, zone, named)}`
+    : `${timeOf(start, zone)} – ${shortDay(end, zone)}, ${timeOf(end, zone, named)}`;
+}
+
+/** "Saturday, November 15, 2030, 7:00 PM – 9:00 PM CST": the zone named once, at the end. */
+function whenLine(start: string, end: string, zone: string, named = true): string {
+  return dayKey(start, zone) === dayKey(end, zone)
+    ? `${longDay(start, zone)}, ${timeRange(start, end, zone, named)}`
+    : `${longDay(start, zone)}, ${timeOf(start, zone)} – ${longDay(end, zone)}, ${timeOf(end, zone, named)}`;
+}
+
+/** Whether two zones show the same hour at this instant. */
 const sameClock = (iso: string, a: string, b: string) => timeOf(iso, a, true) === timeOf(iso, b, true);
 
 // --- Pieces -------------------------------------------------------------------
 
-function Pill({ children }: { children: ReactNode }) {
-  return <span className="ev-pill">{children}</span>;
-}
+/** Where, in a line: "Online" or the place and its address. */
+const whereWords = (location: EventLocation) => (location.type === "Link" ? "Online" : locationLine(location));
 
 function Where({ location }: { location: EventLocation }) {
   if (location.type === "Link") {
@@ -172,10 +213,50 @@ function Where({ location }: { location: EventLocation }) {
 
 // --- The calendar ------------------------------------------------------------------
 
+type View = "list" | "calendar";
+const VIEW_KEY = "civic.event.view";
+
+/** The reader's chosen view, kept in their browser (Events 3). */
+function useView(): [View, (v: View) => void] {
+  const [view, setView] = useState<View>(() => {
+    try {
+      return localStorage.getItem(VIEW_KEY) === "calendar" ? "calendar" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const choose = (v: View) => {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // A browser that keeps nothing still switches; it just forgets.
+    }
+  };
+  return [view, choose];
+}
+
+/** Whether the page is wider than a phone: the month on a desktop, the week on a phone. */
+function useWide(): boolean {
+  const query = "(min-width: 768px)";
+  const [wide, setWide] = useState(() => (typeof window === "undefined" ? true : window.matchMedia(query).matches));
+  useEffect(() => {
+    const m = window.matchMedia(query);
+    const on = () => setWide(m.matches);
+    m.addEventListener("change", on);
+    return () => m.removeEventListener("change", on);
+  }, []);
+  return wide;
+}
+
 function CalendarPage() {
-  const hubZone = useHubZone();
+  const zone = hubTimeZone();
+  const wide = useWide();
+  const [view, setView] = useView();
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const today = dayKey(new Date(), zone);
+  const [day, setDay] = useState(today);
   useEffect(() => {
     api<{ events: CalendarEvent[] }>("/calendar/events").then((r) => setEvents(r.events), (e: Error) => setError(e.message));
   }, []);
@@ -188,77 +269,133 @@ function CalendarPage() {
       past: all.filter((e) => Date.parse(e.end_time) <= now).reverse(),
     };
   }, [events]);
-
-  const byDay = useMemo(() => {
-    const groups: Array<{ key: string; heading: string; events: CalendarEvent[] }> = [];
-    for (const e of upcoming) {
-      const zone = e.time_zone ?? hubZone;
-      const key = dayKey(e.start_time, zone);
-      const last = groups[groups.length - 1];
-      if (last && last.key === key) last.events.push(e);
-      else groups.push({ key, heading: dayHeading(e.start_time, zone), events: [e] });
-    }
-    return groups;
-  }, [upcoming, hubZone]);
+  const byDay = useMemo(() => groupByDay(upcoming, (e) => e.start_time, zone), [upcoming, zone]);
+  const items: CalendarItem[] = useMemo(
+    () =>
+      (events ?? []).map((e) => ({
+        id: e.process_id,
+        day: dayKey(e.start_time, zone),
+        label: `${timeOf(e.start_time, zone)} ${e.title}`,
+        kind: "event",
+        cancelled: e.cancelled,
+      })),
+    [events, zone],
+  );
+  const onDay = (events ?? []).filter((e) => dayKey(e.start_time, zone) === day);
 
   return (
-    <main className="ev-page">
-      <div className="ev-head">
-        <h1>Events</h1>
-        {signedIn() && (
-          <Link to="/events/new" className="btn-primary">
-            Add an event
-          </Link>
-        )}
-      </div>
-      <p className="ev-muted">
-        <a href="/api/calendar/hub.ics">Subscribe in your calendar app</a>
-      </p>
-      {error && <p role="alert">{error}</p>}
-      {!events && !error && <p className="ev-muted">Loading…</p>}
-      {events && upcoming.length === 0 && <p className="ev-muted">Nothing is on the calendar yet.</p>}
-      {byDay.map((g) => (
-        <section key={g.key} className="ev-day" aria-label={g.heading}>
-          <h2 className="ev-day-heading">{g.heading}</h2>
-          <ul className="ev-list">
-            {g.events.map((e) => (
-              <CalendarItem key={e.process_id} event={e} zone={e.time_zone ?? hubZone} />
-            ))}
-          </ul>
-        </section>
-      ))}
-      {past.length > 0 && (
-        <details className="ev-past">
-          <summary>Past events ({past.length})</summary>
-          <ul className="ev-list">
-            {past.map((e) => (
-              <CalendarItem key={e.process_id} event={e} zone={e.time_zone ?? hubZone} showDay />
-            ))}
-          </ul>
-        </details>
+    <Page>
+      <PageHead
+        title="Events"
+        lede={<>What's on, by day. Times are {zoneWords(zone)}.</>}
+        action={
+          signedIn() ? (
+            <PageAction href="/events/new" as={Link}>
+              Add an event
+            </PageAction>
+          ) : undefined
+        }
+      >
+        <Note>
+          <a href="/api/calendar/hub.ics">Subscribe in your calendar app</a>
+        </Note>
+      </PageHead>
+      <ViewToggle
+        value={view}
+        onChange={setView}
+        label="Show the events as"
+        options={[
+          { value: "list", label: "List" },
+          { value: "calendar", label: "Calendar" },
+        ]}
+      />
+      {(error || !events) && (
+        <Group>
+          {error ? (
+            <Notice tone="alert" role="alert">
+              {error}
+            </Notice>
+          ) : (
+            <Note>Loading…</Note>
+          )}
+        </Group>
       )}
-    </main>
+
+      {events && view === "list" && (
+        <>
+          {upcoming.length === 0 && (
+            <Group>
+              <EmptyState>
+                Nothing is on the calendar yet.{signedIn() ? " Add an event and it shows here, under its day." : ""}
+              </EmptyState>
+            </Group>
+          )}
+          {byDay.map((g) => (
+            <DayGroup key={g.day} date={g.items[0]!.start_time} timeZone={zone}>
+              <CardList>
+                {g.items.map((e) => (
+                  <li key={e.process_id}>
+                    <EventCard event={e} when={timeRange(e.start_time, e.end_time, zone)} />
+                  </li>
+                ))}
+              </CardList>
+            </DayGroup>
+          ))}
+          {past.length > 0 && (
+            <Group heading={`Past events (${past.length})`} label="Past events" collapsible className="ev-past">
+              <CardList>
+                {past.map((e) => (
+                  <li key={e.process_id}>
+                    <EventCard event={e} when={`${shortDay(e.start_time, zone)}, ${timeOf(e.start_time, zone)}`} />
+                  </li>
+                ))}
+              </CardList>
+            </Group>
+          )}
+        </>
+      )}
+
+      {events && view === "calendar" && (
+        <div data-testid="events-calendar">
+          <Group label={wide ? "Events by month" : "Events by week"}>
+            {wide ? (
+              <MonthGrid items={items} selected={day} onSelect={setDay} today={today} label="Events by month" />
+            ) : (
+              <WeekStrip items={items} selected={day} onSelect={setDay} today={today} label="Events by week" />
+            )}
+          </Group>
+          <DayGroup date={`${day}T12:00:00Z`} timeZone="UTC">
+            {onDay.length === 0 ? (
+              <EmptyState>Nothing on this day.</EmptyState>
+            ) : (
+              <CardList>
+                {onDay.map((e) => (
+                  <li key={e.process_id}>
+                    <EventCard event={e} when={timeRange(e.start_time, e.end_time, zone)} />
+                  </li>
+                ))}
+              </CardList>
+            )}
+          </DayGroup>
+        </div>
+      )}
+    </Page>
   );
 }
 
-function CalendarItem({ event, zone, showDay }: { event: CalendarEvent; zone: string; showDay?: boolean }) {
-  // The zone named only when it is not the reader's own.
-  const named = !sameClock(event.start_time, zone, readerZone());
+/** An event on the calendar: the Events bar and chip, its time strong, its place quiet, Cancelled as a status. */
+function EventCard({ event, when }: { event: CalendarEvent; when: string }) {
   return (
-    <li className={`ev-item${event.cancelled ? " is-cancelled" : ""}`}>
-      <Link to={`/events/${event.process_id}`} className="ev-item-link">
-        <span className="ev-item-time">
-          {showDay ? `${dayHeading(event.start_time, zone)}, ` : ""}
-          {timeOf(event.start_time, zone, named)}
-        </span>
-        <span className="ev-item-title">
-          {event.title} {event.cancelled && <Pill>Cancelled</Pill>}
-        </span>
-        <span className="ev-item-where">
-          {event.location.type === "Link" ? "Online" : locationLine(event.location)}
-        </span>
-      </Link>
-    </li>
+    <ListCard
+      className="ev-item"
+      href={`/events/${event.process_id}`}
+      linkAs={Link}
+      kind="event"
+      kindLabel="Event"
+      title={event.title}
+      status={event.cancelled ? <StatusChip tone="alert">Cancelled</StatusChip> : undefined}
+      meta={[<strong key="when">{when}</strong>, whereWords(event.location)]}
+    />
   );
 }
 
@@ -324,113 +461,144 @@ function EventPage() {
     }
   }
 
-  if (!event) return <main className="ev-page">{message ? <p role="alert">{message}</p> : <p className="ev-muted">Loading…</p>}</main>;
+  if (!event) {
+    return (
+      <Page>
+        <Group>
+          {message ? (
+            <Notice tone="alert" role="alert">
+              {message}
+            </Notice>
+          ) : (
+            <Note>Loading…</Note>
+          )}
+        </Group>
+      </Page>
+    );
+  }
   const upcoming = event.status === "active";
   const organiser = event.is_creator || isAdmin;
   const canCancel = upcoming && organiser;
   const count = going?.count ?? event.going_count;
-  const zone = event.time_zone;
+  // Every time on the page in the hub's zone, named once (Events 3); the
+  // reader's own beside it when their clock differs.
+  const zone = hubTimeZone();
   const mine = readerZone();
   const log = event.announcements ?? adminLog;
+  const ended = event.type_status && event.type_status.id !== "scheduled" && !event.cancelled ? event.type_status.label : null;
 
   return (
-    <main className="ev-page">
-      <p className="ev-crumb">
-        <Link to="/events">‹ Events</Link>
-      </p>
-      {event.image && (
-        <img className="ev-image" src={event.image.url} alt={event.image.alt} data-testid="event-image" />
-      )}
-      <Pill>{event.type_status && event.type_status.id !== "scheduled" ? `Event · ${event.type_status.label}` : "Event"}</Pill>
-      <h1 className="ev-title">{event.title}</h1>
-      {event.cancelled && (
-        <p className="ev-cancelled" role="status">
-          This event was cancelled.{event.cancelled.reason ? ` ${event.cancelled.reason}` : ""}
-        </p>
-      )}
-      {!event.cancelled && !upcoming && <p className="ev-muted">This event has ended.</p>}
-      <dl className="ev-facts">
-        <dt>When</dt>
-        <dd data-testid="event-when">{whenLine(event.start_time, event.end_time, zone)}</dd>
-        {!sameClock(event.start_time, zone, mine) && (
-          <dd className="ev-muted ev-facts-more" data-testid="event-when-mine">
-            Your time: {whenLine(event.start_time, event.end_time, mine)}
-          </dd>
+    <Page>
+      <Group label="Back to Events">
+        <Note>
+          <Link to="/events">‹ Events</Link>
+        </Note>
+        {event.image && <KitPicture src={event.image.url} alt={event.image.alt} data-testid="event-image" />}
+      </Group>
+      <PageHead
+        title={event.title}
+        lede={
+          <span className="ev-chips">
+            <Chip kind="event">Event</Chip>
+            {event.cancelled && <StatusChip tone="alert">Cancelled</StatusChip>}
+            {ended && <StatusChip tone="done">{ended}</StatusChip>}
+          </span>
+        }
+      />
+      <Group label="The event">
+        {event.cancelled && (
+          <Notice tone="alert">
+            This event was cancelled.{event.cancelled.reason ? ` ${event.cancelled.reason}` : ""}
+          </Notice>
         )}
-        <dt>Where</dt>
-        <dd>
-          <Where location={event.location} />
-        </dd>
-        <dt>Going</dt>
-        <dd data-testid="going-count">{goingLine(count, event.capacity, event.spots_left)}</dd>
-        {going?.names && going.names.length > 0 && (
-          <dd className="ev-going-names" data-testid="going-names">
-            {going.names.join(", ")}
-          </dd>
-        )}
-      </dl>
-      {event.description && <p className="ev-description">{event.description}</p>}
-
-      {upcoming && signedIn() && (
-        <RsvpControl
-          going={event.is_going}
-          full={event.spots_left === 0}
-          count={count}
-          busy={busy}
-          onGoing={() => void act("going", {}, "You're going.")}
-          onNotGoing={() => void act("not_going", {}, "You're not going.")}
+        {!event.cancelled && !upcoming && <Notice>This event has ended.</Notice>}
+        <FactList
+          className="ev-facts"
+          items={[
+            {
+              term: "When",
+              value: whenLine(event.start_time, event.end_time, zone),
+              testId: "event-when",
+              more: [
+                !sameClock(event.start_time, zone, mine) && (
+                  <span data-testid="event-when-mine">Your time: {whenLine(event.start_time, event.end_time, mine)}</span>
+                ),
+              ],
+            },
+            { term: "Where", value: <Where location={event.location} /> },
+            {
+              term: "Going",
+              value: goingLine(count, event.capacity, event.spots_left),
+              testId: "going-count",
+              more: [going?.names && going.names.length > 0 && <span data-testid="going-names">{going.names.join(", ")}</span>],
+            },
+          ]}
         />
-      )}
-      {upcoming && !signedIn() && <p className="ev-muted">Sign in to say you're going.</p>}
+        {event.description && <p className="ev-description">{event.description}</p>}
 
-      <p className="ev-calendar-links">
-        <a href={`/api/calendar/events/${encodeURIComponent(event.id)}.ics`} download data-testid="add-to-calendar">
-          Add to my calendar
-        </a>
-      </p>
+        {upcoming && signedIn() && (
+          <RsvpControl
+            going={event.is_going}
+            full={event.spots_left === 0}
+            count={count}
+            busy={busy}
+            onGoing={() => void act("going", {}, "You're going.")}
+            onNotGoing={() => void act("not_going", {}, "You're not going.")}
+          />
+        )}
+        {upcoming && !signedIn() && <Note>Sign in to say you're going.</Note>}
 
-      {(editable || canCancel) && (
-        <div className="ev-actions ev-actions--secondary">
-          {editable && (
-            <Button disabled={busy} onClick={() => void edit()}>
-              Edit event
-            </Button>
-          )}
-          {canCancel && !cancelling && (
-            <Button variant="danger" onClick={() => setCancelling(true)}>
-              Cancel event
-            </Button>
-          )}
-        </div>
-      )}
-      {cancelling && (
-        <form
-          className="ev-form ev-cancel"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void act("cancel", { reason }, "The event is cancelled. It stays on the calendar, marked cancelled, and the people going are told.");
-            setCancelling(false);
-          }}
-        >
-          <p>
-            Cancel {event.title}? {count > 0 ? `The ${count === 1 ? "person" : `${count} people`} going will be told.` : ""} This can't be undone.
-          </p>
-          <Field label="Why (shown on the event and in the message)" optional htmlFor="ev-cancel-reason">
-            <TextArea id="ev-cancel-reason" value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
-          </Field>
+        <Note>
+          <a href={`/api/calendar/events/${encodeURIComponent(event.id)}.ics`} download data-testid="add-to-calendar">
+            Add to my calendar
+          </a>
+        </Note>
+
+        {(editable || canCancel) && (
           <div className="ev-actions">
-            <Button type="submit" variant="danger" disabled={busy}>
-              Yes, cancel the event
-            </Button>
-            <Button onClick={() => setCancelling(false)}>Keep it</Button>
+            {editable && (
+              <Button disabled={busy} onClick={() => void edit()}>
+                Edit event
+              </Button>
+            )}
+            {canCancel && !cancelling && (
+              <Button variant="danger" onClick={() => setCancelling(true)}>
+                Cancel event
+              </Button>
+            )}
           </div>
-        </form>
-      )}
-      {message && <p role="status">{message}</p>}
+        )}
+        {cancelling && (
+          <Card className="ev-panel">
+            <form
+              className="ev-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void act("cancel", { reason }, "The event is cancelled. It stays on the calendar, marked cancelled, and the people going are told.");
+                setCancelling(false);
+              }}
+            >
+              <p>
+                Cancel {event.title}? {count > 0 ? `The ${count === 1 ? "person" : `${count} people`} going will be told.` : ""} This can't be undone.
+              </p>
+              <Field label="Why (shown on the event and in the message)" optional htmlFor="ev-cancel-reason">
+                <TextArea id="ev-cancel-reason" value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
+              </Field>
+              <div className="ev-actions">
+                <Button type="submit" variant="danger" disabled={busy}>
+                  Yes, cancel the event
+                </Button>
+                <Button onClick={() => setCancelling(false)}>Keep it</Button>
+              </div>
+            </form>
+          </Card>
+        )}
+        {message && <Note role="status">{message}</Note>}
 
-      {upcoming && organiser && <AnnouncePanel count={event.is_going ? count - 1 : count} busy={busy} onSend={(payload) => act("announce", payload)} />}
+        {upcoming && organiser && <AnnouncePanel count={event.is_going ? count - 1 : count} busy={busy} onSend={(payload) => act("announce", payload)} />}
+      </Group>
       {log && log.length > 0 && <AnnouncementLog log={log} organiser={event.is_creator} />}
-    </main>
+    </Page>
   );
 }
 
@@ -463,13 +631,24 @@ function RsvpControl({
 }) {
   if (going) {
     return (
-      <div className="ev-rsvp" role="group" aria-label="Are you going?" data-testid="rsvp">
-        <button type="button" className="ev-rsvp-choice is-chosen" aria-pressed="true" disabled={busy}>
-          <span aria-hidden="true">✓ </span>You're going
-        </button>
-        <button type="button" className="ev-rsvp-choice" aria-pressed="false" disabled={busy} onClick={onNotGoing}>
-          Not going
-        </button>
+      <div className="ev-rsvp" data-testid="rsvp">
+        <ChipGroup
+          label="Are you going?"
+          value="going"
+          onChange={(v) => v === "not_going" && onNotGoing()}
+          options={[
+            {
+              value: "going",
+              label: (
+                <>
+                  <span aria-hidden="true">✓ </span>You're going
+                </>
+              ),
+              disabled: busy,
+            },
+            { value: "not_going", label: "Not going", disabled: busy },
+          ]}
+        />
       </div>
     );
   }
@@ -498,7 +677,7 @@ function AnnouncePanel({ count, busy, onSend }: { count: number; busy: boolean; 
   const [text, setText] = useState("");
   if (!open) {
     return (
-      <div className="ev-actions ev-actions--secondary">
+      <div className="ev-actions">
         <Button onClick={() => setOpen(true)} disabled={count < 1} title={count < 1 ? "Nobody else is going yet." : undefined}>
           Message the people going
         </Button>
@@ -506,61 +685,64 @@ function AnnouncePanel({ count, busy, onSend }: { count: number; busy: boolean; 
     );
   }
   return (
-    <form
-      className="ev-form ev-announce"
-      aria-label="Message the people going"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void onSend({ subject, message: text }).then((ok) => {
-          if (ok) {
-            setOpen(false);
-            setSubject("");
-            setText("");
-          }
-        });
-      }}
-    >
-      <p className="ev-muted">
-        To the {count === 1 ? "person" : `${count} people`} going, by email from the hub. Their addresses stay with the hub.
-      </p>
-      <Field label="Subject" required htmlFor="ev-ann-subject">
-        <TextInput id="ev-ann-subject" required maxLength={SUBJECT_MAX} value={subject} onChange={(e) => setSubject(e.target.value)} />
-      </Field>
-      <Field label="Message" required htmlFor="ev-ann-message">
-        <TextArea id="ev-ann-message" required rows={5} maxLength={MESSAGE_MAX} value={text} onChange={(e) => setText(e.target.value)} />
-      </Field>
-      <div className="ev-actions">
-        <Button type="submit" variant="primary" disabled={busy}>
-          Send
-        </Button>
-        <Button onClick={() => setOpen(false)}>Not now</Button>
-      </div>
-    </form>
+    <Card className="ev-panel">
+      <form
+        className="ev-form"
+        aria-label="Message the people going"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void onSend({ subject, message: text }).then((ok) => {
+            if (ok) {
+              setOpen(false);
+              setSubject("");
+              setText("");
+            }
+          });
+        }}
+      >
+        <Note>
+          To the {count === 1 ? "person" : `${count} people`} going, by email from the hub. Their addresses stay with the hub.
+        </Note>
+        <Field label="Subject" required htmlFor="ev-ann-subject">
+          <TextInput id="ev-ann-subject" required maxLength={SUBJECT_MAX} value={subject} onChange={(e) => setSubject(e.target.value)} />
+        </Field>
+        <Field label="Message" required htmlFor="ev-ann-message">
+          <TextArea id="ev-ann-message" required rows={5} maxLength={MESSAGE_MAX} value={text} onChange={(e) => setText(e.target.value)} />
+        </Field>
+        <div className="ev-actions">
+          <Button type="submit" variant="primary" disabled={busy}>
+            Send
+          </Button>
+          <Button onClick={() => setOpen(false)}>Not now</Button>
+        </div>
+      </form>
+    </Card>
   );
 }
 
 /** What the people going were sent: its own messages, and what changed. */
 function AnnouncementLog({ log, organiser }: { log: Announcement[]; organiser: boolean }) {
   return (
-    <section className="ev-announcements" aria-labelledby="ev-ann-heading" data-testid="announcements">
-      <h2 id="ev-ann-heading" className="ev-section-heading">
-        From the organiser
-      </h2>
-      <ul className="ev-list">
-        {log.map((a) => (
-          <li key={a.id} className="ev-announcement">
-            <p className="ev-announcement-subject">
-              {a.kind === "change" && <Pill>Change</Pill>} {a.subject}
-            </p>
-            <p className="ev-announcement-body">{a.body}</p>
-            <p className="ev-muted">
-              {new Date(a.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
-              {organiser && a.recipients !== undefined && ` · to ${a.recipients}, emailed ${a.sent}${a.held_back ? `, ${a.held_back} held back by the hub's mode` : ""}`}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <div data-testid="announcements">
+      <Group heading="From the organiser">
+        <CardList>
+          {log.map((a) => (
+            <li key={a.id}>
+              <Card>
+                <p className="ev-announcement-subject">
+                  {a.kind === "change" && <Chip>Change</Chip>} <strong>{a.subject}</strong>
+                </p>
+                <p className="ev-announcement-body">{a.body}</p>
+                <Note>
+                  {new Date(a.created_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: hubTimeZone() })}
+                  {organiser && a.recipients !== undefined && ` · to ${a.recipients}, emailed ${a.sent}${a.held_back ? `, ${a.held_back} held back by the hub's mode` : ""}`}
+                </Note>
+              </Card>
+            </li>
+          ))}
+        </CardList>
+      </Group>
+    </div>
   );
 }
 
@@ -596,48 +778,49 @@ function whereBody(w: WhereFields): Record<string, string | null> {
 }
 
 /**
- * When it is (Events 2, 2 and 3): the start, how long it runs and the end,
- * in that order, kept together, all in the event's zone. Choosing a start fills
- * the end an hour after it, the same day (or keeps how long it runs when one is
- * set); a duration moves the end; an end moves the duration. An end at or
- * before the start says so on the field.
+ * When it is (Events 2, 2 and 3; Events 3): the start, how long it runs and
+ * the end, in that order, kept together, all in the event's zone. How long is
+ * two selects, hours (0 to 8) and minutes (0, 15, 30, 45), rounded to the
+ * quarter hour as the date picker steps. Choosing a start keeps how long it
+ * runs (an hour to begin with, the same day); a duration moves the end; an end
+ * moves the duration. An end at or before the start says so on the field.
  */
 function When({
   start,
   end,
   zone,
+  hubZone,
   onTimes,
   onZone,
 }: {
   start: string | null;
   end: string | null;
   zone: string;
+  hubZone: string;
   onTimes(start: string | null, end: string | null): void;
   onZone(zone: string): void;
 }) {
   const minutes = durationMinutes(start, end);
-  const [duration, setDuration] = useState(minutes ? formatDuration(minutes) : "");
-  const [durationError, setDurationError] = useState<string | null>(null);
-  // An end changed elsewhere (picked, or loaded from a draft) shows its duration.
-  useEffect(() => {
-    if (minutes !== parseDuration(duration)) setDuration(minutes ? formatDuration(minutes) : "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [minutes]);
-
+  // How long, before there is a start to measure from: an hour.
+  const [planned, setPlanned] = useState(60);
+  const shown = quarterHours(minutes) ?? (start && end ? { hours: 0, minutes: 0 as const } : quarterHours(planned)!);
   const endError = start && end && !minutes ? "Ends must be after it starts." : null;
 
   function startChanged(next: string | null) {
     if (!next) return onTimes(null, end);
     const keep = durationMinutes(start, end);
-    onTimes(next, keep ? endAfter(next, keep) : !end || Date.parse(end) <= Date.parse(next) ? defaultEnd(next, zone) : end);
+    if (keep) return onTimes(next, endAfter(next, keep));
+    onTimes(next, planned === 60 ? defaultEnd(next, zone) : endAfter(next, planned));
   }
 
-  function durationChanged(text: string) {
-    setDuration(text);
-    const m = parseDuration(text);
-    setDurationError(text.trim() && !m ? "Say how long, like 90 min, 1 h 30 min or 2 hours." : null);
-    if (m && start) onTimes(start, endAfter(start, m));
+  function durationChanged(hours: number, mins: number) {
+    const total = hours * 60 + mins;
+    if (total > 0) setPlanned(total);
+    if (start) onTimes(start, endAfter(start, total));
   }
+
+  const hourChoices = Array.from({ length: 9 }, (_, h) => h);
+  if (shown.hours > 8) hourChoices.push(shown.hours);
 
   return (
     <>
@@ -645,16 +828,33 @@ function When({
         <Field label="Starts" required htmlFor="ev-start">
           <DateTimeInput id="ev-start" required value={start} timeZone={zone} onChange={startChanged} />
         </Field>
-        <Field label="Duration" htmlFor="ev-duration" hint={durationError ?? undefined}>
-          <TextInput
-            id="ev-duration"
-            inputMode="text"
-            placeholder="1 h"
-            value={duration}
-            aria-invalid={durationError ? true : undefined}
-            onChange={(e) => durationChanged(e.target.value)}
-            onBlur={() => !durationError && minutes && setDuration(formatDuration(minutes))}
-          />
+        <Field label="Duration" htmlFor="ev-duration-hours">
+          <div className="ev-duration" role="group" aria-label="Duration" id="ev-duration">
+            <Select
+              id="ev-duration-hours"
+              aria-label="Hours"
+              value={String(shown.hours)}
+              onChange={(e) => durationChanged(Number(e.target.value), shown.minutes)}
+            >
+              {hourChoices.map((h) => (
+                <option key={h} value={h}>
+                  {h} h
+                </option>
+              ))}
+            </Select>
+            <Select
+              id="ev-duration-minutes"
+              aria-label="Minutes"
+              value={String(shown.minutes)}
+              onChange={(e) => durationChanged(shown.hours, Number(e.target.value))}
+            >
+              {[0, 15, 30, 45].map((m) => (
+                <option key={m} value={m}>
+                  {m} min
+                </option>
+              ))}
+            </Select>
+          </div>
         </Field>
         <Field label="Ends" required htmlFor="ev-end" hint={endError ?? undefined}>
           <DateTimeInput
@@ -667,7 +867,11 @@ function When({
           />
         </Field>
       </div>
-      <Field label="Time zone" htmlFor="ev-zone" hint="The times above are in this zone. Readers elsewhere also see their own time.">
+      <Field
+        label="Time zone"
+        htmlFor="ev-zone"
+        hint={zone === hubZone ? `The hub's own (${zoneWords(zone)}). Choose another only for an event somewhere else.` : "The times above are in this zone. The calendar shows them in the hub's."}
+      >
         <Select id="ev-zone" value={zone} onChange={(e) => onZone(e.target.value)}>
           {zoneChoices(zone).map((z) => (
             <option key={z} value={z}>
@@ -681,16 +885,17 @@ function When({
 }
 
 /**
- * Its picture (Events 2, 1): uploaded through the hub's route for this type,
- * made smaller in the browser first when it is large (as the hub's composers
- * do), with what it shows for people who can't see it.
+ * Its picture (Events 2, 1): the kit's picture upload, sent through the
+ * hub's route for this type, made smaller in the browser first when it is
+ * large (as the hub's composers do), with what it shows for people who can't
+ * see it.
  */
 function Picture({ image, onImage }: { image: EventImage | null; onImage(i: EventImage | null): void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function chosen(file: File | undefined) {
-    if (!file) return;
+  async function chosen(file: File | null) {
+    if (!file) return onImage(null);
     setBusy(true);
     setError(null);
     try {
@@ -708,31 +913,26 @@ function Picture({ image, onImage }: { image: EventImage | null; onImage(i: Even
   }
 
   return (
-    <fieldset className="ev-picture">
-      <legend className="form-label">
-        Picture <span className="optional">(optional)</span>
-      </legend>
-      {image ? (
+    <Fieldset
+      legend={
         <>
-          <img className="ev-image ev-image--preview" src={image.url} alt={image.alt} data-testid="picture-preview" />
-          <Field label="What the picture shows" hint="For people who can't see it." htmlFor="ev-alt">
-            <TextInput id="ev-alt" maxLength={ALT_MAX} value={image.alt} onChange={(e) => onImage({ ...image, alt: e.target.value })} />
-          </Field>
-          <Button onClick={() => onImage(null)}>Remove the picture</Button>
+          Picture <span className="optional">(optional)</span>
         </>
-      ) : (
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          aria-label="Choose a picture"
-          disabled={busy}
-          data-testid="picture-input"
-          onChange={(e) => void chosen(e.target.files?.[0])}
-        />
+      }
+    >
+      <ImageUpload value={image?.url ?? null} onChange={(f) => void chosen(f)} accept="image/jpeg,image/png,image/webp,image/gif" disabled={busy} />
+      {image && (
+        <Field label="What the picture shows" hint="For people who can't see it." htmlFor="ev-alt">
+          <TextInput id="ev-alt" maxLength={ALT_MAX} value={image.alt} onChange={(e) => onImage({ ...image, alt: e.target.value })} />
+        </Field>
       )}
-      {busy && <p className="ev-muted">Uploading…</p>}
-      {error && <p role="alert">{error}</p>}
-    </fieldset>
+      {busy && <Note>Uploading…</Note>}
+      {error && (
+        <Notice tone="alert" role="alert">
+          {error}
+        </Notice>
+      )}
+    </Fieldset>
   );
 }
 
@@ -757,25 +957,27 @@ function WhenWhere({
   onWhere(w: WhereFields): void;
 }) {
   const set = (k: keyof WhereFields) => (e: { target: { value: string } }) => onWhere({ ...where, [k]: e.target.value });
+  const [address, setAddress] = useState(false);
+  const showAddress = address || Boolean(where.street_address || where.locality || where.region || where.postal_code || where.country);
   return (
-    <>
-      <fieldset className="ev-where">
-        <legend className="form-label">Where</legend>
-        <div className="ev-toggle" role="radiogroup" aria-label="Where">
-          <label>
-            <input type="radio" name="where" checked={where.mode === "place"} onChange={() => onWhere({ ...where, mode: "place" })} /> A place
-          </label>
-          <label>
-            <input type="radio" name="where" checked={where.mode === "online"} onChange={() => onWhere({ ...where, mode: "online" })} /> Online
-          </label>
-        </div>
-        {where.mode === "place" ? (
-          <>
-            <Field label="Place" required htmlFor="ev-venue">
-              <TextInput id="ev-venue" required maxLength={120} placeholder="The room or building" value={where.venue} onChange={set("venue")} />
-            </Field>
-            <details className="ev-address" open={Boolean(where.street_address || where.locality)}>
-              <summary>Street address (helps maps and calendars)</summary>
+    <Fieldset legend="Where">
+      <RadioCards
+        name="where"
+        label="Where"
+        value={where.mode}
+        onChange={(mode) => onWhere({ ...where, mode })}
+        options={[
+          { value: "place", title: "A place" },
+          { value: "online", title: "Online" },
+        ]}
+      />
+      {where.mode === "place" ? (
+        <>
+          <Field label="Place" required htmlFor="ev-venue">
+            <TextInput id="ev-venue" required maxLength={120} placeholder="The room or building" value={where.venue} onChange={set("venue")} />
+          </Field>
+          {showAddress ? (
+            <>
               <Field label="Street" htmlFor="ev-street">
                 <TextInput id="ev-street" maxLength={120} autoComplete="street-address" value={where.street_address} onChange={set("street_address")} />
               </Field>
@@ -795,15 +997,21 @@ function WhenWhere({
                   <TextInput id="ev-country" maxLength={120} autoComplete="country-name" value={where.country} onChange={set("country")} />
                 </Field>
               </div>
-            </details>
-          </>
-        ) : (
-          <Field label="Link" required htmlFor="ev-link">
-            <TextInput id="ev-link" type="url" required placeholder="https://" value={where.online_url} onChange={set("online_url")} />
-          </Field>
-        )}
-      </fieldset>
-    </>
+            </>
+          ) : (
+            <div>
+              <Button variant="ghost" size="sm" onClick={() => setAddress(true)}>
+                Add a street address (helps maps and calendars)
+              </Button>
+            </div>
+          )}
+        </>
+      ) : (
+        <Field label="Link" required htmlFor="ev-link">
+          <TextInput id="ev-link" type="url" required placeholder="https://" value={where.online_url} onChange={set("online_url")} />
+        </Field>
+      )}
+    </Fieldset>
   );
 }
 
@@ -851,7 +1059,7 @@ function EventFormPage() {
   const [start, setStart] = useState<string | null>(null);
   const [end, setEnd] = useState<string | null>(null);
   const [where, setWhere] = useState<WhereFields>(EMPTY_WHERE);
-  const hubZone = useHubZone();
+  const hubZone = hubTimeZone();
   const [zone, setZone] = useState<string | null>(null);
   const [image, setImage] = useState<EventImage | null>(null);
   const [capacity, setCapacity] = useState("");
@@ -934,11 +1142,11 @@ function EventFormPage() {
     </DraftShell>
   );
 
-  if (!signedIn()) return shell(<p>Sign in to add an event to the calendar.</p>);
+  if (!signedIn()) return shell(<Note>Sign in to add an event to the calendar.</Note>);
   if (queued) {
     return shell(
       <>
-        <p role="status">Thank you. Your event is with the hub's admins, and goes on the calendar once they approve it.</p>
+        <Notice>Thank you. Your event is with the hub's admins, and goes on the calendar once they approve it.</Notice>
         <Link to="/events">Back to the calendar</Link>
       </>,
     );
@@ -955,6 +1163,7 @@ function EventFormPage() {
         start={start}
         end={end}
         zone={zone ?? hubZone}
+        hubZone={hubZone}
         onTimes={(s, e) => {
           setStart(s);
           setEnd(e);
@@ -982,12 +1191,18 @@ function EventFormPage() {
   );
 }
 
-/** The feed's card when an event goes on the calendar: when and where, from its own payload. */
+/**
+ * The feed's card when an event goes on the calendar: when and where, from
+ * its own payload, the time in the hub's zone (Events 3). The feed names no
+ * zone of its own, so the card names it only for a reader whose clock is not
+ * the hub's.
+ */
 function eventCard({ data, id, getTitle }: { data: Record<string, unknown>; id: string; getTitle: (id: string) => string | undefined }) {
-  const p = (data.process ?? {}) as { title?: string; event?: { start_time?: string; end_time?: string; location?: EventLocation; time_zone?: string } };
+  const p = (data.process ?? {}) as { title?: string; event?: { start_time?: string; end_time?: string; location?: EventLocation } };
   const ev = p.event;
-  const when = ev?.start_time && ev.end_time ? whenLine(ev.start_time, ev.end_time, ev.time_zone) : "";
-  const where = ev?.location ? (ev.location.type === "Link" ? "Online" : locationLine(ev.location)) : "";
+  const zone = hubTimeZone();
+  const when = ev?.start_time && ev.end_time ? whenLine(ev.start_time, ev.end_time, zone, !sameClock(ev.start_time, zone, readerZone())) : "";
+  const where = ev?.location ? whereWords(ev.location) : "";
   return {
     title: p.title ?? getTitle(id) ?? "New event",
     summary: [when, where].filter(Boolean).join(" · ") || "A new event is on the calendar.",
