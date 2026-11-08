@@ -21,12 +21,10 @@ import { getUser } from "../modules/civic.auth/index.js";
 import { recordHubAdminAudit } from "./hubAdminAudit.js";
 import { reportError } from "../utils/reportError.js";
 import { CLOSE_EARLY_NOTE_MAX, closedEarlyLine, readClosedEarly, type ClosedEarlyRecord } from "../shared/closedEarly.js";
-import { resolveTimeZone } from "../utils/hubTime.js";
-import { getSettingSync } from "./hubSettings.js";
-import { KEYS } from "../models/hubSettings.js";
 import type { Process, ProcessAction } from "../models/process.js";
 import type { ProcessHandler, ActionCaller } from "../processes/types.js";
 import type { CivicEvent } from "../models/event.js";
+import { hubTimeZone } from "./hubTimeZone.js";
 
 export interface EarlyClose {
   originalDeadline: string;
@@ -123,7 +121,7 @@ export async function auditEarlyClose(process: Process, actorId: string, record:
 export function closedEarlyView(state: unknown): (ClosedEarlyRecord & { line: string }) | null {
   const record = readClosedEarly((state as Record<string, unknown> | null)?.closed_early);
   if (!record) return null;
-  return { ...record, line: closedEarlyLine(record, resolveTimeZone(getSettingSync(KEYS.IDENTITY_TIMEZONE))) };
+  return { ...record, line: closedEarlyLine(record, hubTimeZone()) };
 }
 
 /**

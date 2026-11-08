@@ -43,7 +43,8 @@ export function comingUpRows(input: {
       kind: "event",
       title: e.title,
       at: e.start_time,
-      timeZone: e.time_zone ?? input.hubTimeZone,
+      // Every time in the hub's zone (Events 3), whatever zone it was entered in.
+      timeZone: input.hubTimeZone,
       url: input.eventPath(e.process_id),
     }));
   const deadlines: ComingUpRow[] = (input.facts?.deadlines ?? [])

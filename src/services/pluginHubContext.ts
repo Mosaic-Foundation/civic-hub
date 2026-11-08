@@ -4,16 +4,16 @@
 // where anyone reaches it. Read per call, so a package never holds one hub's
 // answer while serving another.
 
-import { KEYS, getSettingSync, hubDisplayNameSync } from "./hubSettings.js";
+import { hubDisplayNameSync } from "./hubSettings.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
-import { resolveTimeZone } from "../utils/hubTime.js";
+import { hubTimeZone } from "./hubTimeZone.js";
 
 export interface HubContext {
   /** What the hub calls itself (`identity.name`, else its registry name). */
   name: string;
   /** The origin its pages are at, no trailing slash: links in a calendar file or a message. */
   baseUrl: string;
-  /** Its IANA time zone (`identity.timezone`), "UTC" when unset. */
+  /** Its IANA time zone: `identity.timezone`, else its place's, else "UTC" (src/services/hubTimeZone.ts). */
   timeZone: string;
 }
 
@@ -21,6 +21,6 @@ export function hubContext(): HubContext {
   return {
     name: hubDisplayNameSync(),
     baseUrl: uiBaseUrl(),
-    timeZone: resolveTimeZone(getSettingSync(KEYS.IDENTITY_TIMEZONE)),
+    timeZone: hubTimeZone(),
   };
 }

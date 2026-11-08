@@ -17,11 +17,13 @@ describe("hubContext()", () => {
     expect(athens.baseUrl).not.toMatch(/\/$/);
     const floyd = runWithHub(FLOYD_HUB, {}, hubContext);
     expect(floyd.baseUrl).toContain(FLOYD_HUB.hostname);
-    expect(floyd.timeZone, "unset reads as UTC").toBe("UTC");
+    expect(floyd.timeZone, "unset reads as its place's zone (Events 3)").toBe("America/New_York");
+    const nowhere = runWithHub({ ...FLOYD_HUB, jurisdiction_code: null }, {}, hubContext);
+    expect(nowhere.timeZone, "a hub with no place and no zone is on UTC").toBe("UTC");
   });
 
-  it("reads a zone this runtime does not know as UTC", () => {
-    expect(runWithHub(ATHENS_HUB, { "identity.timezone": "Nowhere/Special" }, hubContext).timeZone).toBe("UTC");
+  it("reads a zone this runtime does not know as its place's", () => {
+    expect(runWithHub(ATHENS_HUB, { "identity.timezone": "Nowhere/Special" }, hubContext).timeZone).toBe("America/New_York");
   });
 
   it("serves the hub's zone to anyone", () => {

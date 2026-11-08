@@ -38,8 +38,9 @@ import { sendEmail } from "../utils/email.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 import { effectivePostalAddressSync, getSettingSync, hubDisplayNameSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
-import { hourInZone, resolveTimeZone } from "../utils/hubTime.js";
+import { hourInZone } from "../utils/hubTime.js";
 import type { JobRunner } from "./types.js";
+import { hubTimeZone } from "../services/hubTimeZone.js";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 // Slack subtracted from the next-due calculation so a daily cron firing at a
@@ -58,13 +59,13 @@ export const DEFAULT_DIGEST_SEND_HOUR = 13;
 
 /**
  * The hub in scope's send hour and time zone. An unset or malformed hour is
- * the default; an unset or unknown zone is UTC.
+ * the default; an unset zone is the place's, else UTC (hubTimeZone).
  */
 export function digestSchedule(): { hour: number; timeZone: string } {
   const raw = getSettingSync(KEYS.PLUGIN_DIGEST_SEND_HOUR)?.trim() ?? "";
   const n = raw === "" ? NaN : Number(raw);
   const hour = Number.isInteger(n) && n >= 0 && n <= 23 ? n : DEFAULT_DIGEST_SEND_HOUR;
-  return { hour, timeZone: resolveTimeZone(getSettingSync(KEYS.IDENTITY_TIMEZONE)) };
+  return { hour, timeZone: hubTimeZone() };
 }
 
 function clampSince(user: {

@@ -447,6 +447,14 @@ const hub = {
     return setting(key);
   },
 
+  /**
+   * The hub's clock (Events 3): its time zone setting, else its place's
+   * zone, else UTC (src/shared/hubTimeZone.ts). What a time is shown in.
+   */
+  get timeZone(): string {
+    return getLoadedHubConfig()?.time_zone?.zone || setting("identity.timezone") || "UTC";
+  },
+
   /** The plugin switches (config/plugins.tsx). */
   plugins: {
     enabled: pluginEnabled,

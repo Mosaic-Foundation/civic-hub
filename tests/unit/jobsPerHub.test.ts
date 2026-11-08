@@ -87,11 +87,16 @@ beforeEach(() => {
 });
 
 describe("digest: each hub in its own send hour and time zone", () => {
-  it("13:00 UTC in September is Floyd's default hour and Athens's 09:00 EDT: both due", async () => {
+  it("13:00 UTC in September is Athens's 09:00 EDT; Floyd, with no zone set, keeps its place's (Eastern) and waits", async () => {
     const report = await run("digest", new Date("2026-09-24T13:00:00Z"));
-    expect(subscribedLookups).toEqual(["floyd", "athens"]);
-    expect(report.hubs.floyd).toMatchObject({ processed_users: 0 });
+    expect(subscribedLookups).toEqual(["athens"]);
     expect(report.hubs.athens).toMatchObject({ processed_users: 0 });
+    expect(report.hubs.floyd).toMatchObject({ skipped: true, send_hour: 13, time_zone: "America/New_York", local_hour: 9 });
+  });
+
+  it("Floyd's default 13:00 is 13:00 in its place's zone (Events 3): 17:00 UTC in September", async () => {
+    await run("digest", new Date("2026-09-24T17:00:00Z"));
+    expect(subscribedLookups).toEqual(["floyd"]);
   });
 
   it("an hour later in September, neither is due", async () => {
@@ -109,7 +114,7 @@ describe("digest: each hub in its own send hour and time zone", () => {
   it("mails Athens at its 09:00 in winter (14:00 UTC), and not Floyd", async () => {
     const report = await run("digest", new Date("2026-12-01T14:00:00Z"));
     expect(subscribedLookups).toEqual(["athens"]);
-    expect(report.hubs.floyd).toMatchObject({ skipped: true, send_hour: 13, time_zone: "UTC", local_hour: 14 });
+    expect(report.hubs.floyd).toMatchObject({ skipped: true, send_hour: 13, time_zone: "America/New_York", local_hour: 9 });
   });
 
   it("skips a hub whose digest is off, and only that hub", async () => {
@@ -125,9 +130,9 @@ describe("digest: each hub in its own send hour and time zone", () => {
     expect(subscribedLookups).toEqual(["floyd"]);
   });
 
-  it("an unknown time zone reads as UTC rather than failing the hub", async () => {
+  it("an unknown time zone reads as the place's rather than failing the hub", async () => {
     SETTINGS.athens["identity.timezone"] = "Mars/Olympus_Mons";
-    const report = await run("digest", new Date("2026-12-01T09:00:00Z"));
+    const report = await run("digest", new Date("2026-12-01T14:00:00Z"));
     expect(subscribedLookups).toEqual(["athens"]);
     expect(report.hubs.floyd).toMatchObject({ skipped: true });
   });

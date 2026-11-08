@@ -56,6 +56,11 @@ export interface HubConfig {
   process_types?: ProcessTypeDisplay[];
   /** The Members plugin: whether residents get the Members page yet (absent while it is off). */
   members?: { page_shown: boolean };
+  /**
+   * The hub's clock: its time zone setting, else its place's zone, else UTC,
+   * and which (src/shared/hubTimeZone.ts; Events 3). Optional, like plugin_setup.
+   */
+  time_zone?: { zone: string; source: "set" | "place" | "default" };
 }
 
 

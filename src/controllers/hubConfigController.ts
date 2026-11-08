@@ -30,6 +30,8 @@ import type { Hub, HubMode } from "../models/hub.js";
 import { hubContentFlags } from "../services/sampleContent.js";
 import { processTypeDisplays, type ProcessTypeDisplay } from "../processes/registry.js";
 import { memberVisibility } from "../services/members.js";
+import { effectiveHubTimeZone, type HubTimeZone } from "../shared/hubTimeZone.js";
+import { KEYS } from "../models/hubSettings.js";
 
 /** The hub fields the contract makes public. */
 interface PublicHub {
@@ -76,6 +78,12 @@ export interface HubConfigResponse {
    * while the plugin is off. Admins see the page either way.
    */
   members?: { page_shown: boolean };
+  /**
+   * The hub's clock (Events 3, 2026-11-08): its time zone setting, else its
+   * place's zone, else UTC, and which (src/shared/hubTimeZone.ts). What the
+   * UI shows a time in; `settings["identity.timezone"]` stays the raw value.
+   */
+  time_zone: HubTimeZone;
 }
 
 function publicHub(hub: Hub): PublicHub {
@@ -119,6 +127,7 @@ export const handleGetHubConfig = route(async (req, res) => {
     content,
     process_types: processTypeDisplays(),
     ...(members ? { members: { page_shown: members.pageShown } } : {}),
+    time_zone: effectiveHubTimeZone(settings[KEYS.IDENTITY_TIMEZONE], hub.jurisdiction_code),
   };
   res.json(body);
 });

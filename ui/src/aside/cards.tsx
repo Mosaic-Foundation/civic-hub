@@ -40,7 +40,7 @@ export function ComingUpCard({ data }: { data: AsideData }) {
     events: data.events,
     calendarTypes,
     eventPath: (id) => (eventType ? detailPathOf(eventType, id) : `/process/${id}`),
-    hubTimeZone: hub.setting("identity.timezone") || null,
+    hubTimeZone: hub.timeZone,
     now,
   });
   if (rows.length === 0) return null;

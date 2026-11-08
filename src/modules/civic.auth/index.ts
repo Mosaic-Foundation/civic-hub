@@ -31,8 +31,6 @@ import { renderCodeEmail } from "./otp.js";
 import { HOUR_MS, checkCode, issueCode, tooManyMessage, type Realm } from "./codeRules.js";
 import { sendEmail, mailConfigured } from "../../utils/email.js";
 import { HUB_SIGN_IN_LIMITS } from "./limits.js";
-import { KEYS } from "../../models/hubSettings.js";
-import { resolveTimeZone } from "../../utils/hubTime.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
 import {
   getAdminEmailsSync,
@@ -41,13 +39,13 @@ import {
   isDemoHubSync,
   isEmailOnBetaAllowlist,
   hubDisplayNameSync,
-  getSettingSync,
 } from "../../services/hubSettings.js";
 import { isPrivilegedEmail, isPrivilegedEmailNow } from "../../services/privilegedAccounts.js";
 import { lookupOfficialByEmail } from "../../services/officials.js";
 import { currentHubId, currentHubIdOrNull } from "../../config/hubContext.js";
 import { APPEARANCES, type Appearance, type User, type PendingVerification, type Session, type SessionAssurance } from "./models.js";
 import { authStore } from "./store.js";
+import { hubTimeZone } from "../../services/hubTimeZone.js";
 
 export type { User, PendingVerification, Session, SessionAssurance } from "./models.js";
 
@@ -155,7 +153,7 @@ function hubRealm(): Realm {
     scope: "hub",
     addressKey: (email) => `${hubId}:${email}`,
     ipLimits: { request: HUB_SIGN_IN_LIMITS.request_code.ip, verify: HUB_SIGN_IN_LIMITS.verify.ip },
-    timeZone: resolveTimeZone(getSettingSync(KEYS.IDENTITY_TIMEZONE)),
+    timeZone: hubTimeZone(),
     links: true,
   };
 }

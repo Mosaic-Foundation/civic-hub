@@ -23,6 +23,7 @@ interface HubConfigResult {
   body: {
     hub?: Record<string, unknown>;
     settings?: Record<string, string>;
+    time_zone?: { zone: string; source: string };
     error?: string;
     code?: string;
   };
@@ -115,6 +116,12 @@ describe("GET /hub-config", () => {
     }
     expect(keys.some((k) => k.startsWith("people."))).toBe(false);
     expect(keys.some((k) => k.startsWith("email."))).toBe(false);
+  });
+
+  it("names the hub's clock: its zone setting, else its place's, never UTC for a hub that is somewhere (Events 3)", async () => {
+    const { body } = await hubConfig("floyd.civic.social");
+    const set = body.settings?.["identity.timezone"];
+    expect(body.time_zone).toEqual(set ? { zone: set, source: "set" } : { zone: "America/New_York", source: "place" });
   });
 
   it("caches privately, so no shared cache can cross hubs", async () => {
