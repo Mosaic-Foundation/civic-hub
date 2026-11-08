@@ -40,6 +40,7 @@ import {
   Search as SearchPage,
   Settings,
   SignInLink,
+  KitGallery,
   Terms,
   Welcome,
   preloadPages,
@@ -270,6 +271,7 @@ function AppContent() {
                 {featureRoutes()}
                 <Route path="/my-submissions" element={<MySubmissions />} />
                 <Route path="/my-submissions/:reviewId" element={<MySubmissions />} />
+                <Route path="/kit" element={<AdminGuard><KitGallery /></AdminGuard>} />
                 <Route path="/admin" element={<AdminGuard><AdminAnchor /></AdminGuard>} />
                 <Route path="/admin/reviews" element={<AdminGuard><AdminReviews /></AdminGuard>} />
                 <Route path="/admin/reviews/:reviewId" element={<AdminGuard><AdminReviews /></AdminGuard>} />
