@@ -388,9 +388,9 @@ export function TimeZoneField({ f, k, label, hint, place = "" }: Common & { plac
         onChange={(e) => f.set(k, e.target.value)}
         disabled={f.disabled}
         aria-describedby={inferred ? noteId : undefined}
-        style={{ maxWidth: "32ch" }}
+        style={{ maxWidth: "40ch" }}
       >
-        <option value="">{place ? `Not set (${zonePlainName(place)} time, from your place)` : "Not set (UTC)"}</option>
+        <option value="">{place ? `Not set (${zonePlainName(place)}, from your place)` : "Not set (UTC)"}</option>
         {zoneList(value).map((z) => (
           <option key={z} value={z}>
             {z.replace(/_/g, " ")}
