@@ -113,6 +113,32 @@ test.describe("screenshots", () => {
     });
   }
 
+  // The section pages (Events 3, 2026-11-08): the kit's page patterns
+  // (ListCard, PageHead, GroupHeading, EmptyState) replaced the hand-built
+  // ones, and these images say nothing moved. Every list page, both widths;
+  // then the other layouts and dark at desktop width.
+  const SECTIONS = [
+    ["/votes", "votes"],
+    ["/propose", "proposals"],
+    ["/projects", "projects"],
+    ["/deliberations", "conversations"],
+    ["/outcomes", "outcomes"],
+  ] as const;
+  for (const w of WIDTHS) {
+    test(`section pages, signed out, ${w.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: w.width, height: w.height });
+      await page.addInitScript(() => {
+        localStorage.setItem("seen_intro_popup", "true");
+        localStorage.setItem("welcome-banner-dismissed-v2", "true");
+        sessionStorage.setItem("civic_preview", "1");
+      });
+      for (const [path, name] of SECTIONS) {
+        await page.goto(`${ORIGIN}${path}`);
+        await shoot(page, `section-${name}-${w.name}`);
+      }
+    });
+  }
+
   // The left-column layout, the dark mode and three columns (ADR-019) in
   // both, at desktop width (ADR-018).
   const VARIANTS = [
@@ -145,6 +171,10 @@ test.describe("screenshots", () => {
         if (vote) {
           await page.goto(`${ORIGIN}${vote.path}`);
           await shoot(page, `${v.name}-vote-desktop`);
+        }
+        for (const [path, name] of SECTIONS) {
+          await page.goto(`${ORIGIN}${path}`);
+          await shoot(page, `${v.name}-section-${name}-desktop`);
         }
         // The admin's own Appearance decides theirs.
         await visitAs(page, adminToken);
