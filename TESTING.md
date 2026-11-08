@@ -93,7 +93,7 @@ first time that layer has been runnable from a clean checkout.
   checks that:
   - the current row's right edge is the card's;
   - the row is square on the right and rounded on the left;
-  - both flares are radial gradients;
+  - both flares are SVG masks;
   - the card has no right border (its outline is an inset shadow).
 - **Screenshots:** `sidebar-vote`, `three-vote` and `three-dark-vote` re-taken on a reset stack. The other five are
   unchanged.

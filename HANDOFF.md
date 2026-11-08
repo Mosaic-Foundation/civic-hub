@@ -17,7 +17,9 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
   To make this work:
   - the card's outline is now an inset shadow, so the row can cover it;
-  - the flares are `::before`/`::after` radial gradients in the card's right gutter (`--notch`);
+  - the flares are `::before`/`::after` in the card's right gutter (`--notch`), each a quarter-circle SVG mask
+    (`--notch-flare`) over the token wash, so the curve is clean at any zoom. No outline follows the curve: on Adam's
+    look, the card's straight edge runs on until the wash takes it over;
   - the card has extra room top and bottom (`--radius-lg` + `--notch`), so a flare never meets its corners.
 
   The dark admin rail is unchanged.
