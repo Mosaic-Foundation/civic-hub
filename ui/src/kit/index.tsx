@@ -23,7 +23,6 @@ import type {
 } from "react";
 
 
-export { default as DraftShell } from "../components/DraftShell";
 
 import { Button } from "./Button";
 

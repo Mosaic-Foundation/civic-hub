@@ -21,7 +21,6 @@ export {
   ChipGroup,
   DateTimeInput,
   DayGroup,
-  DraftShell,
   EmptyState,
   Field,
   FilterBar,
@@ -49,4 +48,8 @@ export {
   type StatusTone,
 } from "../../ui/src/kit/index";
 export { fromLocalInput, toLocalInput } from "../../ui/src/kit/datetime";
+// Host-provided, not the portable kit (Events 3): the drafting shell knows the
+// hub's sign-in, its assistant and its header, so it comes from the hub's own
+// components (tests/unit/kitPortable.test.ts lists it by name).
+export { default as DraftShell } from "../../ui/src/components/DraftShell";
 export { dayHeading, dayKey, groupByDay, shiftDay } from "../../ui/src/kit/dates";
