@@ -9,7 +9,8 @@
  *    (ADR-018's amendment): the rail is dark, roomier, and may scroll; the
  *    current item is kept in view. Review, Community and Hub settings fold
  *    with a chevron; the group holding the page opens; what you open is
- *    remembered in the browser. The phone drawer has the same look, and while
+ *    remembered in the browser; "Back to the hub" stays at the top as the
+ *    rail scrolls. The phone drawer has the same look, and while
  *    you type on a phone the bottom bar hides and the Save bar is one line.
  *
  * Acts on whichever hub `localhost` resolves to (Athens on the local stack
@@ -137,6 +138,15 @@ test("on a short window the rail scrolls and keeps the page's item in view", asy
     const fit = await page.locator(".hub-sidebar").evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
     expect(fit.scroll, "the rail is longer than the window here").toBeGreaterThan(fit.client);
     await expect(current).toBeInViewport();
+    // Scrolled to its foot, the rail keeps "Back to the hub" at its top (Adam, 2026-11-07).
+    const column = page.locator(".hub-sidebar");
+    await column.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    const back = rail(page).getByRole("link", { name: "Back to the hub" });
+    await expect(back).toBeInViewport();
+    const top = (await column.boundingBox())!.y;
+    expect((await back.boundingBox())!.y - top).toBeLessThan(32);
+    // Nothing shows through above it: the band is the rail's colour.
+    expect(await page.locator(".admin-rail-top").evaluate((el) => getComputedStyle(el).position)).toBe("sticky");
     for (const id of ["processes", "briefs", "meeting-summaries", "edits", "admin-feedback", "analytics", "moderation", "archived", "setup-guide", "contact"]) {
       await expect(rail(page).locator(`[data-nav-id="${id}"]`)).toHaveCount(1);
     }
@@ -161,6 +171,9 @@ test("a phone keeps its bottom bar and opens the rail as a drawer from the Admin
   expect(await luminanceOf(page, ".admin-drawer-body")).toBeLessThan(0.05);
   await expect(drawer.getByRole("button", { name: /^Community/ })).toHaveAttribute("aria-expanded", "true");
   await drawer.getByRole("button", { name: /^Review/ }).click();
+  // Scrolled to its foot, the drawer keeps "Back to the hub" at its top.
+  await page.locator(".admin-drawer-body").evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await expect(drawer.getByRole("link", { name: "Back to the hub" })).toBeInViewport();
   await drawer.getByRole("link", { name: /^Edits/ }).click();
   await expect(page).toHaveURL(/\/admin\/edits$/);
   await expect(drawer).toHaveCount(0);

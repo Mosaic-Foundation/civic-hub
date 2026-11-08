@@ -66,10 +66,13 @@ export default function AdminRail({
 
   return (
     <nav className="admin-rail" aria-label="Admin sections" ref={nav}>
-      <Link to="/" className="admin-rail-back" onClick={() => onPicked?.()}>
-        <NavIcon name="back" size={18} />
-        <span>Back to the hub</span>
-      </Link>
+      {/* Always in view as the rail scrolls, in the column and the drawer (Adam, 2026-11-07). */}
+      <div className="admin-rail-top">
+        <Link to="/" className="admin-rail-back" onClick={() => onPicked?.()}>
+          <NavIcon name="back" size={18} />
+          <span>Back to the hub</span>
+        </Link>
+      </div>
       <h2 className="admin-rail-title">Admin</h2>
       {entries.map((e) => {
         if (e.kind === "item") {
