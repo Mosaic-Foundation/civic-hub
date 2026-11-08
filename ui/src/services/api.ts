@@ -1702,6 +1702,8 @@ export interface HubSettings {
     hostname: string;
     jurisdiction_name: string | null;
     mode: string;
+    /** The zone the hub's place suggests, "" when none: what applies while identity.timezone is empty. */
+    place_time_zone?: string;
   };
   /** The hub's own value per key; "" where it has none. */
   values: Record<string, string>;

@@ -117,6 +117,8 @@ const PAIRS: Array<[string, string, number]> = [
   ["--color-error", "--color-error-bg", TEXT],
   ["--color-error", "--color-surface", TEXT],
   ["--color-warning", "--color-warning-bg", TEXT],
+  // Identity's inferred time zone note (Events 3).
+  ["--color-text", "--color-warning-bg", TEXT],
   ["--table-head-text", "--table-head-bg", TEXT],
   ["--color-border-control", "--color-surface", UI],
   ["--color-focus", "--color-surface", UI],

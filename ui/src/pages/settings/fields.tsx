@@ -14,6 +14,7 @@ import PostImagePicker from "../../components/PostImagePicker";
 import { fieldSpec } from "../../../../src/shared/hubSettingsSections";
 import { applySubstitutions, operatorValues, splitDraftNotes } from "../../../../src/shared/documentTemplate";
 import { Button } from "../../kit";
+import { zonePlainName } from "../../../../src/shared/hubTimeZone";
 import { LegalBody } from "../../components/LegalPage";
 import DocumentEditor from "./document/DocumentEditor";
 import { listProcesses, uploadHubImage, type ProcessSummary } from "../../services/api";
@@ -303,13 +304,13 @@ export function BooleanField({ f, k, label, hint }: Common) {
 /** An hour stored in UTC, shown alongside the admin's own clock. */
 /**
  * An hour of the day in the hub's own time zone (identity.timezone, set in
- * Identity; UTC when unset). Beside each hour: what that is on the admin's
+ * Identity; its place's when unset, else UTC). Beside each hour: what that is on the admin's
  * own clock, since the admin is not always where the hub is.
  */
 export function HourField({ f, k, label, hint }: Common) {
   const id = useId();
   const hours = Array.from({ length: 24 }, (_, h) => h);
-  const zone = validZone(f.data.values["identity.timezone"]) ?? "UTC";
+  const zone = validZone(f.data.values["identity.timezone"]) ?? validZone(f.data.hub.place_time_zone) ?? "UTC";
   return (
     <div className="settings-field">
       <Label id={id} k={k} label={label} hint={hint} />
@@ -366,10 +367,17 @@ function zoneList(current: string): string[] {
   return current && !list.includes(current) ? [current, ...list] : list;
 }
 
-/** An IANA time zone; empty means UTC. */
-export function TimeZoneField({ f, k, label, hint }: Common) {
+/**
+ * An IANA time zone. Empty means the zone of the hub's place (`place`, from
+ * its jurisdiction; src/shared/hubTimeZone.ts), else UTC. While the place's
+ * zone is only inferred, a note says so and offers to confirm it (Events 3,
+ * Adam): Getting started's first step waits for a zone that is set.
+ */
+export function TimeZoneField({ f, k, label, hint, place = "" }: Common & { place?: string }) {
   const id = useId();
+  const noteId = useId();
   const value = f.value(k);
+  const inferred = value === "" && place !== "";
   return (
     <div className="settings-field">
       <Label id={id} k={k} label={label} hint={hint} />
@@ -379,15 +387,26 @@ export function TimeZoneField({ f, k, label, hint }: Common) {
         value={value}
         onChange={(e) => f.set(k, e.target.value)}
         disabled={f.disabled}
+        aria-describedby={inferred ? noteId : undefined}
         style={{ maxWidth: "32ch" }}
       >
-        <option value="">Not set (UTC)</option>
+        <option value="">{place ? `Not set (${zonePlainName(place)} time, from your place)` : "Not set (UTC)"}</option>
         {zoneList(value).map((z) => (
           <option key={z} value={z}>
             {z.replace(/_/g, " ")}
           </option>
         ))}
       </select>
+      {inferred && (
+        <p id={noteId} className="settings-zone-note" role="status" data-testid="zone-inferred-note">
+          <span>
+            Using {zonePlainName(place)} time from your place; confirm or change it.
+          </span>
+          <Button size="sm" disabled={f.disabled} onClick={() => f.set(k, place)}>
+            Confirm {zonePlainName(place)} time
+          </Button>
+        </p>
+      )}
     </div>
   );
 }

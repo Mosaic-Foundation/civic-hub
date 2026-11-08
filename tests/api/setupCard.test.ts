@@ -73,11 +73,17 @@ describe("the Set up your hub card", () => {
 
   it("starts with what creation set ticked, and the rest open", async () => {
     const body = await view();
-    // Creation names the hub and its email sender (the hub's name).
-    expect(step(body, "name_and_place").done).toBe(true);
+    // Creation names the hub and its email sender (the hub's name). This hub
+    // has no place and so no zone yet: its first step waits for one (Events 3).
+    expect(step(body, "name_and_place").done).toBe(false);
     expect(step(body, "email").done).toBe(true);
     for (const id of ["banner", "logo", "theme", "copy", "legal", "officials", "plugins", "beta"]) expect(step(body, id).done, id).toBe(false);
     expect(step(body, "second_admin")).toMatchObject({ done: false, can_skip: true, skipped: false });
+  });
+
+  it("ticks Name and place once the hub has a time zone of its own (Events 3)", async () => {
+    await save("identity", { "identity.timezone": "UTC" });
+    expect(step(await view(), "name_and_place").done).toBe(true);
   });
 
   it("ticks Legal when an admin saves it", async () => {

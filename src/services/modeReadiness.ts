@@ -44,6 +44,7 @@ import {
 import { sampleContentSummary } from "./sampleContent.js";
 import { listOfficials } from "./officials.js";
 import { SETTINGS_SECTIONS } from "../shared/hubSettingsSections.js";
+import { placeTimeZone, zonePlainName } from "../shared/hubTimeZone.js";
 
 export type ReadinessItemId =
   | "name_and_place"
@@ -164,8 +165,9 @@ export async function setupChecklist(skippedSecondAdmin: boolean): Promise<Setup
     step(
       "name_and_place",
       kindIsPlace ? "Name and place set" : "Name set",
-      "What the hub is called, on every page and in its emails.",
-      named && placed,
+      "What the hub is called, on every page and in its emails, and its time zone.",
+      // The zone too (Events 3, Adam): one inferred from the place ticks only once the admin confirms it.
+      named && placed && filled(KEYS.IDENTITY_TIMEZONE),
       "/admin/settings/identity",
       "identity.name",
     ),
@@ -255,12 +257,15 @@ async function readinessItems(from: HubMode): Promise<ReadinessItem[]> {
 
   const tz = getSettingSync(KEYS.IDENTITY_TIMEZONE)?.trim() ?? "";
   const tzSet = tz !== "" && isValidTimeZone(tz);
+  const placeZone = placeTimeZone(currentHub()?.jurisdiction_code ?? null);
   items.push({
     id: "timezone",
     title: "A time zone",
     detail: tzSet
       ? `Set to ${tz}. Digests go out at the hour you choose, in this zone.`
-      : "Not set, so the hub runs on UTC and its digests go out at the wrong hour.",
+      : placeZone
+        ? `Not confirmed: the hub uses ${zonePlainName(placeZone)} time, from its place. Confirm it or choose another.`
+        : "Not set, so the hub runs on UTC and its digests go out at the wrong hour.",
     done: tzSet,
     blocking: true,
     link: "/admin/settings/identity",

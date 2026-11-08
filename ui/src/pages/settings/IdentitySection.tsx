@@ -82,7 +82,8 @@ export default function IdentitySection() {
             f={f}
             k="identity.timezone"
             label="Time zone"
-            hint="The hub's own clock. Times this hub chooses, such as the hour the digest goes out, are in this zone. Not set means UTC."
+            place={f.data.hub.place_time_zone ?? ""}
+            hint="The hub's own clock. Every time the hub shows, its events and the hour the digest goes out are in this zone. Not set means your place's zone, or UTC for a hub with no place."
           />
         </>
       )}

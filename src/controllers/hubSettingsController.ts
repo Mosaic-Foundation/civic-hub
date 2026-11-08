@@ -44,6 +44,7 @@ import {
 import { documentSettingDefault, documentTemplate, documentValues, hubGoverningLaw } from "../services/hubDocuments.js";
 import { getUser } from "../modules/civic.auth/index.js";
 import { renameHub } from "../db/hubs.js";
+import { placeTimeZone } from "../shared/hubTimeZone.js";
 import { processTypeDisplays } from "../processes/registry.js";
 import { orderAfterSwitchingOff } from "../shared/navSections.js";
 import { RENAME_FOLLOWERS, SETTING_LABELS, consoleOwnsHandoverKeys, renameFollowers } from "../shared/settingOwners.js";
@@ -56,6 +57,12 @@ export interface HubSettingsResponse {
     hostname: string;
     jurisdiction_name: string | null;
     mode: string;
+    /**
+     * The zone the hub's place suggests, "" when it has none (Events 3): what
+     * applies while identity.timezone is empty, which Identity asks the admin
+     * to confirm (src/shared/hubTimeZone.ts).
+     */
+    place_time_zone: string;
   };
   /** The hub's own value for every editable key; "" where it has none. */
   values: Record<string, string>;
@@ -141,6 +148,7 @@ async function loadHubSettings(): Promise<HubSettingsResponse> {
       hostname: hub?.hostname ?? "",
       jurisdiction_name: hub?.jurisdiction_name ?? null,
       mode: hubModeFor(hub),
+      place_time_zone: placeTimeZone(hub?.jurisdiction_code ?? null),
     },
     values,
     fallbacks,
