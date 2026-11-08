@@ -219,16 +219,28 @@ export function Table({ className, ...rest }: TableHTMLAttributes<HTMLTableEleme
   );
 }
 
-/** A page's title, and the line under it. */
-export function PageHead({ title, lede, children }: { title: ReactNode; lede?: ReactNode; children?: ReactNode }) {
-  return (
-    <header className="kit-page-head">
-      <h1 className="kit-page-title">{title}</h1>
-      {lede && <p className="kit-page-lede">{lede}</p>}
-      {children}
-    </header>
-  );
-}
+// The page patterns (Events 3): a page's head and action, its groups, the
+// list card, the chips, the meta line, the empty line, the filter bar and the
+// view toggle (kit/patterns.tsx); and the calendar views (kit/calendar.tsx).
+export {
+  CardList,
+  Chip,
+  DayGroup,
+  EmptyState,
+  FilterBar,
+  Group,
+  GroupHeading,
+  InlineMeta,
+  ListCard,
+  Page,
+  PageAction,
+  PageHead,
+  StatusChip,
+  ViewToggle,
+  type ListCardProps,
+  type StatusTone,
+} from "./patterns";
+export { MonthGrid, WeekStrip, type CalendarItem } from "./calendar";
 
 /**
  * A picture chosen from the reader's device: a drop area with a button, the
