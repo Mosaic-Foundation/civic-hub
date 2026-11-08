@@ -24,6 +24,8 @@
 
 export interface StatusDisplay {
   label: string;
+  /** The kit's StatusChip tone (kit/patterns.tsx). */
+  tone?: Variant;
   /** Full className for the <span>, including status-badge. */
   className: string;
 }
@@ -56,6 +58,7 @@ export function statusDisplay(status: string): StatusDisplay {
   const entry = DISPLAY[status] ?? { label: status, variant: "done" as const };
   return {
     label: entry.label,
+    tone: entry.variant,
     className: `status-badge status-${entry.variant}`,
   };
 }

@@ -6,9 +6,10 @@
 // State is mirrored in the URL as `?status=<key>` (missing = "all"), so
 // a filtered view is bookmarkable and survives refresh — same contract
 // the Votes page established. Styling reuses the .votes-filter classes
-// in App.css.
+// in kit/patterns.css (Events 3).
 
 import type { StatusFilterChoice } from "./statusFilterState";
+import { FilterBar } from "../kit";
 
 interface Props {
   choices: ReadonlyArray<StatusFilterChoice>;
@@ -18,26 +19,7 @@ interface Props {
   label: string;
 }
 
+/** The kit's FilterBar (Events 3), with the hub's status choices. */
 export default function StatusFilter({ choices, active, onChange, label }: Props) {
-  return (
-    <nav className="votes-filter" aria-label={label}>
-      <ul className="votes-filter-list">
-        {choices.map((c) => {
-          const isActive = c.key === active;
-          return (
-            <li key={c.key}>
-              <button
-                type="button"
-                className={`votes-filter-pill${isActive ? " is-active" : ""}`}
-                onClick={() => onChange(c.key)}
-                aria-pressed={isActive}
-              >
-                {c.label}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
-  );
+  return <FilterBar choices={choices} active={active} onChange={onChange} label={label} />;
 }

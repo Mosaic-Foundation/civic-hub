@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useIsWideViewport } from "../hooks/useIsWideViewport";
 import SampleBadge from "./SampleBadge";
+import { ListCard } from "../kit";
 import type { ActivityColor, ActivityKind } from "../../../src/shared/feedActivity";
 import { absoluteTime, relativeTime } from "../utils/dates";
 
@@ -110,80 +111,50 @@ export default function FeedPost({ post }: Props) {
   // Civic Hub" chip both work. Power users can still ⌘-click /
   // middle-click to force a new tab on either device.
   const isWideViewport = useIsWideViewport();
-  const pillClass = `feed-pill feed-pill--type-${post.pillColor}`;
-  const hasImage = Boolean(post.imageUrl);
-  const articleClass = `feed-post feed-post--type-${post.pillColor}${
-    hasImage ? " has-image" : ""
-  }`;
 
-  // When an attached image exists, the card uses a side-by-side layout
-  // (text left, square thumbnail right) on desktop and stacks the image
-  // above with a capped height on mobile — see Feed.css. Imageless cards
-  // continue to render as a single text column.
-  const inner = (
-    <>
-      <div className="feed-post-body">
-        <h2 className="feed-post-title">{post.title}</h2>
-        {/* Design A (Adam, 2026-10-14): the type's pill leads the meta line,
-            beside what happened, the author and the date; the title keeps
-            the full width. The label says the type, so nothing rests on the
-            pill's colour. */}
-        <p className="feed-post-meta">
-          <span className={pillClass} data-testid="feed-type-pill">{post.pillLabel}</span>
-          {post.sample && <SampleBadge />}
-          {post.note && <span className="feed-post-note">{post.note}</span>}
-          {post.authorName && <span className="feed-post-author">{post.authorName}</span>}
-          <time
-            className="feed-post-time"
-            dateTime={post.timestamp}
-            title={absoluteTime(post.timestamp)}
-          >
-            {relativeTime(post.timestamp)}
-          </time>
-        </p>
-        {post.summary && <p className="feed-post-summary">{post.summary}</p>}
-        {post.engagement && (
-          <p
-            className={
-              post.pillKind === "brief-response"
-                ? "feed-post-engagement feed-post-engagement--context"
-                : "feed-post-engagement"
-            }
-          >
-            {post.engagement}
-          </p>
-        )}
-      </div>
-      {hasImage && (
-        <span className="feed-post-image">
-          <img
-            src={post.imageUrl ?? ""}
-            alt={post.imageAlt ?? ""}
-            loading="lazy"
-            decoding="async"
-          />
-        </span>
-      )}
-    </>
-  );
-
+  // The card is the kit's ListCard in its feed form (Events 3, 2026-11-08):
+  // the title, then the meta line (the kind's chip, what happened, the
+  // author, the date), the summary and the engagement line; a picture on the
+  // right on desktop, above on a phone (kit/patterns.css).
+  // Design A (Adam, 2026-10-14): the type's chip leads the meta line; the
+  // label says the type, so nothing rests on the chip's colour.
   return (
-    <article className={articleClass}>
-      {classified.kind === "internal" ? (
-        <Link to={classified.to} className="feed-post-link">
-          {inner}
-        </Link>
-      ) : (
-        <a
-          href={post.href}
-          className="feed-post-link"
-          {...(isWideViewport
+    <ListCard
+      variant="feed"
+      kind={post.pillColor}
+      kindLabel={post.pillLabel}
+      title={post.title}
+      badges={post.sample ? <SampleBadge /> : undefined}
+      meta={[
+        post.note ? <span key="note" className="feed-post-note">{post.note}</span> : null,
+        post.authorName ? <span key="author" className="feed-post-author">{post.authorName}</span> : null,
+        <time key="time" className="feed-post-time" dateTime={post.timestamp} title={absoluteTime(post.timestamp)}>
+          {relativeTime(post.timestamp)}
+        </time>,
+      ]}
+      summary={post.summary || null}
+      image={post.imageUrl ? { src: post.imageUrl, alt: post.imageAlt ?? "" } : null}
+      href={classified.kind === "internal" ? classified.to : post.href}
+      linkAs={classified.kind === "internal" ? Link : undefined}
+      linkProps={
+        classified.kind === "internal"
+          ? undefined
+          : isWideViewport
             ? { target: "_blank", rel: "noopener noreferrer" }
-            : { rel: "noopener" })}
+            : { rel: "noopener" }
+      }
+    >
+      {post.engagement && (
+        <p
+          className={
+            post.pillKind === "brief-response"
+              ? "feed-post-engagement feed-post-engagement--context"
+              : "feed-post-engagement"
+          }
         >
-          {inner}
-        </a>
+          {post.engagement}
+        </p>
       )}
-    </article>
+    </ListCard>
   );
 }

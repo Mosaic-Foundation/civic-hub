@@ -17,7 +17,8 @@
 // colour from `typeColorSlug` (which falls back to a generic accent), so it
 // renders sensibly with nothing registered here.
 
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
+import { ListCard, StatusChip } from "../kit";
 import { statusDisplay } from "./statusDisplay";
 import { typeColorSlug } from "./typeColor";
 import { friendlyType } from "./processLinkTypes";
@@ -38,32 +39,22 @@ interface Props {
   sample?: boolean;
 }
 
+/**
+ * Since Events 3 (2026-11-08) the card itself is the kit's ListCard
+ * (kit/patterns.tsx), which plugins draw too; this is the hub's adapter that
+ * turns a process type and a raw status into the kit's colour key, labels and
+ * tone.
+ */
 export default function ProcessListCard({ processType, status, title, meta = [], sample = false }: Props) {
-  const slug = typeColorSlug(processType);
-  const items = meta.filter(Boolean);
-
+  const shown = statusDisplay(status);
   return (
-    <div
-      className="process-card"
-      style={{ "--card-accent": `var(--type-${slug}-fg)` } as CSSProperties}
-    >
-      <div className="process-card-chips">
-        <span className={`feed-pill feed-pill--type-${slug}`}>
-          {friendlyType(processType)}
-        </span>
-        {sample && <SampleBadge />}
-        <span className={statusDisplay(status).className}>
-          {statusDisplay(status).label}
-        </span>
-      </div>
-      <h3 className="process-card-title">{title}</h3>
-      {items.length > 0 && (
-        <div className="process-card-meta">
-          {items.map((item, i) => (
-            <span key={i}>{item}</span>
-          ))}
-        </div>
-      )}
-    </div>
+    <ListCard
+      kind={typeColorSlug(processType)}
+      kindLabel={friendlyType(processType)}
+      title={title}
+      badges={sample ? <SampleBadge /> : undefined}
+      status={<StatusChip tone={shown.tone ?? "done"}>{shown.label}</StatusChip>}
+      meta={meta}
+    />
   );
 }
