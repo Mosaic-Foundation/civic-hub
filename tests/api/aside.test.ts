@@ -1,6 +1,6 @@
 // GET /api/aside and the three-column settings (layout session, 2026-11-07;
 // ADR-019). The right column's facts are a read of what the hub already
-// shows: an open process still to close, however far out, earliest first, five
+// shows: an open process still to close, however far out, earliest first, three
 // at most; not one under review, already past, or another hub's. No
 // account, name or ballot in it. The settings: nav.layout takes
 // "three_columns", and nav.aside_cards is a list of { id, shown }, refused
@@ -60,7 +60,7 @@ describe("GET /api/aside", () => {
     const listed = deadlines.map((d) => d.process_id);
     expect(listed).toContain(ids.soon);
     for (const id of [ids.past, ids.pending, ids.athens]) expect(listed).not.toContain(id);
-    expect(deadlines.length).toBeLessThanOrEqual(5);
+    expect(deadlines.length).toBeLessThanOrEqual(3);
     const times = deadlines.map((d) => d.closes_at);
     expect([...times].sort()).toEqual(times);
     const mine = deadlines.find((d) => d.process_id === ids.soon)!;

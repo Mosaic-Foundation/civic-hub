@@ -28,8 +28,8 @@ import { memberVisibility } from "./members.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
 import type { Process } from "../models/process.js";
 
-/** Rows in Coming up, events included (Adam, 2026-11-07). */
-export const ASIDE_ROWS = 5;
+/** Rows in Coming up, events included: three, so Announcements stays in view (Adam, 2026-11-07). */
+export const ASIDE_ROWS = 3;
 /** Announcements in their card. */
 export const ASIDE_ANNOUNCEMENTS = 3;
 /** Open processes read for their deadlines, at most. */

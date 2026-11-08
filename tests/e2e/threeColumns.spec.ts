@@ -8,7 +8,7 @@
  *    word cloud teaser, the banner photo) spans the window above the columns
  *    (Adam, after dev). Left column is the same page without the right column.
  * 8. The cards: Coming up (the next events and closing dates however far
- *    out, date first, five, then "See all events"; Adam after dev), the latest
+ *    out, date first, three, then "See all events"; Adam after dev), the latest
  *    announcements, About. A card with nothing to show is not drawn.
  * 9. Appearance → Right column: each card switched on or off, put in order by
  *    dragging or by Up and Down, saved as one setting.
@@ -78,7 +78,7 @@ test("three columns at full width: a card on the left, the feed centred, the car
   const rows = coming.getByRole("listitem");
   await expect(rows.first()).toContainText(/closes|Event/);
   await expect(rows.first().locator(".aside-date")).toBeVisible();
-  expect(await rows.count()).toBeLessThanOrEqual(5);
+  expect(await rows.count()).toBeLessThanOrEqual(3);
   // Under the rows, the way to the whole calendar while Events is on.
   const allEvents = coming.getByRole("link", { name: "See all events" });
   if (await allEvents.count()) await expect(allEvents).toHaveAttribute("href", "/events");

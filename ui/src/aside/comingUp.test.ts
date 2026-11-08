@@ -33,13 +33,13 @@ describe("Coming up (Adam, 2026-11-07)", () => {
     expect(r[1]!.url).toBe("/process/vote");
   });
 
-  it("looks as far ahead as it must, five rows at most, and leaves out a cancelled event and what is past", () => {
+  it("looks as far ahead as it must, three rows at most, and leaves out a cancelled event and what is past", () => {
     const r = rows(
       facts([{ id: "gone", at: day(-1) }, ...[1, 2, 3, 4].map((n) => ({ id: `v${n}`, at: day(n * 20) }))]),
       [event("off", day(1), { cancelled: true }), event("e90", day(90)), event("e200", day(200))],
     );
     // Weeks and months out, since nothing is nearer (Adam, 2026-11-07: no window).
-    expect(r.map((x) => x.key)).toEqual(["deadline:v1", "deadline:v2", "deadline:v3", "deadline:v4", "event:e90"]);
+    expect(r.map((x) => x.key)).toEqual(["deadline:v1", "deadline:v2", "deadline:v3"]);
   });
 
   it("leaves out an event's own deadline: the calendar has it", () => {

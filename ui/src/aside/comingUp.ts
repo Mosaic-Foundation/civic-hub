@@ -1,6 +1,6 @@
 // Coming up's rows (ADR-019; Adam, 2026-11-07): the calendar's events still to
 // start and the open processes still to close (GET /api/aside), however far
-// out, earliest first, five at most. (A fourteen-day window hid the card on a
+// out, earliest first, three at most. (A fourteen-day window hid the card on a
 // hub whose next event was weeks away; Adam dropped it after dev.) A cancelled event is
 // left out. A deadline of a type whose plugin is the calendar's is left out
 // too: that process is an event, and the calendar already has it. Pure, so
@@ -8,7 +8,8 @@
 
 import type { AsideFacts, CalendarEventRow } from "../services/api";
 
-export const COMING_UP_ROWS = 5;
+/** Three, so Announcements stays in view below (Adam, 2026-11-07). */
+export const COMING_UP_ROWS = 3;
 
 export interface ComingUpRow {
   key: string;
