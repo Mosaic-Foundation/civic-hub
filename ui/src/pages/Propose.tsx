@@ -13,6 +13,7 @@ import { useStatusFilter } from "../components/statusFilterState";
 import "./Propose.css";
 import ProcessListCard from "../components/ProcessListCard";
 import { cardDate } from "../components/cardDate";
+import { CardList, EmptyState, Group, Page, PageAction, PageHead } from "../kit";
 
 const FILTER_CHOICES = [
   { key: "all", label: "All" },
@@ -58,7 +59,7 @@ export default function Propose() {
   const showCompleted = filter === "all" || filter === "completed";
 
   return (
-    <div className="page page-home">
+    <Page>
       {showAuthModal && (
         <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
       )}
@@ -69,22 +70,11 @@ export default function Propose() {
 
       {!loading && !error && (
         <>
-          <section className="section">
-            <div className="section-header-row">
-              <div>
-                <h1 className="section-title">Community Proposals</h1>
-                <p className="section-description">
-                  Ideas and concerns raised by community members.
-                </p>
-              </div>
-              <button type="button" className="home-start-btn" onClick={() => requireAuth(() => setShowPicker(true))}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                  Make a proposal
-                </button>
-            </div>
-          </section>
+          <PageHead
+        title="Community Proposals"
+        lede={<>Ideas and concerns raised by community members.</>}
+        action={<PageAction onClick={() => requireAuth(() => setShowPicker(true))}>Make a proposal</PageAction>}
+      />
 
           <StatusFilter
             choices={FILTER_CHOICES}
@@ -95,11 +85,9 @@ export default function Propose() {
 
           <section className="section">
             {!showActive ? null : activeProposals.length === 0 ? (
-              <p className="empty-state-inline">
-                No proposals yet.
-              </p>
+              <EmptyState>No proposals yet.</EmptyState>
             ) : (
-              <ul className="process-list">
+              <CardList>
                 {activeProposals.map((p) => (
                   <li key={p.id}>
                     <Link to={`/proposal/${p.id}`} className="process-link">
@@ -117,14 +105,13 @@ export default function Propose() {
                     </Link>
                   </li>
                 ))}
-              </ul>
+              </CardList>
             )}
           </section>
 
           {showCompleted && archivedProposals.length > 0 && (
-            <section className="section">
-              <h2 className="section-title">Past Proposals</h2>
-              <ul className="process-list">
+            <Group heading="Past Proposals">
+              <CardList>
                 {archivedProposals.map((p) => (
                   <li key={p.id}>
                     <Link to={`/proposal/${p.id}`} className="process-link">
@@ -142,11 +129,11 @@ export default function Propose() {
                     </Link>
                   </li>
                 ))}
-              </ul>
-            </section>
+              </CardList>
+            </Group>
           )}
         </>
       )}
-    </div>
+    </Page>
   );
 }

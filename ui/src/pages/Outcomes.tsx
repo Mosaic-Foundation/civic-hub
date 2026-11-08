@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import { getOutcomes, type OutcomeEntry, type OutcomesPage } from "../services/api";
@@ -11,6 +11,7 @@ import "./Outcomes.css";
 import "../components/FeedFilter.css";
 import SampleBadge from "../components/SampleBadge";
 import { briefColorSlug } from "../processes/display";
+import { ListCard, Page, PageHead } from "../kit";
 
 /**
  * Outcomes — the public archive of every completed civic process.
@@ -53,23 +54,16 @@ export default function Outcomes() {
   const filtered = type != null || year != null;
 
   return (
-    <div className="page page-home">
+    <Page>
       {/* Same skeleton as Votes / Proposals / Projects / Conversations:
           .section blocks at the shared width. The hub's masthead is on Feed
           and About only (navigation polish, Adam, 2026-10-14): a section page
           opens at its own header. */}
 
-      <section className="section">
-        <div className="section-header-row">
-          <div>
-            <h1 className="section-title">Outcomes</h1>
-            <p className="section-description">
-              The permanent record of every completed process on the {hub.name} —
-              what was decided, how many took part, and what it connects to.
-            </p>
-          </div>
-        </div>
-      </section>
+      <PageHead
+        title="Outcomes"
+        lede={<>The permanent record of every completed process on the {hub.name} — what was decided, how many took part, and what it connects to.</>}
+      />
 
       <section className="section">
       {availableTypes.length > 0 && (
@@ -165,7 +159,7 @@ export default function Outcomes() {
         </>
       )}
       </section>
-    </div>
+    </Page>
   );
 }
 
@@ -183,39 +177,28 @@ export default function Outcomes() {
 const typeSlug = briefColorSlug;
 
 function OutcomeRow({ outcome }: { outcome: OutcomeEntry }) {
-  const slug = typeSlug(outcome.source_process_type);
+  // THE shared card: the kit's ListCard (Events 3), the same one the
+  // Votes/Proposals/Projects/Conversations lists render, so the archive
+  // cannot drift from them again. No status here, so the kind's chip, the
+  // Sample badge and the title stack (the card's header form); the accent is
+  // the source process type's colour.
   return (
     <li className="outcomes-item">
-      {/* THE shared card language — literally the same classes the
-          Votes/Proposals/Projects/Conversations lists render
-          (.process-card + .process-card-header/meta in App.css), so the
-          archive cannot drift from them again. Only the accent color is
-          per-row: the source process type's --type-* token, passed as
-          the card's own --card-accent custom property. */}
-      <Link to={`/brief/${outcome.id}`} className="process-link">
-        <div
-          className="process-card"
-          style={{ "--card-accent": `var(--type-${slug}-fg)` } as CSSProperties}
-        >
-          <div className="process-card-header">
-            <span className={`feed-pill feed-pill--type-${slug}`}>
-              {friendlyType(outcome.source_process_type)}
-            </span>
-            {outcome.is_sample && <SampleBadge />}
-            <h3>{outcome.title}</h3>
-          </div>
-          <p className="outcomes-item-headline">{outcome.headline}</p>
-          <div className="process-card-meta">
-            <time dateTime={outcome.published_at}>
-              {absoluteDate(outcome.published_at)}
-            </time>
-            {outcome.participation_label && <span>{outcome.participation_label}</span>}
-            {outcome.related_count > 0 && (
-              <span>{outcome.related_count} related</span>
-            )}
-          </div>
-        </div>
-      </Link>
+      <ListCard
+        href={`/brief/${outcome.id}`}
+        linkAs={Link}
+        kind={typeSlug(outcome.source_process_type)}
+        kindLabel={friendlyType(outcome.source_process_type)}
+        title={outcome.title}
+        badges={outcome.is_sample ? <SampleBadge /> : undefined}
+        meta={[
+          <time dateTime={outcome.published_at}>{absoluteDate(outcome.published_at)}</time>,
+          outcome.participation_label,
+          outcome.related_count > 0 ? `${outcome.related_count} related` : null,
+        ]}
+      >
+        <p className="outcomes-item-headline">{outcome.headline}</p>
+      </ListCard>
     </li>
   );
 }

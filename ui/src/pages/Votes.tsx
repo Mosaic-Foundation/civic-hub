@@ -13,6 +13,7 @@ import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import ProcessCard from "../components/ProcessCard";
 import StatusFilter from "../components/StatusFilter";
+import { CardList, EmptyState, Group, Page, PageAction, PageHead } from "../kit";
 
 /**
  * Slice 12 — Votes-page filter pills mirror the home-feed pattern.
@@ -116,28 +117,17 @@ export default function Votes() {
   const showFinalized = activeFilter === "all" || activeFilter === "finalized";
 
   return (
-    <div className="page page-home">
+    <Page>
       {showAuthModal && (
         <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
       )}
       {showPicker && <ProcessPicker onDismiss={() => setShowPicker(false)} context="vote" />}
 
-      <section className="section">
-        <div className="section-header-row">
-          <div>
-            <h1 className="section-title">Community Votes</h1>
-            <p className="section-description">
-              Official and proposed advisory votes for {hub.jurisdiction}.
-            </p>
-          </div>
-          <button type="button" className="home-start-btn" onClick={() => requireAuth(() => setShowPicker(true))}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              Suggest a vote
-            </button>
-        </div>
-      </section>
+      <PageHead
+        title="Community Votes"
+        lede={<>Official and proposed advisory votes for {hub.jurisdiction}.</>}
+        action={<PageAction onClick={() => requireAuth(() => setShowPicker(true))}>Suggest a vote</PageAction>}
+      />
 
 
       <StatusFilter
@@ -153,18 +143,15 @@ export default function Votes() {
       {!loading && !error && (
         <>
           {showActive && (
-            <section className="section">
-              <h2 className="section-title">Active Votes</h2>
+            <Group heading="Active Votes">
               {activeVotes.length === 0 ? (
-                <p className="empty-state-inline">
-                  {completedVotes.length === 0
+                <EmptyState>{completedVotes.length === 0
                     ? "No votes yet. When one opens, it will show up here."
                     : hub.governing_body_short
                       ? `No active votes right now. When the ${hub.governing_body_short} asks for input, it'll show up here.`
-                      : "No active votes right now. New votes will show up here."}
-                </p>
+                      : "No active votes right now. New votes will show up here."}</EmptyState>
               ) : (
-                <ul className="process-list">
+                <CardList>
                   {activeVotes.map((v) => (
                     <li key={v.id}>
                       <Link to={`/process/${v.id}`} className="process-link">
@@ -172,24 +159,17 @@ export default function Votes() {
                       </Link>
                     </li>
                   ))}
-                </ul>
+                </CardList>
               )}
-            </section>
+            </Group>
           )}
 
           {showProposed && (
-            <section className="section">
-              <h2 className="section-title">Proposed Votes</h2>
-              <p className="section-description">
-                Ideas submitted by community members. Endorse the ones
-                you care about to help them become official votes.
-              </p>
+            <Group heading="Proposed Votes" description="Ideas submitted by community members. Endorse the ones you care about to help them become official votes.">
               {!hasAnyProposals ? (
-                <p className="empty-state-inline">
-                  No proposals yet.
-                </p>
+                <EmptyState>No proposals yet.</EmptyState>
               ) : (
-                <ul className="process-list">
+                <CardList>
                   {proposedVotes.map((v) => (
                     <li key={v.id}>
                       <Link to={`/process/${v.id}`} className="process-link">
@@ -197,18 +177,17 @@ export default function Votes() {
                       </Link>
                     </li>
                   ))}
-                </ul>
+                </CardList>
               )}
-            </section>
+            </Group>
           )}
 
           {showFinalized && (
-            <section className="section">
-              <h2 className="section-title">Completed Votes</h2>
+            <Group heading="Completed Votes">
               {completedVotes.length === 0 ? (
-                <p className="empty-state-inline">No completed votes yet.</p>
+                <EmptyState>No completed votes yet.</EmptyState>
               ) : (
-                <ul className="process-list">
+                <CardList>
                   {completedVotes.map((v) => {
                     const results = voteResultsByVote.get(v.id);
                     return (
@@ -232,12 +211,12 @@ export default function Votes() {
                       </li>
                     );
                   })}
-                </ul>
+                </CardList>
               )}
-            </section>
+            </Group>
           )}
         </>
       )}
-    </div>
+    </Page>
   );
 }

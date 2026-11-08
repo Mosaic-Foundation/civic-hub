@@ -14,6 +14,7 @@ import { useStatusFilter } from "../components/statusFilterState";
 import "./Deliberations.css";
 import ProcessListCard from "../components/ProcessListCard";
 import { cardDate } from "../components/cardDate";
+import { CardList, Group, Page, PageAction, PageHead } from "../kit";
 
 const FILTER_CHOICES = [
   { key: "all", label: "All" },
@@ -51,28 +52,17 @@ export default function Deliberations() {
   const showCompleted = filter === "all" || filter === "completed";
 
   return (
-    <div className="page page-home">
+    <Page>
       {showAuthModal && (
         <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
       )}
       {showPicker && <ProcessPicker onDismiss={() => setShowPicker(false)} context="conversation" />}
 
-      <section className="section">
-        <div className="section-header-row">
-          <div>
-            <h1 className="section-title">Community Conversations</h1>
-            <p className="section-description">
-              Vote on statements and see where the community stands.
-            </p>
-          </div>
-          <button type="button" className="home-start-btn" onClick={() => requireAuth(() => setShowPicker(true))}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              Start a conversation
-            </button>
-        </div>
-      </section>
+      <PageHead
+        title="Community Conversations"
+        lede={<>Vote on statements and see where the community stands.</>}
+        action={<PageAction onClick={() => requireAuth(() => setShowPicker(true))}>Start a conversation</PageAction>}
+      />
 
       <StatusFilter
         choices={FILTER_CHOICES}
@@ -86,13 +76,8 @@ export default function Deliberations() {
       {/* Approved-but-unstarted conversations, admin-only: the door to the
           manual Start fallback when auto-start couldn't reach Polis. */}
       {!loading && isAdmin && waiting.length > 0 && (
-        <section className="section">
-          <h2 className="section-title">Waiting to start</h2>
-          <p className="section-description">
-            Approved but not yet opened — start each one to create its live
-            conversation.
-          </p>
-          <ul className="process-list">
+        <Group heading="Waiting to start" description="Approved but not yet opened — start each one to create its live conversation.">
+          <CardList>
             {waiting.map((p) => (
               <li key={p.process_id}>
                 <Link to={`/deliberation/${p.process_id}`} className="process-link">
@@ -112,14 +97,13 @@ export default function Deliberations() {
                 </Link>
               </li>
             ))}
-          </ul>
-        </section>
+          </CardList>
+        </Group>
       )}
 
       {!loading && showActive && active.length > 0 && (
-        <section className="section">
-          <h2 className="section-title">Active Conversations</h2>
-          <ul className="process-list">
+        <Group heading="Active Conversations">
+          <CardList>
             {active.map((p) => (
               <li key={p.process_id}>
                 <Link to={`/deliberation/${p.process_id}`} className="process-link">
@@ -139,14 +123,13 @@ export default function Deliberations() {
                 </Link>
               </li>
             ))}
-          </ul>
-        </section>
+          </CardList>
+        </Group>
       )}
 
       {!loading && showCompleted && completed.length > 0 && (
-        <section className="section">
-          <h2 className="section-title">Completed</h2>
-          <ul className="process-list">
+        <Group heading="Completed">
+          <CardList>
             {completed.map((p) => (
               <li key={p.process_id}>
                 <Link to={`/deliberation/${p.process_id}`} className="process-link">
@@ -166,8 +149,8 @@ export default function Deliberations() {
                 </Link>
               </li>
             ))}
-          </ul>
-        </section>
+          </CardList>
+        </Group>
       )}
 
       {!loading && processes.length === 0 && (
@@ -176,6 +159,6 @@ export default function Deliberations() {
           {isAdmin ? " Create one to gather community perspectives." : ""}
         </p>
       )}
-    </div>
+    </Page>
   );
 }
