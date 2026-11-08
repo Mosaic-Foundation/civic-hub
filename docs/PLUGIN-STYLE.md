@@ -55,7 +55,7 @@ The hub's pages use exactly these.
 | `DayGroup` | A `Group` whose heading is a day ("Saturday, November 15"), in the zone you give | Date-grouped lists. `groupByDay(items, when, zone)` makes the groups; `dayKey` and `dayHeading` are there too |
 | `GroupHeading` | The heading alone | Where a group's heading stands apart from its list |
 | `CardList` | Cards one under another at the list's gap | Around `ListCard`s, each in an `<li>` |
-| `ListCard` | THE card: a bar in the kind's colour, the kind's chip, the title, a `status`, a meta line; optionally a `summary` and an `image` | Every item of a list. `kind` is your manifest's colour key (`feed.kinds[].color`); `href` + `linkAs={Link}`. `variant="feed"` is the feed's form (title first, the chip leading the meta line, a picture at the side) |
+| `ListCard` | THE card: a bar in the kind's colour, the kind's chip, the title, a `status`, a meta line; optionally a `summary` and an `image` | Every item of a list. `kind` is your manifest's colour key (`feed.kinds[].color`); `href` + `linkAs={Link}`. `pill="meta"` is the feed's form (title first, the chip leading the meta line, a picture at the side); `pill="top"`, the default, puts the chip row above the title |
 | `Chip` | A kind's name on its colour | Saying what kind a thing is, outside a card |
 | `StatusChip` | A neutral chip with a dot: `live` (green), `phase` (amber), `done` (grey, never red), `alert` (red) | A thing's state: "Active", "Gathering support", "Completed", "Cancelled". In `ListCard`'s `status` |
 | `InlineMeta` | A quiet line of facts | Time, place, count. `ListCard`'s `meta` draws one. Make the fact that matters strong (`<strong>`), the rest plain |

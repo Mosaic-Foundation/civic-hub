@@ -60,7 +60,7 @@ export default function KitGallery() {
         label="FilterBar"
       />
 
-      <Group heading="ListCard (list)" description="A section page's card: the kind's bar and chip, the status on the right, the title, the meta line.">
+      <Group heading={<>ListCard, <code>pill="top"</code></>} description="A section page's card: the kind's bar and chip, the status on the right, the title, the meta line.">
         <CardList>
           <li>
             <ListCard
@@ -104,11 +104,11 @@ export default function KitGallery() {
         </CardList>
       </Group>
 
-      <Group heading="ListCard (feed)" description="The feed's card: the title first, the kind's chip leading the meta line.">
+      <Group heading={<>ListCard, <code>pill="meta"</code></>} description="The feed's card: the title first, the kind's chip leading the meta line.">
         <CardList>
           <li>
             <ListCard
-              variant="feed"
+              pill="meta"
               href="/kit"
               linkAs={Link}
               kind="announcement"

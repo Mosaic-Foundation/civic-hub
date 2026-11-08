@@ -259,10 +259,11 @@ export interface ListCardProps {
   /** More for the link: `target`, `rel`. */
   linkProps?: Record<string, unknown>;
   /**
-   * `list` (a section page's card: the chip row above the title) or `feed`
-   * (the feed's: the title first, the chip leading the meta line).
+   * Where the kind's chip sits: `top` (a section page's card: the chip row
+   * above the title; the default) or `meta` (the feed's: the title first, the
+   * chip leading the meta line, a picture at the side).
    */
-  variant?: "list" | "feed";
+  pill?: "top" | "meta";
   /** Anything else in the card, after the summary. */
   children?: ReactNode;
   className?: string;
@@ -271,14 +272,14 @@ export interface ListCardProps {
 /**
  * THE card of a list: a bar in its kind's colour, the kind's chip, a title, a
  * meta line, a status, optionally a summary and a picture. A section page's
- * lists use the `list` form; the feed, the `feed` form.
+ * lists put the chip on top (`pill="top"`); the feed, in the meta line (`pill="meta"`).
  */
 export function ListCard(props: ListCardProps) {
   const { kind, href, linkAs, linkProps } = props;
   const L: ElementType = href ? (linkAs ?? "a") : "div";
   const target = href ? (linkAs ? { to: href } : { href }) : {};
 
-  if (props.variant === "feed") {
+  if (props.pill === "meta") {
     const hasImage = Boolean(props.image?.src);
     return (
       <article

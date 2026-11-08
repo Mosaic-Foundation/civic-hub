@@ -120,7 +120,7 @@ export default function FeedPost({ post }: Props) {
   // label says the type, so nothing rests on the chip's colour.
   return (
     <ListCard
-      variant="feed"
+      pill="meta"
       kind={post.pillColor}
       kindLabel={post.pillLabel}
       title={post.title}
