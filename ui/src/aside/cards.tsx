@@ -28,8 +28,11 @@ function AsideCard({ id, title, children }: { id: string; title: string; childre
 
 export function ComingUpCard({ data }: { data: AsideData }) {
   const hub = useHub();
-  const calendarTypes = processTypes().filter((t) => t.plugin === CALENDAR_PLUGIN).map((t) => t.type);
+  const calendar = processTypes().filter((t) => t.plugin === CALENDAR_PLUGIN);
+  const calendarTypes = calendar.map((t) => t.type);
   const eventType = calendarTypes[0];
+  // The calendar's own page, while its plugin is on (data.events is null when it is off).
+  const allEvents = data.events !== null ? calendar.find((t) => t.section)?.section?.path : undefined;
   // Read when the data arrives; the rows don't tick while the page is open.
   const [now] = useState(() => Date.now());
   const rows = comingUpRows({
@@ -68,6 +71,11 @@ export function ComingUpCard({ data }: { data: AsideData }) {
           );
         })}
       </ul>
+      {allEvents && (
+        <Link to={allEvents} className="aside-card-more">
+          See all events
+        </Link>
+      )}
     </AsideCard>
   );
 }

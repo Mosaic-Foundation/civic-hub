@@ -1,7 +1,7 @@
 // GET /api/aside and the three-column settings (layout session, 2026-11-07;
 // ADR-019). The right column's facts are a read of what the hub already
-// shows: an open process closing within fourteen days, earliest first, five at
-// most; not one under review, archived, closing later, or another hub's. No
+// shows: an open process still to close, however far out, earliest first, five
+// at most; not one under review, already past, or another hub's. No
 // account, name or ballot in it. The settings: nav.layout takes
 // "three_columns", and nav.aside_cards is a list of { id, shown }, refused
 // when it is anything else.
@@ -17,7 +17,6 @@ const run = Date.now().toString(36);
 const soon = new Date(Date.now() + 2 * 60_000).toISOString();
 const ids = {
   soon: `proc_as_soon_${run}`,
-  later: `proc_as_later_${run}`,
   past: `proc_as_past_${run}`,
   pending: `proc_as_pending_${run}`,
   athens: `proc_as_athens_${run}`,
@@ -40,7 +39,6 @@ beforeAll(async () => {
   admin = await mintSession("floyd", "admin@example.test");
   before = { layout: await storedSetting("floyd", "nav.layout"), cards: await storedSetting("floyd", "nav.aside_cards") };
   await insert(ids.soon, "floyd", "active", soon);
-  await insert(ids.later, "floyd", "active", new Date(Date.now() + 20 * 86_400_000).toISOString());
   await insert(ids.past, "floyd", "active", new Date(Date.now() - 60_000).toISOString());
   await insert(ids.pending, "floyd", "pending_review", soon);
   await insert(ids.athens, "athens", "active", soon);
@@ -55,13 +53,13 @@ afterAll(async () => {
 });
 
 describe("GET /api/aside", () => {
-  it("lists what closes within the fortnight, earliest first, and nothing else", async () => {
+  it("lists what is still to close, earliest first, and nothing else", async () => {
     const res = await call("GET", "/api/aside", FLOYD);
     expect(res.status).toBe(200);
     const deadlines = res.body.deadlines as Array<{ process_id: string; type: string; closes_at: string; url: string }>;
     const listed = deadlines.map((d) => d.process_id);
     expect(listed).toContain(ids.soon);
-    for (const id of [ids.later, ids.past, ids.pending, ids.athens]) expect(listed).not.toContain(id);
+    for (const id of [ids.past, ids.pending, ids.athens]) expect(listed).not.toContain(id);
     expect(deadlines.length).toBeLessThanOrEqual(5);
     const times = deadlines.map((d) => d.closes_at);
     expect([...times].sort()).toEqual(times);

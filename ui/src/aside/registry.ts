@@ -27,7 +27,7 @@ const HUB_CARDS: Record<(typeof ASIDE_CARD_IDS)[number], AsideCardUi> = {
   coming_up: {
     id: "coming_up",
     name: "Coming up",
-    about: "Events and closing dates in the next two weeks.",
+    about: "The next events and closing dates, with a link to the whole calendar.",
     Component: ComingUpCard,
   },
   announcements: {

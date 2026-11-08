@@ -2,8 +2,8 @@
 // GET /api/aside serves the three-column layout's cards. A read of what the
 // hub already shows, nothing new:
 //
-//   - deadlines: open processes that close within ASIDE_DEADLINE_DAYS, from
-//     each type's declared deadline (its descriptor's `deadline.source`, read
+//   - deadlines: open processes that have not closed yet, however far out
+//     (Adam, 2026-11-07, after dev: no window), from each type's declared deadline (its descriptor's `deadline.source`, read
 //     as the process's own page reads `ends_at`), earliest first. Every type
 //     with a deadline whose plugin is on; no list here names one. Events come
 //     to Coming up from the calendar (GET /calendar/events), and the column
@@ -28,8 +28,6 @@ import { memberVisibility } from "./members.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
 import type { Process } from "../models/process.js";
 
-/** How far ahead Coming up looks (Adam, 2026-11-07). */
-export const ASIDE_DEADLINE_DAYS = 14;
 /** Rows in Coming up, events included (Adam, 2026-11-07). */
 export const ASIDE_ROWS = 5;
 /** Announcements in their card. */
@@ -80,14 +78,13 @@ async function readDeadlines(now: number): Promise<AsideDeadline[]> {
     withDeadline.map((m) => m.descriptor.type),
     OPEN_READ_MAX,
   );
-  const until = now + ASIDE_DEADLINE_DAYS * 24 * 60 * 60 * 1000;
   const found = await Promise.all(
     rows.map(async (row) => {
       const source = getManifest(row.type)?.descriptor.deadline?.source;
       if (!source) return null;
       const due = await readDeadline(source, { id: row.id, state: row.state ?? {} } as Process);
       const at = due ? Date.parse(due) : NaN;
-      if (!(at > now && at <= until)) return null;
+      if (!(at > now)) return null;
       const sample = row.is_sample && !row.added_in_demo;
       return {
         process_id: row.id,

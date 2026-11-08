@@ -135,3 +135,10 @@
   font-size: var(--text-small-size);
   font-weight: var(--font-weight-medium);
 }
+
+/* A card's way on to the whole list (Coming up → the hub's calendar). */
+.aside-card-more {
+  justify-self: start;
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-semibold);
+}

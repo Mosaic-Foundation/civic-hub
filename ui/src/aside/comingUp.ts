@@ -1,13 +1,13 @@
-// Coming up's rows (ADR-019; Adam, 2026-11-07): the calendar's events that
-// start within the next fourteen days, and the open processes that close in
-// them (GET /api/aside), earliest first, five at most. A cancelled event is
+// Coming up's rows (ADR-019; Adam, 2026-11-07): the calendar's events still to
+// start and the open processes still to close (GET /api/aside), however far
+// out, earliest first, five at most. (A fourteen-day window hid the card on a
+// hub whose next event was weeks away; Adam dropped it after dev.) A cancelled event is
 // left out. A deadline of a type whose plugin is the calendar's is left out
 // too: that process is an event, and the calendar already has it. Pure, so
 // it is tested without a browser (comingUp.test.ts).
 
 import type { AsideFacts, CalendarEventRow } from "../services/api";
 
-export const COMING_UP_DAYS = 14;
 export const COMING_UP_ROWS = 5;
 
 export interface ComingUpRow {
@@ -34,11 +34,7 @@ export function comingUpRows(input: {
   hubTimeZone: string | null;
   now: number;
 }): ComingUpRow[] {
-  const until = input.now + COMING_UP_DAYS * 24 * 60 * 60 * 1000;
-  const within = (iso: string) => {
-    const t = Date.parse(iso);
-    return t > input.now && t <= until;
-  };
+  const within = (iso: string) => Date.parse(iso) > input.now;
   const events: ComingUpRow[] = (input.events ?? [])
     .filter((e) => !e.cancelled && within(e.start_time))
     .map((e) => ({
