@@ -5,13 +5,29 @@ A hub's admin picks its colours, the background's warmth and a font under
 Settings → Appearance, and each person picks light or dark for themselves.
 Every page follows, plugins included, without the plugin doing anything.
 
-That works only if a plugin sets nothing of its own. The rule:
+That works only if a plugin sets nothing of its own. The rules:
 
-> **A plugin never sets a colour, a font or a size of its own.** It draws
-> with the kit's components, and where it needs its own layout it uses the
-> hub's tokens: `var(--…)`, never `#hex`, never `16px`.
+> **A plugin page is composed of kit components.** Its stylesheet may set
+> layout and spacing only: no colour, type, radius, shadow or border of its
+> own, not even in tokens. (Conformance step 22.)
+>
+> **Where it sets layout, it uses the hub's tokens:** `var(--…)`, never
+> `#hex`, never `16px`. (Conformance step 21.)
 
-Conformance step 21 checks this. It reads every `.css` file in your package
+Built that way, a plugin page looks exactly like one of the hub's own pages,
+in any hub's theme, light or dark, in Top navigation, Left column or Three
+columns. The hub's own Votes, Proposals, Projects, Conversations and Outcomes
+pages and the feed are drawn with the same components. An admin can see
+every one of them on the hub's `/kit` page.
+
+Conformance step 22 reads each declaration of your `.css` and each key of an
+inline style, and refuses `color`, `background`, `font-*`, `line-height`,
+`letter-spacing`, `text-transform`, `border*` (and `border-radius`),
+`outline`, `box-shadow`, `opacity`, `filter` and custom properties. What is
+left is layout: `display`, `flex`/`grid`, `gap`, `margin`, `padding`,
+`width`/`height`, `position`, `order`, `overflow`, `align-*`/`justify-*`.
+
+Conformance step 21 checks the values. It reads every `.css` file in your package
 and every inline `style={{ … }}` in your `.tsx`. The allowed literals are
 `0`, `1px` and `2px`, percentages, `vw`/`vh`, `fr`, `ch`, unitless numbers,
 and breakpoints in `@media`. A `var(--x, 12px)` fallback counts as a value of
@@ -19,13 +35,43 @@ your own.
 
 ![The New event form on the kit: fields, the hub's date picker, buttons](images/plugin-style-form.png)
 
-## 1. Use the kit first
+## 1. Build the page from the kit
 
 Import the kit from `@civic-social/plugin-sdk/ui`.
 
+### A section page
+
+These are the pieces a section page (Events, Votes, Projects) is made of.
+The hub's pages use exactly these.
+
+| Component | What it is | When to use it |
+|---|---|---|
+| `Page` | The page's container | Around every section page |
+| `PageHead` | The title (the page's `h1`), the line under it, and an `action` on the right | Once, at the top. On a phone the action drops under the title |
+| `PageAction` | The page's main action: the accent, with a plus | In `PageHead`'s `action`: "Add an event", "Suggest a vote". `href` + `as={Link}` for a route, `onClick` for a dialog |
+| `FilterBar` | One pill per choice, one on, sticky under the header | Filtering the page's list by status ("All", "Active", "Completed"). Keep the choice in the URL |
+| `ViewToggle` | The same pills, in a row of their own | Two or three ways to see the same things: List / Calendar. Remember the choice per person (`localStorage`) |
+| `Group` | A heading (`h2`), a line under it, then its content | Each part of the page: "Active Votes", "Completed". With `collapsible` the heading folds it away (`defaultOpen` to start open): past events |
+| `DayGroup` | A `Group` whose heading is a day ("Saturday, November 15"), in the zone you give | Date-grouped lists. `groupByDay(items, when, zone)` makes the groups; `dayKey` and `dayHeading` are there too |
+| `GroupHeading` | The heading alone | Where a group's heading stands apart from its list |
+| `CardList` | Cards one under another at the list's gap | Around `ListCard`s, each in an `<li>` |
+| `ListCard` | THE card: a bar in the kind's colour, the kind's chip, the title, a `status`, a meta line; optionally a `summary` and an `image` | Every item of a list. `kind` is your manifest's colour key (`feed.kinds[].color`); `href` + `linkAs={Link}`. `variant="feed"` is the feed's form (title first, the chip leading the meta line, a picture at the side) |
+| `Chip` | A kind's name on its colour | Saying what kind a thing is, outside a card |
+| `StatusChip` | A neutral chip with a dot: `live` (green), `phase` (amber), `done` (grey, never red), `alert` (red) | A thing's state: "Active", "Gathering support", "Completed", "Cancelled". In `ListCard`'s `status` |
+| `InlineMeta` | A quiet line of facts | Time, place, count. `ListCard`'s `meta` draws one. Make the fact that matters strong (`<strong>`), the rest plain |
+| `EmptyState` | What a list says when it is empty, and an `action` | Instead of an empty list. Say what will appear, and how to make the first |
+| `MonthGrid` | A month of days, each with its items as chips; choosing a day calls `onSelect` | A calendar on a wide screen. Show the chosen day's list under it |
+| `WeekStrip` | A week of days with a dot where something falls | The calendar on a phone, above the chosen day's list |
+
+The calendar views work in calendar days (`"YYYY-MM-DD"`). Work out which
+day each item falls on in the zone you mean, with `dayKey(iso, zone)`, and
+the grid never meets a time zone. Weeks start on Monday, as the date picker's
+do.
+
+### Forms and other surfaces
+
 | You need | Use | Notes |
 |---|---|---|
-| A page's title and the line under it | `PageHead` | `title`, `lede` |
 | An action | `Button` | `variant`: `primary` (the page's one main action), `secondary` (the others), `accent` (an invitation to take part: "Going", "Raise something"), `ghost` (a quiet action in a row), `danger` (what cannot be undone); `size="sm"` in rows |
 | A labelled field | `Field` around `TextInput`, `TextArea`, `Select` | `required`, `optional`, `hint` |
 | A date and time | `DateTimeInput` | ISO in and out; `timeZone` for an event's own zone. It brings the hub's picker |
@@ -44,6 +90,9 @@ Every page, the kit's and yours, takes the layout's content width. Don't set a
 ![Activity on the kit: a stat row, a table with the kinds' dots, cards with a colour bar](images/plugin-style-stats.png)
 
 ## 2. Then the tokens, for your own layout
+
+Your stylesheet sets layout and spacing only (step 22); these are the
+tokens for those values, and the names the kit's components wear.
 
 The tokens are in `ui/src/styles/theme.css`. Use the role names, which say
 what a value is for, never the `--ds-*` palette steps:
@@ -66,9 +115,9 @@ what a value is for, never the `--ds-*` palette steps:
   Never dark text on the primary colour: step 17 refuses it.
 - **Your type's colour:** the hue you declare in your manifest
   (`feed.kinds[].color`) becomes `--type-<key>-fg` and `--type-<key>-bg`. This
-  is the one colour a plugin gives, and the hub's admin can change it. For a
-  card's colour bar, use the kit's `kit-card--accent` class with
-  `--card-accent: var(--type-<key>-fg)`.
+  is the one colour a plugin gives, and the hub's admin can change it. Give
+  the key to `ListCard`'s or `Chip`'s `kind` and they wear it; since step 22 a
+  package does not set `--card-accent` (or any colour) itself.
 - **Status:** `--color-success`, `--color-warning`, `--color-error` and
   `--color-info`, each with a `-bg`.
 - **Type:**
