@@ -357,7 +357,7 @@ function CalendarPage() {
 
       {events && view === "calendar" && (
         <div data-testid="events-calendar">
-          <Group label={wide ? "Events by month" : "Events by week"}>
+          <Group>
             {wide ? (
               <MonthGrid items={items} selected={day} onSelect={setDay} today={today} label="Events by month" />
             ) : (
