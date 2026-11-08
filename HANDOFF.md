@@ -11,7 +11,8 @@ Updated after every Claude Code session. Records what was built, what's incomple
 **Changes:**
 - **Coming up has no window.** On Athens dev it hid itself: the next event was 49 days away, and nothing closed within
   14 days. It now shows:
-  - the next five events and closing dates, however far out, earliest first;
+  - the next three events and closing dates (five at first; three on Adam's word, so Announcements stays in
+    view), however far out, earliest first;
   - then **See all events**, linking to the Events page while that plugin is on.
 
   It hides only when nothing is scheduled. The window is gone from both `GET /api/aside` and
