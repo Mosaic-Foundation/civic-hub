@@ -30,6 +30,7 @@
 
 import { useSyncExternalStore } from "react";
 import { getLoadedHubConfig, setting, subscribeHubConfig, type HubConfig } from "./hubConfig";
+import { hubTimeZone } from "./hubClock";
 import { pluginEnabled, pluginSetup, pluginShown, processTypeEnabled, processTypeShown } from "./plugins";
 import { feedbackContactEmail } from "../../../src/shared/platform";
 import { hubKindOf, participantNoun, personLabel, type HubKind } from "../../../src/shared/hubKind";
@@ -452,7 +453,7 @@ const hub = {
    * zone, else UTC (src/shared/hubTimeZone.ts). What a time is shown in.
    */
   get timeZone(): string {
-    return getLoadedHubConfig()?.time_zone?.zone || setting("identity.timezone") || "UTC";
+    return hubTimeZone();
   },
 
   /** The plugin switches (config/plugins.tsx). */

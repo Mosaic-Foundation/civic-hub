@@ -12,11 +12,15 @@ import {
   Chip,
   DayGroup,
   EmptyState,
+  FactList,
+  Fieldset,
   FilterBar,
   Group,
   InlineMeta,
   ListCard,
   MonthGrid,
+  Note,
+  Notice,
   Page,
   PageAction,
   PageHead,
@@ -155,6 +159,22 @@ export default function KitGallery() {
       <DayGroup date={at(today, 12)}>
         <EmptyState>DayGroup: a day as its heading, then its list.</EmptyState>
       </DayGroup>
+
+      <Group heading="An item's page: FactList, Notice, Note, Fieldset" description="What a single thing's page is made of, under its PageHead.">
+        <Notice tone="alert">This event was cancelled. The room is no longer available.</Notice>
+        <Notice>This event has ended.</Notice>
+        <FactList
+          items={[
+            { term: "When", value: "Saturday, 10:00 AM – 1:00 PM", more: ["Your time: Saturday, 9:00 AM – 12:00 PM"] },
+            { term: "Where", value: "The park shelter" },
+            { term: "Going", value: "12 people are going" },
+          ]}
+        />
+        <Note>A quiet line: a back link, who a message goes to, when it was sent.</Note>
+        <Fieldset legend="Where">
+          <Note>Fields that belong together, under a name.</Note>
+        </Fieldset>
+      </Group>
 
       <Group heading="Group, folded (collapsible)" collapsible>
         <EmptyState>What a folded group holds: past events, say.</EmptyState>

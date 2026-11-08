@@ -756,8 +756,10 @@ h1.section-title {
   gap: var(--space-3);
 }
 
+/* In a row of its own, inset as a section's content is. */
 .kit-view-toggle {
   overflow: visible;
+  padding: 0 var(--space-6) var(--space-5);
 }
 
 .kit-card-summary {
@@ -765,6 +767,92 @@ h1.section-title {
   font-size: var(--text-body-size);
   line-height: var(--line-height-normal);
   color: var(--color-text-muted);
+}
+
+/* --- An item's page (Events 3): facts, a notice, a note, a picture, a fieldset --- */
+
+.kit-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-4) 0;
+}
+
+.kit-fact {
+  display: contents;
+}
+
+.kit-facts dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-small-size);
+  font-weight: var(--font-weight-medium);
+  padding-top: var(--space-0-5);
+}
+
+.kit-facts dd {
+  margin: 0;
+  grid-column: 2;
+  color: var(--color-text);
+}
+
+.kit-facts .kit-fact-more {
+  color: var(--color-text-muted);
+  font-size: var(--text-small-size);
+}
+
+.kit-notice {
+  margin: var(--space-3) 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-body-size);
+}
+
+.kit-notice--info {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}
+
+.kit-notice--alert {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  font-weight: var(--font-weight-medium);
+}
+
+.kit-note {
+  margin: var(--space-2) 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-small-size);
+}
+
+.kit-picture {
+  display: block;
+  width: 100%;
+  object-fit: cover;
+  border-radius: var(--card-radius);
+  background: var(--color-surface-sunken);
+}
+
+.kit-picture--wide {
+  max-height: calc(4 * var(--space-20));
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.kit-picture--preview {
+  max-height: calc(2.5 * var(--space-20));
+}
+
+.kit-fieldset {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.kit-fieldset > legend {
+  padding: 0 var(--space-1);
 }
 
 /* --- Calendar (kit/calendar.tsx): a month of days, a week strip --- */

@@ -123,7 +123,9 @@ export function GroupHeading({
 /**
  * A group of a page: its heading, a line under it, and its list. With
  * `collapsible` the heading folds the group away (past events), open or
- * closed to begin with by `defaultOpen`.
+ * closed to begin with by `defaultOpen`. With no heading it is the section
+ * alone, inset as every section is: around a MonthGrid, say (name it with
+ * `label`).
  */
 export function Group({
   heading,
@@ -134,7 +136,7 @@ export function Group({
   className,
   label,
 }: {
-  heading: ReactNode;
+  heading?: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
   collapsible?: boolean;
@@ -156,7 +158,7 @@ export function Group({
   }
   return (
     <section className={cx("section", className)} aria-label={label}>
-      <GroupHeading>{heading}</GroupHeading>
+      {heading !== undefined && <GroupHeading>{heading}</GroupHeading>}
       {description && <p className="section-description">{description}</p>}
       {children}
     </section>
@@ -427,5 +429,91 @@ export function ViewToggle<K extends string>({
         );
       })}
     </div>
+  );
+}
+
+// --- An item's page (Events 3) --------------------------------------------------
+
+/**
+ * What a thing is, fact by fact: a quiet term, its value, and quieter lines
+ * under a value ("Your time: …"). When, Where, Going on an event's page.
+ */
+export function FactList({
+  items,
+  className,
+}: {
+  items: ReadonlyArray<{ term: ReactNode; value: ReactNode; more?: ReactNode[]; testId?: string }>;
+  className?: string;
+}) {
+  return (
+    <dl className={cx("kit-facts", className)}>
+      {items.map((f, i) => (
+        <div key={i} className="kit-fact">
+          <dt>{f.term}</dt>
+          <dd data-testid={f.testId}>{f.value}</dd>
+          {(f.more ?? [])
+            .filter((m) => m !== null && m !== undefined && m !== false && m !== "")
+            .map((m, j) => (
+              <dd key={j} className="kit-fact-more">
+                {m}
+              </dd>
+            ))}
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/**
+ * A line the reader must not miss, on a tinted band: `alert` (called off:
+ * "This event was cancelled"), `info` (it has ended, it is waiting).
+ */
+export function Notice({
+  tone = "info",
+  children,
+  className,
+  ...rest
+}: HTMLAttributes<HTMLParagraphElement> & { tone?: "info" | "alert" }) {
+  return (
+    <p className={cx("kit-notice", `kit-notice--${tone}`, className)} role="status" {...rest}>
+      {children}
+    </p>
+  );
+}
+
+/** A quiet line: a back link, "Loading…", who a message goes to, when it was sent. */
+export function Note({ className, ...rest }: HTMLAttributes<HTMLParagraphElement>) {
+  return <p className={cx("kit-note", className)} {...rest} />;
+}
+
+/**
+ * A thing's own picture, the column's width: `wide` across the top of its
+ * page, `preview` smaller in a form.
+ */
+export function Picture({
+  src,
+  alt,
+  size = "wide",
+  className,
+  ...rest
+}: HTMLAttributes<HTMLImageElement> & { src: string; alt: string; size?: "wide" | "preview" }) {
+  return <img className={cx("kit-picture", `kit-picture--${size}`, className)} src={src} alt={alt} {...rest} />;
+}
+
+/** Fields that belong together under a name ("Where"), on a quiet panel. */
+export function Fieldset({
+  legend,
+  children,
+  className,
+}: {
+  legend: ReactNode;
+  children?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <fieldset className={cx("kit-fieldset", className)}>
+      <legend className="form-label">{legend}</legend>
+      {children}
+    </fieldset>
   );
 }

@@ -61,7 +61,7 @@ const STYLES = join(ROOT, "ui/src/styles");
  * the drafting shell (it knows the hub's sign-in, assistant and header) and
  * the type of a package's UI module (types only).
  */
-const HOST_PROVIDED = new Set(["ui/src/components/DraftShell.tsx"]);
+const HOST_PROVIDED = new Set(["ui/src/components/DraftShell.tsx", "ui/src/config/hubClock.ts"]);
 
 describe("the kit and the tokens stand alone", () => {
   it("ui/src/kit reaches only itself and the tokens", () => {
