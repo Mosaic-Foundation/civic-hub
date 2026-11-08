@@ -109,5 +109,8 @@ import "../components/BetaBanner.css";
 import "../components/BetaWelcomeDialog.css";
 // The three-column layout's right column (ADR-019); its rules are its own.
 import "../aside/aside.css";
+// The kit's page patterns (Events 3): the section page's head, groups, list
+// card, chips and filter pills, where App.css and Feed.css ranked them.
+import "../kit/patterns.css";
 import "../App.css";
 import "../kit/kit.css";

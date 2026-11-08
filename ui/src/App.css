@@ -305,30 +305,6 @@
   }
 }
 
-/* --- Compact section header with inline action button --- */
-
-.section-header-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
-}
-
-.section-header-row .section-title {
-  margin-bottom: 0;
-}
-
-.section-header-row .section-description {
-  margin-top: var(--space-1);
-}
-
-/* When a section only contains the header row (no list below it),
-   tighten bottom padding so the next section isn't too far away. */
-.section-header-row:last-child {
-  margin-bottom: 0;
-}
-
 .section-action-btn {
   display: inline-flex;
   align-items: center;
@@ -373,92 +349,9 @@
 }
 
 @media (max-width: 480px) {
-  .section-header-row {
-    flex-direction: column;
-    gap: var(--space-2);
-  }
   .section-action-btn {
     align-self: flex-start;
   }
-}
-
-/* --- Votes-page filter pills (mirror of FeedFilter, scoped) --- */
-
-.votes-filter {
-  /* Slice 12.2 — page-shell width to match every other element on
-     the Votes page (CTA, sections, hub info). Bottom padding gives
-     the next section heading ("Active Votes" etc.) breathing room
-     instead of sitting directly against the pills. */
-  max-width: var(--max-width-shell);
-  margin: 0 auto;
-  padding: var(--space-4) var(--space-4);
-  /* Stick under the Feed | Votes tab strip — same chrome stack as
-     on /, so the filter pills stay reachable while the page scrolls. */
-  position: sticky;
-  /* 2px UNDER the tab strip (z-90 paints over this bar's z-89): the
-     chrome heights are hardcoded, and any 1px mismatch or zoom rounding
-     left a see-through seam between the strip and this bar while
-     scrolling. Overlapping upward closes it at every zoom level. */
-  top: calc(var(--nav-h) + var(--tabs-h) - 2px);
-  z-index: 89;
-  background: var(--color-bg);
-}
-
-.votes-filter-list {
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-}
-
-.votes-filter-list li {
-  margin: 0;
-}
-
-.votes-filter-list {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.votes-filter-list::-webkit-scrollbar {
-  display: none;
-}
-
-.votes-filter-pill {
-  min-height: var(--tap-target);
-  padding: var(--space-1-5) var(--space-4);
-  border-radius: var(--radius-pill);
-  border: var(--border-width) solid var(--color-border);
-  font-family: var(--font-body);
-  font-size: var(--text-small-size);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--letter-spacing-normal);
-  white-space: nowrap;
-  cursor: pointer;
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  transition:
-    background var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default);
-}
-
-.votes-filter-pill:hover {
-  border-color: var(--color-border-hover);
-  color: var(--color-text);
-}
-
-.votes-filter-pill:focus-visible {
-  outline: var(--border-width-strong) solid var(--color-focus);
-  outline-offset: var(--border-width-strong);
-}
-
-.votes-filter-pill.is-active {
-  background: var(--color-text);
-  color: var(--color-primary-text);
-  border-color: transparent;
 }
 
 .hub-name {
@@ -835,31 +728,6 @@
   font-style: italic;
 }
 
-/* --- Sections --- */
-
-.section {
-  padding: 0 var(--space-6) var(--space-5);
-}
-
-.section:first-of-type {
-  padding-top: var(--space-6);
-}
-
-.section-title {
-  font-size: var(--text-title-size);
-  font-weight: var(--text-title-weight);
-  margin: 0 0 var(--space-4);
-  color: var(--color-text-strong);
-}
-
-/* A section page's own title is its h1 since the hub's masthead moved to
-   Feed and About only (navigation polish, 2026-10-14): the page opens at it. */
-h1.section-title {
-  font-size: var(--text-display-size);
-  font-weight: var(--text-display-weight);
-  letter-spacing: var(--letter-spacing-tight);
-}
-
 /* --- Pages --- */
 
 .page h1 {
@@ -869,231 +737,6 @@ h1.section-title {
 .subtitle {
   color: var(--color-text-subtle);
   margin: 0 0 var(--space-6);
-}
-
-/* --- Process list --- */
-
-.process-list {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.process-link {
-  text-decoration: none;
-  color: inherit;
-  display: block;
-  border-radius: var(--card-radius);
-}
-
-.process-link:focus-visible {
-  outline: var(--border-width-strong) solid var(--color-focus);
-  outline-offset: var(--border-width-strong);
-}
-
-/* --- Process card ---
-   Shared card language for the four process lists (Votes, Proposals,
-   Projects, Conversations): Daylight cards (white, a hairline edge, no
-   resting shadow) with the kind's colour as a bar on top, and a soft
-   shadow on hover.
-   Per-type accents are set via --card-accent on each card class. */
-
-.process-card,
-.proposal-card,
-.project-card,
-.deliberation-card {
-  /* Default accent = the vote type color (votes use the base
-     .process-card class). Each list's card class overrides below with
-     ITS type token — the same hue that type's pill, Outcomes row, and
-     filter pill wear, so a process is one color everywhere it appears
-     (2026-08-28). */
-  --card-accent: var(--type-vote-fg);
-  position: relative;
-  border: var(--card-border);
-  /* Top edge, not left: the feed's cards wear their type color as a bar
-     across the top (.feed-post--type-* in Feed.css) and Adam wants the list
-     cards to read as the same family (2026-09-04). One rule here moves all
-     four card classes together, so a fifth type inherits it. */
-  border-top: var(--card-accent-width) solid var(--card-accent);
-  border-radius: var(--card-radius);
-  padding: var(--space-4) var(--card-padding);
-  background: var(--card-bg);
-  box-shadow: var(--card-shadow);
-  transition:
-    border-color var(--duration-base) var(--ease-default),
-    box-shadow var(--duration-base) var(--ease-default),
-    transform var(--duration-base) var(--ease-default);
-}
-
-.process-link:hover .process-card,
-.process-link:hover .proposal-card,
-.process-link:hover .project-card,
-.process-link:hover .deliberation-card,
-.process-card:hover,
-.proposal-card:hover,
-.project-card:hover,
-.deliberation-card:hover {
-  border-color: var(--color-border);
-  border-top-color: var(--card-accent);
-  box-shadow: var(--card-shadow-hover);
-}
-
-/* Per-type accent edges — each card wears its process type's color
-   (--type-* in theme.css). Terracotta stays the ACTION accent (buttons,
-   CTAs) and green stays STATUS (OPEN badges, meetings); identity comes
-   from the type palette, so a proposal card's edge matches the proposal
-   pill in the feed and on Outcomes. */
-.proposal-card {
-  --card-accent: var(--type-proposal-fg);
-}
-
-.project-card {
-  --card-accent: var(--type-project-fg);
-}
-
-.deliberation-card {
-  --card-accent: var(--type-conversation-fg);
-}
-
-/* Row 1 of every process card: type pill hard left, status pill hard right.
-   The title then takes the full width beneath, rather than competing with a
-   pill for the same line — beside a long type word ("CONVERSATION") it was
-   wrapping to four lines on a phone (Adam, 2026-09-04). */
-.process-card-chips {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* The feed's pill carries `margin-left: auto` because it is pushed right
-   there; here it leads the row. */
-.process-card-chips > .feed-pill {
-  margin-left: 0;
-}
-
-.process-card-chips > .status-badge {
-  margin-left: auto;
-}
-
-.process-card-title {
-  width: 100%;
-  margin: var(--space-2) 0 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-heading-size);
-  font-weight: var(--text-heading-weight);
-  color: var(--color-text-strong);
-  line-height: var(--line-height-snug);
-}
-
-/* Legacy header — still used by Outcomes, which has no status pill. */
-.process-card-header {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
-.process-card-header > .feed-pill {
-  margin-left: 0;
-}
-
-.process-card-header h3 {
-  width: 100%;
-}
-
-.process-card-header h3 {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-heading-size);
-  font-weight: var(--text-heading-weight);
-  color: var(--color-text-strong);
-  line-height: var(--line-height-snug);
-}
-
-.process-card-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  margin-top: var(--space-2-5);
-  font-size: var(--text-small-size);
-  color: var(--color-text-subtle);
-}
-
-/* --- Status badge --- */
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1-5);
-  font-size: var(--text-caption-size);
-  font-weight: var(--font-weight-semibold);
-  padding: var(--space-1) var(--space-2-5);
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-wide);
-}
-
-/* Lifecycle-state pills (2026-08-28) — NEUTRAL pill + a small colored
-   dot, replacing the solid green/red/amber washes. Cards now carry a
-   per-type identity color on their edge; a second saturated color block
-   fought it (and clashed differently against every type hue). The dot
-   keeps the at-a-glance semantic — green live, amber gathering support,
-   gray finished — while the pill itself goes with every card color.
-   Closed is deliberately NOT red: a finished process is not an error. */
-/* Canonical variants come from statusDisplay.ts: status-live (green
-   dot), status-phase (amber dot), status-done (gray dot). The legacy
-   per-status class names remain as aliases so any straggler render
-   still gets the neutral look rather than an unstyled chip. */
-.status-live,
-.status-phase,
-.status-done,
-.status-open,
-.status-closed,
-.status-proposed,
-.status-threshold_met,
-.status-submitted,
-.status-gathering {
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border);
-  color: var(--color-text-muted);
-}
-
-.status-live::before,
-.status-phase::before,
-.status-done::before,
-.status-open::before,
-.status-closed::before,
-.status-proposed::before,
-.status-threshold_met::before,
-.status-submitted::before,
-.status-gathering::before {
-  content: "";
-  width: var(--space-2);
-  height: var(--space-2);
-  border-radius: var(--radius-pill);
-  flex-shrink: 0;
-}
-
-.status-live::before,
-.status-open::before {
-  background: var(--color-success);
-}
-
-.status-done::before,
-.status-closed::before {
-  background: var(--color-text-faint);
-}
-
-.status-phase::before,
-.status-proposed::before,
-.status-threshold_met::before,
-.status-submitted::before,
-.status-gathering::before {
-  background: var(--color-warning);
 }
 
 /* --- Process detail page --- */
@@ -1658,19 +1301,6 @@ h1.section-title {
   border-radius: var(--radius-pill);
   font-size: var(--text-small-size);
   color: var(--color-text-muted);
-}
-
-/* --- Section description --- */
-
-.section-description {
-  margin: calc(-1 * var(--space-2)) 0 var(--space-4);
-  font-size: var(--text-small-size);
-  color: var(--color-text-subtle);
-}
-
-.empty-state-inline {
-  color: var(--color-text-subtle);
-  font-size: var(--text-small-size);
 }
 
 /* --- Issue content --- */
@@ -2719,20 +2349,6 @@ h1.section-title {
   cursor: not-allowed;
 }
 
-/* --- Community proposals section on Home --- */
-
-.section-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-3);
-}
-
-.section-header-row .section-title {
-  margin: 0;
-}
-
 .propose-link {
   display: inline-block;
   flex-shrink: 0;
@@ -3186,46 +2802,9 @@ h1.section-title {
   min-width: 0;
 }
 
-/* "Raise something": the hub's invitation, in the accent (decision 2). */
-.home-start-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1-5);
-  flex-shrink: 0;
-  padding: var(--space-1-5) var(--space-4);
-  min-height: var(--control-height);
-  background: var(--color-accent);
-  color: var(--color-accent-text);
-  border: none;
-  border-radius: var(--radius-pill);
-  font-family: var(--font-body);
-  font-size: var(--text-small-size);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--duration-fast) var(--ease-default);
-}
-
-.home-start-btn:hover {
-  background: var(--color-accent-hover);
-}
-
-.home-start-btn:focus-visible {
-  outline: var(--border-width-strong) solid var(--color-focus);
-  outline-offset: var(--border-width-strong);
-}
-
-.home-start-btn svg {
-  flex-shrink: 0;
-}
-
 @media (max-width: 767px) {
   .home-hero-row {
     flex-direction: column;
-  }
-
-  .home-start-btn {
-    margin: 0 var(--gutter) var(--space-4);
   }
 }
 
