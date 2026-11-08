@@ -35,13 +35,76 @@
     max-height: calc(100vh - var(--nav-h) - 2 * var(--space-6));
     max-height: calc(100dvh - var(--nav-h) - 2 * var(--space-6));
     margin: var(--space-6) 0 var(--space-6) var(--space-6);
-    border: var(--border-width) solid var(--color-column-border);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
+    /* Its outline is an inset shadow (the notch, below). */
   }
 
   .app--card-layout .hub-sidebar-nav {
     min-height: 0;
+  }
+}
+
+/* The notch (Adam, 2026-11-08, from the funnel mockup): in the public card the
+   current row runs out to the card's right edge, open there, and its wash
+   flares into the card's edge above and below, so the page you are on opens
+   toward the feed. The card's outline is an inset shadow, not a border, so
+   the row can cover it; the flares sit in the card's right gutter (--notch is
+   that gutter), under the rows. The card is padded top and bottom so a flare
+   never meets the card's own rounded corners. Left column and Three columns
+   only; the admin rail keeps its plain current row. */
+@media (min-width: 769px) {
+  .app--card-layout .hub-sidebar {
+    --notch: var(--space-3);
+    border: 0;
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-column-border), var(--shadow-card);
+  }
+
+  .app--card-layout .hub-sidebar-nav {
+    padding: calc(var(--radius-lg) + var(--notch)) var(--notch);
+  }
+
+  .app--card-layout .hub-sidebar-list .nav-item.is-current {
+    position: relative;
+    margin-right: calc(-1 * var(--notch));
+    width: calc(100% + var(--notch));
+    padding-right: calc(var(--space-3) + var(--notch));
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .app--card-layout .hub-sidebar-list .nav-item.is-current::before,
+  .app--card-layout .hub-sidebar-list .nav-item.is-current::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    z-index: -1;
+    width: var(--notch);
+    height: var(--notch);
+    pointer-events: none;
+  }
+
+  /* Each flare: the card (clear) inside a quarter circle, the card's outline
+     round its edge, the row's wash outside it. */
+  .app--card-layout .hub-sidebar-list .nav-item.is-current::before {
+    bottom: 100%;
+    background: radial-gradient(
+      circle at left top,
+      transparent calc(var(--notch) - var(--border-width) - var(--border-width) / 2),
+      var(--color-column-border) calc(var(--notch) - var(--border-width)),
+      var(--color-column-border) calc(var(--notch) - var(--border-width) / 2),
+      var(--color-primary-wash) var(--notch)
+    );
+  }
+
+  .app--card-layout .hub-sidebar-list .nav-item.is-current::after {
+    top: 100%;
+    background: radial-gradient(
+      circle at left bottom,
+      transparent calc(var(--notch) - var(--border-width) - var(--border-width) / 2),
+      var(--color-column-border) calc(var(--notch) - var(--border-width)),
+      var(--color-column-border) calc(var(--notch) - var(--border-width) / 2),
+      var(--color-primary-wash) var(--notch)
+    );
   }
 }
 

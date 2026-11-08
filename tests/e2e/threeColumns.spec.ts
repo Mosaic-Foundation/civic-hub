@@ -7,6 +7,8 @@
  *    48px gaps; the right column's cards flush right. A masthead (bars, the
  *    word cloud teaser, the banner photo) spans the window above the columns
  *    (Adam, after dev). Left column is the same page without the right column.
+ *    The current row is a notch: it runs out to the card's right edge, open
+ *    there, its wash flaring into the edge above and below (Adam, 2026-11-08).
  * 8. The cards: Coming up (the next events and closing dates however far
  *    out, date first, three, then "See all events"; Adam after dev), the latest
  *    announcements, About. A card with nothing to show is not drawn.
@@ -99,6 +101,7 @@ test("three columns at full width: a card on the left, the feed centred, the car
   expect(Math.abs(firstCard.x - (shell.x + shell.width) - 48)).toBeLessThan(3);
   // The masthead spans the window above the columns; the card, the feed and the cards start level under it.
   await expectMasthead(page);
+  await expectNotch(page);
   // The cards stay in view as the feed scrolls.
   await page.mouse.wheel(0, 1500);
   await expect(coming).toBeInViewport();
@@ -131,7 +134,29 @@ test("Left column is Three columns without the right column", async ({ page, req
   expect(Math.abs(shell.x - (left.x + left.width) - 48)).toBeLessThan(3);
   expect(Math.abs(WIDE.width - (shell.x + shell.width) - 48)).toBeLessThan(3);
   await expectMasthead(page);
+  await expectNotch(page);
 });
+
+/** The current row reaches the card's right edge, square there, with a flare above and below. */
+async function expectNotch(page: Page) {
+  const card = page.locator(".hub-sidebar");
+  const current = card.locator("[aria-current='page']");
+  await expect(current).toHaveCount(1);
+  const c = (await card.boundingBox())!;
+  const row = (await current.boundingBox())!;
+  expect(Math.abs(c.x + c.width - (row.x + row.width))).toBeLessThan(1);
+  const drawn = await current.evaluate((el) => {
+    const s = getComputedStyle(el);
+    const flare = (p: string) => getComputedStyle(el, p).backgroundImage;
+    return { right: parseFloat(s.borderTopRightRadius), left: parseFloat(s.borderTopLeftRadius), before: flare("::before"), after: flare("::after") };
+  });
+  expect(drawn.right).toBe(0);
+  expect(drawn.left).toBeGreaterThan(0);
+  expect(drawn.before).toContain("radial-gradient");
+  expect(drawn.after).toContain("radial-gradient");
+  // No border to break: the card's outline is an inset shadow the row covers.
+  expect(await card.evaluate((el) => getComputedStyle(el).borderRightWidth)).toBe("0px");
+}
 
 /** The masthead runs the window's width, and the columns start level under it. */
 async function expectMasthead(page: Page) {
