@@ -4,6 +4,27 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The layout session, a second look at dev — 2026-11-07
+
+- **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. No migration.
+
+**Changes:**
+- **Coming up has no window.** On Athens dev it hid itself: the next event was 49 days away, and nothing closed within
+  14 days. It now shows:
+  - the next five events and closing dates, however far out, earliest first;
+  - then **See all events**, linking to the Events page while that plugin is on.
+
+  It hides only when nothing is scheduled. The window is gone from both `GET /api/aside` and
+  `ui/src/aside/comingUp.ts`.
+- **"Back to the hub" stays at the top** as the admin rail scrolls, in the column and in the phone's drawer. It is
+  a sticky band in the rail's colour (`.admin-rail-top`).
+
+**Open, from Adam's questions (for an Events session, since `packages/` was out of bounds here):**
+- **A "Going" tag on Coming up's rows** for events the reader said yes to. Rows keep date order; reordering by
+  "going" would bury what is soonest. This needs a "which of these am I going to" read from the Events package.
+- **A month view of the hub's calendar.** The Events page already lists upcoming and past events, each with its
+  page, and `hub.ics` to subscribe.
+
 ## The layout session, after Adam's look at dev — 2026-11-07
 
 - **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. No migration.

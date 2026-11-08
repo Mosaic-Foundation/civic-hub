@@ -87,6 +87,23 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## The layout session, a second look at dev (2026-11-07)
+
+- **`comingUp.test.ts`:** with nothing near, the next five are weeks and months out. A cancelled event and a past
+  one are still left out.
+- **`tests/api/aside.test.ts`:** what is still to close is listed, however far out. A past, under-review or other
+  hub's process is not.
+- **`threeColumns.spec.ts`:** counts Coming up's rows as list items, at most five. "See all events" links to
+  `/events` while Events is on.
+- **`adminRail.spec.ts`:**
+  - A short window scrolled to the rail's foot keeps "Back to the hub" in view at the rail's top, and its band is
+    sticky.
+  - The phone drawer, scrolled to its foot, keeps it in view.
+- **Screenshots:** the four Three columns baselines re-taken. The admin baselines are unchanged: the band keeps the
+  rail's spacing.
+- **Playwright locally:** 242 passed; the one failure is the known local-only `conversationSummary`.
+- **Wire:** `a3933a2` and this code on the same database, 785 events, identical.
+
 ## The layout session, after Adam's look at dev (2026-11-07)
 
 - `threeColumns.spec.ts` (4 tests, Chromium and WebKit):
