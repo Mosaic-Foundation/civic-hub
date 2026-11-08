@@ -91,7 +91,8 @@ import {
   type ProcessTypeDescriptor,
 } from "@civic-social/plugin-sdk/testing";
 import { hostFacts } from "./hostFacts.js";
-import { scanDir } from "./tokenScan.js";
+import { scanDir, scannableFiles } from "./tokenScan.js";
+import { scanLook } from "./layoutOnly.js";
 import {
   BETA,
   DEMO,
@@ -981,6 +982,7 @@ function sdkSurfaceSteps(d: ProcessTypeDescriptor, facts: HostFacts, touched: Ar
   });
 
   ownLookStep(d);
+  layoutOnlyStep(d);
 }
 
 /**
@@ -1014,6 +1016,42 @@ function ownLookStep(d: ProcessTypeDescriptor): void {
         for (const f of findings) found.push(`${relative(dir, file)}:${f.line} ${f.category} ${f.property}: ${f.text}`);
       }
       expect(found, `${d.type}: values of its own where a token belongs (var(--...); kit/conformance/README.md, step 21)`).toEqual([]);
+    });
+  });
+}
+
+/**
+ * Step 22 (Events 3, 2026-11-08; ADR-018 amendment): a package's page is
+ * composed of the kit's components (PageHead, ListCard, Group, Chip,
+ * StatusChip, EmptyState, MonthGrid...), and its own stylesheet and inline
+ * styles set layout and spacing only: no colour, type, radius, shadow or
+ * border, not even in tokens (./layoutOnly.ts). Step 21 holds the values;
+ * this holds the properties.
+ */
+/**
+ * Releases that came before step 22, by name and version, while their next
+ * release is being made (Events 0.3.2, whose 0.4.0 moves onto the kit). A
+ * new version of the same package is held to the step; the list empties
+ * when Events 0.4.0 lands.
+ */
+const BEFORE_STEP_22 = new Set(["civic.event@0.3.2"]);
+
+function layoutOnlyStep(d: ProcessTypeDescriptor): void {
+  describe("22. layout and spacing only; the look comes from the kit", () => {
+    const loaded = loadedPackages().find((p) => p.type === d.type);
+    if (loaded && BEFORE_STEP_22.has(`${d.type}@${loaded.pkg.version}`)) {
+      it.skip(`${d.type}@${loaded.pkg.version} came before step 22 (BEFORE_STEP_22)`, () => {});
+      return;
+    }
+    it("its .css and inline styles set no colour, type, radius, shadow, border or custom property", () => {
+      const pkg = loadedPackages().find((p) => p.type === d.type);
+      if (!pkg) return;
+      const dir = resolve(HOST_ROOT, pkg.dir);
+      const found: string[] = [];
+      for (const file of scannableFiles(dir)) {
+        for (const f of scanLook(file, readFileSync(file, "utf8"))) found.push(`${relative(dir, file)}:${f.line} ${f.property}`);
+      }
+      expect(found, `${d.type}: the look is the kit's; a package's styles set layout only (kit/conformance/README.md, step 22)`).toEqual([]);
     });
   });
 }

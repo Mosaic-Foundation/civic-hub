@@ -161,6 +161,18 @@ additive (refused); CI runs it too.
     are `src/tokenScan.ts`, the same code the hub's own ratchet runs
     (`scripts/check-tokens.ts`). On for every package since Events 0.3.1
     (design pass, 2026-10-29); docs/PLUGIN-STYLE.md says what to use instead.
+22. **Layout and spacing only** (Events 3, 2026-11-08): a package's page is
+    composed of the kit's components (`PageHead`, `ListCard`, `Group`,
+    `Chip`, `StatusChip`, `EmptyState`, `MonthGrid`…), and its own `.css` and
+    inline `style={{ ... }}` set layout and spacing only. Refused, whatever
+    the value, tokens included: `color`, `background*`, `font*`,
+    `line-height`, `letter-spacing`, `text-transform`/`-decoration`/`-shadow`,
+    `border*` (radius too), `outline*`, `box-shadow`, `opacity`, `filter`,
+    `fill`, `stroke*`, and custom properties (`--x: …`, the side door for a
+    colour). Step 21 holds the values; this holds the properties. The rules
+    are `src/layoutOnly.ts`. A release made before the step is listed by name
+    and version in `BEFORE_STEP_22` (`runConformance.ts`) while its next
+    version is made; the list is empty once that version lands.
 
 `kit/conformance/fixtures/sdk-tour` uses every one of 11 to 17 through the
 SDK alone; `kit/scripts/prove.ts` runs it from an empty folder.
