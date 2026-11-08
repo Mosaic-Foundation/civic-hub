@@ -147,13 +147,14 @@ async function expectNotch(page: Page) {
   expect(Math.abs(c.x + c.width - (row.x + row.width))).toBeLessThan(1);
   const drawn = await current.evaluate((el) => {
     const s = getComputedStyle(el);
-    const flare = (p: string) => getComputedStyle(el, p).backgroundImage;
+    const flare = (p: string) => { const f = getComputedStyle(el, p); return f.maskImage || f.webkitMaskImage; };
     return { right: parseFloat(s.borderTopRightRadius), left: parseFloat(s.borderTopLeftRadius), before: flare("::before"), after: flare("::after") };
   });
   expect(drawn.right).toBe(0);
   expect(drawn.left).toBeGreaterThan(0);
-  expect(drawn.before).toContain("radial-gradient");
-  expect(drawn.after).toContain("radial-gradient");
+  // Each flare is a vector curve (an SVG mask), no outline on it.
+  expect(drawn.before).toContain("svg");
+  expect(drawn.after).toContain("svg");
   // No border to break: the card's outline is an inset shadow the row covers.
   expect(await card.evaluate((el) => getComputedStyle(el).borderRightWidth)).toBe("0px");
 }
