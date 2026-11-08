@@ -87,6 +87,60 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Events 3: the kit's page patterns, Events 0.4.0 (2026-11-08)
+
+- **Unit:**
+  - `layoutOnly.test.ts`: conformance step 22's scan. It refuses look properties in `.css` and in inline styles, and
+    reports the right line.
+  - `kitPortable.test.ts`: `ui/src/kit` and `theme.css` import nothing outside the kit and the styles. `kit/sdk/ui.ts`
+    takes the kit, plus only the two `HOST_PROVIDED` files (`DraftShell`, `config/hubClock.ts`), and never a page or
+    the server. It fails on a planted import.
+  - `hubTimeZone.test.ts`: the setting, else the place's zone (from the code or the OCD id), else UTC; and the
+    zone's plain name ("Eastern").
+  - `hubContext.test.ts` and `jobsPerHub.test.ts`: changed to the new fallback. An unset zone is the place's, not
+    UTC: Floyd's default 13:00 digest is 13:00 Eastern (17:00 UTC in September), and an unknown zone reads as the
+    place's.
+  - `eventsSeason.test.ts`: `quarterHours`, the duration dropdowns' rounding.
+  - `contrast.test.ts`: `--color-text` on `--color-warning-bg`, the Identity note.
+- **API:**
+  - `hubConfig.test.ts`: `time_zone` is the setting, or `{ zone: "America/New_York", source: "place" }` for Floyd.
+  - `setupCard.test.ts`: "Name and place" waits for a zone. A hub made with no place starts unticked and ticks
+    once a zone is saved.
+  - `conformance.test.ts`: every type, with Events held to step 22 (`BEFORE_STEP_22` is empty). Locally, run it with
+    `CIVIC_TEST_CRON_SECRET=ci-only-cron-secret`, the launch config's; with any other value, step 5 fails for every
+    type.
+- **Playwright** (`events.spec.ts`, now in **Chromium and WebKit**, 58 tests):
+  - the calendar view: a month on a desktop and a week on a phone, the chosen day's list under it, and the choice
+    remembered after a reload;
+  - the duration dropdowns: hours 0 to 8 and quarter hours, linked both ways with Starts and Ends, rounded to 15
+    minutes;
+  - an event entered in Tokyo's zone is shown in the hub's ("CST"), with no "GMT+9";
+  - a hub with no zone (Floyd, cleared for the test and put back) says "Times are Eastern Time.", starts a new event
+    in America/New_York, and Identity's note confirms Eastern.
+
+  The existing flows follow the kit's markup.
+- **Screenshots:** 30 section-page baselines were added before the move (five pages, phone and desktop, and the four
+  layout and dark variants). They held through the move. `admin-settings-phone` was re-taken, because Getting
+  started's first step now waits for the zone.
+- **Conformance from outside:** the kit packed, installed into an empty folder outside the repository, Events left
+  out of the packed host's `config/plugins.json`, and the package copied in. `civic-conformance ./civic.event`: 34
+  passed, 1 skipped, 1 todo. `catalog:add`: the same.
+- **Wire:**
+  - The session's first snapshot held no documents for Athens or Floyd, so it was redone. The starting commit
+    (`6195700`, in a scratch worktree) and the current code were each run on the same local data.
+  - 4,452 events compared, all byte-identical, Events' included.
+- **Previewing a changed package locally:** the API needs `CIVIC_PLUGINS_UNVERIFIED=on` (development only) until
+  `catalog:add`. Otherwise the package's hash has no approved row and the package is not mounted.
+- **Results, local:**
+  - `npm test`: 3,780 passed, 1 failed. The failure is the catalog-withdrawal test, which needs an approved entry;
+    it is green in CI.
+  - UI component tests: 111.
+  - Events Playwright: 58 of 58.
+  - Screenshots: 10 of 10 after the re-take.
+  - The API suite in both modes was not run locally; CI's two passes are green.
+- **CI** on `0cceecc`: CI and E2E green. Smoke failed on dev, because Events 0.4.0 was unmounted there until its
+  entry was applied and approved (see HANDOFF).
+
 ## The layout session, the notch (2026-11-08)
 
 - **`threeColumns.spec.ts`:** `expectNotch`, run in Three columns and in Left column, in Chromium and WebKit. It

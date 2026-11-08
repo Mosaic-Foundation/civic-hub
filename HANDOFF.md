@@ -4,6 +4,77 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Events 3: the kit's page patterns, the plugin rule, Events 0.4.0 — 2026-11-08
+
+- **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. The one migration is the Events 0.4.0
+  catalog entry (`20261108213921_catalog_civic_event_0_4_0.sql`, required). Events is not mounted on dev until
+  Adam approves 0.4.0 in dev's console.
+- **Wire untouched:** 4,452 local events are byte-identical between the starting commit (`6195700`) and this one,
+  Events' included.
+
+**Built, part one (the kit; the hub's pages identical):**
+- **The page patterns moved into the kit** (`ui/src/kit/patterns.tsx`/`.css`, `calendar.tsx`, `dates.ts`), in the
+  same order and under the same class names:
+  - `Page`, `PageHead`, `PageAction`;
+  - `Group`, `DayGroup`, `GroupHeading`;
+  - `CardList` and `ListCard`, with `pill="top"|"meta"`;
+  - `Chip`, `StatusChip`, `InlineMeta`, `EmptyState`, `FilterBar`, `ViewToggle`;
+  - `MonthGrid`, `WeekStrip`.
+
+  Votes, Proposals, Projects, Conversations, Outcomes and the feed card use them, and 30 new section baselines
+  held. An admin sees every piece at `/kit`.
+- **The plugin rule:** conformance step 22 (`kit/conformance/src/layoutOnly.ts`) requires that a package's styles
+  set layout and spacing only. `docs/PLUGIN-STYLE.md` says when to use each piece.
+- **Portability:** `tests/unit/kitPortable.test.ts`. What stays hub-specific is in the ADR-018 amendment:
+  `DraftShell`, `hubTimeZone()`, the FilterBar's `--nav-h`/`--tabs-h`, the historical class names, and the kinds'
+  colour classes.
+
+**Built, part two (Events 0.4.0; Adam accepted the page as shown):**
+- **The calendar page on the kit:**
+  - a page head with "Add an event" and "Subscribe in your calendar app";
+  - day groups of list cards: the Events bar, the time in bold, the place in plain text, and Cancelled as a
+    status chip;
+  - an empty state, and past events folded under "Past events (n)".
+- **List / Calendar:** a toggle in the filter's pill style. Desktop shows a month grid, a phone shows a week strip,
+  and the chosen day's list sits under it. Each browser remembers the choice (`civic.event.view`).
+- **Duration:** hours 0 to 8 and quarter hours, linked both ways with Starts and Ends, rounded to 15 minutes.
+- **An event's page and form, on the kit:** new kit pieces `FactList`, `Notice`, `Note`, `Picture` and `Fieldset`.
+  The form also uses `RadioCards`, `ImageUpload` and `ChipGroup` (the reply). `styles.css` is now layout only.
+- **The hub's clock, in one place** (`src/shared/hubTimeZone.ts`): the hub's setting, else its place's zone, else
+  UTC.
+  - It is read by `hubContext()` (Events, the calendar feed), the digest, sign-in codes, the closed-early line,
+    `/hub-config`'s new `time_zone`, and `hubTimeZone()` in the UI (Events' pages and feed card, the Coming up card).
+  - Every time on Events' pages is in the hub's zone, named once.
+  - Identity says "Using Eastern time from your place; confirm or change it", with a Confirm button.
+  - Getting started's "Name and place" ticks only once a zone is set or confirmed.
+- **The "11:00 PM UTC" on Athens:** with `identity.timezone` unset, the UI and server fell back to UTC, a new event
+  was stored as UTC, and the feed card named it. I could not read dev's settings from here, so Athens's zone on dev
+  is unconfirmed. If its Identity shows no zone, that was the cause, and it now shows Eastern from its place.
+
+**Before the production release (Adam):**
+- **Set Floyd's time zone explicitly** (Settings → Identity, or Confirm on the new note) **before releasing to
+  production.**
+  - With no zone set, a hub's digest now goes out at its send hour in its place's zone, not in UTC. Floyd's default
+    13:00 becomes 13:00 Eastern: 17:00 or 18:00 UTC, four or five hours later than today.
+  - Adam accepted the change. Any production hub with a place and no zone moves the same way, so check each one's
+    Identity.
+- Then `release.sh prod` applies the 0.4.0 catalog entry. Approve Events 0.4.0 in production's console after it.
+
+**Happened this session:**
+- I pushed Events 0.4.0's code before its catalog entry. The push deployed dev, and Events unmounted there.
+- Smoke failed twice on dev (`the smoke hub's manifest … every one is running`).
+- The entry followed in `0cceecc`, and this release applies it.
+- Lesson recorded: commit `catalog:add` in the same push as any change under `packages/`.
+
+**Open:**
+- Adam approves Events 0.4.0 in dev's console, then re-runs Smoke (or waits for the next deploy).
+- To push: the ADR-018 amendment, committed in the meta-repo as `c0b8a02` (with the earlier ADR-018/019 commits, if
+  they are not pushed yet).
+- Reports: `~/Documents/Mosaic/0 Management/Civic Social/Events-3-Session-Report-2026-11-08.md` and
+  `Events-3-Handoff-to-Management-2026-11-08.md`.
+
+---
+
 ## The layout session, the notch — 2026-11-08
 
 - **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. No migration. CSS only, so the wire is

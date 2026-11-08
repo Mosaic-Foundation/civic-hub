@@ -51,7 +51,7 @@ The hub's pages use exactly these.
 | `PageAction` | The page's main action: the accent, with a plus | In `PageHead`'s `action`: "Add an event", "Suggest a vote". `href` + `as={Link}` for a route, `onClick` for a dialog |
 | `FilterBar` | One pill per choice, one on, sticky under the header | Filtering the page's list by status ("All", "Active", "Completed"). Keep the choice in the URL |
 | `ViewToggle` | The same pills, in a row of their own | Two or three ways to see the same things: List / Calendar. Remember the choice per person (`localStorage`) |
-| `Group` | A heading (`h2`), a line under it, then its content | Each part of the page: "Active Votes", "Completed". With `collapsible` the heading folds it away (`defaultOpen` to start open): past events |
+| `Group` | A heading (`h2`), a line under it, then its content, inset as every section is | Each part of the page: "Active Votes", "Completed". With `collapsible` the heading folds it away (`defaultOpen` to start open): past events. Without a heading it is the inset alone: put anything that is not already in a section (a `MonthGrid`, a `Notice`, an `EmptyState`) in one, so it keeps the column's edge |
 | `DayGroup` | A `Group` whose heading is a day ("Saturday, November 15"), in the zone you give | Date-grouped lists. `groupByDay(items, when, zone)` makes the groups; `dayKey` and `dayHeading` are there too |
 | `GroupHeading` | The heading alone | Where a group's heading stands apart from its list |
 | `CardList` | Cards one under another at the list's gap | Around `ListCard`s, each in an `<li>` |
@@ -60,8 +60,28 @@ The hub's pages use exactly these.
 | `StatusChip` | A neutral chip with a dot: `live` (green), `phase` (amber), `done` (grey, never red), `alert` (red) | A thing's state: "Active", "Gathering support", "Completed", "Cancelled". In `ListCard`'s `status` |
 | `InlineMeta` | A quiet line of facts | Time, place, count. `ListCard`'s `meta` draws one. Make the fact that matters strong (`<strong>`), the rest plain |
 | `EmptyState` | What a list says when it is empty, and an `action` | Instead of an empty list. Say what will appear, and how to make the first |
-| `MonthGrid` | A month of days, each with its items as chips; choosing a day calls `onSelect` | A calendar on a wide screen. Show the chosen day's list under it |
+| `MonthGrid` | A month of days, each with its items as chips; choosing a day calls `onSelect` | A calendar on a wide screen, in a `Group`. Show the chosen day's list under it, in a `DayGroup` |
 | `WeekStrip` | A week of days with a dot where something falls | The calendar on a phone, above the chosen day's list |
+
+### A single thing's page
+
+What an event's (or any one thing's) page is made of, under its `PageHead`:
+
+| Component | What it is | When to use it |
+|---|---|---|
+| `FactList` | Facts, one to a row: a quiet term, its value, and quieter lines under a value | When, Where, Going. `more` holds the quieter lines ("Your time: …") |
+| `Notice` | A line on a tinted band: `alert` (red) or `info` (quiet) | What the reader must not miss: "This event was cancelled", "This event has ended" |
+| `Note` | A quiet small line | A back link, "Loading…", who a message goes to, when it was sent |
+| `Picture` | The thing's own picture, the column's width; `wide` or `preview` | Across the top of its page; smaller in a form |
+| `Fieldset` | Fields that belong together, under a name, on a quiet panel | "Where" (a place or a link), "Picture" |
+
+### The hub's clock
+
+Show every time in the hub's zone, and name the zone once on the page ("Times are Eastern Time." in the
+`PageHead`'s line, or once in a time's fact). `hubTimeZone()` from `@civic-social/plugin-sdk/ui` gives it, in a
+page or a feed card; on the server, `hubContext().timeZone`. Both are the hub's setting, else its place's zone, else
+UTC, so never write "UTC" yourself. A new item's default zone is the hub's. Where a reader's own clock differs, a
+quieter "Your time: …" may follow.
 
 The calendar views work in calendar days (`"YYYY-MM-DD"`). Work out which
 day each item falls on in the zone you mean, with `dayKey(iso, zone)`, and
@@ -82,7 +102,7 @@ do.
 | Something that holds one thing | `Card` | the hub's edge, radius and padding |
 | Numbers | `StatGrid` of `Stat` | the number strong, its label quiet |
 | Rows of numbers or records | `Table` | the hub's head, rules, stripes and hover |
-| A drafting form's page | `DraftShell` | the slim phone header; takes the page's width |
+| A drafting form's page | `DraftShell` | the slim phone header; takes the page's width. Host-provided: it is the hub's own |
 
 Every page, the kit's and yours, takes the layout's content width. Don't set a
 `max-width` on your page.
