@@ -301,6 +301,12 @@
     flex-direction: column;
     gap: var(--space-2);
   }
+
+  /* The title and its line keep the column's left edge however short they
+     are (Events 3): the row centres its action, not its words. */
+  .section-header-row > div:first-child {
+    align-self: stretch;
+  }
 }
 
 /* --- Votes-page filter pills (mirror of FeedFilter, scoped) --- */
