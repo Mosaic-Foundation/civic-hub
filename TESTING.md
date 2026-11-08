@@ -87,6 +87,20 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## The layout session, the notch (2026-11-08)
+
+- **`threeColumns.spec.ts`:** `expectNotch`, run in Three columns and in Left column, in Chromium and WebKit. It
+  checks that:
+  - the current row's right edge is the card's;
+  - the row is square on the right and rounded on the left;
+  - both flares are radial gradients;
+  - the card has no right border (its outline is an inset shadow).
+- **Screenshots:** `sidebar-vote`, `three-vote` and `three-dark-vote` re-taken on a reset stack. The other five are
+  unchanged.
+- **Locally:** `threeColumns`, `hubNavigation` and `adminRail` pass in both browsers (35 of 35). The token ratchet
+  and UI lint are clean.
+- **Wire:** not re-run. The change is CSS and a spec only, with no server code.
+
 ## The layout session, a second look at dev (2026-11-07)
 
 - **`comingUp.test.ts`:** with nothing near, the next three are weeks and months out. A cancelled event and a past

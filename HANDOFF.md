@@ -4,6 +4,30 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The layout session, the notch — 2026-11-08
+
+- **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. No migration. CSS only, so the wire is
+  untouched (no server code changed).
+
+**Change:**
+- **The current row is a notch** in the public navigation card (Left column and Three columns), from Adam's
+  funnel mockup:
+  - the row runs out to the card's right edge, open there;
+  - its wash flares into the card's edge above and below.
+
+  To make this work:
+  - the card's outline is now an inset shadow, so the row can cover it;
+  - the flares are `::before`/`::after` radial gradients in the card's right gutter (`--notch`);
+  - the card has extra room top and bottom (`--radius-lg` + `--notch`), so a flare never meets its corners.
+
+  The dark admin rail is unchanged.
+- **Tests:** `threeColumns.spec.ts` checks the notch (`expectNotch`) in both layouts, in Chromium and WebKit. The
+  `sidebar-vote`, `three-vote` and `three-dark-vote` baselines were re-taken.
+
+**Open:**
+- In dark mode the wash is subtle (16% primary), so the notch reads more quietly than in light. Adam to judge it on
+  dev.
+
 ## The layout session, a second look at dev — 2026-11-07
 
 - **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. No migration.
