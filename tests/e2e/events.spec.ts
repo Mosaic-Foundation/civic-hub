@@ -22,7 +22,14 @@
  *      event's page.
  *  10. "Add to my calendar" downloads the one event's .ics, linked back.
  *  11. The RSVP control shows the state and the other choice, the creator
- *      included; an event in another zone shows the reader's time too.
+ *      included; an event entered in another zone is shown in the hub's.
+ *   Events 0.4.0 (Events 3, the kit):
+ *  12. Calendar view: a month on a desktop, a week on a phone, the chosen
+ *      day's list under it; the view is remembered.
+ *  13. How long is two selects, hours and quarter hours, linked both ways
+ *      with Starts and Ends.
+ *  14. A hub with no zone set shows its place's zone, never UTC; Settings →
+ *      Identity says it is inferred and confirms it.
  *
  * Every time here is in one zone: both hubs' identity.timezone and the
  * browser's are set to ZONE for the run (the hubs' put back after), so a
@@ -97,6 +104,19 @@ async function shown(page: Page, local: string): Promise<{ day: string; time: st
     };
   }, iso);
 }
+
+/** A day as the kit heads it: "Tuesday, November 10", with the year only when it is not this year's. */
+async function dayHeadingOf(page: Page, local: string): Promise<string> {
+  const iso = isoOf(local);
+  return page.evaluate((i) => {
+    const d = new Date(i);
+    const thisYear = d.getFullYear() === new Date().getFullYear();
+    return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", ...(thisYear ? {} : { year: "numeric" }) });
+  }, iso);
+}
+
+/** The "YYYY-MM-DD" a local time falls on. */
+const dayOf = (local: string) => local.slice(0, 10);
 
 interface Made {
   id: string;
@@ -329,8 +349,8 @@ for (const vp of VIEWPORTS) {
       await expect(page.getByRole("link", { name: "Subscribe in your calendar app" })).toHaveAttribute("href", "/api/calendar/hub.ics");
 
       // Two events share a day, in time order; the other has a day of its own.
-      const day8 = (await shown(page, localTime(8, 9, 0))).day;
-      const day9 = (await shown(page, localTime(9, 12, 0))).day;
+      const day8 = await dayHeadingOf(page, localTime(8, 9, 0));
+      const day9 = await dayHeadingOf(page, localTime(9, 12, 0));
       const sameDay = page.getByRole("region", { name: day8, exact: true });
       await expect(sameDay.getByRole("heading", { level: 2, name: day8 })).toBeVisible();
       // Only this test's own (the other width's run makes events on the same days).
@@ -343,19 +363,19 @@ for (const vp of VIEWPORTS) {
       const nextDay = page.getByRole("region", { name: day9, exact: true });
       await expect(nextDay.locator(".ev-item", { hasText: mine })).toHaveText([new RegExp(`${later.title}`)]);
       // Days come in order down the page.
-      const headings = await page.locator(".ev-day-heading").allTextContents();
+      const headings = await page.locator("section[aria-label] > h2.section-title").allTextContents();
       expect(headings.indexOf(day8)).toBeGreaterThanOrEqual(0);
       expect(headings.indexOf(day9)).toBeGreaterThan(headings.indexOf(day8));
 
       // The past one is not in a day's list: it is below, behind "Past events (N)".
-      await expect(page.locator(".ev-day .ev-item", { hasText: past.title })).toHaveCount(0);
-      const pastList = page.locator("details.ev-past");
+      await expect(page.locator("section:not(.ev-past) .ev-item", { hasText: past.title })).toHaveCount(0);
+      const pastList = page.locator(".ev-past details");
       await expect(pastList.locator("summary")).toHaveText(/^Past events \(\d+\)$/);
       await expect(pastList.locator(".ev-item", { hasText: past.title })).toBeHidden();
       await pastList.locator("summary").click();
       await expect(pastList.locator(".ev-item", { hasText: past.title })).toBeVisible();
       const pastBox = await pastList.boundingBox();
-      const lastDay = await page.locator(".ev-day").last().boundingBox();
+      const lastDay = await page.getByRole("region", { name: day9, exact: true }).boundingBox();
       expect(pastBox!.y).toBeGreaterThan(lastDay!.y);
     });
 
@@ -413,10 +433,10 @@ for (const vp of VIEWPORTS) {
       await page.getByRole("textbox", { name: "Name", exact: true }).fill(title);
       await page.getByRole("textbox", { name: "Starts", exact: true }).fill(localTime(4, 18, 0));
       await page.getByRole("textbox", { name: "Place", exact: true }).fill(VENUE);
-      await page.getByTestId("picture-input").setInputFiles({ name: "supper.png", mimeType: "image/png", buffer: png(640, 360) });
+      await page.locator('input[type="file"]').setInputFiles({ name: "supper.png", mimeType: "image/png", buffer: png(640, 360) });
       // The fake store's address never loads, so the preview is checked by what
       // it shows, not by its pixels.
-      const preview = page.getByTestId("picture-preview");
+      const preview = page.locator(".kit-upload-preview");
       await expect(preview).toBeAttached();
       // Stored by the hub's route, in this type's own folder of the hub (E1).
       await expect(preview).toHaveAttribute("src", new RegExp(`/${DEMO}/types/civic\\.event/`));
@@ -429,28 +449,41 @@ for (const vp of VIEWPORTS) {
       await expect(img).toHaveAttribute("alt", "Long tables set for supper");
     });
 
-    test("the start fills the end an hour later; a duration moves the end, and an end moves the duration", async ({ page }) => {
+    test("how long is two selects, hours and quarter hours, linked both ways with Starts and Ends", async ({ page }) => {
       await residentOn(DEMO, `duration-${vp.label}`, page);
       await page.goto(`${originOf(DEMO)}/events/new`);
       const starts = page.getByRole("textbox", { name: "Starts", exact: true });
       const ends = page.getByRole("textbox", { name: "Ends", exact: true });
-      const duration = page.getByRole("textbox", { name: "Duration", exact: true });
+      const duration = page.getByRole("group", { name: "Duration", exact: true });
+      const hours = duration.getByRole("combobox", { name: "Hours" });
+      const minutes = duration.getByRole("combobox", { name: "Minutes" });
 
       // Starts, then how long, then Ends.
       await expect(ends).toBeVisible();
       const order = await page.locator("#ev-start, #ev-duration, #ev-end").evaluateAll((els) => els.map((el) => el.id));
       expect(order).toEqual(["ev-start", "ev-duration", "ev-end"]);
+      // Hours 0 to 8, minutes in quarters.
+      await expect(hours.locator("option")).toHaveText(["0 h", "1 h", "2 h", "3 h", "4 h", "5 h", "6 h", "7 h", "8 h"]);
+      await expect(minutes.locator("option")).toHaveText(["0 min", "15 min", "30 min", "45 min"]);
 
       await starts.fill(localTime(5, 18, 0));
       // The start's day, an hour later: not today.
       await expect(ends).toHaveValue(localTime(5, 19, 0));
-      await expect(duration).toHaveValue("1 h");
+      await expect(hours).toHaveValue("1");
+      await expect(minutes).toHaveValue("0");
 
-      await duration.fill("2 h 30 min");
+      await hours.selectOption("2");
+      await minutes.selectOption("30");
       await expect(ends).toHaveValue(localTime(5, 20, 30));
 
+      // An end moves the duration, to the nearest quarter hour.
       await ends.fill(localTime(5, 21, 15));
-      await expect(duration).toHaveValue("3 h 15 min");
+      await expect(hours).toHaveValue("3");
+      await expect(minutes).toHaveValue("15");
+      await ends.fill(localTime(5, 19, 7));
+      await expect(hours).toHaveValue("1");
+      await expect(minutes).toHaveValue("0");
+      await ends.fill(localTime(5, 21, 15));
 
       // A later start keeps how long it runs.
       await starts.fill(localTime(5, 19, 0));
@@ -460,9 +493,41 @@ for (const vp of VIEWPORTS) {
       await ends.fill(localTime(5, 18, 0));
       await expect(ends).toHaveAttribute("aria-invalid", "true");
       await expect(page.getByText("Ends must be after it starts.")).toBeVisible();
-      await duration.fill("1 h");
+      await hours.selectOption("1");
       await expect(ends).toHaveValue(localTime(5, 20, 0));
       await expect(page.getByText("Ends must be after it starts.")).toHaveCount(0);
+    });
+
+    test("the calendar view: a month on a desktop, a week on a phone, the chosen day's list under it, remembered", async ({ request, page }) => {
+      const label = `calview-${vp.label}`;
+      const when = localTime(11, 14, 0);
+      const event = await makeEvent(request, DEMO, await maker(label), `Calendar view ${vp.label} ${run}`, when, localTime(11, 15, 0));
+      await residentOn(DEMO, label, page);
+      await page.goto(`${originOf(DEMO)}/events`);
+      const toggle = page.getByRole("group", { name: "Show the events as" });
+      await expect(toggle.getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
+      await toggle.getByRole("button", { name: "Calendar" }).click();
+      await expect(toggle.getByRole("button", { name: "Calendar" })).toHaveAttribute("aria-pressed", "true");
+
+      const grid = page.getByRole("region", { name: vp.label === "phone" ? "Events by week" : "Events by month" });
+      await expect(grid).toBeVisible();
+      await expect(page.getByRole("region", { name: vp.label === "phone" ? "Events by month" : "Events by week" })).toHaveCount(0);
+      // Move to the event's day: the month's or the week's arrows, then the day itself.
+      const target = dayOf(when);
+      const next = grid.getByRole("button", { name: vp.label === "phone" ? "Next week" : "Next month" });
+      for (let i = 0; i < 6 && (await grid.locator(`[data-day="${target}"]`).count()) === 0; i++) await next.click();
+      const day = grid.locator(`[data-day="${target}"]`);
+      if (vp.label !== "phone") await expect(day).toContainText(event.title.slice(0, 8));
+      await day.click();
+      await expect(day).toHaveAttribute("aria-pressed", "true");
+      const list = page.getByRole("region", { name: await dayHeadingOf(page, when), exact: true });
+      await expect(list.locator(".ev-item", { hasText: event.title })).toBeVisible();
+      await expect(list.locator(".ev-item", { hasText: event.title })).toContainText((await shown(page, when)).time);
+
+      // Remembered in this browser.
+      await page.reload();
+      await expect(page.getByRole("group", { name: "Show the events as" }).getByRole("button", { name: "Calendar" })).toHaveAttribute("aria-pressed", "true");
+      await page.screenshot({ path: test.info().outputPath(`calendar-${vp.label}.png`), fullPage: true });
     });
 
     test("at its limit, someone not going sees Full with the count", async ({ request, page, browser }) => {
@@ -540,7 +605,7 @@ for (const vp of VIEWPORTS) {
       expect(text).toContain(`DTSTART:${isoOf(localTime(7, 9, 0)).replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`);
     });
 
-    test("the RSVP control shows the state and the other choice for the creator too; another zone's event shows the reader's time", async ({ request, page }) => {
+    test("the RSVP control shows the state and the other choice for the creator too; another zone's event is shown in the hub's", async ({ request, page }) => {
       const label = `rsvp-${vp.label}`;
       const token = await residentOn(DEMO, label, page);
       const event = await makeEvent(
@@ -555,10 +620,13 @@ for (const vp of VIEWPORTS) {
       const [a, b] = await Promise.all([rsvp.getByRole("button").nth(0).boundingBox(), rsvp.getByRole("button").nth(1).boundingBox()]);
       expect(Math.abs(a!.y - b!.y)).toBeLessThan(2);
       expect(a!.height).toBeGreaterThanOrEqual(44);
-      // Given in its own zone, named; the reader's time beside it.
-      await expect(page.getByTestId("event-when")).toContainText("GMT+9");
-      await expect(page.getByTestId("event-when-mine")).toContainText("Your time:");
-      await expect(page.getByTestId("event-when-mine")).toContainText((await shown(page, localTime(9, 9, 0))).time);
+      // Entered in Tokyo's zone, shown in the hub's (Events 3), named once; the
+      // reader is on the hub's clock, so no second line.
+      const when = page.getByTestId("event-when");
+      await expect(when).toContainText((await shown(page, localTime(9, 9, 0))).time);
+      await expect(when).toContainText("CST");
+      await expect(when).not.toContainText("GMT+9");
+      await expect(page.getByTestId("event-when-mine")).toHaveCount(0);
       await page.screenshot({ path: test.info().outputPath(`rsvp-${vp.label}.png`), fullPage: true });
     });
 
@@ -588,7 +656,38 @@ for (const vp of VIEWPORTS) {
       await page.goto(`${originOf(DEMO)}/events`);
       const item = page.locator(".ev-item", { hasText: event.title });
       await expect(item).toBeVisible();
-      await expect(item.locator(".ev-pill")).toHaveText("Cancelled");
+      await expect(item.locator(".status-badge")).toHaveText("Cancelled");
     });
   });
 }
+
+test.describe("the hub's clock when no zone is set (Events 3)", () => {
+  test.use({ viewport: DESKTOP });
+
+  test("a hub with no zone shows its place's (Eastern), never UTC; Identity says it is inferred and confirms it", async ({ request, page }) => {
+    await setZone(request, BETA, "");
+    try {
+      await visitAs(page, tokens[BETA]!.admin);
+      await page.goto(`${originOf(BETA)}/events`);
+      const head = page.locator(".section-header-row");
+      await expect(head).toContainText("Times are Eastern Time.");
+      await expect(page.locator("main")).not.toContainText("UTC");
+
+      // A new event starts in the hub's zone.
+      await page.goto(`${originOf(BETA)}/events/new`);
+      await expect(page.getByRole("combobox", { name: "Time zone" })).toHaveValue("America/New_York");
+
+      // Settings → Identity: the zone is only inferred, and one press confirms it.
+      await page.goto(`${originOf(BETA)}/admin/settings/identity`);
+      const note = page.getByTestId("zone-inferred-note");
+      await expect(note).toContainText("Using Eastern time from your place; confirm or change it.");
+      const select = page.locator("select").filter({ has: page.locator('option[value="America/New_York"]') }).first();
+      await expect(select).toHaveValue("");
+      await note.getByRole("button", { name: "Confirm Eastern time" }).click();
+      await expect(select).toHaveValue("America/New_York");
+      await expect(note).toHaveCount(0);
+    } finally {
+      await setZone(request, BETA, ZONE);
+    }
+  });
+});

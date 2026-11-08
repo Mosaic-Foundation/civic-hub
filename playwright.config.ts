@@ -56,7 +56,7 @@ export default defineConfig({
     {
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
-      testMatch: /(legalEditor|adminRail|threeColumns)\.spec\.ts/,
+      testMatch: /(legalEditor|adminRail|threeColumns|events)\.spec\.ts/,
     },
     // Uncomment to add more browsers:
     // {
