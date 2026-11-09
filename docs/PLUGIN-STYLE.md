@@ -83,6 +83,10 @@ page or a feed card; on the server, `hubContext().timeZone`. Both are the hub's 
 UTC, so never write "UTC" yourself. A new item's default zone is the hub's. Where a reader's own clock differs, a
 quieter "Your time: …" may follow.
 
+To choose a zone, use `TimeZoneSelect`: seven zones in plain words, then "More time zones…" for every zone. Put the
+hub's own first, as the default, through `first`, e.g. `first={[{ value: hubTimeZone(), label: "Eastern Time, the
+hub's own" }]}`. Hub settings → Identity uses the same control.
+
 The calendar views work in calendar days (`"YYYY-MM-DD"`). Work out which
 day each item falls on in the zone you mean, with `dayKey(iso, zone)`, and
 the grid never meets a time zone. Weeks start on Monday, as the date picker's

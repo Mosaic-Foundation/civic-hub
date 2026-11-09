@@ -87,6 +87,18 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Events 0.4.1: a short time zone list (2026-11-08)
+
+- **Unit:** `ui/src/kit/TimeZoneSelect.test.tsx` (4): the seven zones and "More time zones…"; a page's own first
+  choice, not repeated; a saved zone off the list is kept; "More time zones…" opens every zone and keeps the choice.
+  Unit suite 2,679 passed.
+- **Playwright** (`events.spec.ts`, Chromium and WebKit, 58 passed): the hub's clock test checks the Events form's
+  list (the hub's own first), opens "More time zones…" and chooses Asia/Tokyo. It also checks Identity's list
+  ("Not set (Eastern, from your place)" first). Screenshots 10 of 10, unchanged.
+- **Conformance:** 34 passed (`catalog:add`).
+
+---
+
 ## Events 3: the kit's page patterns, Events 0.4.0 (2026-11-08)
 
 - **Unit:**

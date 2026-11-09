@@ -4,6 +4,29 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Events 0.4.1: a short time zone list — 2026-11-08
+
+- **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. The one migration is the Events 0.4.1
+  catalog entry (`20261109023207_catalog_civic_event_0_4_1.sql`, required). Adam approves Events 0.4.1 in dev's
+  console. The 0.4.0 entry was already written, applied and approved, so this is one more entry, not a change to it.
+- **Built (Adam's ask before the production release):**
+  - **The kit's `TimeZoneSelect`** (`ui/src/kit/TimeZoneSelect.tsx`, the list in `timeZones.ts`, exported through
+    `@civic-social/plugin-sdk/ui`). It shows Eastern, Central, Mountain, Pacific, Alaska, Hawaii and Arizona, then
+    "More time zones…", which opens every zone the browser knows (UTC among them). It opens the list straight away
+    where the browser allows it.
+  - A page puts its own choices first through `first`. A saved zone that is not on the short list stays as a choice
+    of its own.
+  - **The Events form:** "Eastern Time, the hub's own" is first and the default. The hint no longer repeats it.
+  - **Settings → Identity:** "Not set (Eastern, from your place)" is first, then the same list. The inferred note and
+    Confirm are unchanged.
+- **Not changed:** the console's Create hub and the start page keep their own dropdown
+  (`ui/src/console/TimeZoneSelect.tsx`, the US zones and then every other zone).
+- **Before production:** Floyd's zone is set (Adam, 2026-11-08). `release.sh prod` applies both Events entries
+  (0.4.0 and 0.4.1), and both wait in production's console. Approve them in order, 0.4.0 and then 0.4.1. 0.4.1 is
+  the one the code is.
+
+---
+
 ## Events 3: the kit's page patterns, the plugin rule, Events 0.4.0 — 2026-11-08
 
 - **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. The one migration is the Events 0.4.0
@@ -67,7 +90,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 - Lesson recorded: commit `catalog:add` in the same push as any change under `packages/`.
 
 **Open:**
-- Adam approves Events 0.4.0 in dev's console, then re-runs Smoke (or waits for the next deploy).
+- ~~Adam approves Events 0.4.0 in dev's console~~ Done; Smoke 30 passed.
 - To push: the ADR-018 amendment, committed in the meta-repo as `c0b8a02` (with the earlier ADR-018/019 commits, if
   they are not pushed yet).
 - Reports: `~/Documents/Mosaic/0 Management/Civic Social/Events-3-Session-Report-2026-11-08.md` and
