@@ -4,11 +4,28 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The console's and start page's zone dropdown on the kit — 2026-11-09
+
+- **Dev:** this entry's commit, deployed by the push. Not production. No migration, no package changed, nothing to
+  approve.
+- **Built:** `ui/src/console/TimeZoneSelect.tsx` is now a wrapper over the kit's `TimeZoneSelect`, so the console's
+  Create hub and the start page show the same seven zones and "More time zones…" as the Events form and Identity.
+  The place's suggestion is still shown and saved until something else is chosen; one off the short list (Detroit,
+  Boise) stays as a choice of its own. "Choose…" shows only when there is no suggestion.
+- **The console's import rule** (`ui/eslint.config.js`) has a fifth exception, `kit/TimeZoneSelect`: it holds no hub
+  state and imports only the kit's zone list.
+- **Tests:** the start page E2E checks the short list.
+- **Left as is:** `US_TIME_ZONES` stays in `src/shared/stateTimeZones.ts` (the server's zone words read it), and
+  `otherTimeZones` with its unit test.
+
+---
+
 ## Events 0.4.1: a short time zone list — 2026-11-08
 
-- **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. The one migration is the Events 0.4.1
-  catalog entry (`20261109023207_catalog_civic_event_0_4_1.sql`, required). Adam approves Events 0.4.1 in dev's
-  console. The 0.4.0 entry was already written, applied and approved, so this is one more entry, not a change to it.
+- **Dev and production:** at `ac2b4c4`, approved in both consoles. Production was released by Adam on 2026-11-08
+  (2 migrations, the 0.4.0 and 0.4.1 entries; 9 of 9 mounted). The 0.4.0 entry may still show as pending in
+  production's console; nothing runs on it. The 0.4.0 entry was already applied and approved on dev, so 0.4.1 is one
+  more entry, not a change to it.
 - **Built (Adam's ask before the production release):**
   - **The kit's `TimeZoneSelect`** (`ui/src/kit/TimeZoneSelect.tsx`, the list in `timeZones.ts`, exported through
     `@civic-social/plugin-sdk/ui`). It shows Eastern, Central, Mountain, Pacific, Alaska, Hawaii and Arizona, then
@@ -19,11 +36,8 @@ Updated after every Claude Code session. Records what was built, what's incomple
   - **The Events form:** "Eastern Time, the hub's own" is first and the default. The hint no longer repeats it.
   - **Settings → Identity:** "Not set (Eastern, from your place)" is first, then the same list. The inferred note and
     Confirm are unchanged.
-- **Not changed:** the console's Create hub and the start page keep their own dropdown
-  (`ui/src/console/TimeZoneSelect.tsx`, the US zones and then every other zone).
-- **Before production:** Floyd's zone is set (Adam, 2026-11-08). `release.sh prod` applies both Events entries
-  (0.4.0 and 0.4.1), and both wait in production's console. Approve them in order, 0.4.0 and then 0.4.1. 0.4.1 is
-  the one the code is.
+- **Then:** the console's Create hub and the start page moved onto it on 2026-11-09 (the entry above).
+- **Floyd's zone** was set by Adam before the release.
 
 ---
 

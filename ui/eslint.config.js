@@ -98,7 +98,10 @@ export default defineConfig([
         // holds no hub state either (operations shell). The fourth is the
         // feature packages' console views (config/featureConsole.ts, ADR-016),
         // which import the console's own types and their feature's plain data.
-        patterns: [{ regex: '^\\.\\./(?!\\.\\./\\.\\./src/shared/|\\.\\./\\.\\./config/featureConsole$|components/Modal$|services/errorReporter$)', message: 'The console stands alone: it imports nothing from the hub app (src/shared/, components/Modal, services/errorReporter and the features\' console views excepted).' }],
+        // The fifth is the kit's TimeZoneSelect (kit/TimeZoneSelect), which
+        // holds no hub state and imports only the kit's zone list, so every
+        // zone choice in the hub and the console reads alike (2026-11-09).
+        patterns: [{ regex: '^\\.\\./(?!\\.\\./\\.\\./src/shared/|\\.\\./\\.\\./config/featureConsole$|components/Modal$|services/errorReporter$|kit/TimeZoneSelect$)', message: 'The console stands alone: it imports nothing from the hub app (src/shared/, components/Modal, services/errorReporter, kit/TimeZoneSelect and the features\' console views excepted).' }],
       }],
     },
   },

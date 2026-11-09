@@ -102,7 +102,17 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   await expect(page.getByLabel("Hub name")).toHaveAttribute("placeholder", /Pulaski/);
   // The time zone is a dropdown, showing the state's zone until another is chosen.
   await expect(page.getByLabel("Time zone")).toHaveValue("America/New_York");
-  await expect(page.getByLabel("Time zone").locator("option", { hasText: "Pacific (Los Angeles)" })).toHaveCount(1);
+  // The kit's short list (2026-11-09): seven zones, then "More time zones…".
+  await expect(page.getByLabel("Time zone").locator("option")).toHaveText([
+    "Eastern",
+    "Central",
+    "Mountain",
+    "Pacific",
+    "Alaska",
+    "Hawaii",
+    "Arizona",
+    "More time zones…",
+  ]);
   const slug = `e2e-start-${run}`;
   await page.locator("#st-slug").fill(slug);
   await expect(page.getByText(".localhost")).toBeVisible();

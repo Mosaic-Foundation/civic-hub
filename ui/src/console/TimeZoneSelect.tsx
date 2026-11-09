@@ -1,10 +1,12 @@
-// A time zone dropdown (2026-10-08): the US zones in plain words first, then
-// every other zone. Shared by the console's Create hub and the start page.
+// A time zone dropdown for the console's Create hub and the start page. It is
+// the kit's TimeZoneSelect (Events 0.4.1, Adam 2026-11-09), so every zone
+// choice reads the same: seven zones in plain words, then "More time zones…".
 // `value` is what was chosen; until something is, the dropdown shows
-// `suggestion` (from the place, or the browser) and that is what is saved.
+// `suggestion` (from the place, or the browser) and that is what is saved. A
+// suggestion off the short list (Detroit, Boise) is kept as a choice of its own.
 
 import { NO_FILL } from "./noFill";
-import { US_TIME_ZONES, otherTimeZones } from "../../../src/shared/stateTimeZones";
+import { TimeZoneSelect as KitTimeZoneSelect } from "../kit/TimeZoneSelect";
 
 export function TimeZoneSelect({
   value,
@@ -19,22 +21,13 @@ export function TimeZoneSelect({
 }) {
   const shown = value || suggestion;
   return (
-    <select {...NO_FILL} name="cs-tz" id={id} value={shown} onChange={(e) => onChange(e.target.value)}>
-      {!shown && <option value="">Choose…</option>}
-      <optgroup label="United States">
-        {US_TIME_ZONES.map((z) => (
-          <option key={z.id} value={z.id}>
-            {z.label}
-          </option>
-        ))}
-      </optgroup>
-      <optgroup label="Everywhere else">
-        {otherTimeZones(shown).map((z) => (
-          <option key={z} value={z}>
-            {z.replace(/_/g, " ")}
-          </option>
-        ))}
-      </optgroup>
-    </select>
+    <KitTimeZoneSelect
+      {...NO_FILL}
+      name="cs-tz"
+      id={id}
+      value={shown}
+      onChange={onChange}
+      first={shown ? [] : [{ value: "", label: "Choose…" }]}
+    />
   );
 }
