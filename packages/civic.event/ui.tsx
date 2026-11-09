@@ -865,7 +865,7 @@ function When({
       <Field
         label="Time zone"
         htmlFor="ev-zone"
-        hint={zone === hubZone ? `The hub's own (${zoneWords(zone)}). Choose another only for an event somewhere else.` : "The times above are in this zone. The calendar shows them in the hub's."}
+        hint={zone === hubZone ? "Choose another only for an event somewhere else." : "The times above are in this zone. The calendar shows them in the hub's."}
       >
         <TimeZoneSelect
           id="ev-zone"
