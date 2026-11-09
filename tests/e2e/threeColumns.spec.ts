@@ -9,9 +9,11 @@
  *    (Adam, after dev). Left column is the same page without the right column.
  *    The current row is a notch: it runs out to the card's right edge, open
  *    there, its wash flaring into the edge above and below (Adam, 2026-11-08).
- * 8. The cards: Coming up (the next events and closing dates however far
- *    out, date first, three, then "See all events"; Adam after dev), the latest
- *    announcements, About. A card with nothing to show is not drawn.
+ * 8. The cards: Coming up (the calendar's next events however far out, date
+ *    first, three, then "See all events"; Adam after dev; events only since
+ *    Events 4, 2026-11-09), the latest announcements, About. A card with
+ *    nothing to show is not drawn. A vote about to close is a "closing soon"
+ *    card in the feed instead.
  * 9. Appearance → Right column: each card switched on or off, put in order by
  *    dragging or by Up and Down, saved as one setting.
  * 10. Below 1280px the right column goes, on every page; a phone is the
@@ -26,7 +28,7 @@
 
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import { storedSetting } from "../fixtures/adminSession.js";
-import { adminEmailFor, hubId, liveVote, run, session, visitAs } from "./actors";
+import { adminEmailFor, hubId, liveVote, run, session, upcomingEvent, visitAs } from "./actors";
 import { E2E_API_BASE as API } from "./hubApi";
 
 const WIDE = { width: 1440, height: 900 };
@@ -37,6 +39,7 @@ let hub = "";
 let adminToken = "";
 let before: { layout?: string; cards?: string } = {};
 const voteTitle = `Three columns vote ${run}`;
+const eventTitle = `Three columns event ${run}`;
 
 async function setTheme(request: APIRequestContext, values: Record<string, string>) {
   const res = await request.put(`${API}/admin/hub/settings`, {
@@ -59,7 +62,8 @@ test.beforeAll(async ({ request }) => {
   hub = await hubId(request);
   adminToken = (await session(hub, adminEmailFor(hub))).token;
   before = { layout: await storedSetting(hub, "nav.layout"), cards: await storedSetting(hub, "nav.aside_cards") };
-  // Something closing within the fortnight: Coming up always has a row.
+  // An event ahead, so Coming up has a row; a vote open for a day, so it closes within 48 hours.
+  await upcomingEvent(request, adminToken, eventTitle);
   await liveVote(request, adminToken, voteTitle);
 });
 
@@ -73,14 +77,21 @@ test("three columns at full width: a card on the left, the feed centred, the car
   await visitAs(page, adminToken);
   await page.goto("/");
   await expect(aside(page)).toBeVisible();
-  // Coming up: dated rows, earliest first, five at most. The vote this spec
-  // opened closes within the fortnight, so the card has a row; earlier runs'
-  // votes may close sooner and fill it, so the row is any "… closes" one.
+  // Coming up: the calendar's events, dated, earliest first, three at most.
+  // The event this spec made is three days out; earlier runs' events may be
+  // sooner and fill the card. No closing date is in it (Events 4).
   const coming = aside(page).getByRole("region", { name: "Coming up" });
   const rows = coming.getByRole("listitem");
-  await expect(rows.first()).toContainText(/closes|Event/);
   await expect(rows.first().locator(".aside-date")).toBeVisible();
   expect(await rows.count()).toBeLessThanOrEqual(3);
+  await expect(coming).not.toContainText(voteTitle);
+  await expect(coming).not.toContainText(/closes/i);
+  // The vote, open for a day, is a closing-soon card in the feed, with its type and a link to it.
+  const closingCard = page.locator("article", { hasText: voteTitle }).filter({ has: page.getByTestId("closing-soon") });
+  await expect(closingCard).toHaveCount(1);
+  await expect(closingCard.getByTestId("closing-soon")).toHaveText(/^Closes (today|tomorrow) at \d{1,2}:\d{2} [AP]M$/);
+  await expect(closingCard.getByTestId("feed-type-pill")).toHaveText("Vote");
+  await expect(closingCard.getByRole("link")).toHaveAttribute("href", /^\/process\//);
   // Under the rows, the way to the whole calendar while Events is on.
   const allEvents = coming.getByRole("link", { name: "See all events" });
   if (await allEvents.count()) await expect(allEvents).toHaveAttribute("href", "/events");

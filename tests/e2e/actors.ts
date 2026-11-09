@@ -106,3 +106,41 @@ export async function closeAsAdmin(
 ): Promise<void> {
   await request.post(`${API}/process/${id}/action`, { headers: auth(adminToken), data: { type, payload: { note } } });
 }
+
+/**
+ * An event on the hub's calendar, `daysAhead` days from now, for an hour,
+ * published at once by the admin (Events 4: Coming up is the calendar's
+ * events only, so a spec that needs the card makes one). Turns the Events
+ * plugin on first, as events.spec.ts does.
+ */
+export async function upcomingEvent(
+  request: APIRequestContext,
+  adminToken: string,
+  title: string,
+  daysAhead = 3,
+): Promise<string> {
+  const h = auth(adminToken);
+  const on = await request.post(`${API}/admin/hub/plugins/events/install`, { headers: h, data: {} });
+  if (!on.ok()) throw new Error(`events install: ${on.status()} ${await on.text()}`);
+  const draft = await request.post(`${API}/calendar/drafts`, { headers: h, data: {} });
+  if (draft.status() !== 201) throw new Error(`event draft: ${draft.status()} ${await draft.text()}`);
+  const { id } = (await draft.json()) as { id: string };
+  const start = new Date(Date.now() + daysAhead * 86_400_000);
+  start.setUTCMinutes(0, 0, 0);
+  const filled = await request.patch(`${API}/calendar/drafts/${id}`, {
+    headers: h,
+    data: {
+      title,
+      description: "An event made by an end-to-end test.",
+      start_time: start.toISOString(),
+      end_time: new Date(start.getTime() + 3_600_000).toISOString(),
+      venue: "Community room",
+      street_address: "1 Example Street",
+      locality: "Exampletown",
+    },
+  });
+  if (!filled.ok()) throw new Error(`event fill: ${filled.status()} ${await filled.text()}`);
+  const submitted = await request.post(`${API}/calendar/drafts/${id}/submit`, { headers: h, data: {} });
+  if (submitted.status() !== 201) throw new Error(`event submit: ${submitted.status()} ${await submitted.text()}`);
+  return ((await submitted.json()) as { process_id: string }).process_id;
+}

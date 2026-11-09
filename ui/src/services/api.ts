@@ -2942,13 +2942,29 @@ export function adminGetHiddenMembers(): Promise<{ hidden: Array<Member & { join
 
 /** GET /api/aside: the right column's facts (src/services/aside.ts; ADR-019). */
 export interface AsideFacts {
-  deadlines: Array<{ process_id: string; type: string; title: string; closes_at: string; url: string; sample?: true }>;
   announcements: Array<{ process_id: string; title: string; published_at: string; url: string; sample?: true }>;
   about: { member_count: number | null };
 }
 
 export function getAside(): Promise<AsideFacts> {
   return request("GET", "/aside");
+}
+
+/** An open process about to close, as GET /api/feed/closing serves it (Events 4): a "closing soon" feed card. */
+export interface ClosingSoonRow {
+  process_id: string;
+  type: string;
+  title: string;
+  closes_at: string;
+  /** When it entered the window: where the card sits in the feed. */
+  since: string;
+  url: string;
+  sample?: true;
+}
+
+export async function getClosingSoon(): Promise<ClosingSoonRow[]> {
+  const body = await request<{ closing: ClosingSoonRow[] }>("GET", "/feed/closing");
+  return body.closing ?? [];
 }
 
 /** One event on the hub's calendar, as GET /calendar/events serves it (the Events plugin's). */

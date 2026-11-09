@@ -7,6 +7,8 @@ import {
   type CivicEvent,
   type FeedProcessMeta,
   type FeedSurface,
+  type ClosingSoonRow,
+  getClosingSoon,
   getFeed,
 } from "../services/api";
 import {
@@ -21,6 +23,10 @@ import FeedPost, {
 } from "./FeedPost";
 import { eventProcessType, eventToPost } from "./feedPostModel";
 import { useHub } from "../config/hub";
+import ClosingSoonPost from "./ClosingSoonPost";
+import { processTypes } from "../config/navigation";
+import { CALENDAR_PLUGIN } from "../aside/useAsideData";
+import { closingShownIn, withClosing } from "./closingSoon";
 import "./Feed.css";
 
 /**
@@ -84,6 +90,24 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
   // Bumped on every filter change, so a page that arrives for the old
   // filter is dropped.
   const generation = useRef(0);
+
+  // What is about to close (Events 4): set into the feed by when each entered
+  // its 48 hours, in All and Activity. Read once; a failed read shows the
+  // feed without them. `now` is read with them: the cards don't tick.
+  const showClosing = closingShownIn(surface);
+  const [closing, setClosing] = useState<{ rows: ClosingSoonRow[]; now: number }>({ rows: [], now: 0 });
+  useEffect(() => {
+    if (!showClosing) return;
+    let live = true;
+    void cachedRead("feed|closing", () => getClosingSoon())
+      .catch(() => [] as ClosingSoonRow[])
+      .then((rows) => {
+        if (live) setClosing({ rows, now: Date.now() });
+      });
+    return () => {
+      live = false;
+    };
+  }, [showClosing]);
 
   // One page of /api/feed, skipping over pages that came back empty.
   // Perf pass phase 2: the server batches every card's metadata into the
@@ -336,6 +360,23 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
 
   const hasMore = nextCursor !== null;
 
+  // An event's close is its end, not a last chance to take part: the calendar
+  // and Coming up have it (as the right column left it out before).
+  const calendarTypes = new Set(processTypes().filter((t) => t.plugin === CALENDAR_PLUGIN).map((t) => t.type));
+  const rows = useMemo(
+    () =>
+      withClosing(
+        posts.map((post) => ({ post, at: post.timestamp })),
+        showClosing
+          ? closing.rows.filter((c) => hub.plugins.typeEnabled(c.type) && !calendarTypes.has(c.type))
+          : [],
+        { now: closing.now, hasMore },
+      ),
+    // hub.config: as visibleEvents above, an admin's Settings save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [posts, closing, showClosing, hasMore, hub, hub.config],
+  );
+
   if (loading) {
     return (
       <section className="feed" aria-busy="true">
@@ -354,7 +395,7 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
     );
   }
 
-  if (posts.length === 0) {
+  if (rows.length === 0) {
     // Distinguish "feed is empty" from "filter matched nothing". The
     // first is the bootstrap state for a fresh hub; the second is a
     // resident's filter selection finding zero posts. The reset action
@@ -392,11 +433,17 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
   return (
     <section className="feed" aria-label="Civic activity feed">
       <ol className="feed-list">
-        {posts.map((post) => (
-          <li key={post.id} className="feed-list-item">
-            <FeedPost post={post} />
-          </li>
-        ))}
+        {rows.map((row) =>
+          row.kind === "post" ? (
+            <li key={row.post.id} className="feed-list-item">
+              <FeedPost post={row.post} />
+            </li>
+          ) : (
+            <li key={`closing:${row.row.process_id}`} className="feed-list-item">
+              <ClosingSoonPost row={row.row} now={closing.now} timeZone={hub.timeZone} />
+            </li>
+          ),
+        )}
       </ol>
       {moreError && (
         <p className="feed-status feed-status-error">

@@ -1,8 +1,9 @@
-// GET /api/aside and the three-column settings (layout session, 2026-11-07;
-// ADR-019). The right column's facts are a read of what the hub already
-// shows: an open process still to close, however far out, earliest first, three
-// at most; not one under review, already past, or another hub's. No
-// account, name or ballot in it. The settings: nav.layout takes
+// GET /api/aside, GET /api/feed/closing and the three-column settings (layout
+// session, 2026-11-07; ADR-019; Events 4, 2026-11-09). The right column's
+// facts are announcements and About: Coming up reads the calendar, and closing
+// dates are the feed's "closing soon" cards. GET /api/feed/closing is an open
+// process closing within 48 hours, earliest first; not one further out, under
+// review, already past, or another hub's. No account, name or ballot in either. The settings: nav.layout takes
 // "three_columns", and nav.aside_cards is a list of { id, shown }, refused
 // when it is anything else.
 //
@@ -15,8 +16,10 @@ import { localRest, mintSession, storedSetting } from "../fixtures/adminSession.
 const FLOYD = "floyd.civic.social";
 const run = Date.now().toString(36);
 const soon = new Date(Date.now() + 2 * 60_000).toISOString();
+const later = new Date(Date.now() + 72 * 3_600_000).toISOString();
 const ids = {
   soon: `proc_as_soon_${run}`,
+  later: `proc_as_later_${run}`,
   past: `proc_as_past_${run}`,
   pending: `proc_as_pending_${run}`,
   athens: `proc_as_athens_${run}`,
@@ -39,6 +42,7 @@ beforeAll(async () => {
   admin = await mintSession("floyd", "admin@example.test");
   before = { layout: await storedSetting("floyd", "nav.layout"), cards: await storedSetting("floyd", "nav.aside_cards") };
   await insert(ids.soon, "floyd", "active", soon);
+  await insert(ids.later, "floyd", "active", later);
   await insert(ids.past, "floyd", "active", new Date(Date.now() - 60_000).toISOString());
   await insert(ids.pending, "floyd", "pending_review", soon);
   await insert(ids.athens, "athens", "active", soon);
@@ -52,24 +56,36 @@ afterAll(async () => {
   }, admin);
 });
 
+describe("GET /api/feed/closing", () => {
+  it("lists what closes within 48 hours, earliest first, and nothing else", async () => {
+    const res = await call("GET", "/api/feed/closing", FLOYD);
+    expect(res.status).toBe(200);
+    const closing = res.body.closing as Array<{ process_id: string; closes_at: string; since: string }>;
+    const listed = closing.map((d) => d.process_id);
+    expect(listed).toContain(ids.soon);
+    for (const id of [ids.later, ids.past, ids.pending, ids.athens]) expect(listed).not.toContain(id);
+    const times = closing.map((d) => d.closes_at);
+    expect([...times].sort()).toEqual(times);
+    const mine = closing.find((d) => d.process_id === ids.soon)!;
+    // Opened inside the window, so it entered it when it opened (just now), not 48 hours before its close.
+    expect(Date.parse(mine.since)).toBeGreaterThan(Date.parse(soon) - 48 * 3_600_000);
+    expect(Date.parse(mine.since)).toBeLessThanOrEqual(Date.now());
+    expect(mine).toEqual({
+      process_id: ids.soon, type: "civic.vote", title: `Aside ${ids.soon}`, closes_at: soon, since: mine.since, url: `/process/${ids.soon}`,
+    });
+  });
+});
+
 describe("GET /api/aside", () => {
-  it("lists what is still to close, earliest first, and nothing else", async () => {
+  it("has no closing dates: Coming up is the calendar's (Events 4)", async () => {
     const res = await call("GET", "/api/aside", FLOYD);
     expect(res.status).toBe(200);
-    const deadlines = res.body.deadlines as Array<{ process_id: string; type: string; closes_at: string; url: string }>;
-    const listed = deadlines.map((d) => d.process_id);
-    expect(listed).toContain(ids.soon);
-    for (const id of [ids.past, ids.pending, ids.athens]) expect(listed).not.toContain(id);
-    expect(deadlines.length).toBeLessThanOrEqual(3);
-    const times = deadlines.map((d) => d.closes_at);
-    expect([...times].sort()).toEqual(times);
-    const mine = deadlines.find((d) => d.process_id === ids.soon)!;
-    expect(mine).toEqual({ process_id: ids.soon, type: "civic.vote", title: `Aside ${ids.soon}`, closes_at: soon, url: `/process/${ids.soon}` });
+    expect(res.body.deadlines).toBeUndefined();
   });
 
   it("serves the same to a signed-out reader, and no account or name", async () => {
     const res = await call("GET", "/api/aside", FLOYD);
-    expect(Object.keys(res.body).sort()).toEqual(["about", "announcements", "deadlines"]);
+    expect(Object.keys(res.body).sort()).toEqual(["about", "announcements"]);
     for (const a of res.body.announcements as Array<Record<string, unknown>>) {
       expect(Object.keys(a).filter((k) => k !== "sample").sort()).toEqual(["process_id", "published_at", "title", "url"]);
     }

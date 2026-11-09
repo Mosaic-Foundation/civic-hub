@@ -100,6 +100,8 @@ test.describe("Feed paging", () => {
 
   async function servePages(page: Page): Promise<Array<string | null>> {
     const cursors: Array<string | null> = [];
+    // Nothing about to close (Events 4's closing-soon cards), so the counts are these pages'.
+    await page.route(/\/feed\/closing/, (route) => route.fulfill({ json: { closing: [] } }));
     await page.route(/\/feed\?/, async (route) => {
       const cursor = new URL(route.request().url()).searchParams.get("cursor");
       cursors.push(cursor);
