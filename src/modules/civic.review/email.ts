@@ -272,6 +272,35 @@ export async function notifyCreatorDeclined(input: {
   });
 }
 
+/**
+ * An admin archived something of the creator's while it was still open
+ * (Adam, 2026-11-09): any type, named from its manifest, with the admin's
+ * reason. Not sent for something already closed, nor when the admin
+ * archived their own.
+ */
+export async function notifyCreatorArchived(input: {
+  creator_email: string;
+  creator_name: string | null;
+  process_type: string;
+  title: string;
+  reason: string;
+}): Promise<void> {
+  const typeLabel = processTypeLabel(input.process_type);
+  const hello = input.creator_name ? `Hi ${input.creator_name},` : "Hi,";
+  await send({
+    to: input.creator_email,
+    subject: `Your ${typeLabel} "${input.title}" was archived`,
+    html: `
+      <p>${esc(hello)}</p>
+      <p>The hub's admins archived your ${typeLabel} <strong>"${esc(input.title)}"</strong> before it ended. It is no longer shown on the hub.</p>
+      <p>Their reason:</p>
+      <blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #555;">${esc(input.reason)}</blockquote>
+      <p>If you think this was a mistake, reply to the hub's admins through Feedback on the hub.</p>
+    `,
+    text: `${hello}\n\nThe hub's admins archived your ${typeLabel} "${input.title}" before it ended. It is no longer shown on the hub.\n\nTheir reason: ${input.reason}\n\nIf you think this was a mistake, reply to the hub's admins through Feedback on the hub.`,
+  });
+}
+
 export async function notifyAdminResubmitted(input: {
   admin_email: string;
   creator_name: string;

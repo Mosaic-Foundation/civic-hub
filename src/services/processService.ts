@@ -83,6 +83,8 @@ import {
 import { defaultJurisdiction } from "../config/hub.js";
 import type { PluginId } from "../models/hubSettings.js";
 import { readAll } from "../db/readAll.js";
+import { getUser } from "../modules/civic.auth/index.js";
+import { notifyCreatorArchived } from "../modules/civic.review/email.js";
 
 /** The hub in scope. Processes are only ever read or written inside one. */
 function db(): HubDb {
@@ -907,6 +909,26 @@ function removalIsPublic(process: Process): boolean {
 
 export const ARCHIVE_REASON_MAX = 500;
 
+/** The statuses in which a process is still running: archiving one tells its creator. */
+const RUNNING_STATUSES: ReadonlySet<string> = new Set(["proposed", "threshold_met", "active"]);
+
+async function tellCreatorArchived(process: Process, previous: string | null, adminId: string, reason: string): Promise<void> {
+  if (!previous || !RUNNING_STATUSES.has(previous) || !process.createdBy || process.createdBy === adminId) return;
+  try {
+    const creator = await getUser(process.createdBy);
+    if (!creator?.email) return;
+    await notifyCreatorArchived({
+      creator_email: creator.email,
+      creator_name: creator.display_name ?? creator.full_name ?? null,
+      process_type: process.definition.type,
+      title: process.title,
+      reason,
+    });
+  } catch (err) {
+    console.warn(`[archive] could not tell the creator of ${process.id}: ${(err as Error).message}`);
+  }
+}
+
 export async function archiveProcess(
   id: string,
   adminId: string,
@@ -987,6 +1009,10 @@ export async function archiveProcess(
   process.state = nextState;
   process.updatedAt = archivedAt.updated_at;
   process.version = archivedAt.version;
+
+  // Its creator is told when it was still running (Adam, 2026-11-09): any
+  // type, best-effort, after the archive stands.
+  await tellCreatorArchived(process, archive.previous_status, adminId, trimmedReason);
 
   // Let the handler sync storage it owns (a child table's status column, a
   // status kept inside state). Best-effort by design — see ProcessHandler
