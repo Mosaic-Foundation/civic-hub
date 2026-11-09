@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { handleGetFeed, handleGetFeedMeta } from "../controllers/feedController.js";
+import { handleGetFeed, handleGetFeedClosing, handleGetFeedMeta } from "../controllers/feedController.js";
 
 const router = Router();
 
@@ -7,5 +7,7 @@ const router = Router();
 router.get("/", handleGetFeed);
 // The hub's facts and card metadata for a feed read off /events.
 router.get("/meta", handleGetFeedMeta);
+// What is about to close: the feed's "closing soon" cards (Events 4).
+router.get("/closing", handleGetFeedClosing);
 
 export default router;

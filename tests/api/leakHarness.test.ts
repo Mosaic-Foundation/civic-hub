@@ -471,6 +471,9 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /feed/meta": { query: ["", "?process=" /* + every floyd id, below */] },
   "GET /api/feed/": { query: ["", "?limit=200"] },
   "GET /api/feed/meta": { query: ["", "?process=" /* + every floyd id, below */] },
+  // The feed's closing-soon cards (Events 4): open processes' titles and close times, the hub's own.
+  "GET /feed/closing": {},
+  "GET /api/feed/closing": {},
   // The three-column layout's right column (ADR-019): titles, dates and a count, no one's account.
   "GET /aside/": {},
   "GET /api/aside/": {},

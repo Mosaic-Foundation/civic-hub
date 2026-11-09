@@ -487,6 +487,7 @@ export interface OpenProcessRow {
   state: Record<string, unknown> | null;
   is_sample: boolean;
   added_in_demo: boolean;
+  created_at: string | null;
 }
 
 /**
@@ -497,7 +498,7 @@ export async function openProcessRows(types: readonly string[], limit: number): 
   if (types.length === 0) return [];
   return db()
     .from("processes")
-    .select<OpenProcessRow>("id, type, title, state, is_sample, added_in_demo")
+    .select<OpenProcessRow>("id, type, title, state, is_sample, added_in_demo, created_at")
     .in("type", [...types])
     .eq("status", "active")
     .order("created_at", { ascending: false })

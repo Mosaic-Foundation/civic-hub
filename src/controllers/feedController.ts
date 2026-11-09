@@ -22,6 +22,7 @@
 
 import { ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
+import { readClosingSoon } from "../services/closingSoon.js";
 import { buildFeedProcessMeta, processMetaFor } from "../services/feedMeta.js";
 import { isProcessHistoryServable } from "../services/processService.js";
 import { resolveCaller } from "../middleware/auth.js";
@@ -145,4 +146,14 @@ export const handleGetFeedMeta = route(async (req, res) => {
     processes[id] = "hidden" in fact ? fact : { ...fact, ...(meta[id] ? { meta: meta[id] } : {}) };
   }
   res.json({ processes });
+});
+
+/**
+ * GET /api/feed/closing: the open processes about to close (Events 4,
+ * services/closingSoon.ts), for the feed's "closing soon" cards. Built from
+ * each process's close time, not an event: /events is unchanged. The same for
+ * every reader.
+ */
+export const handleGetFeedClosing = route(async (_req, res) => {
+  res.json({ closing: await readClosingSoon() });
 });
