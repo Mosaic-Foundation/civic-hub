@@ -108,7 +108,6 @@ export function Checkbox({
 
 export { Switch } from "./Switch";
 export { TimeZoneSelect, type TimeZoneSelectProps } from "./TimeZoneSelect";
-export { SHORT_TIME_ZONES, allTimeZones, timeZoneLabel } from "./timeZones";
 export { SortableList, type SortableItem } from "./SortableList";
 
 /** One choice from a few, each a card with a line about it. */
