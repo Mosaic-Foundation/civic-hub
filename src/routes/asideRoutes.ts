@@ -3,7 +3,7 @@ import { handleGetAside } from "../controllers/asideController.js";
 
 const router = Router();
 
-// The three-column layout's right column (ADR-019): deadlines, announcements, About.
+// The three-column layout's right column (ADR-019): announcements and About.
 router.get("/", handleGetAside);
 
 export default router;

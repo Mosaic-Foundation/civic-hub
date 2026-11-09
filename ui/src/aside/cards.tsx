@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { Button, Card } from "../kit";
 import { useHub } from "../config/hub";
 import { useAuth } from "../context/authState";
-import { processTypes, typeDisplay } from "../config/navigation";
+import { processTypes } from "../config/navigation";
 import { detailPathOf } from "../processes/display";
 import AuthModal from "../components/AuthModal";
 import { localShortDate } from "../utils/dates";
@@ -29,16 +29,14 @@ function AsideCard({ id, title, children }: { id: string; title: string; childre
 export function ComingUpCard({ data }: { data: AsideData }) {
   const hub = useHub();
   const calendar = processTypes().filter((t) => t.plugin === CALENDAR_PLUGIN);
-  const calendarTypes = calendar.map((t) => t.type);
-  const eventType = calendarTypes[0];
+  const eventType = calendar[0]?.type;
   // The calendar's own page, while its plugin is on (data.events is null when it is off).
   const allEvents = data.events !== null ? calendar.find((t) => t.section)?.section?.path : undefined;
   // Read when the data arrives; the rows don't tick while the page is open.
   const [now] = useState(() => Date.now());
+  // The calendar's events only (Events 4): closing dates are feed cards now.
   const rows = comingUpRows({
-    facts: data.facts,
     events: data.events,
-    calendarTypes,
     eventPath: (id) => (eventType ? detailPathOf(eventType, id) : `/process/${id}`),
     hubTimeZone: hub.timeZone,
     now,
@@ -49,7 +47,6 @@ export function ComingUpCard({ data }: { data: AsideData }) {
       <ul className="aside-rows">
         {rows.map((r) => {
           const tile = dateTile(r.at, r.timeZone);
-          const what = r.kind === "event" ? "Event" : `${typeDisplay(r.type)?.label ?? "Process"} closes`;
           return (
             <li key={r.key}>
               <Link to={r.url} className="aside-row">
@@ -63,7 +60,7 @@ export function ComingUpCard({ data }: { data: AsideData }) {
                     <span className="visually-hidden">
                       {tile.month} {tile.day},{" "}
                     </span>
-                    {what} · {timeOfDay(r.at, r.timeZone)}
+                    {timeOfDay(r.at, r.timeZone)}
                   </span>
                 </span>
               </Link>

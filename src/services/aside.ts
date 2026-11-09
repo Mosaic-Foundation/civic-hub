@@ -2,12 +2,9 @@
 // GET /api/aside serves the three-column layout's cards. A read of what the
 // hub already shows, nothing new:
 //
-//   - deadlines: open processes that have not closed yet, however far out
-//     (Adam, 2026-11-07, after dev: no window), from each type's declared deadline (its descriptor's `deadline.source`, read
-//     as the process's own page reads `ends_at`), earliest first. Every type
-//     with a deadline whose plugin is on; no list here names one. Events come
-//     to Coming up from the calendar (GET /calendar/events), and the column
-//     leaves out the rows it has from there (ui/src/aside/ComingUp.tsx).
+//   - Coming up is the calendar's events only (Events 4, Adam, 2026-11-09),
+//     read from GET /calendar/events; it has nothing here. Closing dates moved
+//     to the feed, as "closing soon" cards (services/closingSoon.ts).
 //   - announcements: the newest few announcement cards, as the feed's
 //     Announcements filter reads them (services/feedPage.ts), a removed one
 //     left out as the feed leaves it out.
@@ -18,31 +15,15 @@
 // The same for every reader but an admin, who also sees restricted
 // announcements, as on the feed. No account, name or ballot is in it.
 
-import { getManifest, getManifests } from "../processes/registry.js";
-import { isProcessTypeEnabled } from "./pluginGate.js";
-import { openProcessRows, processTypesAndTitles } from "./processRows.js";
-import { readDeadline } from "./closeEarly.js";
+import { getManifest } from "../processes/registry.js";
+import { processTypesAndTitles } from "./processRows.js";
 import { readFeedPage } from "./feedPage.js";
 import { buildFeedProcessMeta } from "./feedMeta.js";
 import { memberVisibility } from "./members.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
-import type { Process } from "../models/process.js";
 
-/** Rows in Coming up, events included: three, so Announcements stays in view (Adam, 2026-11-07). */
-export const ASIDE_ROWS = 3;
 /** Announcements in their card. */
 export const ASIDE_ANNOUNCEMENTS = 3;
-/** Open processes read for their deadlines, at most. */
-const OPEN_READ_MAX = 500;
-
-export interface AsideDeadline {
-  process_id: string;
-  type: string;
-  title: string;
-  closes_at: string;
-  url: string;
-  sample?: true;
-}
 
 export interface AsideAnnouncement {
   process_id: string;
@@ -53,53 +34,17 @@ export interface AsideAnnouncement {
 }
 
 export interface AsideFacts {
-  deadlines: AsideDeadline[];
   announcements: AsideAnnouncement[];
   about: { member_count: number | null };
 }
 
-export async function readAside(opts: { isAdmin: boolean; now?: number }): Promise<AsideFacts> {
-  const now = opts.now ?? Date.now();
-  const [deadlines, announcements, memberCount] = await Promise.all([
-    readDeadlines(now),
-    readAnnouncements(opts.isAdmin),
-    readMemberCount(),
-  ]);
-  return { deadlines, announcements, about: { member_count: memberCount } };
+export async function readAside(opts: { isAdmin: boolean }): Promise<AsideFacts> {
+  const [announcements, memberCount] = await Promise.all([readAnnouncements(opts.isAdmin), readMemberCount()]);
+  return { announcements, about: { member_count: memberCount } };
 }
 
 function detailUrl(type: string, id: string): string {
   return getManifest(type)?.detailPath(id) ?? `/process/${id}`;
-}
-
-async function readDeadlines(now: number): Promise<AsideDeadline[]> {
-  const withDeadline = getManifests().filter((m) => m.descriptor.deadline && isProcessTypeEnabled(m.descriptor.type));
-  const rows = await openProcessRows(
-    withDeadline.map((m) => m.descriptor.type),
-    OPEN_READ_MAX,
-  );
-  const found = await Promise.all(
-    rows.map(async (row) => {
-      const source = getManifest(row.type)?.descriptor.deadline?.source;
-      if (!source) return null;
-      const due = await readDeadline(source, { id: row.id, state: row.state ?? {} } as Process);
-      const at = due ? Date.parse(due) : NaN;
-      if (!(at > now)) return null;
-      const sample = row.is_sample && !row.added_in_demo;
-      return {
-        process_id: row.id,
-        type: row.type,
-        title: row.title,
-        closes_at: new Date(at).toISOString(),
-        url: detailUrl(row.type, row.id),
-        ...(sample ? { sample: true as const } : {}),
-      };
-    }),
-  );
-  return found
-    .filter((d): d is AsideDeadline => d !== null)
-    .sort((a, b) => a.closes_at.localeCompare(b.closes_at) || a.process_id.localeCompare(b.process_id))
-    .slice(0, ASIDE_ROWS);
 }
 
 async function readAnnouncements(isAdmin: boolean): Promise<AsideAnnouncement[]> {
