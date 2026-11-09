@@ -4,6 +4,29 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Events 0.4.2: add to Google, Apple or Outlook — 2026-11-09
+
+- **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. The one migration is the Events 0.4.2
+  catalog entry (`20261109160414_catalog_civic_event_0_4_2.sql`, required). Events is not mounted on dev until Adam
+  approves 0.4.2 in dev's console.
+- **Why (Adam):** "Add to my calendar" downloaded an .ics, which opened the device's default calendar app, not the
+  one he uses, with no choice of calendar.
+- **Built:** `packages/civic.event/calendarLinks.ts` (pure). "Add to my calendar" on an event's page and "Subscribe
+  in your calendar app" on the Events page are now a fold that opens five links:
+  - **Google Calendar:** the event in Google's "new event" page (UTC times, the event's zone as `ctz`), where the
+    reader picks a calendar and saves. Subscribing goes through `cid=webcal://…`.
+  - **Apple Calendar:** the event's .ics; subscribing is the feed as `webcal://`.
+  - **Outlook.com** and **Outlook (work or school):** Outlook's compose page, or its "add from web" for the feed.
+  - **Another app:** the .ics file, or the feed's address to copy.
+  - The calendar sites open in a new tab. They are plain links the reader's browser opens: the hub calls nobody,
+    and they carry only the event's public details (title, time, place, words, page).
+- **Tests:** `tests/unit/eventsCalendarLinks.test.ts` (7); the Events E2E checks both folds (58 passed, Chromium
+  and WebKit); conformance 34 passed.
+- **Not checked from here:** that each calendar site accepts its link. That needs a real Google and Outlook
+  account, so Adam tries them on dev.
+
+---
+
 ## The console's and start page's zone dropdown on the kit — 2026-11-09
 
 - **Dev:** this entry's commit, deployed by the push. Not production. No migration, no package changed, nothing to
