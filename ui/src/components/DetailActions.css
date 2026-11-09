@@ -20,3 +20,10 @@
 .detail-actions .admin-archive-control {
   margin: 0;
 }
+
+/* The row the framework draws after a page that has none (archiveSlot.tsx),
+   for admins only: a detail page's side padding, none above or below. */
+.detail-actions-host {
+  padding-top: 0;
+  padding-bottom: 0;
+}

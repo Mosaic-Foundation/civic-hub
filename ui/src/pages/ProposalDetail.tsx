@@ -1,5 +1,5 @@
 import { useApi } from "../hooks/useApi";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { getCivicProposal, supportCivicProposal, unsupportCivicProposal, type CivicProposalDetail } from "../services/api";
 import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/authState";
@@ -14,7 +14,6 @@ import RelatedProcesses from "../components/RelatedProcesses";
 import DetailActions from "../components/DetailActions";
 import { CloseEarlyButton, ClosedEarlyNote } from "../components/CloseEarly";
 import { BriefPointer } from "../components/BriefPointer";
-import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
 import RichText from "../components/RichText";
@@ -24,7 +23,6 @@ import { formatDate } from "../utils/dates";
 
 
 export default function ProposalDetail() {
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { actorId } = useAuth();
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } = useRequireAuth();
@@ -237,11 +235,6 @@ export default function ProposalDetail() {
           offer={proposal.early_close}
           noun="proposal"
           onView={(view) => (view ? setProposal(view) : fetchProposal())}
-        />
-        <AdminArchiveButton
-          processId={proposal.id}
-          itemLabel="proposal"
-          onArchived={() => navigate("/propose")}
         />
       </DetailActions>
     </div>

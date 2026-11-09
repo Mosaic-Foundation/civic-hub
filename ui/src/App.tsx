@@ -6,7 +6,9 @@ import { useHub } from "./config/hub";
 import { whenPlugin } from "./config/plugins";
 import { PROCESS_UI } from "./processes";
 import { FEATURE_UI } from "./features";
-import { pluginOfType } from "./processes/display";
+import { detailPathOf, pluginOfType } from "./processes/display";
+import { ArchiveSlotProvider } from "./components/archiveSlot";
+import DetailActions from "./components/DetailActions";
 import ShareBanner from "./components/ShareBanner";
 import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
 import Nav from "./components/Nav";
@@ -110,8 +112,19 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 function processRoutes() {
   return PROCESS_UI.flatMap((ui) => {
     const plugin = pluginOfType(ui.type);
+    // The type's detail page (its manifest's detailPath) carries the
+    // framework's archive control (components/archiveSlot.tsx).
+    const detail = detailPathOf(ui.type, ":id");
     return ui.routes.map((r) => {
-      const page = r.admin ? <AdminGuard>{r.element}</AdminGuard> : r.element;
+      const element =
+        r.path === detail && !r.admin ? (
+          <ArchiveSlotProvider type={ui.type} row={DetailActions}>
+            {r.element}
+          </ArchiveSlotProvider>
+        ) : (
+          r.element
+        );
+      const page = r.admin ? <AdminGuard>{element}</AdminGuard> : element;
       return <Route key={`${ui.type} ${r.path}`} path={r.path} element={r.ungated || !plugin ? page : whenPlugin(plugin, page)} />;
     });
   });

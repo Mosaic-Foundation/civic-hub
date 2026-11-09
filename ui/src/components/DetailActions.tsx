@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { SlotArchiveButton } from "./archiveSlot";
+import { useClaimArchiveSlot } from "./archiveSlotContext";
 import "./DetailActions.css";
 
 /**
@@ -15,11 +17,37 @@ import "./DetailActions.css";
  * itself when nothing rendered (CSS :empty), so a resident sees no stray
  * rule. A type added later puts its own end-of-life action here and gets
  * the same placement.
+ *
+ * Archive is the framework's (archiveSlot.tsx, 2026-11-09): on a type's
+ * detail route this row ends with the archive control, so a page never adds
+ * its own. `host` is the row the framework draws after a page with none.
  */
-export default function DetailActions({ children }: { children: ReactNode }) {
+function Row({ children }: { children?: ReactNode }) {
   return (
     <div className="detail-actions" role="group" aria-label="Manage this item">
       {children}
     </div>
+  );
+}
+
+function PageRow({ children }: { children?: ReactNode }) {
+  const inSlot = useClaimArchiveSlot();
+  return (
+    <Row>
+      {children}
+      {inSlot && <SlotArchiveButton />}
+    </Row>
+  );
+}
+
+export default function DetailActions({ children, host }: { children?: ReactNode; host?: true }) {
+  // The framework's row sits after the page, so it takes a detail page's side
+  // padding to line up with the page's content.
+  return host ? (
+    <div className="detail-page detail-actions-host">
+      <Row>{children}</Row>
+    </div>
+  ) : (
+    <PageRow>{children}</PageRow>
   );
 }

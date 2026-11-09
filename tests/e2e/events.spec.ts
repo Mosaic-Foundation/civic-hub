@@ -467,12 +467,13 @@ for (const vp of VIEWPORTS) {
       await expect(img).toHaveAttribute("alt", "Long tables set for supper");
     });
 
-    test("how long is two selects, hours and quarter hours, linked both ways with Starts and Ends", async ({ page }) => {
+    test("how long is three selects, days, hours and quarter hours, linked both ways with Starts and Ends", async ({ page }) => {
       await residentOn(DEMO, `duration-${vp.label}`, page);
       await page.goto(`${originOf(DEMO)}/events/new`);
       const starts = page.getByRole("textbox", { name: "Starts", exact: true });
       const ends = page.getByRole("textbox", { name: "Ends", exact: true });
       const duration = page.getByRole("group", { name: "Duration", exact: true });
+      const days = duration.getByRole("combobox", { name: "Days" });
       const hours = duration.getByRole("combobox", { name: "Hours" });
       const minutes = duration.getByRole("combobox", { name: "Minutes" });
 
@@ -480,8 +481,10 @@ for (const vp of VIEWPORTS) {
       await expect(ends).toBeVisible();
       const order = await page.locator("#ev-start, #ev-duration, #ev-end").evaluateAll((els) => els.map((el) => el.id));
       expect(order).toEqual(["ev-start", "ev-duration", "ev-end"]);
-      // Hours 0 to 8, minutes in quarters.
-      await expect(hours.locator("option")).toHaveText(["0 h", "1 h", "2 h", "3 h", "4 h", "5 h", "6 h", "7 h", "8 h"]);
+      // Days 0 to 14 (Events 0.4.4: a multi-day event), hours 0 to 23, minutes in quarters.
+      await expect(days.locator("option")).toHaveCount(15);
+      await expect(days.locator("option").nth(1)).toHaveText("1 day");
+      await expect(hours.locator("option")).toHaveText(Array.from({ length: 24 }, (_, h) => `${h} h`));
       await expect(minutes.locator("option")).toHaveText(["0 min", "15 min", "30 min", "45 min"]);
 
       await starts.fill(localTime(5, 18, 0));
@@ -493,6 +496,11 @@ for (const vp of VIEWPORTS) {
       await hours.selectOption("2");
       await minutes.selectOption("30");
       await expect(ends).toHaveValue(localTime(5, 20, 30));
+      // Two days more ends two days later; an end moves the days back.
+      await days.selectOption("2");
+      await expect(ends).toHaveValue(localTime(7, 20, 30));
+      await ends.fill(localTime(5, 20, 30));
+      await expect(days).toHaveValue("0");
 
       // An end moves the duration, to the nearest quarter hour.
       await ends.fill(localTime(5, 21, 15));
@@ -546,6 +554,25 @@ for (const vp of VIEWPORTS) {
       await page.reload();
       await expect(page.getByRole("group", { name: "Show the events as" }).getByRole("button", { name: "Calendar" })).toHaveAttribute("aria-pressed", "true");
       await page.screenshot({ path: test.info().outputPath(`calendar-${vp.label}.png`), fullPage: true });
+    });
+
+    test("an admin can archive an event from its page, the framework's control; a resident sees none", async ({ request, page }) => {
+      const event = await makeEvent(request, DEMO, await maker(`archive-${vp.label}`), `Archive me ${vp.label} ${run}`, localTime(12, 18, 0), localTime(12, 19, 0));
+      await residentOn(DEMO, `archive-reader-${vp.label}`, page);
+      await page.goto(`${originOf(DEMO)}/events/${event.id}`);
+      await expect(page.getByRole("heading", { name: event.title })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Archive event" })).toHaveCount(0);
+
+      await visitAs(page, tokens[DEMO]!.admin);
+      await page.goto(`${originOf(DEMO)}/events/${event.id}`);
+      const open = page.getByRole("button", { name: "Archive event" });
+      await expect(open).toHaveCount(1);
+      await open.click();
+      await page.getByPlaceholder("Reason (for your records)").fill("A test of archiving");
+      await page.getByRole("button", { name: "Yes, archive" }).click();
+      await expect(page).toHaveURL(/\/events$/);
+      const gone = await request.get(`${apiOf(DEMO)}/process/${event.id}`, { headers: headers(DEMO, "") });
+      expect(gone.status()).toBe(404);
     });
 
     test("at its limit, someone not going sees Full with the count", async ({ request, page, browser }) => {

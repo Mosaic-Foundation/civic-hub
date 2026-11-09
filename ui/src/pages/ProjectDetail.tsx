@@ -19,7 +19,6 @@ import CommunityInputPanel from "../components/CommunityInputPanel";
 import RelatedProcesses from "../components/RelatedProcesses";
 import { BriefPointer } from "../components/BriefPointer";
 import "./ProjectDetail.css";
-import AdminArchiveButton from "../components/AdminArchiveButton";
 import DetailActions from "../components/DetailActions";
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
@@ -340,11 +339,6 @@ export default function ProjectDetail() {
           </button>
         )}
         {complete.error && <p className="form-error" role="alert">{complete.error}</p>}
-        <AdminArchiveButton
-          processId={project.id}
-          itemLabel="project"
-          onArchived={() => navigate("/projects")}
-        />
       </DetailActions>
     </div>
   );

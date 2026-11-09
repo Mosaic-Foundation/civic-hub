@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useApi } from "../hooks/useApi";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/authState";
 import {
@@ -20,13 +20,11 @@ import DetailActions from "../components/DetailActions";
 import { CloseEarlyButton, ClosedEarlyNote } from "../components/CloseEarly";
 import { BriefPointer } from "../components/BriefPointer";
 import "./DeliberationDetail.css";
-import AdminArchiveButton from "../components/AdminArchiveButton";
 import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
 
 export default function DeliberationDetail() {
   const [participatedState, setParticipated] = useState(false);
-  const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const { id } = useParams<{ id: string }>();
   // Back in view after a while: read it again (a second tab catches up).
@@ -154,11 +152,6 @@ export default function DeliberationDetail() {
           offer={process.early_close}
           noun="conversation"
           onView={(view) => (view ? setProcess(view) : void reload())}
-        />
-        <AdminArchiveButton
-          processId={process.process_id}
-          itemLabel="conversation"
-          onArchived={() => navigate("/deliberations")}
         />
       </DetailActions>
     </div>

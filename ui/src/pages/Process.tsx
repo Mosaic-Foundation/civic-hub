@@ -1,5 +1,5 @@
 import { useApi } from "../hooks/useApi";
-import { useParams, useNavigate, Navigate } from "react-router-dom";
+import { useParams, Navigate } from "react-router-dom";
 import { getProcessState, type ProcessState, type VoteState } from "../services/api";
 import { useAuth } from "../context/authState";
 import { useRequireAuth } from "../hooks/useRequireAuth";
@@ -14,7 +14,6 @@ import RelatedProcesses from "../components/RelatedProcesses";
 import DetailActions from "../components/DetailActions";
 import { CloseEarlyButton, ClosedEarlyNote } from "../components/CloseEarly";
 import { BriefPointer } from "../components/BriefPointer";
-import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
 import RichText from "../components/RichText";
@@ -27,7 +26,6 @@ import { formatDate } from "../utils/dates";
 export default function Process() {
   const hub = useHub();
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { actorId } = useAuth();
   const { showAuthModal, closeAuthModal, handleAuthComplete } = useRequireAuth();
   // actorId isn't read by the fetch, but a sign-in/out changes the Bearer
@@ -192,11 +190,6 @@ export default function Process() {
             offer={voteState?.early_close}
             noun="vote"
             onView={(view) => (view ? setProcess(view) : void reload())}
-          />
-          <AdminArchiveButton
-            processId={id}
-            itemLabel="item"
-            onArchived={() => navigate("/")}
           />
         </DetailActions>
       )}

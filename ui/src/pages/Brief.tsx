@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useApi } from "../hooks/useApi";
 import { ClosedEarlyNote } from "../components/CloseEarly";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   getPublicBrief,
   postBriefResponse,
@@ -10,7 +10,6 @@ import {
 import { absoluteDate, absoluteTime } from "../utils/dates";
 import PostFeaturedImage from "../components/PostFeaturedImage";
 import ProcessHeader from "../components/ProcessHeader";
-import DetailActions from "../components/DetailActions";
 import { BriefSourcePointer } from "../components/BriefPointer";
 import ShareButton from "../components/ShareButton";
 import { useHub } from "../config/hub";
@@ -22,7 +21,6 @@ import "./VoteResults.css";
 import "./Brief.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import { heldBackLine, joinNames } from "../services/briefDelivery";
-import AdminArchiveButton from "../components/AdminArchiveButton";
 import { manifestOf, typeName } from "../processes/display";
 
 // The noun for the source process: its type's name, lowercased, for a type a
@@ -40,7 +38,6 @@ function sourceNoun(type: string): string {
  */
 export default function BriefPage() {
   const hub = useHub();
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { official, user } = useAuth();
   const {
@@ -346,17 +343,7 @@ export default function BriefPage() {
       />
 
 
-      {/* Admin-only soft-remove. A brief is a permanent public record, so
-          this is for taking down content that should not be public — it is
-          restorable from the Archived tab, and an archived brief drops out of
-          Outcomes and the feed automatically. */}
-      <DetailActions>
-        <AdminArchiveButton
-          processId={id!}
-          itemLabel="brief"
-          onArchived={() => navigate("/outcomes")}
-        />
-      </DetailActions>
+      {/* Archive: the framework adds it under the page (components/archiveSlot.tsx). */}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useApi } from "../hooks/useApi";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   adminRemoveAnnouncement,
   adminRestoreAnnouncement,
@@ -13,7 +13,6 @@ import PostFeaturedImage from "../components/PostFeaturedImage";
 import LinkPreviewCard from "../components/LinkPreviewCard";
 import ShareButton from "../components/ShareButton";
 import Creator from "../components/Creator";
-import AdminArchiveButton from "../components/AdminArchiveButton";
 import "./Announcement.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import SampleBadge from "../components/SampleBadge";
@@ -31,7 +30,6 @@ const REASON_CHIPS = [
 
 export default function AnnouncementPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { isAdmin } = useAuth();
 
   const {
@@ -206,11 +204,6 @@ export default function AnnouncementPage() {
                   the announcement from the site and feed entirely (no
                   tombstone) for cleanup of stale content, and is restorable
                   from the admin Archived view. */}
-              <AdminArchiveButton
-                processId={announcement.id}
-                itemLabel="announcement"
-                onArchived={() => navigate("/")}
-              />
             </>
           )}
           {moderationError && (
