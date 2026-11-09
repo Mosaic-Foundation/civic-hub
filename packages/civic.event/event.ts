@@ -195,6 +195,17 @@ export function quarterHours(minutes: number | null): { hours: number; minutes: 
   return { hours: Math.floor(q / 60), minutes: (q % 60) as 0 | 15 | 30 | 45 };
 }
 
+/**
+ * A duration as the form's three selects show it (Events 0.4.4, Adam: a
+ * multi-day event): whole days, hours (0 to 23) and quarter hours, rounded to
+ * the quarter hour. Null for no duration.
+ */
+export function daysHoursQuarters(minutes: number | null): { days: number; hours: number; minutes: 0 | 15 | 30 | 45 } | null {
+  const q = quarterHours(minutes);
+  if (!q) return null;
+  return { days: Math.floor(q.hours / 24), hours: q.hours % 24, minutes: q.minutes };
+}
+
 /** "1 h 30 min", "45 min", "2 h", "1 day 2 h". */
 export function formatDuration(minutes: number): string {
   const d = Math.floor(minutes / 1440);

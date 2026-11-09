@@ -14,6 +14,7 @@ import {
   imageOf,
   parseDuration,
   quarterHours,
+  daysHoursQuarters,
   timeZoneOf,
   type EventState,
 } from "../../packages/civic.event/event.js";
@@ -121,5 +122,10 @@ describe("the duration selects (Events 3)", () => {
     expect(quarterHours(26 * 60)).toEqual({ hours: 26, minutes: 0 });
     expect(quarterHours(null)).toBeNull();
     expect(quarterHours(0)).toBeNull();
+    // The form's three selects (0.4.4): days, hours under a day, quarter hours.
+    expect(daysHoursQuarters(26 * 60)).toEqual({ days: 1, hours: 2, minutes: 0 });
+    expect(daysHoursQuarters(3 * 1440 + 90)).toEqual({ days: 3, hours: 1, minutes: 30 });
+    expect(daysHoursQuarters(45)).toEqual({ days: 0, hours: 0, minutes: 45 });
+    expect(daysHoursQuarters(null)).toBeNull();
   });
 });

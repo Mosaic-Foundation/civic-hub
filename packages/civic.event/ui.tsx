@@ -58,7 +58,7 @@ import {
   durationMinutes,
   endAfter,
   locationLine,
-  quarterHours,
+  daysHoursQuarters,
   type EventImage,
   type EventLocation,
 } from "./event";
@@ -782,8 +782,9 @@ function whereBody(w: WhereFields): Record<string, string | null> {
 /**
  * When it is (Events 2, 2 and 3; Events 3): the start, how long it runs and
  * the end, in that order, kept together, all in the event's zone. How long is
- * two selects, hours (0 to 8) and minutes (0, 15, 30, 45), rounded to the
- * quarter hour as the date picker steps. Choosing a start keeps how long it
+ * three selects, days (for an event over several days, 0.4.4), hours (0 to 23)
+ * and minutes (0, 15, 30, 45), rounded to the quarter hour as the date picker
+ * steps. Choosing a start keeps how long it
  * runs (an hour to begin with, the same day); a duration moves the end; an end
  * moves the duration. An end at or before the start says so on the field.
  */
@@ -805,7 +806,8 @@ function When({
   const minutes = durationMinutes(start, end);
   // How long, before there is a start to measure from: an hour.
   const [planned, setPlanned] = useState(60);
-  const shown = quarterHours(minutes) ?? (start && end ? { hours: 0, minutes: 0 as const } : quarterHours(planned)!);
+  const shown =
+    daysHoursQuarters(minutes) ?? (start && end ? { days: 0, hours: 0, minutes: 0 as const } : daysHoursQuarters(planned)!);
   const endError = start && end && !minutes ? "Ends must be after it starts." : null;
 
   function startChanged(next: string | null) {
@@ -815,14 +817,15 @@ function When({
     onTimes(next, planned === 60 ? defaultEnd(next, zone) : endAfter(next, planned));
   }
 
-  function durationChanged(hours: number, mins: number) {
-    const total = hours * 60 + mins;
+  function durationChanged(days: number, hours: number, mins: number) {
+    const total = days * 1440 + hours * 60 + mins;
     if (total > 0) setPlanned(total);
     if (start) onTimes(start, endAfter(start, total));
   }
 
-  const hourChoices = Array.from({ length: 9 }, (_, h) => h);
-  if (shown.hours > 8) hourChoices.push(shown.hours);
+  const dayChoices = Array.from({ length: 15 }, (_, d) => d);
+  if (shown.days > 14) dayChoices.push(shown.days);
+  const hourChoices = Array.from({ length: 24 }, (_, h) => h);
 
   return (
     <>
@@ -830,13 +833,25 @@ function When({
         <Field label="Starts" required htmlFor="ev-start">
           <DateTimeInput id="ev-start" required value={start} timeZone={zone} onChange={startChanged} />
         </Field>
-        <Field label="Duration" htmlFor="ev-duration-hours">
+        <Field label="Duration" htmlFor="ev-duration-days">
           <div className="ev-duration" role="group" aria-label="Duration" id="ev-duration">
+            <Select
+              id="ev-duration-days"
+              aria-label="Days"
+              value={String(shown.days)}
+              onChange={(e) => durationChanged(Number(e.target.value), shown.hours, shown.minutes)}
+            >
+              {dayChoices.map((d) => (
+                <option key={d} value={d}>
+                  {d} {d === 1 ? "day" : "days"}
+                </option>
+              ))}
+            </Select>
             <Select
               id="ev-duration-hours"
               aria-label="Hours"
               value={String(shown.hours)}
-              onChange={(e) => durationChanged(Number(e.target.value), shown.minutes)}
+              onChange={(e) => durationChanged(shown.days, Number(e.target.value), shown.minutes)}
             >
               {hourChoices.map((h) => (
                 <option key={h} value={h}>
@@ -848,7 +863,7 @@ function When({
               id="ev-duration-minutes"
               aria-label="Minutes"
               value={String(shown.minutes)}
-              onChange={(e) => durationChanged(shown.hours, Number(e.target.value))}
+              onChange={(e) => durationChanged(shown.days, shown.hours, Number(e.target.value))}
             >
               {[0, 15, 30, 45].map((m) => (
                 <option key={m} value={m}>
@@ -1198,15 +1213,29 @@ function EventFormPage() {
  * zone of its own, so the card names it only for a reader whose clock is not
  * the hub's.
  */
-function eventCard({ data, id, getTitle }: { data: Record<string, unknown>; id: string; getTitle: (id: string) => string | undefined }) {
-  const p = (data.process ?? {}) as { title?: string; event?: { start_time?: string; end_time?: string; location?: EventLocation } };
-  const ev = p.event;
+/** "Tue, Nov 10, 6:00 PM – 7:00 PM · Community room": a card's line for an event. */
+function eventLine(ev: { start_time?: string; end_time?: string; location?: EventLocation } | undefined): string {
   const zone = hubTimeZone();
   const when = ev?.start_time && ev.end_time ? whenLine(ev.start_time, ev.end_time, zone, !sameClock(ev.start_time, zone, readerZone())) : "";
   const where = ev?.location ? whereWords(ev.location) : "";
+  return [when, where].filter(Boolean).join(" · ");
+}
+
+/**
+ * The card for an event on the calendar. Its title, time and place are the
+ * event as it is now (Events 0.4.4, Adam: an edited title stayed old in the
+ * feed), from the fetched meta; until that arrives, as it was published.
+ */
+function eventCard({ data, id, getTitle, getDescription }: {
+  data: Record<string, unknown>;
+  id: string;
+  getTitle: (id: string) => string | undefined;
+  getDescription: (id: string) => string | undefined;
+}) {
+  const p = (data.process ?? {}) as { title?: string; event?: { start_time?: string; end_time?: string; location?: EventLocation } };
   return {
-    title: p.title ?? getTitle(id) ?? "New event",
-    summary: [when, where].filter(Boolean).join(" · ") || "A new event is on the calendar.",
+    title: getTitle(id) || p.title || "New event",
+    summary: getDescription(id) || eventLine(p.event) || "A new event is on the calendar.",
   };
 }
 
@@ -1220,10 +1249,15 @@ const eventsUi: ProcessUi = {
   feed: {
     event: {
       card: eventCard,
-      // Its picture on the card (Events 2, 1), from the event as it now is.
+      // Its title, time, place and picture on the card, from the event as it
+      // now is (Events 2, 1; the title, time and place since 0.4.4).
       async meta(id) {
         const e = await api<EventView>(`/process/${encodeURIComponent(id)}/state`);
-        return e.image ? { imageUrl: e.image.url, imageAlt: e.image.alt } : {};
+        return {
+          title: e.title,
+          description: eventLine(e),
+          ...(e.image ? { imageUrl: e.image.url, imageAlt: e.image.alt } : {}),
+        };
       },
     },
   },
