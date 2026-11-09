@@ -61,6 +61,7 @@ import {
   type EventImage,
   type EventLocation,
 } from "./event";
+import { addToCalendarLinks, subscribeLinks, type CalendarLink } from "./calendarLinks";
 import "./styles.css";
 
 // --- Reading and acting through the hub ---------------------------------------
@@ -291,9 +292,7 @@ function CalendarPage() {
           ) : undefined
         }
       >
-        <Note>
-          <a href="/api/calendar/hub.ics">Subscribe in your calendar app</a>
-        </Note>
+        <CalendarChoices summary="Subscribe in your calendar app" links={subscribeLinks(window.location.origin)} testId="subscribe" />
       </PageHead>
       <ViewToggle
         value={view}
@@ -391,6 +390,39 @@ function EventCard({ event, when }: { event: CalendarEvent; when: string }) {
       status={event.cancelled ? <StatusChip tone="alert">Cancelled</StatusChip> : undefined}
       meta={[<strong key="when">{when}</strong>, whereWords(event.location)]}
     />
+  );
+}
+
+// --- Into someone's own calendar (0.4.2) ----------------------------------------
+
+/**
+ * The common calendars by name, then any other app (Adam, 2026-11-09: the
+ * .ics alone opened the device's default calendar, not the one people use).
+ * A calendar's own site opens in a new tab, where the reader picks which of
+ * their calendars and saves; the .ics file is saved by the browser.
+ */
+function CalendarChoices({ summary, links, testId }: { summary: string; links: CalendarLink[]; testId: string }) {
+  return (
+    <details className="ev-calendars" data-testid={testId}>
+      <summary>{summary}</summary>
+      <ul className="ev-calendar-links">
+        {links.map((l) => (
+          <li key={l.label}>
+            {l.download ? (
+              <a href={l.href} download>
+                {l.label}
+              </a>
+            ) : l.href.startsWith("https://") && !l.href.startsWith(window.location.origin) ? (
+              <a href={l.href} target="_blank" rel="noopener noreferrer">
+                {l.label}
+              </a>
+            ) : (
+              <a href={l.href}>{l.label}</a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -543,11 +575,17 @@ function EventPage() {
         )}
         {upcoming && !signedIn() && <Note>Sign in to say you're going.</Note>}
 
-        <Note>
-          <a href={`/api/calendar/events/${encodeURIComponent(event.id)}.ics`} download data-testid="add-to-calendar">
-            Add to my calendar
-          </a>
-        </Note>
+        <CalendarChoices
+          summary="Add to my calendar"
+          testId="add-to-calendar"
+          links={addToCalendarLinks(
+            {
+              ...event,
+              place: event.location.type === "Link" ? event.location.href : locationLine(event.location),
+            },
+            window.location.origin,
+          )}
+        />
 
         {(editable || canCancel) && (
           <div className="ev-actions">

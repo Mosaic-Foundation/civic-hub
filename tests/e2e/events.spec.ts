@@ -346,7 +346,25 @@ for (const vp of VIEWPORTS) {
       await residentOn(DEMO, `calendar-${vp.label}`, page);
       await page.goto(`${originOf(DEMO)}/events`);
       await expect(page.getByRole("heading", { level: 1, name: "Events" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Subscribe in your calendar app" })).toHaveAttribute("href", "/api/calendar/hub.ics");
+      // Subscribe (0.4.2): the common calendars by name, then any other app.
+      const subscribe = page.getByTestId("subscribe");
+      await subscribe.getByText("Subscribe in your calendar app").click();
+      const origin = new URL(page.url()).origin;
+      const feed = `${origin}/api/calendar/hub.ics`;
+      await expect(subscribe.getByRole("link")).toHaveText([
+        "Google Calendar",
+        "Apple Calendar",
+        "Outlook.com",
+        "Outlook (work or school)",
+        "Another app (copy this link)",
+      ]);
+      await expect(subscribe.getByRole("link", { name: "Apple Calendar" })).toHaveAttribute("href", feed.replace(/^https?:/, "webcal:"));
+      await expect(subscribe.getByRole("link", { name: "Google Calendar" })).toHaveAttribute(
+        "href",
+        `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(feed.replace(/^https?:/, "webcal:"))}`,
+      );
+      await expect(subscribe.getByRole("link", { name: "Google Calendar" })).toHaveAttribute("target", "_blank");
+      await expect(subscribe.getByRole("link", { name: "Another app (copy this link)" })).toHaveAttribute("href", feed);
 
       // Two events share a day, in time order; the other has a day of its own.
       const day8 = await dayHeadingOf(page, localTime(8, 9, 0));
@@ -591,7 +609,15 @@ for (const vp of VIEWPORTS) {
       );
       await residentOn(DEMO, `ics-${vp.label}`, page);
       await page.goto(`${originOf(DEMO)}/events/${event.id}`);
-      const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("add-to-calendar").click()]);
+      // The common calendars by name (0.4.2); Google's carries the event, in its zone.
+      const add = page.getByTestId("add-to-calendar");
+      await add.getByText("Add to my calendar").click();
+      const google = new URL((await add.getByRole("link", { name: "Google Calendar" }).getAttribute("href")) ?? "");
+      expect(google.origin).toBe("https://calendar.google.com");
+      expect(google.searchParams.get("text")).toBe(`Calendar file ${vp.label} ${run}`);
+      expect(google.searchParams.get("ctz")).toBe(ZONE);
+      expect(google.searchParams.get("details")).toContain(`/events/${event.id}`);
+      const [download] = await Promise.all([page.waitForEvent("download"), add.getByRole("link", { name: "Another app (.ics file)" }).click()]);
       expect(download.suggestedFilename()).toMatch(/^calendar-file-.*\.ics$/);
       const text = await download.createReadStream().then(async (stream) => {
         const chunks: Buffer[] = [];
