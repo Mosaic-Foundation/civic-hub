@@ -39,6 +39,7 @@ import {
   StatusChip,
   TextArea,
   TextInput,
+  TimeZoneSelect,
   ViewToggle,
   WeekStrip,
   dayKey,
@@ -99,12 +100,6 @@ function useIsAdmin(): boolean {
 
 /** The reader's own zone, as the browser has it. */
 const readerZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-
-/** Every zone the browser knows, the chosen one first if it doesn't. */
-function zoneChoices(current: string): string[] {
-  const all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
-  return all.includes(current) ? all : [current, ...all];
-}
 
 interface CalendarEvent {
   process_id: string;
@@ -872,13 +867,12 @@ function When({
         htmlFor="ev-zone"
         hint={zone === hubZone ? `The hub's own (${zoneWords(zone)}). Choose another only for an event somewhere else.` : "The times above are in this zone. The calendar shows them in the hub's."}
       >
-        <Select id="ev-zone" value={zone} onChange={(e) => onZone(e.target.value)}>
-          {zoneChoices(zone).map((z) => (
-            <option key={z} value={z}>
-              {z.replace(/_/g, " ")}
-            </option>
-          ))}
-        </Select>
+        <TimeZoneSelect
+          id="ev-zone"
+          value={zone}
+          onChange={onZone}
+          first={[{ value: hubZone, label: `${zoneWords(hubZone)}, the hub's own` }]}
+        />
       </Field>
     </>
   );

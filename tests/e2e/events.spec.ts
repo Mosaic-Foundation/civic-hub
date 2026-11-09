@@ -675,7 +675,25 @@ test.describe("the hub's clock when no zone is set (Events 3)", () => {
 
       // A new event starts in the hub's zone.
       await page.goto(`${originOf(BETA)}/events/new`);
-      await expect(page.getByRole("combobox", { name: "Time zone" })).toHaveValue("America/New_York");
+      const zone = page.getByRole("combobox", { name: "Time zone" });
+      await expect(zone).toHaveValue("America/New_York");
+
+      // The short list (Events 0.4.1): the hub's own first, six more in plain words, then the rest on request.
+      await expect(zone.locator("option")).toHaveText([
+        "Eastern Time, the hub's own",
+        "Central",
+        "Mountain",
+        "Pacific",
+        "Alaska",
+        "Hawaii",
+        "Arizona",
+        "More time zones…",
+      ]);
+      await zone.selectOption({ label: "More time zones…" });
+      await expect(zone).toHaveValue("America/New_York");
+      await expect(zone.locator("option", { hasText: "More time zones…" })).toHaveCount(0);
+      await zone.selectOption("Asia/Tokyo");
+      await expect(zone).toHaveValue("Asia/Tokyo");
 
       // Settings → Identity: the zone is only inferred, and one press confirms it.
       await page.goto(`${originOf(BETA)}/admin/settings/identity`);
@@ -683,6 +701,18 @@ test.describe("the hub's clock when no zone is set (Events 3)", () => {
       await expect(note).toContainText("Using Eastern time from your place; confirm or change it.");
       const select = page.locator("select").filter({ has: page.locator('option[value="America/New_York"]') }).first();
       await expect(select).toHaveValue("");
+      // The same short list as the Events form, with "Not set" first.
+      await expect(select.locator("option")).toHaveText([
+        "Not set (Eastern, from your place)",
+        "Eastern",
+        "Central",
+        "Mountain",
+        "Pacific",
+        "Alaska",
+        "Hawaii",
+        "Arizona",
+        "More time zones…",
+      ]);
       await note.getByRole("button", { name: "Confirm Eastern time" }).click();
       await expect(select).toHaveValue("America/New_York");
       await expect(note).toHaveCount(0);
