@@ -10,7 +10,7 @@ import { createEventStore, eventStore } from "./store.js";
 
 const eventsPackage: PluginPackage = {
   name: "@civic-social/plugin-events",
-  version: "0.4.2",
+  version: "0.4.3",
   displayName: "Events",
   manifest,
   server(host) {

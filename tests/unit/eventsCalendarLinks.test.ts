@@ -23,17 +23,11 @@ describe("addToCalendarLinks", () => {
   const links = addToCalendarLinks(EVENT, ORIGIN);
 
   it("names the common calendars first, then any other app", () => {
-    expect(links.map((l) => l.label)).toEqual([
-      "Google Calendar",
-      "Apple Calendar",
-      "Outlook.com",
-      "Outlook (work or school)",
-      "Another app (.ics file)",
-    ]);
+    expect(links.map((l) => l.label)).toEqual(["Google", "Apple", "Outlook", "Another app (.ics file)"]);
   });
 
   it("gives Google the event in UTC, shown in the event's zone, linked back to its page", () => {
-    const url = new URL(byLabel(links, "Google Calendar").href);
+    const url = new URL(byLabel(links, "Google").href);
     expect(url.origin + url.pathname).toBe("https://calendar.google.com/calendar/render");
     expect(url.searchParams.get("action")).toBe("TEMPLATE");
     expect(url.searchParams.get("text")).toBe(EVENT.title);
@@ -48,13 +42,12 @@ describe("addToCalendarLinks", () => {
     expect(url.searchParams.has("ctz")).toBe(false);
   });
 
-  it("gives both Outlooks the same compose form", () => {
-    for (const [label, host] of [
-      ["Outlook.com", "outlook.live.com"],
-      ["Outlook (work or school)", "outlook.office.com"],
-    ] as const) {
-      const url = new URL(byLabel(links, label).href);
-      expect(url.host).toBe(host);
+  it("gives Outlook its compose form, in a new tab like Google", () => {
+    {
+      const url = new URL(byLabel(links, "Outlook").href);
+      expect(url.host).toBe("outlook.live.com");
+      expect(byLabel(links, "Outlook").newTab).toBe(true);
+      expect(byLabel(links, "Google").newTab).toBe(true);
       expect(url.pathname).toBe("/calendar/0/deeplink/compose");
       expect(url.searchParams.get("rru")).toBe("addevent");
       expect(url.searchParams.get("subject")).toBe(EVENT.title);
@@ -64,7 +57,7 @@ describe("addToCalendarLinks", () => {
   });
 
   it("saves the event's .ics for Apple and any other app", () => {
-    for (const label of ["Apple Calendar", "Another app (.ics file)"]) {
+    for (const label of ["Apple", "Another app (.ics file)"]) {
       expect(byLabel(links, label)).toEqual({ label, href: "https://hub.example/api/calendar/events/proc_1.ics", download: true });
     }
   });
@@ -75,12 +68,11 @@ describe("subscribeLinks", () => {
   const feed = "https://hub.example/api/calendar/hub.ics";
 
   it("subscribes Google and Apple by webcal, the Outlooks by the feed's address", () => {
-    expect(byLabel(links, "Google Calendar").href).toBe(
+    expect(byLabel(links, "Google").href).toBe(
       `https://calendar.google.com/calendar/render?cid=${encodeURIComponent("webcal://hub.example/api/calendar/hub.ics")}`,
     );
-    expect(byLabel(links, "Apple Calendar").href).toBe("webcal://hub.example/api/calendar/hub.ics");
-    expect(new URL(byLabel(links, "Outlook.com").href).searchParams.get("url")).toBe(feed);
-    expect(new URL(byLabel(links, "Outlook (work or school)").href).host).toBe("outlook.office.com");
+    expect(byLabel(links, "Apple").href).toBe("webcal://hub.example/api/calendar/hub.ics");
+    expect(new URL(byLabel(links, "Outlook").href).searchParams.get("url")).toBe(feed);
     expect(byLabel(links, "Another app (copy this link)").href).toBe(feed);
   });
 

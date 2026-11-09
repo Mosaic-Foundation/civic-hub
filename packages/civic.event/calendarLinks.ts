@@ -1,5 +1,5 @@
 // "Add to my calendar" and "Subscribe" for the common calendars (Events 0.4.2,
-// Adam 2026-11-09). An .ics file opens in the device's default calendar app;
+// Adam 2026-11-09; 0.4.3: one Outlook, the names short, in the kit's MenuButton). An .ics file opens in the device's default calendar app;
 // someone who keeps their calendar in Google or Outlook would rather land in
 // it, choose which of their calendars, and save. Each link is a plain address
 // the reader's own browser opens: the hub calls nobody, and the links carry
@@ -13,6 +13,8 @@ export interface CalendarLink {
   href: string;
   /** The .ics file itself, for the reader's own app: the browser saves it. */
   download?: boolean;
+  /** A calendar's own site, opened in a new tab. */
+  newTab?: boolean;
 }
 
 export interface LinkableEvent {
@@ -60,7 +62,8 @@ export function addToCalendarLinks(event: LinkableEvent, origin: string): Calend
   });
   return [
     {
-      label: "Google Calendar",
+      label: "Google",
+      newTab: true,
       href: `https://calendar.google.com/calendar/render?${query({
         action: "TEMPLATE",
         text: event.title,
@@ -70,9 +73,8 @@ export function addToCalendarLinks(event: LinkableEvent, origin: string): Calend
         location: place,
       })}`,
     },
-    { label: "Apple Calendar", href: ics, download: true },
-    { label: "Outlook.com", href: `https://outlook.live.com/calendar/0/deeplink/compose?${outlook}` },
-    { label: "Outlook (work or school)", href: `https://outlook.office.com/calendar/0/deeplink/compose?${outlook}` },
+    { label: "Apple", href: ics, download: true },
+    { label: "Outlook", newTab: true, href: `https://outlook.live.com/calendar/0/deeplink/compose?${outlook}` },
     { label: "Another app (.ics file)", href: ics, download: true },
   ];
 }
@@ -82,10 +84,9 @@ export function subscribeLinks(origin: string): CalendarLink[] {
   const feed = `${origin}/api/calendar/hub.ics`;
   const webcal = feed.replace(/^https?:/, "webcal:");
   return [
-    { label: "Google Calendar", href: `https://calendar.google.com/calendar/render?${query({ cid: webcal })}` },
-    { label: "Apple Calendar", href: webcal },
-    { label: "Outlook.com", href: `https://outlook.live.com/calendar/0/addfromweb?${query({ url: feed })}` },
-    { label: "Outlook (work or school)", href: `https://outlook.office.com/calendar/0/addfromweb?${query({ url: feed })}` },
+    { label: "Google", newTab: true, href: `https://calendar.google.com/calendar/render?${query({ cid: webcal })}` },
+    { label: "Apple", href: webcal },
+    { label: "Outlook", newTab: true, href: `https://outlook.live.com/calendar/0/addfromweb?${query({ url: feed })}` },
     { label: "Another app (copy this link)", href: feed },
   ];
 }

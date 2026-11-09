@@ -91,23 +91,8 @@
   }
 }
 
-/* "Add to my calendar" and "Subscribe" (0.4.2): the calendars' names in a
-   row that wraps, each a comfortable tap. */
-.ev-calendars {
+/* "Add to my calendar" and "Subscribe" (0.4.3): the kit's MenuButton, with
+   room above it. */
+.ev-calendar {
   margin-top: var(--space-4);
-}
-
-.ev-calendar-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ev-calendar-links a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap-target);
 }
