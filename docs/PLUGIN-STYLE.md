@@ -87,6 +87,10 @@ To choose a zone, use `TimeZoneSelect`: seven zones in plain words, then "More t
 hub's own first, as the default, through `first`, e.g. `first={[{ value: hubTimeZone(), label: "Eastern Time, the
 hub's own" }]}`. Hub settings → Identity uses the same control.
 
+To offer a few places to go, use `MenuButton`: a pill that opens a short menu of links, e.g. Events' "Add to my
+calendar" (Google, Apple, Outlook, another app). Each link takes `newTab` for another site and `download` for a file.
+Keep the names short; the pill says what the choice is for.
+
 The calendar views work in calendar days (`"YYYY-MM-DD"`). Work out which
 day each item falls on in the zone you mean, with `dayKey(iso, zone)`, and
 the grid never meets a time zone. Weeks start on Monday, as the date picker's

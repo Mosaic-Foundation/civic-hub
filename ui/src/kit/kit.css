@@ -967,3 +967,74 @@
   align-items: center;
   gap: var(--space-1);
 }
+
+/* --- A pill that opens a menu of links (kit MenuButton) ------------------ */
+/* The header menus' look (the Admin pill, the account menu), for a page:
+   "Add to my calendar" opening the calendars by name (Events 0.4.3). */
+
+.kit-menu-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.kit-menu-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-height: var(--tap-target);
+  padding: var(--space-1-5) var(--space-4);
+  border: 1px solid var(--color-primary-ink);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-primary-ink);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.kit-menu-button:hover,
+.kit-menu-button.is-open {
+  background: var(--color-surface-alt);
+}
+
+.kit-menu-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.kit-menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 200;
+  min-width: var(--grid-min-field);
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.kit-menu-item {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-target);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.kit-menu-item:hover,
+.kit-menu-item:focus-visible {
+  background: var(--color-surface-alt);
+}
+
+.kit-menu-item:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}

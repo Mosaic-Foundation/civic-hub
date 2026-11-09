@@ -7,7 +7,8 @@
 // PageAction, Group, DayGroup and GroupHeading, CardList and ListCard, Chip and
 // StatusChip, InlineMeta, EmptyState, FilterBar, ViewToggle, MonthGrid and
 // WeekStrip; and an item's page: FactList, Notice, Note, Picture, Fieldset; and
-// TimeZoneSelect (Events 0.4.1): seven zones first, then "More time zones…". A package's page is composed of these and looks exactly like the
+// TimeZoneSelect (Events 0.4.1): seven zones first, then "More time zones…"; and
+// MenuButton (Events 0.4.3): a pill that opens a short menu of links. A package's page is composed of these and looks exactly like the
 // hub's own, whatever the hub's theme and layout; its stylesheet sets layout
 // spacing only (docs/PLUGIN-STYLE.md; conformance step 22).
 
@@ -48,10 +49,12 @@ export {
   TextArea,
   TextInput,
   TimeZoneSelect,
+  MenuButton,
   ViewToggle,
   WeekStrip,
   type CalendarItem,
   type ListCardProps,
+  type MenuLink,
   type StatusTone,
 } from "../../ui/src/kit/index";
 export { fromLocalInput, toLocalInput } from "../../ui/src/kit/datetime";
