@@ -4,6 +4,28 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Events 0.4.3: "Add to my calendar" as a pill with a menu — 2026-11-09
+
+- **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. The one migration is the Events 0.4.3
+  catalog entry (`20261109180141_catalog_civic_event_0_4_3.sql`, required). Events is not mounted on dev until Adam
+  approves 0.4.3 in dev's console.
+- **Why (Adam, on 0.4.2):** the fold looked odd, Google sat out of line with the others, and "Outlook.com" beside
+  "Outlook (work or school)" read strangely. He asked for a pill that opens a pop-up.
+- **Built:**
+  - **The kit's `MenuButton`** (`ui/src/kit/MenuButton.tsx`, styles in `kit.css`, exported through the SDK): an
+    outlined pill that opens a menu panel, in the look of the hub's header menus. It closes on a press outside,
+    Escape (focus back on the pill), Tab or a choice. Arrow keys, Home and End move between the links. Four
+    component tests. `PLUGIN-STYLE.md` says when to use it.
+  - **Events:** "Add to my calendar" and "Subscribe in your calendar app" are each a `MenuButton` listing Google,
+    Apple, Outlook and "Another app (.ics file)" (or "(copy this link)"). There is one Outlook (`outlook.live.com`);
+    the work-or-school one is gone.
+- **Tests:** the Events E2E checks the menus, Escape and focus (58 passed, Chromium and WebKit); unit 7; conformance
+  34 passed.
+- **Not checked from here:** whether a work or school Microsoft account can use the `outlook.live.com` link. If it
+  can't, "Another app (.ics file)" still works.
+
+---
+
 ## Events 0.4.2: add to Google, Apple or Outlook — 2026-11-09
 
 - **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. The one migration is the Events 0.4.2
