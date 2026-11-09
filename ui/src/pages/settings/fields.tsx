@@ -13,7 +13,7 @@ import HelpButton from "../../components/HelpButton";
 import PostImagePicker from "../../components/PostImagePicker";
 import { fieldSpec } from "../../../../src/shared/hubSettingsSections";
 import { applySubstitutions, operatorValues, splitDraftNotes } from "../../../../src/shared/documentTemplate";
-import { Button } from "../../kit";
+import { Button, TimeZoneSelect } from "../../kit";
 import { zonePlainName } from "../../../../src/shared/hubTimeZone";
 import { LegalBody } from "../../components/LegalPage";
 import DocumentEditor from "./document/DocumentEditor";
@@ -360,13 +360,6 @@ function yourTimeOf(hour: number, zone: string): string {
   return "";
 }
 
-/** Every time zone the browser knows, the hub's current one first if unusual. */
-function zoneList(current: string): string[] {
-  const all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
-  const list = all.includes("UTC") ? all : ["UTC", ...all];
-  return current && !list.includes(current) ? [current, ...list] : list;
-}
-
 /**
  * An IANA time zone. Empty means the zone of the hub's place (`place`, from
  * its jurisdiction; src/shared/hubTimeZone.ts), else UTC. While the place's
@@ -381,22 +374,15 @@ export function TimeZoneField({ f, k, label, hint, place = "" }: Common & { plac
   return (
     <div className="settings-field">
       <Label id={id} k={k} label={label} hint={hint} />
-      <select
+      <TimeZoneSelect
         id={id}
-        className="form-input"
         value={value}
-        onChange={(e) => f.set(k, e.target.value)}
+        onChange={(zone) => f.set(k, zone)}
+        first={[{ value: "", label: place ? `Not set (${zonePlainName(place)}, from your place)` : "Not set (UTC)" }]}
         disabled={f.disabled}
         aria-describedby={inferred ? noteId : undefined}
         style={{ maxWidth: "40ch" }}
-      >
-        <option value="">{place ? `Not set (${zonePlainName(place)}, from your place)` : "Not set (UTC)"}</option>
-        {zoneList(value).map((z) => (
-          <option key={z} value={z}>
-            {z.replace(/_/g, " ")}
-          </option>
-        ))}
-      </select>
+      />
       {inferred && (
         <p id={noteId} className="settings-zone-note" role="status" data-testid="zone-inferred-note">
           <span>

@@ -6,7 +6,8 @@
 // header); and the page patterns (Events 3, 2026-11-08): Page, PageHead and
 // PageAction, Group, DayGroup and GroupHeading, CardList and ListCard, Chip and
 // StatusChip, InlineMeta, EmptyState, FilterBar, ViewToggle, MonthGrid and
-// WeekStrip; and an item's page: FactList, Notice, Note, Picture, Fieldset. A package's page is composed of these and looks exactly like the
+// WeekStrip; and an item's page: FactList, Notice, Note, Picture, Fieldset; and
+// TimeZoneSelect (Events 0.4.1): seven zones first, then "More time zones…". A package's page is composed of these and looks exactly like the
 // hub's own, whatever the hub's theme and layout; its stylesheet sets layout
 // spacing only (docs/PLUGIN-STYLE.md; conformance step 22).
 
@@ -46,6 +47,7 @@ export {
   Table,
   TextArea,
   TextInput,
+  TimeZoneSelect,
   ViewToggle,
   WeekStrip,
   type CalendarItem,
