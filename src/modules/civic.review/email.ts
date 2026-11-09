@@ -3,6 +3,7 @@ import { uiBaseUrl } from "../../utils/baseUrl.js";
 import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
 import { getSettingSync, hubDisplayNameSync } from "../../services/hubSettings.js";
 import { KEYS } from "../../models/hubSettings.js";
+import { getManifest } from "../../processes/registry.js";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
 const hubNoun = (n: number): string =>
@@ -47,14 +48,20 @@ async function send(input: {
   }
 }
 
-function processTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    "civic.vote": "Vote",
-    "civic.proposal": "Proposal",
-    "civic.polis_deliberation": "Conversation",
-    "civic.project": "Project",
-  };
-  return labels[type] || "Process";
+/**
+ * What the type is called in a sentence ("Your event ..."), from its
+ * manifest's own label, so every type, and any added later, is named
+ * (Adam, 2026-11-09: an event's email said "Your Process"). A type with no
+ * manifest (its plugin removed) is called by its id's last word.
+ */
+export function processTypeLabel(type: string): string {
+  const label = getManifest(type)?.descriptor.display.label ?? type.replace(/^.*\./, "").replace(/_/g, " ");
+  return label.trim().toLowerCase() || "submission";
+}
+
+/** The page of a process, as its type's manifest says (an event's is /events/<id>). */
+function processPath(type: string, id: string): string {
+  return getManifest(type)?.detailPath(id) ?? `/process/${id}`;
 }
 
 export async function notifyCreatorSubmitted(input: {
@@ -127,7 +134,7 @@ export async function notifyAdminActivationFailed(input: {
 
   await send({
     to: input.admin_email,
-    subject: `Action needed: ${typeLabel} "${input.title}" was approved but did not start`,
+    subject: `Action needed: the ${typeLabel} "${input.title}" was approved but did not start`,
     html: `
       <p>You approved the ${typeLabel} <strong>"${esc(input.title)}"</strong>, but the step that
       makes it live did not complete. <strong>The approval stands</strong> — nothing was lost, and
@@ -191,14 +198,7 @@ export async function notifyCreatorApproved(input: {
   const typeLabel = processTypeLabel(input.process_type);
   const ui = uiBaseUrl();
 
-  const pathMap: Record<string, string> = {
-    "civic.vote": "/process",
-    "civic.proposal": "/proposal",
-    "civic.polis_deliberation": "/deliberation",
-    "civic.project": "/project",
-  };
-  const basePath = pathMap[input.process_type] || "/process";
-  const url = `${ui}${basePath}/${input.process_id}`;
+  const url = `${ui}${processPath(input.process_type, input.process_id)}`;
 
   if (input.entered_support_phase) {
     const threshold = input.support_threshold ?? 5;
