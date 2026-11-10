@@ -87,6 +87,27 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Events 4: closing soon, Coming up, archive for every type, Events 0.4.4 (2026-11-09)
+
+- **Unit:** `ui/src/components/closingSoon.test.ts` (the words by the hub's calendar, today/tomorrow/in 2 days; which
+  filters show the cards; placement by `since`, closed ones left out, an older card held while older pages remain);
+  `ui/src/aside/comingUp.test.ts` (events only); `tests/unit/reviewEmailType.test.ts` (every manifest's label; no
+  "process"); `eventsSeason.test.ts` (`daysHoursQuarters`); `pluginRoutes.test.ts` lists `GET /feed/closing`.
+- **API, both modes:** `aside.test.ts` (closing: within 48 hours only, not further out, past, under review or another
+  hub's; `since` no later than now; the aside has no `deadlines`); `archiveNotice.test.ts` (in-process, fake mail: the
+  creator of a running event is told with the reason; nothing for a closed one or an admin's own); the leak harness
+  walks `/feed/closing`.
+- **E2E (Chromium and WebKit, the CI way against a preview build):** `threeColumns.spec.ts` makes its own event
+  (`upcomingEvent` in `actors.ts`), checks Coming up has no closing dates and the spec's vote is a closing card in the
+  feed; `feed.spec.ts` stubs `/feed/closing` in the paging tests; `events.spec.ts` checks the Days select and that an
+  admin archives an event from its page while a resident sees no control. 102 passed across the affected specs.
+- **Local noise, not from this work:** against the Vite dev server many Events and feed specs fail (they pass the CI
+  way); `sampleContent` and two leak-harness admin reads 500 on a bloated local stack (`community_inputs`); use
+  `CIVIC_TEST_CRON_SECRET=ci-only-cron-secret` with the launch config's servers.
+- **Wire:** 5,848 local events compared before and after, all identical.
+
+---
+
 ## Events 0.4.1: a short time zone list (2026-11-08)
 
 - **Unit:** `ui/src/kit/TimeZoneSelect.test.tsx` (4): the seven zones and "More time zones…"; a page's own first

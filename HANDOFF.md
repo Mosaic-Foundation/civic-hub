@@ -4,6 +4,41 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Events 4: closing soon in the feed, Coming up events only, archive for every type, Events 0.4.4 — 2026-11-09
+
+- **State:** eight commits on `multi-tenant` (`3eae98f`..`d85b310`), then this entry. Not production (at `ac2b4c4`).
+  Dev gets them with `release.sh dev --yes` once pushed; the one migration is the Events 0.4.4 catalog entry
+  (`20261109225906_catalog_civic_event_0_4_4.sql`, required), and Events is not mounted on dev until Adam approves
+  0.4.4 in dev's console.
+- **Adam's feedback (Nov 9) and what was built:**
+  - **Events opens in List.** It already did (since 0.4.0); a browser that once chose Calendar remembers it. No change.
+  - **Coming up is the calendar's events only.** `GET /api/aside` no longer serves `deadlines`; the card shows the next
+    three events, then "See all events", and hides with Events off or nothing ahead (`ui/src/aside/comingUp.ts`).
+  - **Closing soon is in the feed.** Nothing like it existed (feed, digest or email). `GET /api/feed/closing`
+    (`src/services/closingSoon.ts`): open processes of every type with a deadline whose plugin is on, closing within
+    48 hours (`CLOSING_SOON_MS`, a constant, not a setting), with `since`, when each entered the window. The feed
+    sets in a card per process by `since` (`ui/src/components/closingSoon.ts`, `ClosingSoonPost.tsx`, the kit's
+    `ListCard`): the type's chip and colour, the title, "Closes today/tomorrow at 5:00 PM" or "Closes in 2 days" in the
+    hub's zone, a link. All and Activity only; the calendar's types are left out (an event's close is its end). Built
+    from close times, not events: the wire is unchanged.
+  - **Review emails name the type** from its manifest ("Your event … is now live!", not "Your Process"), and link to
+    the type's own page (`processTypeLabel`, `src/modules/civic.review/email.ts`).
+  - **Events 0.4.4:** the feed card's title, time and place are the event as it is now (an edited title stayed old);
+    the duration has Days (0 to 14) before Hours (0 to 23) and Minutes.
+  - **Archive for every type, from the framework** (`ui/src/components/archiveSlot.tsx`): App wraps each type's
+    detail route (its manifest's `detailPath`); a page's own `DetailActions` row ends with the archive control, and a
+    page with none (a plugin's own page) gets a row after it, for admins only. Pages no longer add their own.
+  - **Archiving tells the creator** of something still running (proposed, threshold met, active): "Your event 'X'
+    was archived", with the admin's reason; not for something closed, nor an admin's own (`archiveProcess`).
+- **Open for Adam:** a closing card sits by when it entered the 48 hours, so on a busy hub it can fall below the
+  first page; pin it to the top instead? The creator's archive email includes the admin's reason (the default chosen).
+- **Proposed ADR-019 amendment (for Adam to edit `decisions/`):** "Coming up lists the calendar's next three events,
+  earliest first, then See all events; it hides when Events is off or nothing is ahead. Closing dates are not in it:
+  a vote, proposal or conversation closing within 48 hours is a card in the feed."
+- **Next:** the image focal point (drag a point on an uploaded image, preview the crop; every upload), its own push.
+
+---
+
 ## Events 0.4.3: "Add to my calendar" as a pill with a menu — 2026-11-09
 
 - **Dev:** this entry's commit, via `release.sh dev --yes`. Not production. The one migration is the Events 0.4.3
