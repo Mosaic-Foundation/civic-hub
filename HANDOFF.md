@@ -16,7 +16,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
     three events, then "See all events", and hides with Events off or nothing ahead (`ui/src/aside/comingUp.ts`).
   - **Closing soon is in the feed.** Nothing like it existed (feed, digest or email). `GET /api/feed/closing`
     (`src/services/closingSoon.ts`): open processes of every type with a deadline whose plugin is on, closing within
-    48 hours (`CLOSING_SOON_MS`, a constant, not a setting), with `since`, when each entered the window. The feed
+    48 hours (48 hours by default; a setting since `a04e177`), with `since`, when each entered the window. The feed
     sets in a card per process by `since` (`ui/src/components/closingSoon.ts`, `ClosingSoonPost.tsx`, the kit's
     `ListCard`): the type's chip and colour, the title, "Closes today/tomorrow at 5:00 PM" or "Closes in 2 days" in the
     hub's zone, a link. All and Activity only; the calendar's types are left out (an event's close is its end). Built
@@ -30,7 +30,16 @@ Updated after every Claude Code session. Records what was built, what's incomple
     page with none (a plugin's own page) gets a row after it, for admins only. Pages no longer add their own.
   - **Archiving tells the creator** of something still running (proposed, threshold met, active): "Your event 'X'
     was archived", with the admin's reason; not for something closed, nor an admin's own (`archiveProcess`).
-- **Open for Adam:** a closing card sits by when it entered the 48 hours, so on a busy hub it can fall below the
+- **After the first push (Nov 10):**
+  - **Dev** at `32cfdca` via Adam's `release.sh dev --yes`; Events 0.4.4 approved in dev's console; 9 of 9 mounted;
+    CI, E2E and Smoke green once two test locators skipped the new closing card (`32cfdca`, `3a11207`).
+  - **`/events` on a reload (bug, older than this work; for the next production release):** `/events` is both the
+    Events page and the hub's activity stream, and Vercel sent every request to the API, so a reload or a shared link
+    showed JSON. A browser's page request (Accept `text/html`) now gets the app; any other reader the stream
+    (`vercel.json`, `descriptorRouting.test.ts`; `5c87b4e`).
+  - **The reminder's lead time is a setting** (Adam): `feed.closing_reminder_hours`, Settings → Appearance, entered
+    in hours or days, stored in hours, at most 14 days; unset is 48, 0 turns the cards off (`a04e177`).
+- **Open for Adam:** a closing card sits by when it entered the window, so on a busy hub it can fall below the
   first page; pin it to the top instead? The creator's archive email includes the admin's reason (the default chosen).
 - **Proposed ADR-019 amendment (for Adam to edit `decisions/`):** "Coming up lists the calendar's next three events,
   earliest first, then See all events; it hides when Events is off or nothing is ahead. Closing dates are not in it:
