@@ -660,7 +660,8 @@ test("a feed item carries its type's pill; the phone's bar and More (closing fro
   // wait for the card itself, as long (seen 2026-10-27 on dev: still loading
   // at the five-second mark, twice).
   if (smokeVoteTitle) {
-    const card = r.locator("article.feed-post", { hasText: smokeVoteTitle });
+    // Its own card, not its closing-soon card (Events 4).
+    const card = r.locator("article.feed-post:not(.feed-post--closing)", { hasText: smokeVoteTitle });
     await expect(card.getByTestId("feed-type-pill")).toHaveText("Vote", { timeout: 20_000 });
   } else {
     await expect(r.getByTestId("feed-type-pill").first()).toBeVisible({ timeout: 20_000 });
