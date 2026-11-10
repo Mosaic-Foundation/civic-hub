@@ -90,7 +90,8 @@ test("a feed item's type is a pill in its meta line, from the registry", async (
   await page.setViewportSize(PHONE);
   await visitAs(page, residentToken);
   await page.goto("/");
-  const card = page.locator("article.feed-post", { hasText: voteTitle });
+  // Its card, not its closing-soon card (Events 4: a vote open for a day closes within 48 hours).
+  const card = page.locator("article.feed-post:not(.feed-post--closing)", { hasText: voteTitle });
   await expect(card).toBeVisible();
   const pill = card.getByTestId("feed-type-pill");
   await expect(pill).toHaveText("Vote");
