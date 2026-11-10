@@ -4,6 +4,37 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The console slice: one row per plugin, release approvals, fewer codes, the space-type record — 2026-11-10
+
+- **State:** on `multi-tenant` (`7a256cb`..`dfc5846` pushed by Adam; then the row Approve fix and this entry). No migrations. Not production (at `ac2b4c4`).
+  Dev deploys from the push; `release.sh dev --yes` checks it. Wire: identical (9,185 local events, before and after).
+- **Archive dialog** (`7a256cb`): under the reason, "If this <item> is still open, its creator will receive this reason
+  in their email." The placeholder is "Reason" (was "for your records").
+- **Plugins, one row per plugin** (`c37614a`, `dfc5846`; `ui/src/console/pluginRows.ts`): name, "Running <version>",
+  "Approve <version>" on the newest version waiting, and a Version dropdown, newest first, keeping every version with its record
+  (who approved, signature, withdrawal, grant). The "On this deployment" table folded into the rows. The version first
+  shown stays chosen while the operator acts on it.
+- **Release approvals for first-party packages** (`8ef348f`, ADR-015 amendment, text in the session report):
+  first-party = under `packages/`, named `@civic-social/` (`src/shared/firstParty.ts`; `catalog:add` refuses the
+  scope from outside). After the migrations `release.sh` runs `scripts/catalog-release-approve.ts`: CI (`ci.yml`)
+  green on the exact commit, and the pending entry's fingerprint the files at HEAD, then
+  `POST /control/plugins/release-approve` with `CIVIC_RELEASE_SECRET`; the console signs as its Approve does, records
+  `release@<commit>`, audits it. Else pending with the reason, and the pause as before; no pause when all are approved.
+  **Not live until Adam creates the secret** (a Vercel setting per deployment, plus `~/civic-keys/dev-release.env` /
+  `prod-release.env` naming it); without it the release pauses as before.
+- **Fewer codes** (`a14804e`): one fresh code confirms ten minutes of every guarded console action (catalog, hostname
+  or suspend, a hub's admins, archive); an export always asks its own. Audit rows say `code` or `window`.
+- **The space-type record** (`1f476b1`; `src/shared/spaceTypes.ts`): one record, Civic Hub (display name, noun,
+  domain pattern, member sender, support address, operator sender, maintainer, template set). A code record, not a
+  table, so nothing new crosses the seam; the console reads the names through `GET /control/session`. Mail reads the
+  product name, support address and maintainer from it, byte-identical. Console codes use `CIVIC_OPERATOR_MAIL_FROM`
+  (unset: the member sender, as before); set it to a mosaic.social address once that domain is verified.
+- **Legacy vote tables:** waiting on Adam's production `active_vote_keys` count. Note: dropping them changes
+  `packages/civic.vote` (its manifest lists `active_vote_keys`), so it means a Votes version and catalog entry too.
+- **Open for Adam:** create `CIVIC_RELEASE_SECRET` (dev, then production); commit the ADR-015 amendment; mosaic.social.
+
+---
+
 ## Events 4: closing soon in the feed, Coming up events only, archive for every type, Events 0.4.4 — 2026-11-09
 
 - **State:** eight commits on `multi-tenant` (`3eae98f`..`d85b310`), then this entry. Not production (at `ac2b4c4`).

@@ -87,6 +87,26 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## The console slice: plugin rows, release approvals, the code window, the space-type record (2026-11-10)
+
+- **Unit:** `releaseApproveDecision.test.ts` (green and matching approved; CI red, running or missing; fingerprint
+  mismatch naming both; third-party; no entry; withdrawn; the first-party scope); `spaceTypes.test.ts` (the record
+  holds the old literals; invite and fixed-report mail text; the operator sender equals the member sender while
+  `CIVIC_OPERATOR_MAIL_FROM` is unset, and is it once set); UI `pluginRows.test.ts` (grouping, order, running,
+  waiting). Byte-identity: each changed template's source, with the record's values put back, diffed equal to before.
+- **API (needs `CIVIC_RELEASE_SECRET` on the server and `CIVIC_TEST_RELEASE_SECRET` here, as `ci.yml` sets):**
+  `releaseApprove.test.ts` (no or wrong secret 401; approved and signed by `release@<commit>`, audited; mismatch and
+  third-party pending; a bad body 400). `consoleCodes.test.ts` and `control.test.ts`: the window covers archive and
+  admins; an export still takes a code; a session without a recent code is refused.
+- **E2E (Chromium and WebKit):** `consolePluginRows.spec.ts` (Events with a running, a withdrawn and a waiting version,
+  desktop and phone, no sideways scroll); `consoleCatalogWindow.spec.ts` reads the chosen version's status. Catalog
+  rows are never deleted (CI grants no DELETE): specs withdraw what they wrote, at versions of their own.
+- **Local noise:** many runs of the console specs use up the operator's code requests ("Too many attempts"); the
+  archive-note step in `events.spec.ts` was flaky once in WebKit at phone width on CI and passed on retry.
+- **Wire:** before and after on the same local database, 9,185 events identical.
+
+---
+
 ## Events 4: closing soon, Coming up, archive for every type, Events 0.4.4 (2026-11-09)
 
 - **Unit:** `ui/src/components/closingSoon.test.ts` (the words by the hub's calendar, today/tomorrow/in 2 days; which

@@ -95,7 +95,8 @@ for (const vp of [
 
     // Approve once, on the waiting version, in the row itself.
     await expect(row.getByText(`Version ${NEW} is waiting for approval`)).toBeVisible();
-    await expect(row.getByRole("button", { name: "Approve", exact: true })).toHaveCount(1);
+    await expect(row.getByRole("button", { name: `Approve ${NEW}`, exact: true })).toHaveCount(1);
+    await expect(row.getByRole("button", { name: /^Approve \d/ })).toHaveCount(1);
 
     // The dropdown: newest first (the waiting one first; the running and the
     // withdrawn one among the rest), the running one chosen.
@@ -116,10 +117,11 @@ for (const vp of [
     await expect(record).toContainText("Approved by operator@example.test");
     await expect(record).toContainText("Withdrawn on");
 
-    // The waiting one: its record has no second Approve.
+    // The waiting one, and the withdrawn one, can be approved from their record.
+    await expect(record.getByRole("button", { name: "Approve", exact: true })).toBeVisible();
     await versions.selectOption({ label: `${NEW} (waiting for approval)` });
     await expect(record.getByTestId("catalog-version-status")).toHaveText("Waiting for approval");
-    await expect(row.getByRole("button", { name: "Approve", exact: true })).toHaveCount(1);
+    await expect(record.getByRole("button", { name: "Approve", exact: true })).toBeVisible();
 
     // Nothing runs wider than the screen.
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

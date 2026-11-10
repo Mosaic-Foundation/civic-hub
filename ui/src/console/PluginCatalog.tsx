@@ -97,7 +97,7 @@ function PluginRowItem({
             disabled={busy !== null}
             onClick={() => onAct(row.pending!, "approve")}
           >
-            Approve
+            Approve {row.pending.version}
           </button>
         </div>
       )}
@@ -121,7 +121,6 @@ function PluginRowItem({
           <VersionRecord
             entry={chosen}
             running={row.running?.id === chosen.id}
-            approveHere={row.pending?.id !== chosen.id}
             busy={busy}
             onAct={onAct}
             onRequired={onRequired}
@@ -136,14 +135,12 @@ function PluginRowItem({
 function VersionRecord({
   entry: e,
   running,
-  approveHere,
   busy,
   onAct,
   onRequired,
 }: {
   entry: PluginCatalogEntry;
   running: boolean;
-  approveHere: boolean;
   busy: string | null;
   onAct: (entry: PluginCatalogEntry, kind: "approve" | "withdraw") => void;
   onRequired: (entry: PluginCatalogEntry, required: boolean) => void;
@@ -191,7 +188,7 @@ function VersionRecord({
       </details>
       {e.notes && <p className="cx-small">Note: {e.notes}</p>}
       <div className="cx-actions">
-        {approveHere && (e.status === "pending" || e.status === "withdrawn") && (
+        {(e.status === "pending" || e.status === "withdrawn") && (
           <button type="button" className="cx-btn cx-btn-primary" disabled={busy !== null} onClick={() => onAct(e, "approve")}>
             Approve
           </button>

@@ -19,7 +19,7 @@ const CONSOLE_UI = `${UI.protocol}//console.localhost${UI.port ? `:${UI.port}` :
 const STRAW = "@civic-social-examples/plugin-straw-poll";
 
 async function statusOf(page: Page): Promise<string> {
-  return (await page.getByTestId(`catalog-${STRAW}`).first().getByTestId("catalog-version-status").innerText()).trim();
+  return (await page.getByTestId(`catalog-${STRAW}`).first().getByTestId("catalog-record").getByTestId("catalog-version-status").innerText()).trim();
 }
 
 test("one code confirms catalog changes for ten minutes; each change is still recorded", async ({ page, context }) => {
@@ -27,8 +27,9 @@ test("one code confirms catalog changes for ten minutes; each change is still re
   const [name, value] = cookie.split("=");
   await context.addCookies([{ name: name!, value: decodeURIComponent(value!), domain: "console.localhost", path: "/" }]);
   await page.goto(`${CONSOLE_UI}#/plugins`);
-  // The plugin's row (one per plugin; its record shows the newest version).
-  const entry = page.getByTestId(`catalog-${STRAW}`).first();
+  // The plugin's row (one per plugin); its record is the version acted on,
+  // and its buttons are the record's ("Approve", not the row's "Approve <version>").
+  const entry = page.getByTestId(`catalog-${STRAW}`).first().getByTestId("catalog-record");
   await expect(entry).toBeVisible();
   await expect(page.getByTestId("catalog-confirmed")).toHaveCount(0);
 
