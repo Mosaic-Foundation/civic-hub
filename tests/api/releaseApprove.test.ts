@@ -6,8 +6,9 @@
 //
 // Needs a server with CIVIC_RELEASE_SECRET set and the same value here as
 // CIVIC_TEST_RELEASE_SECRET (as CI runs both servers); skipped otherwise.
-// Rows are written into the local catalog under a test package and deleted
-// after (hashes no deployment loads, so nothing mounts them).
+// Rows are written into the local catalog under a test package and withdrawn
+// after (catalog rows are never deleted; hashes no deployment loads, so
+// nothing mounts them).
 
 import { afterAll, describe, expect, it } from "vitest";
 import { randomBytes } from "node:crypto";
@@ -95,7 +96,16 @@ async function row(id: string) {
 }
 
 afterAll(async () => {
-  if (made.length) await localRest(`plugin_catalog?id=in.(${made.join(",")})`, { method: "DELETE" });
+  if (!made.length) return;
+  const now = new Date().toISOString();
+  await localRest(`plugin_catalog?id=in.(${made.join(",")})&status=eq.approved`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "withdrawn", withdrawn_at: now }),
+  });
+  await localRest(`plugin_catalog?id=in.(${made.join(",")})&status=eq.pending`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "withdrawn", approved_by: "operator@example.test", approved_at: now, withdrawn_at: now }),
+  });
 });
 
 describe.skipIf(!SECRET)("a release's approval of first-party entries", () => {

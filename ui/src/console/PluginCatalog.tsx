@@ -60,7 +60,9 @@ function PluginRowItem({
   onRequired: (entry: PluginCatalogEntry, required: boolean) => void;
 }) {
   const selectId = useId();
-  const [chosenId, setChosenId] = useState<string | null>(null);
+  // The version first shown stays chosen while the operator acts on it: an
+  // approve or a withdrawal must not move the record to another version.
+  const [chosenId, setChosenId] = useState<string | null>(() => (row.running ?? row.pending ?? row.versions[0])?.id ?? null);
   const chosen =
     row.versions.find((e) => e.id === chosenId) ?? row.running ?? row.pending ?? row.versions[0] ?? null;
   const verdict = row.deployment;

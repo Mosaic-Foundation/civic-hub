@@ -6,9 +6,10 @@
  * lists all three, newest first, each with its own record. At desktop and
  * phone width.
  *
- * The two extra versions are rows this spec writes into the local catalog and
- * deletes after (hashes no deployment loads, so nothing mounts them). Needs
- * the console's env on the API, as e2e.yml runs it.
+ * The two extra versions are rows this spec writes into the local catalog,
+ * at versions of its own, and withdraws after (catalog rows are never
+ * deleted; hashes no deployment loads, so nothing mounts them). Needs the
+ * console's env on the API, as e2e.yml runs it.
  */
 
 import { randomBytes } from "node:crypto";
@@ -33,6 +34,10 @@ interface Row {
 
 let made: string[] = [];
 let runningVersion = "";
+const n = Math.floor(Math.random() * 1e6);
+const OLD = `0.0.${n}`;
+// Newer than any an earlier run left (withdrawn) in a reused local catalog.
+const NEW = `99.${Date.now()}.0`;
 
 test.beforeAll(async () => {
   const deployed = (await localRest(
@@ -58,14 +63,19 @@ test.beforeAll(async () => {
   });
   const rows = (await localRest("plugin_catalog?select=id", {
     method: "POST",
-    body: JSON.stringify([extra("0.0.1", "withdrawn"), extra("99.0.0", "pending")]),
+    body: JSON.stringify([extra(OLD, "withdrawn"), extra(NEW, "pending")]),
   })) as Array<{ id: string }>;
   made = rows.map((r) => r.id);
   expect(made).toHaveLength(2);
 });
 
 test.afterAll(async () => {
-  if (made.length) await localRest(`plugin_catalog?id=in.(${made.join(",")})`, { method: "DELETE" });
+  if (made.length) {
+    await localRest(`plugin_catalog?id=in.(${made.join(",")})&status=eq.pending`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "withdrawn", approved_by: "operator@example.test", approved_at: new Date().toISOString(), withdrawn_at: new Date().toISOString() }),
+    });
+  }
 });
 
 for (const vp of [
@@ -84,17 +94,16 @@ for (const vp of [
     await expect(row.getByTestId("catalog-running")).toHaveText(`Running ${runningVersion}`);
 
     // Approve once, on the waiting version, in the row itself.
-    await expect(row.getByText("Version 99.0.0 is waiting for approval")).toBeVisible();
+    await expect(row.getByText(`Version ${NEW} is waiting for approval`)).toBeVisible();
     await expect(row.getByRole("button", { name: "Approve", exact: true })).toHaveCount(1);
 
-    // The dropdown: newest first (the waiting one, the running one, and the
-    // withdrawn one last, with any other approved versions between), the
-    // running one chosen.
+    // The dropdown: newest first (the waiting one first; the running and the
+    // withdrawn one among the rest), the running one chosen.
     const versions = row.getByLabel("Version");
     const running = new RegExp(`^${runningVersion.replace(/\./g, "\\.")} \\(running`);
     const options = await versions.locator("option").allInnerTexts();
-    expect(options[0]).toBe("99.0.0 (waiting for approval)");
-    expect(options.at(-1)).toBe("0.0.1 (withdrawn)");
+    expect(options[0]).toBe(`${NEW} (waiting for approval)`);
+    expect(options).toContain(`${OLD} (withdrawn)`);
     expect(options.filter((o) => running.test(o))).toHaveLength(1);
     await expect(versions.locator("option:checked")).toHaveText(running);
     const record = row.getByTestId("catalog-record");
@@ -102,13 +111,13 @@ for (const vp of [
     await expect(record.getByRole("button", { name: "Withdraw", exact: true })).toBeVisible();
 
     // The withdrawn one keeps its record: who approved it, and its withdrawal.
-    await versions.selectOption({ label: "0.0.1 (withdrawn)" });
+    await versions.selectOption({ label: `${OLD} (withdrawn)` });
     await expect(record.getByTestId("catalog-version-status")).toHaveText("Withdrawn");
     await expect(record).toContainText("Approved by operator@example.test");
     await expect(record).toContainText("Withdrawn on");
 
     // The waiting one: its record has no second Approve.
-    await versions.selectOption({ label: "99.0.0 (waiting for approval)" });
+    await versions.selectOption({ label: `${NEW} (waiting for approval)` });
     await expect(record.getByTestId("catalog-version-status")).toHaveText("Waiting for approval");
     await expect(row.getByRole("button", { name: "Approve", exact: true })).toHaveCount(1);
 
