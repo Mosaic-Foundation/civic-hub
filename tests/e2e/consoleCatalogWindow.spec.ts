@@ -46,7 +46,7 @@ test("one code confirms catalog changes for ten minutes; each change is still re
   await dialog.getByLabel("Code").fill(code);
   await dialog.getByRole("button", { name: "Confirm" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByTestId("catalog-confirmed")).toContainText("Your code confirms catalog changes until");
+  await expect(page.getByTestId("catalog-confirmed")).toContainText("Your code confirms catalog and hub changes until");
 
   // The next ones go through at once.
   for (const step of steps.slice(1)) {

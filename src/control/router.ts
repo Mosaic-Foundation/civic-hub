@@ -216,12 +216,16 @@ async function stepUp(req: Request, res: Response): Promise<boolean> {
 }
 
 /**
- * A catalog action's confirmation (ADR-015): within ten minutes of a fresh
- * code entered for one, on the same session, none is needed; otherwise the
- * code in the body, which opens the window. Says how it was confirmed, for
+ * A guarded action's confirmation (ADR-015, widened in the console slice,
+ * 2026-11-10): within ten minutes of a fresh code entered for one, on the
+ * same session, none is needed; otherwise the code in the body, which opens
+ * the window. Covers the catalog's actions, a hostname change or suspension,
+ * a hub's admins, and archiving a hub. An export always takes its own code
+ * (stepUp): personal data leaves the platform. Says how it was confirmed, for
  * the action's own audit row, or false when the code is still to come.
+ * (The session's column is still `catalog_confirmed_until`: no migration.)
  */
-async function catalogStepUp(req: Request, res: Response): Promise<"code" | "window" | false> {
+async function windowedStepUp(req: Request, res: Response): Promise<"code" | "window" | false> {
   const until = res.locals.controlSession?.catalog_confirmed_until;
   if (until && Date.parse(until) > Date.now()) return "window";
   if (!(await stepUp(req, res))) return false;
@@ -491,7 +495,12 @@ export function controlRouter(): Router {
       return;
     }
     await validateHubConfig(hub, changes);
-    if (configChangeNeedsStepUp(changes) && !(await stepUp(req, res))) return;
+    let confirmed: "code" | "window" | null = null;
+    if (configChangeNeedsStepUp(changes)) {
+      const how = await windowedStepUp(req, res);
+      if (!how) return;
+      confirmed = how;
+    }
     changes = await withDerivedCode(hub, changes);
     const followOn = await updateHubConfig(hub, changes, actor(res));
     const priorValues = Object.fromEntries(
@@ -502,7 +511,10 @@ export function controlRouter(): Router {
       action: "hub.update",
       hubId: hub.id,
       before: priorValues,
-      after: Object.keys(followOn.carried).length ? { ...changes, carried: followOn.carried } : changes,
+      after: {
+        ...(Object.keys(followOn.carried).length ? { ...changes, carried: followOn.carried } : changes),
+        ...(confirmed ? { confirmed } : {}),
+      },
     });
     res.json({ ...(await hubDetail((await getHub(hub.id))!)), follow_on: followOn, message: describeFollowOn(followOn) });
   }));
@@ -556,7 +568,8 @@ export function controlRouter(): Router {
     }
     // Any change to who runs a hub takes a fresh code, adding as well as
     // removing, as on the hub's own Admins page (review R52).
-    if (!(await stepUp(req, res))) return;
+    const confirmed = await windowedStepUp(req, res);
+    if (!confirmed) return;
     await setHubAdmins(hub.id, next, actor(res));
     await audited(res, { actor: actor(res), action: "hub.admins", hubId: hub.id, before, after: next });
     const invites = await inviteAdmins(hub.id, next.filter((e) => !before.includes(e)));
@@ -579,7 +592,8 @@ export function controlRouter(): Router {
     const hub = await loadHub(req, res);
     if (!hub) return;
     if (hub.archived_at) throw new ControlInputError("This hub is already archived.");
-    if (!(await stepUp(req, res))) return;
+    const confirmed = await windowedStepUp(req, res);
+    if (!confirmed) return;
     await archiveHub(hub);
     const after = (await getHub(hub.id))!;
     await audited(res, {
@@ -587,7 +601,7 @@ export function controlRouter(): Router {
       action: "hub.archive",
       hubId: hub.id,
       before: { status: hub.status, archived_at: hub.archived_at },
-      after: { status: after.status, archived_at: after.archived_at },
+      after: { status: after.status, archived_at: after.archived_at, confirmed },
     });
     res.json(await hubDetail(after));
   }));
@@ -762,7 +776,7 @@ export function controlRouter(): Router {
   // Approving a catalog entry lets every hub on this deployment run that
   // exact code: a fresh code, and an audit row with the hash.
   r.post("/control/plugins/:id/approve", route(async (req, res) => {
-    const confirmed = await catalogStepUp(req, res);
+    const confirmed = await windowedStepUp(req, res);
     if (!confirmed) return;
     const notes = catalogNotes(req.body);
     const { before, after } = await catalogChange(() => approveEntry(String(req.params.id), actor(res), notes));
@@ -779,7 +793,7 @@ export function controlRouter(): Router {
   // Signing the entries approved before signatures (and every entry again
   // after the key is rotated): a fresh code, and an audit row listing them.
   r.post("/control/plugins/sign", route(async (req, res) => {
-    const confirmed = await catalogStepUp(req, res);
+    const confirmed = await windowedStepUp(req, res);
     if (!confirmed) return;
     const { key, signed } = await catalogChange(() => signApprovedEntries());
     await audited(res, {
@@ -795,7 +809,7 @@ export function controlRouter(): Router {
   // Marking a version required moves every hub on an older one to it, without
   // asking their admins: a fresh code, audited.
   r.post("/control/plugins/:id/required", route(async (req, res) => {
-    const confirmed = await catalogStepUp(req, res);
+    const confirmed = await windowedStepUp(req, res);
     if (!confirmed) return;
     const required = (req.body as { required?: unknown } | undefined)?.required;
     if (typeof required !== "boolean") throw new ControlInputError('Send { "required": true } or { "required": false }.', 400);
@@ -812,7 +826,7 @@ export function controlRouter(): Router {
 
   // Withdrawing stops every server mounting that version within a minute.
   r.post("/control/plugins/:id/withdraw", route(async (req, res) => {
-    const confirmed = await catalogStepUp(req, res);
+    const confirmed = await windowedStepUp(req, res);
     if (!confirmed) return;
     const notes = catalogNotes(req.body);
     const { before, after } = await catalogChange(() => withdrawEntry(String(req.params.id), actor(res), notes));

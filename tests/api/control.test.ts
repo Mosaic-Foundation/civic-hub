@@ -294,7 +294,7 @@ describe("plugins and admins", () => {
     const first = `first-admin-${run}@example.test`;
     const second = `second-admin-${run}@example.test`;
     // Adding needs a fresh code too now, as on the hub's side (review R52).
-    const unconfirmed = await consoleCall("PUT", `/control/hubs/${SLUG}/admins`, { cookie, body: { admins: [first, second] } });
+    const unconfirmed = await consoleCall("PUT", `/control/hubs/${SLUG}/admins`, { cookie: await mintConsoleSession(), body: { admins: [first, second] } });
     expect(unconfirmed.status).toBe(403);
     expect(unconfirmed.body.error).toBe("step_up_required");
     const add = await consoleCall("PUT", `/control/hubs/${SLUG}/admins`, {
@@ -306,12 +306,11 @@ describe("plugins and admins", () => {
     // Only the one added gets the invite (review R38).
     expect(add.body.invites).toEqual({ sent: [second], not_sent: [] });
 
-    const remove = await consoleCall("PUT", `/control/hubs/${SLUG}/admins`, { cookie, body: { admins: [second] } });
+    // Removing takes a code too: on a session without one in the last ten
+    // minutes; within them (the code above), none (console slice).
+    const remove = await consoleCall("PUT", `/control/hubs/${SLUG}/admins`, { cookie: await mintConsoleSession(), body: { admins: [second] } });
     expect(remove.status).toBe(403);
-    const removed = await consoleCall("PUT", `/control/hubs/${SLUG}/admins`, {
-      cookie,
-      body: { admins: [second], step_up_code: await stepCode() },
-    });
+    const removed = await consoleCall("PUT", `/control/hubs/${SLUG}/admins`, { cookie, body: { admins: [second] } });
     expect(removed.status, JSON.stringify(removed.body)).toBe(200);
     expect(removed.body.admins).toEqual([second]);
     expect((await auditFor(SLUG)).at(-1)).toMatchObject({ action: "hub.admins", before: [first, second], after: [second] });
@@ -335,7 +334,8 @@ describe("archive", () => {
   });
 
   it("needs step-up, then suspends the hub and keeps its slug and hostname taken", async () => {
-    expect((await consoleCall("POST", `/control/hubs/${slug}/archive`, { cookie, body: {} })).status).toBe(403);
+    // A session with no code in the last ten minutes (console slice: one code confirms ten minutes).
+    expect((await consoleCall("POST", `/control/hubs/${slug}/archive`, { cookie: await mintConsoleSession(), body: {} })).status).toBe(403);
     const res = await consoleCall("POST", `/control/hubs/${slug}/archive`, { cookie, body: { step_up_code: await stepCode() } });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.hub.status).toBe("suspended");

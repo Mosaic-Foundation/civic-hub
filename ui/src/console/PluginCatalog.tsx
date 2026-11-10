@@ -277,9 +277,9 @@ export default function PluginCatalogPage() {
       {error && <p className="cx-alert cx-alert-error" role="alert">{error}</p>}
       {data?.confirmed_until && (
         <p className="cx-small cx-muted" data-testid="catalog-confirmed">
-          Your code confirms catalog changes until{" "}
+          Your code confirms catalog and hub changes until{" "}
           {new Date(data.confirmed_until).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}: no code is
-          needed for them until then. Each change is still recorded.
+          needed for them until then, except a hub's export. Each change is still recorded.
         </p>
       )}
       {!data && !error && <p className="cx-muted">Loading…</p>}

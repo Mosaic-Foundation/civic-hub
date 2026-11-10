@@ -67,7 +67,7 @@ describe("the console's fresh codes", () => {
 // session that entered it (ADR-015), each still audited; anything else, and
 // another session, still needs its own code. On the straw poll's entry (in
 // the catalog, loaded by no deployment), left withdrawn.
-describe("one code confirms catalog actions for ten minutes", () => {
+describe("one code confirms catalog and hub actions for ten minutes", () => {
   const STRAW = "@civic-social-examples/plugin-straw-poll";
   const sha = async (v: string) => (await import("node:crypto")).createHash("sha256").update(v).digest("hex");
 
@@ -108,8 +108,9 @@ describe("one code confirms catalog actions for ten minutes", () => {
       [third, "window"],
     ]);
 
-    // Another session needs its own code; so does anything that is not the catalog's
-    // (archiving a hub made for this, which the run's teardown deletes).
+    // Another session needs its own code. On this one the window covers a
+    // hub's guarded changes too (console slice, 2026-11-10: archiving a hub
+    // made for this, which the run's teardown deletes), but never an export.
     expect((await act(third === "approve" ? "withdraw" : "approve", {}, await mintConsoleSession())).status).toBe(403);
     const slug = `ccw-${Date.now().toString(36)}`;
     const made = await consoleCall("POST", "/control/hubs", {
@@ -117,9 +118,15 @@ describe("one code confirms catalog actions for ten minutes", () => {
       body: { slug, name: "Window Check", hostname: `${slug}.localhost`, admin_email: "a@example.test", hub_kind: "other" },
     });
     expect(made.status, JSON.stringify(made.body)).toBe(201);
+    const exported = await consoleCall("POST", `/control/hubs/${slug}/export`, { cookie: session, body: {} });
+    expect(exported.status).toBe(403);
+    expect(exported.body.error).toBe("step_up_required");
     const archive = await consoleCall("POST", `/control/hubs/${slug}/archive`, { cookie: session, body: {} });
-    expect(archive.status).toBe(403);
-    expect(archive.body.error).toBe("step_up_required");
+    expect(archive.status, JSON.stringify(archive.body)).toBe(200);
+    const [archived] = (await localRest(
+      `control_audit_log?select=after&action=eq.hub.archive&target_hub_id=eq.${slug}&order=id.desc&limit=1`,
+    )) as Array<{ after: { confirmed: string } }>;
+    expect(archived!.after.confirmed).toBe("window");
 
     // When the ten minutes are over, a code again.
     const token = decodeURIComponent(session.split("=")[1]!);
