@@ -125,6 +125,14 @@ export interface PluginSection {
    * publish the anchor (scripts/check-help-anchors.ts).
    */
   help?: { text: string; page: string; anchor: string; pending?: boolean };
+  /**
+   * What the admin's settings search finds each of its settings by, by key:
+   * the label its panel shows, and other words an admin might type
+   * ("wait list", "colour"). Optional: the hub's own list
+   * (src/shared/settingsSearch.ts) covers a package that has none, and one
+   * here wins over it. Keys must be the section's own fields.
+   */
+  search?: Readonly<Record<string, { label: string; words?: readonly string[] }>>;
 }
 
 export interface ProcessManifest {
@@ -549,6 +557,12 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
         if (!f.key.startsWith(`plugin.${d.plugin}.`)) {
           throw new ManifestError(`${where(m)}: setting ${f.key} is not under plugin.${d.plugin}.`);
         }
+      }
+      for (const [key, entry] of Object.entries(m.pluginSection.search ?? {})) {
+        if (!m.pluginSection.fields.some((f) => f.key === key)) {
+          throw new ManifestError(`${where(m)}: pluginSection.search names ${key}, which is not one of its fields`);
+        }
+        if (!entry.label) throw new ManifestError(`${where(m)}: pluginSection.search.${key} needs a label`);
       }
     }
   });

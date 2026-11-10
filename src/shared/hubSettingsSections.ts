@@ -101,14 +101,38 @@ export type PluginId = ProcessPluginId | HubFeatureId;
  * plugin's (its manifest's pluginSection) and every hub feature's
  * (src/shared/hubFeatures.ts), on one scale (ADR-009).
  */
-const PLUGIN_SECTIONS: ReadonlyArray<{ id: PluginId; order: number; fields: readonly SettingFieldSpec[] }> = [
+export interface PluginSectionInfo {
+  id: PluginId;
+  order: number;
+  /** What the Plugins page calls it: "Votes". */
+  name: string;
+  /** Its one line on the Plugins page. */
+  what: string;
+  fields: readonly SettingFieldSpec[];
+  /** Its own settings-search words, by key (a manifest's pluginSection.search). */
+  search?: Readonly<Record<string, { label: string; words?: readonly string[] }>>;
+}
+
+const PLUGIN_SECTIONS: readonly PluginSectionInfo[] = [
   ...MANIFEST_LIST.flatMap((m) =>
     m.pluginSection
-      ? [{ id: m.descriptor.plugin as ProcessPluginId, order: m.pluginSection.order, fields: m.pluginSection.fields }]
+      ? [
+          {
+            id: m.descriptor.plugin as ProcessPluginId,
+            order: m.pluginSection.order,
+            name: m.pluginSection.name,
+            what: m.pluginSection.what,
+            fields: m.pluginSection.fields,
+            search: m.pluginSection.search,
+          },
+        ]
       : [],
   ),
   ...HUB_FEATURES,
 ].sort((x, y) => x.order - y.order);
+
+/** Every plugin's part of the Plugins section, in its order (the settings search reads it). */
+export const PLUGIN_SECTION_INFO: readonly PluginSectionInfo[] = PLUGIN_SECTIONS;
 
 /** Every plugin id, in the order the Plugins section lists them (and PLUGIN_IDS is). */
 export const PLUGIN_SECTION_ORDER: readonly PluginId[] = PLUGIN_SECTIONS.map((p) => p.id);
