@@ -87,6 +87,26 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## The settings search (2026-11-10)
+
+- **Unit:** `settingsSearch.test.ts`: every help key has a search entry or a reason in `NOT_IN_SEARCH` (so a new
+  setting, which `helpRegistry.test.ts` already makes join the help registry, must also get a label here); every
+  editable setting and plugin panel is found; no stray words; each entry's link is its section and its key's anchor;
+  queries ("wait list", "Wait-list", "waiting list", "favicon", "colour", "how do I change the logo", "turn off
+  votes", "wating list") land on the right setting; nonsense finds nothing.
+- **E2E** (`settingsSearch.spec.ts`, Chromium): "wait list" + Enter opens Mode with the Waitlist open and marked; a
+  misspelling and nonsense; a Votes setting opens its plugin panel and marks the field; and **every result's link**
+  finds its setting's "?" on the page (1.6 min). A part in `SOMETIMES_SHOWN`, or a setting of a plugin that is off,
+  may land on its panel instead; the run lists those. It reads the index through `tsx`, because Playwright's loader
+  cannot import the help registry's JSON.
+- **Run as CI does** (the Vite dev server's sign-in did not take locally): the preview build, as in Quick Start's
+  "Running Playwright locally as CI does".
+- **Results (local):** unit + API (service role) 3,813 passed. Failing, and not this change: `sampleContent.test.ts`'s
+  two removal tests and one `leakHarness` GET (500, `HubDbError: community_inputs` on `/admin/hub/sample-content` and
+  `/admin/hub/mode/readiness`), the same on `5c88b0a` before this work; the local stack's data, to look at.
+
+---
+
 ## The console slice: plugin rows, release approvals, the code window, the space-type record (2026-11-10)
 
 - **Unit:** `releaseApproveDecision.test.ts` (green and matching approved; CI red, running or missing; fingerprint

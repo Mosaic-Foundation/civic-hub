@@ -4,6 +4,42 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The settings search: find any hub setting by typing — 2026-11-10
+
+- **State:** on `dev`, `bbd89fd` (the index) and `67e689e` (the box and the links), then this entry; not pushed. No
+  migration, no package change, no catalog entry. Dev gets it from the push; production does not have it.
+- **What an admin sees:** a search box at the top of Hub settings ("Search settings, e.g. logo, wait list, time
+  zone"). Each result says what it is and where ("Waitlist · Mode", "Send time · Plugins › Email digest"). Enter or a
+  click goes there: the section (asking first about unsaved edits, as the rail does), the panel that holds it opened
+  (a plugin's panel, Mode's allowlist or waitlist), scrolled to, and the field marked for a moment. Arrows move,
+  Escape clears.
+- **Why it cannot go stale** (`src/shared/settingsSearch.ts`): it is built on the help registry, which every setting,
+  section, part and plugin panel must already join (`helpRegistry.test.ts`). Each help key gets a label and words
+  here; its link is worked out from the key (`pathForKey`), never written by hand; a section's and a plugin panel's
+  label come from `SETTINGS_NAV` and the plugin's `name`. `settingsSearch.test.ts` fails when a help key has no entry
+  (or no reason in `NOT_IN_SEARCH`: the setup-guide link, Feedback's forward button, Contact Civic.Social, Share
+  invites, the person's own Members switch). The E2E check opens every result's link and finds the setting.
+- **Plugins:** a plugin's switch is found by its panel (with "turn on/off", "enable", "disable"); its settings by
+  their labels. A package may carry its own words in `pluginSection.search` (a new, optional manifest field; one
+  there wins over the hub's list; documented in `docs/PLUGIN-PACKAGE.md`). The first-party packages' words are in
+  the hub's list for now, so no package version changed.
+- **Matching:** case, accents and punctuation ignored; words like "how", "change", "the" skipped; "wait list" finds
+  "Waitlist" (the query run together); spelling pairs (colour/color, whitelist/allowlist, login/sign in) and plurals;
+  one wrong letter forgiven only when nothing is spelled as typed; results far weaker than the best dropped.
+- **Landing on a setting:** every "?" (`HelpButton`) carries `data-help-anchor` (`anchorForKey(key)`);
+  `useScrollToHash` finds it, scrolls, and marks its field (`.is-link-target`, 2.4 s); after a second a panel that
+  lists it (`data-anchors`) will do. `useAnchoredOpen` takes several anchors. New "?"s: the theme's colours (on
+  Preset) and a place hub's read-only governing law (`ReadOnlyField` takes `k`).
+- **Sometimes not on the page** (`SOMETIMES_SHOWN`, the link opens its section or panel): the old board list, hidden
+  members (Members on), Install/Remove/Update (installed plugins), Mode's readiness and switch notes (after picking a
+  mode), the right column's cards (Three columns layout).
+- **Tests:** see TESTING.md "The settings search". The local API run had three failures that are not this change
+  (sample content and a leak-harness GET: `HubDbError: community_inputs`, the same on `5c88b0a`).
+- **Open for Adam:** try it on dev and say which words you typed that found nothing; adding a word is one line in
+  `SEARCH_WORDS`.
+
+---
+
 ## The development branch is renamed from `multi-tenant` to `dev` — 2026-11-10
 
 - **What changed:** the long-lived branch that deploys to dev (Vercel `civic-hub-dev`) is now `dev`; `main` is still

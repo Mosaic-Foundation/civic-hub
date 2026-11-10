@@ -193,6 +193,10 @@ A new type joins no file outside its folder (ADR-017; `tests/unit/typeFromFolder
   or `{ notContent: "why" }`.
 - **`pluginSection.help: { text, page, anchor, pending? }`**, its Plugins panel's "?" note; `npm run plugins:sync`
   writes it into `src/shared/helpRegistry.json`.
+- **`pluginSection.search: { "<setting key>": { label, words? } }`**, optional: what the admin's settings search on
+  Hub settings finds each of its settings by (the label its panel shows, and other words an admin might type). The
+  hub's own list (`src/shared/settingsSearch.ts`) covers a package without one; one here wins. Its panel's own entry
+  comes from `name` and `what`. Each setting still needs its help note, as before.
 - **`detailPath`** also gives its share-card route: `plugins:sync` keeps `vercel.json`'s `/api/og` block equal to
   the types' page paths.
 - **`feed.kinds`** and **`statuses`**, above; a `wireObject` type's card events are read back by the feed from its
