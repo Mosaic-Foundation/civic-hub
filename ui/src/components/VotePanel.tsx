@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import ShareMoment from "./ShareMoment";
 import type { ActionResult, HeldReceiptPayload, ProcessState, VoteState } from "../services/api";
 import {
-  claimVoteReceipt,
   submitVote,
   submitApprovalVote,
   supportVote,
@@ -25,41 +24,6 @@ import ReceiptCode from "./ReceiptCode";
 import { useHub } from "../config/hub";
 
 const COMMENT_MAX = 500;
-
-// One collection per account and vote at a time (React's development double
-// effects would otherwise ask twice, and the second answer is "nothing").
-const claimsInFlight = new Map<string, Promise<HeldReceipt | null>>();
-
-/**
- * For someone who voted before receipts moved to the voter: collect their
- * receipt and change key once, and keep them on this browser. null when
- * there is nothing to collect (they voted from another browser).
- */
-function collectEarlyReceipt(actor: string, processId: string, approval: boolean): Promise<HeldReceipt | null> {
-  const key = `${actor}:${processId}`;
-  let p = claimsInFlight.get(key);
-  if (!p) {
-    p = claimVoteReceipt(processId)
-      .then((r) => {
-        let choice: string | string[] = r.choice;
-        if (approval) {
-          try {
-            const parsed: unknown = JSON.parse(r.choice);
-            if (Array.isArray(parsed)) choice = parsed.map(String);
-          } catch {
-            // Keep the stored text.
-          }
-        }
-        const held: HeldReceipt = { receipt_id: r.receipt_id, change_key: r.change_key, choice };
-        saveHeldReceipt(actor, processId, held);
-        return held;
-      })
-      .catch(() => getHeldReceipt(actor, processId))
-      .finally(() => claimsInFlight.delete(key));
-    claimsInFlight.set(key, p);
-  }
-  return p;
-}
 
 /** Where an element sits on the screen now, held for the next two seconds. */
 function holdPlace(el: HTMLElement): { top: number; until: number } {
@@ -175,20 +139,14 @@ export default function VotePanel({ process, actor, onView }: Props) {
     setVotedElsewhere(false);
   }, [actor, process.id]);
 
-  // Voted with no receipt here: someone who voted before receipts moved to
-  // the voter collects theirs once; anyone else voted from another browser.
+  // Voted with no receipt here: voted from another browser. (Ballots from
+  // before receipts moved to the voter could once be collected here; none
+  // are left, and that route is gone, 2026-11-10.)
   useEffect(() => {
     if (!isActive || process.has_voted !== true || held) return;
-    let live = true;
-    collectEarlyReceipt(actor, process.id, isApproval).then((r) => {
-      if (!live) return;
-      if (r) setHeld(r);
-      else setVotedElsewhere(true);
-    });
-    return () => {
-      live = false;
-    };
-  }, [isActive, process.has_voted, held, actor, process.id, isApproval]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- follows the vote's state as read
+    setVotedElsewhere(true);
+  }, [isActive, process.has_voted, held]);
 
   /** The signed-in account's id, even when the vote was cast from a pre-sign-in callback. */
   async function keeperId(): Promise<string> {

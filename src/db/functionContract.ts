@@ -52,7 +52,6 @@ export const FUNCTION_CONTRACT: readonly FunctionRequirement[] = [
     owner: "services/pluginInstall",
   },
   { name: "apply_required_plugin_version", args: "p_package text, p_version text, p_capabilities jsonb", owner: "db/pluginCatalog" },
-  { name: "claim_vote_key", args: "p_hub_id text, p_process_id text, p_user_id text, p_key_hash text", owner: "db/atomic" },
   { name: "ballot_by_receipt", args: "p_hub_id text, p_process_id text, p_receipt text", owner: "db/atomic" },
   { name: "rate_limit_take", args: "p_buckets text[], p_limits integer[], p_window_seconds integer[]", owner: "db/rateLimit" },
   { name: "rate_limit_retry_at", args: "p_bucket text, p_limit integer, p_window_seconds integer", owner: "db/rateLimit" },

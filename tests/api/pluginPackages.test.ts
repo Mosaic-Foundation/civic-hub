@@ -419,7 +419,7 @@ describe("versions and updates", () => {
     expect((await call("POST", `/process/${id}/action`, HOST, { type: "process.activate", payload: {} }, admin)).status).toBe(200);
     expect((await one("vote")).update_available).toBe(true);
     expect((await call("POST", "/admin/hub/plugins/vote/update", HOST, {}, admin)).status).toBe(200);
-    expect((await record("@civic-social/plugin-vote")).version).toBe("0.2.0");
+    expect((await record("@civic-social/plugin-vote")).version).toBe("0.3.0");
     const read = await call("GET", `/process/${id}/state`, HOST, undefined, admin);
     expect(read.status).toBe(200);
     expect(read.body.status ?? read.body.lifecycle).toBe("active");

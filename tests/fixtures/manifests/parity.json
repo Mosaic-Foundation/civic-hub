@@ -30,7 +30,6 @@
     "civic.event": "events"
   },
   "HUB_TABLES": [
-    "active_vote_keys",
     "admin_digest_marks",
     "ai_usage",
     "analytics_daily",
@@ -77,10 +76,6 @@
     "wordcloud_submissions"
   ],
   "EXPORT_MANIFEST": [
-    {
-      "table": "active_vote_keys",
-      "rows": "export"
-    },
     {
       "table": "admin_digest_marks",
       "rows": "omit",
@@ -269,10 +264,6 @@
     }
   ],
   "TABLE_KEYS": {
-    "active_vote_keys": [
-      "user_id",
-      "process_id"
-    ],
     "analytics_report_keys": [
       "hub_id",
       "id"
@@ -705,15 +696,6 @@
     }
   ],
   "requirements": [
-    {
-      "table": "active_vote_keys",
-      "columns": [
-        "user_id",
-        "process_id",
-        "receipt_id"
-      ],
-      "owner": "civic.vote"
-    },
     {
       "table": "admin_digest_marks",
       "columns": [

@@ -40,8 +40,6 @@ export {
   buildEvent,
   can,
   checkTextAgainstCoC,
-  claimVoteKey,
-  clearActiveVoteKeysForProcess,
   closeThroughDispatcher,
   countLinksTouching,
   countVisibleOutsidePhase,

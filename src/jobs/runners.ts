@@ -15,7 +15,7 @@ import { closeAllExpired } from "../services/processService.js";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { refreshSamples } from "../services/sampleRefresh.js";
 import { finishWindDowns } from "../services/pluginInstall.js";
-import { clearEndedArchivedVoteKeys, reshuffleOpenBallots } from "../modules/civic.receipts/index.js";
+import { reshuffleOpenBallots } from "../modules/civic.receipts/index.js";
 
 const HOST_JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
   news_sync: newsSyncJob,
@@ -37,28 +37,16 @@ const HOST_JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
         reshuffleError = (err as Error).message;
       }
     }
-    // Archived votes past their window get the close's last step (bridge rows
-    // cleared, ballots shuffled) and stay archived (2026-10-14). Whatever the
-    // plugin switch says: these rows link voters to receipts.
-    let archivedFinished: string[] = [];
-    let archivedError: string | null = null;
-    try {
-      archivedFinished = await clearEndedArchivedVoteKeys(now);
-    } catch (err) {
-      archivedError = (err as Error).message;
-    }
     // Last: a plugin winding down whose last open item has now closed is
     // switched off (ADR-014). Its own failures are reported, not the job's.
     const woundDown = await finishWindDowns();
-    const failed = r.failed.length > 0 || reshuffleError !== null || archivedError !== null;
+    const failed = r.failed.length > 0 || reshuffleError !== null;
     return {
       status: failed ? 500 : 200,
       body: {
         ...r,
         reshuffled,
         reshuffle_error: reshuffleError,
-        archived_finished: archivedFinished,
-        archived_error: archivedError,
         ...(woundDown.length > 0 ? { wound_down: woundDown } : {}),
       },
     };

@@ -165,24 +165,6 @@ export async function reshuffleBallots(hubId: string, processId: string): Promis
   return forHub(hubId).rpc<number>("reshuffle_ballots", { p_process_id: processId });
 }
 
-/**
- * An early voter (ballot from before 2026-10-10, vote still open) collects a
- * change key for their receipt; their bridge row is deleted. null when they
- * have none.
- */
-export async function claimVoteKey(
-  hubId: string,
-  processId: string,
-  userId: string,
-  keyHash: string,
-): Promise<{ receipt_id: string; choice: string } | null> {
-  return forHub(hubId).rpc<{ receipt_id: string; choice: string } | null>("claim_vote_key", {
-    p_process_id: processId,
-    p_user_id: userId,
-    p_key_hash: keyHash,
-  });
-}
-
 /** A ballot by its receipt, the receipt in the call body (ballot_by_receipt). */
 export async function ballotByReceipt(
   hubId: string,

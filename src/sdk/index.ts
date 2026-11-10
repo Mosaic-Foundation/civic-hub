@@ -77,11 +77,9 @@ export { str, num } from "../utils/readField.js";
 
 // --- The vote's ballots and receipts (src/modules/civic.receipts/) -----------------------
 export {
-  claimVoteKey,
   getVoteLog,
   verifyReceipt,
   recordOrUpdateVote,
-  clearActiveVoteKeysForProcess,
   countVoters,
   getBallotChoicesForProcess,
   hasUserVoted,

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { handleGetVoteLog, handleVerifyReceipt, handleClaimReceipt } from "./controller.js";
+import { handleGetVoteLog, handleVerifyReceipt } from "./controller.js";
 import { requireResident } from "@civic-social/plugin-sdk/first-party";
 
 const router = Router();
@@ -11,9 +11,5 @@ router.get("/:id/log", handleGetVoteLog);
 // receipt is in the body and no request log records it (2026-10-10; the GET
 // with ?receipt= is gone).
 router.post("/:id/verify", handleVerifyReceipt);
-
-// POST /votes/:id/claim-receipt — an early voter's browser collects a change
-// key for the ballot they cast before 2026-10-10 (once).
-router.post("/:id/claim-receipt", requireResident, handleClaimReceipt);
 
 export default router;

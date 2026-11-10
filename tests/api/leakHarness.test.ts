@@ -145,7 +145,7 @@ async function pool<T>(items: T[], size: number, fn: (t: T) => Promise<void>) {
 // Floyd's rows: counted per table, and the rows this test knows compared whole
 
 const HUB_TABLES_FOR_SNAPSHOT = [
-  "active_vote_keys", "brief_responses", "community_inputs", "deliberation_drafts",
+  "brief_responses", "community_inputs", "deliberation_drafts",
   "deliberation_submissions", "deliberation_votes", "events", "feedback_submissions",
   "hub_invites", "hub_settings", "job_runs", "link_previews", "process_links",
   "process_reviews", "processes", "project_comments", "project_drafts",
@@ -174,7 +174,6 @@ async function snapshotFloyd(): Promise<Record<string, unknown>> {
   snap.inputs = await q(`community_inputs?process_id=in.${inList(processIds)}&order=id`);
   snap.ballots = await q(`vote_records?process_id=eq.${B.vote}&order=receipt_id`);
   snap.participation = await q(`vote_participation?process_id=eq.${B.vote}&order=user_id`);
-  snap.bridge = await q(`active_vote_keys?process_id=eq.${B.vote}&order=user_id`);
   snap.links = await q(`process_links?hub_id=eq.floyd&order=id`);
   snap.reviews = await q(`process_reviews?id=eq.${B.review}`);
   snap.settings = await q(`hub_settings?hub_id=eq.floyd&order=key`);

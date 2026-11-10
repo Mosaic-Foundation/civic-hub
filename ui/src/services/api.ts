@@ -859,17 +859,6 @@ export function verifyReceipt(processId: string, receiptId: string): Promise<Rec
   return request("POST", `/votes/${processId}/verify`, { receipt: receiptId });
 }
 
-/**
- * For someone who voted before receipts moved to the voter (2026-10-10), on
- * a vote still open: their receipt and a change key, handed over once.
- * ApiError 404 `no_receipt_to_claim` when there is nothing to collect.
- */
-export function claimVoteReceipt(
-  processId: string,
-): Promise<{ receipt_id: string; change_key: string; choice: string }> {
-  return request("POST", `/votes/${processId}/claim-receipt`, {});
-}
-
 // --- Civic Events (feed layer) ---
 //
 // Mirrors civic-hub/src/models/event.ts. Events are the primary public

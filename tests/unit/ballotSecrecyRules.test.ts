@@ -30,13 +30,10 @@ const GOOD_COLUMNS: ColumnRow[] = [
   col("vote_participation", "user_id"),
   col("vote_participation", "process_id"),
   col("vote_participation", "created_at", "timestamp with time zone", "now()"),
-  col("active_vote_keys", "receipt_id"),
 ];
 const GOOD_CHECKS: CheckRow[] = [{ table: "vote_records", name: "vote_records_no_time", definition: "CHECK ((created_at IS NULL))" }];
 const GOOD_FUNCTIONS: FunctionRow[] = [
   { name: "cast_ballot", source: "INSERT INTO vote_participation ...; INSERT INTO vote_records ..." },
-  { name: "cast_vote", source: "INSERT INTO active_vote_keys (user_id, process_id, receipt_id, hub_id)" },
-  { name: "claim_vote_key", source: "DELETE FROM active_vote_keys WHERE ..." },
 ];
 
 const check = (over: { columns?: ColumnRow[]; checks?: CheckRow[]; functions?: FunctionRow[] }) =>
@@ -79,7 +76,8 @@ describe("ballot secrecy schema rules", () => {
     );
   });
 
-  it("a new writer of the retired bridge fails, and cast_ballot must not touch it", () => {
+  it("the retired bridge coming back fails, as does any writer of it, and cast_ballot must not touch it", () => {
+    expect(check({ columns: [...GOOD_COLUMNS, col("active_vote_keys", "receipt_id")] }).join("\n")).toMatch(/retired bridge .* is back/);
     const writer = { name: "remember_voter", source: "INSERT INTO active_vote_keys VALUES (...)" };
     expect(check({ functions: [...GOOD_FUNCTIONS, writer] }).join("\n")).toMatch(/remember_voter/);
     const bad = GOOD_FUNCTIONS.map((f) =>
@@ -115,9 +113,9 @@ describe("ballot secrecy in the code", () => {
     expect(hits).toEqual([]);
   });
 
-  it("no server code reads the retired bridge to find a voter's ballot, or calls the legacy cast_vote", () => {
+  it("no server code names the dropped bridge or its functions (cast_vote, claim_vote_key)", () => {
     const hits = server
-      .filter((p) => /getActiveChoice|\.from\(\s*["']active_vote_keys["']\s*\)\s*\.select|rpc[^)]*["']cast_vote["']/.test(read(p)))
+      .filter((p) => /getActiveChoice|["']active_vote_keys["']|["']cast_vote["']|["']claim_vote_key["']/.test(read(p)))
       .map(rel);
     expect(hits).toEqual([]);
   });

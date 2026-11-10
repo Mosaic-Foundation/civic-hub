@@ -139,7 +139,6 @@
  "GET /admin/moderation/log",
  "GET /votes/:id/log",
  "POST /votes/:id/verify",
- "POST /votes/:id/claim-receipt",
  "GET /vote-results/:id",
  "GET /brief/",
  "GET /brief/:id",

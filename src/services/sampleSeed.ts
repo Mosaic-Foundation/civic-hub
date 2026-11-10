@@ -63,7 +63,7 @@ import { uiBaseUrl } from "../utils/baseUrl.js";
 import { processWireIris } from "./processLinks.js";
 import type * as VoteService from "../../packages/civic.vote/service.js";
 import type { VoteProcessState } from "../../packages/civic.vote/service.js";
-import { getBallotChoicesForProcess, clearActiveVoteKeysForProcess } from "../modules/civic.receipts/index.js";
+import { getBallotChoicesForProcess } from "../modules/civic.receipts/index.js";
 import { submitInput } from "../modules/civic.input/index.js";
 import type { BriefProcessState } from "../../packages/civic.brief/api.js";
 import type { AnnouncementProcessState } from "../../packages/civic.announcement/models.js";
@@ -413,7 +413,6 @@ class SeedRun {
       const ballots = (await getBallotChoicesForProcess(p.id)).map((c) => method.parseReceipt(c));
       ({ state: st } = await vote.closeVote(st, "system:auto-close", ballots, this.voteCtx(p, closed)));
       await this.persistVote(p, st, "active", closed, "system:auto-close");
-      await clearActiveVoteKeysForProcess(p.id);
     }
   }
 

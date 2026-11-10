@@ -82,7 +82,6 @@ function ballot(
 async function ballotState(processId: string, userId: string) {
   return {
     participation: await rows(`vote_participation?process_id=eq.${processId}&user_id=eq.${userId}`),
-    bridge: await rows(`active_vote_keys?process_id=eq.${processId}&user_id=eq.${userId}`),
     ballots: await rows(`vote_records?process_id=eq.${processId}`),
   };
 }
@@ -125,7 +124,6 @@ describe("cast_ballot", () => {
 
     const s = await ballotState(voteId, voter(1));
     expect(s.participation).toHaveLength(1);
-    expect(s.bridge).toEqual([]);
     expect(s.ballots).toEqual([
       expect.objectContaining({ receipt_id, choice: "Yes", hub_id: "floyd", change_key_hash: keyHash(keyOf(1)), created_at: null }),
     ]);
@@ -142,7 +140,6 @@ describe("cast_ballot", () => {
     expect(res.ok).toBe(false);
     const s = await ballotState(voteId, voter(2));
     expect(s.participation).toEqual([]);
-    expect(s.bridge).toEqual([]);
     expect(s.ballots).toHaveLength(before);
   });
 

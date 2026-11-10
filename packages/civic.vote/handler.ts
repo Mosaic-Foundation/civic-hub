@@ -13,7 +13,6 @@ import {
   type CivicEvent,
   type ProcessHandler,
   recordOrUpdateVote,
-  clearActiveVoteKeysForProcess,
   countVoters,
   getBallotChoicesForProcess,
   hasUserVoted,
@@ -233,16 +232,13 @@ const voteProcess: ProcessHandler = {
         syncStatus(process, outcome.state);
         result = outcome.result;
 
-        // Once the close has won: drop any bridge rows left from before
-        // 2026-10-10 (early voters who never came back for their key), then
-        // rewrite the ballots in random order, so every copy taken after
+        // Once the close has won: rewrite the ballots in random order, so every copy taken after
         // close has no row order or transaction id that lines a ballot up
         // with its voter. After the write, because no ballot can land after
         // it (cast_ballot refuses a vote that is not active). A failed
         // reshuffle does not undo the close; the hourly job retries it.
         const closedId = process.id;
         await afterActionCommits(async () => {
-          await clearActiveVoteKeysForProcess(closedId);
           try {
             await reshuffleBallotsForProcess(closedId);
           } catch (err) {

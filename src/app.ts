@@ -289,7 +289,6 @@ app.get("/", route((_req, res) => {
       "POST /auth/logout": "Destroy session",
       "GET /votes/:id/log": "Public vote audit log (available after vote closes)",
       "POST /votes/:id/verify": "Verify a vote receipt (body: { receipt })",
-      "POST /votes/:id/claim-receipt": "Collect the change key for a ballot cast before receipts moved to the voter (signed in, vote open)",
       "GET /vote-results/:id": "Legacy → 301 to /brief/:id (a vote's results from before briefs are briefs now)",
       "GET /brief/:id": "Public read of a published brief",
       "POST /announcement": "Post a Board announcement (Board or admin)",

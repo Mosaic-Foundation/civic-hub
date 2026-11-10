@@ -14,7 +14,6 @@ import {
   NotFoundError,
   ValidationError,
   route,
-  claimVoteKey,
   getVoteLog,
   verifyReceipt,
   getProcess,
@@ -120,24 +119,3 @@ export const handleVerifyReceipt = route(async (req, res) => {
   }
 });
 
-/**
- * POST /votes/:id/claim-receipt
- * For a resident who voted before 2026-10-10 on a vote that is still open:
- * their browser gets the receipt and a change key, once, and the server
- * deletes the row that linked them to it. 404 when there is nothing to hand
- * out — they voted after the change (their receipt is on the browser they
- * voted from), already collected it, or the vote is not open.
- */
-export const handleClaimReceipt = route(async (req, res) => {
-  const id = req.params.id as string;
-  const user = getAuthUser(res);
-  const process = await getProcess(id);
-  if (!process || process.definition.type !== "civic.vote" || process.status !== "active") {
-    throw new NotFoundError("Nothing to collect", "no_receipt_to_claim");
-  }
-  const claimed = await claimVoteKey(id, user.id);
-  if (!claimed) {
-    throw new NotFoundError("Nothing to collect", "no_receipt_to_claim");
-  }
-  res.json(claimed);
-});

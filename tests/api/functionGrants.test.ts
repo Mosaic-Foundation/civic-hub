@@ -42,7 +42,6 @@ const AUTHENTICATED = [
   // Events 0.3.0: the trigger that refuses "going" past an event's limit (P0001).
   "calendar_attendance_capacity",
   "cast_ballot",
-  "claim_vote_key",
   "count_pending_reviews",
   "current_hub_id",
   // The event log read as counts, for the Activity feature (ADR-016).
@@ -63,7 +62,6 @@ const SERVICE_ROLE = [
   // A version the operator marked required, applied to every hub by the loader (ADR-015), and the ordering it uses.
   "_civic_semver",
   "apply_required_plugin_version",
-  "cast_vote",
   "function_catalog",
   "move_hub_hostname",
   "rate_limit_retry_at",

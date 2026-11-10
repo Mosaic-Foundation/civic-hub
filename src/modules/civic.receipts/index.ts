@@ -7,9 +7,9 @@
 //                        ballots in random order at close and hourly.
 //   vote_participation — (user_id, process_id) → has_voted
 //                        NO receipt_id. EVER.
-//   active_vote_keys   — RETIRED. Nothing writes it. claimVoteKey drains the
-//                        rows left from before 2026-10-10; close clears the
-//                        rest. A later migration drops it.
+//   (active_vote_keys, the bridge from before 2026-10-10 that linked a voter
+//   to a receipt, was dropped in the console slice, 2026-11-10, once
+//   production held no rows.)
 //
 // Trust model: the VOTER holds the receipt. A first vote returns the receipt
 // and a random change key, once; the ballot stores only sha256(change key).
@@ -38,7 +38,7 @@ import {
 } from "../../db/atomic.js";
 import type { CivicEvent } from "../../models/event.js";
 import { currentHubId } from "../../config/hubContext.js";
-import { archivedVotes, openOrRecentVoteIds } from "../../services/processRows.js";
+import { openOrRecentVoteIds } from "../../services/processRows.js";
 import { receiptsStore } from "./store.js";
 
 // --- Public API ------------------------------------------------------------
@@ -112,21 +112,6 @@ export async function recordOrUpdateVote(
 }
 
 /**
- * For a voter whose ballot was cast before 2026-10-10 on a vote still open:
- * a change key for their receipt, handed to their browser once, and their
- * bridge row deleted. null when there is nothing to hand out (they voted
- * after the change, on another browser, or the vote has closed).
- */
-export async function claimVoteKey(
-  processId: string,
-  userId: string,
-): Promise<{ receipt_id: string; change_key: string; choice: string } | null> {
-  const changeKey = newChangeKey();
-  const out = await receiptsStore.get().claimVoteKey(currentHubId(), processId, userId, hashChangeKey(changeKey));
-  return out ? { receipt_id: out.receipt_id, change_key: changeKey, choice: String(out.choice) } : null;
-}
-
-/**
  * Rewrite one process's ballots in random order: no insertion order, one
  * shared transaction id. Called at close and by the hourly vote_close job.
  */
@@ -157,43 +142,6 @@ export async function getBallotChoicesForProcess(
 ): Promise<string[]> {
   const rows = await receiptsStore.get().ballotChoices(processId);
   return rows.map((r) => String(r.choice));
-}
-
-/**
- * Drop every active_vote_key row left for a process (early voters who never
- * collected their key). Called on close, as before 2026-10-10.
- */
-export async function clearActiveVoteKeysForProcess(
-  processId: string,
-): Promise<void> {
-  await receiptsStore.get().clearActiveVoteKeys(processId);
-}
-
-/**
- * Archived votes whose voting window has passed, cleaned up as a close would
- * (2026-10-14, from the production check). Archiving skips the close, so an
- * archived vote never ran its close's last step: its bridge rows from before
- * 2026-10-10 stayed, linking voters to receipts. The hourly job now runs that
- * step for them, clearing the rows and shuffling the ballots, and nothing
- * else: the vote stays archived, publishes nothing, and is never re-closed.
- * Its ballots are already counted in vote_records. A restored vote closes as
- * usual. Only votes that still had bridge rows are shuffled, so once the
- * legacy rows are gone this does nothing but read the archived votes.
- */
-export async function clearEndedArchivedVoteKeys(now: Date = new Date()): Promise<string[]> {
-  // Started from the votes, never by reading the bridge (ballotSecrecyRules).
-  const archived = await archivedVotes();
-  const finished: string[] = [];
-  for (const v of archived) {
-    const closes = v.state?.voting_closes_at;
-    if (closes == null || Date.parse(closes) > now.getTime()) continue;
-    // The delete is the check: only a vote that still had rows is shuffled.
-    const cleared = await receiptsStore.get().drainActiveVoteKeys(v.id);
-    if (cleared === 0) continue;
-    await reshuffleBallotsForProcess(v.id);
-    finished.push(v.id);
-  }
-  return finished;
 }
 
 /**

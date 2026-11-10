@@ -37,15 +37,12 @@ export const BALLOT_COLUMNS: Readonly<Record<string, string>> = {
   created_at: "kept for old readers; ALWAYS NULL (vote_records_no_time)",
 };
 
-/** The bridge from before 2026-10-10: may exist until dropped, never written. */
-export const RETIRED_BRIDGE = "active_vote_keys";
-
 /**
- * Functions allowed to write the retired bridge: only the legacy cast_vote,
- * kept for the deploy window and dropped with the table. Nothing may be
- * added here.
+ * The bridge from before 2026-10-10, which linked a voter to a receipt:
+ * dropped (console slice, 2026-11-10). It must not come back, nor anything
+ * write it.
  */
-export const LEGACY_BRIDGE_WRITERS = ["cast_vote"];
+export const RETIRED_BRIDGE = "active_vote_keys";
 
 const PERSON = /user|actor|voter|email|session|account|ip_?addr|device/i;
 const RECEIPT = /receipt/i;
@@ -82,14 +79,15 @@ export function ballotSecrecyProblems(input: {
     if (c.table === "vote_participation" && RECEIPT.test(c.column)) {
       problems.push(`vote_participation.${c.column}: links a voter to a receipt`);
     }
-    if (RECEIPT.test(c.column) && c.table !== "vote_records" && c.table !== RETIRED_BRIDGE) {
+    if (c.table === RETIRED_BRIDGE) problems.push(`${RETIRED_BRIDGE}: the retired bridge between voters and receipts is back`);
+    else if (RECEIPT.test(c.column) && c.table !== "vote_records") {
       problems.push(`${c.table}.${c.column}: a receipt outside vote_records`);
     }
   }
 
   const writesBridge = new RegExp(`(insert\\s+into|update)\\s+(public\\.)?${RETIRED_BRIDGE}\\b`, "i");
   for (const f of input.functions) {
-    if (writesBridge.test(f.source) && !LEGACY_BRIDGE_WRITERS.includes(f.name)) {
+    if (writesBridge.test(f.source)) {
       problems.push(`function ${f.name}: writes the retired bridge ${RETIRED_BRIDGE}`);
     }
   }

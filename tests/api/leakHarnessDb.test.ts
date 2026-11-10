@@ -4,8 +4,8 @@
 // leakHarness.test.ts walks the app; this file proves the second layer on its
 // own terms, so it holds whatever the code does: a token for Athens sees no
 // Floyd row in any hub table, cannot write one, cannot move a row across, and
-// cannot drive transition_process, cast_ballot, reshuffle_ballots,
-// claim_vote_key or ballot_by_receipt (or their helpers) on Floyd.
+// cannot drive transition_process, cast_ballot, reshuffle_ballots or
+// ballot_by_receipt (or their helpers) on Floyd.
 // It walks the plugin packages' grants (ADR-014): every table a grant names
 // is a hub table under the template, and read through that package's own
 // granted database as Athens it holds nothing of Floyd's.
@@ -127,7 +127,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  for (const t of ["active_vote_keys", "vote_participation", "vote_records"]) {
+  for (const t of ["vote_participation", "vote_records"]) {
     await localRest(`${t}?process_id=eq.${athensVote}`, { method: "DELETE" }).catch(() => undefined);
   }
   await localRest(`feedback_submissions?id=like.fb_rlsdb_${run}*`, { method: "DELETE" }).catch(() => undefined);
@@ -201,7 +201,6 @@ describe("writes: a hub token cannot write another hub's rows", () => {
       ["feedback_submissions", { id: `fb_rlsdb_${run}_x`, hub_id: "floyd", category: "general", message: "x" }],
       ["vote_records", { receipt_id: `rcpt_rlsdb_${run}`, hub_id: "floyd", process_id: floydProcess, choice: "Yes" }],
       ["vote_participation", { hub_id: "floyd", user_id: voter(9), process_id: floydProcess, has_voted: true }],
-      ["active_vote_keys", { hub_id: "floyd", user_id: voter(9), process_id: floydProcess, receipt_id: `rcpt_rlsdb_${run}` }],
     ];
     for (const [table, row] of cases) {
       const res = await asHub("athens", table, { method: "POST", body: JSON.stringify(row) });
@@ -252,10 +251,6 @@ describe("the atomic functions under a hub token", () => {
       expect(v.body?.code, JSON.stringify(v.body)).toBe("P0002");
       const r = await rpc("athens", "reshuffle_ballots", { p_hub_id, p_process_id: floydProcess });
       expect(r.body?.code, JSON.stringify(r.body)).toBe("P0002");
-      const c = await rpc("athens", "claim_vote_key", {
-        p_hub_id, p_process_id: floydProcess, p_user_id: voter(1), p_key_hash: keyHash("k"),
-      });
-      expect(c.body?.code, JSON.stringify(c.body)).toBe("P0002");
     }
     // ballot_by_receipt does not lock: under the Athens token, Floyd's ballot
     // is simply not there.
@@ -293,7 +288,6 @@ describe("the atomic functions under a hub token", () => {
   let firstEventId = "";
   const ballotRows = async (userId: string) => ({
     participation: await localRest(`vote_participation?process_id=eq.${athensVote}&user_id=eq.${userId}`),
-    bridge: await localRest(`active_vote_keys?process_id=eq.${athensVote}&user_id=eq.${userId}`),
   });
 
   it("cast_ballot works for its own hub under the token (the control)", async () => {
@@ -311,13 +305,12 @@ describe("the atomic functions under a hub token", () => {
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     const s = await ballotRows(voter(1));
     expect(s.participation).toHaveLength(1);
-    expect(s.bridge).toEqual([]);
     expect(await localRest(`vote_records?receipt_id=eq.${res.body.receipt_id}&select=choice,hub_id`)).toEqual([
       { choice: "Yes", hub_id: "athens" },
     ]);
   });
 
-  it("cast_ballot: a failure at its last write leaves no ballot, participation, bridge or event", async () => {
+  it("cast_ballot: a failure at its last write leaves no ballot, participation or event", async () => {
     const ballotsBefore = await localRest(`vote_records?process_id=eq.${athensVote}&select=receipt_id,choice&order=receipt_id`);
     const eventsBefore = await localRest(`events?process_id=eq.${athensVote}&select=id&order=id`);
     // The event id already exists: the insert fails after the three ballot
@@ -334,7 +327,7 @@ describe("the atomic functions under a hub token", () => {
     });
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(res.body?.code, JSON.stringify(res.body)).toBe("23505");
-    expect(await ballotRows(voter(2))).toEqual({ participation: [], bridge: [] });
+    expect(await ballotRows(voter(2))).toEqual({ participation: [] });
     expect(await localRest(`vote_records?process_id=eq.${athensVote}&select=receipt_id,choice&order=receipt_id`)).toEqual(ballotsBefore);
     expect(await localRest(`events?process_id=eq.${athensVote}&select=id&order=id`)).toEqual(eventsBefore);
     // And the voter is not locked out: the next attempt goes through.

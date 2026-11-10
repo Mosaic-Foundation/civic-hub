@@ -466,19 +466,6 @@ export async function openOrRecentVoteIds(since: string): Promise<string[]> {
   return rows.map((r) => r.id);
 }
 
-/** The archived votes with their state, by id (paged past 1,000). */
-export async function archivedVotes(): Promise<Array<{ id: string; state: { voting_closes_at?: string | null } | null }>> {
-  return readAll((from, to) =>
-    db()
-      .from("processes")
-      .select<{ id: string; state: { voting_closes_at?: string | null } | null }>("id, state")
-      .eq("type", "civic.vote")
-      .eq("status", "archived")
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
-}
-
 /** An open process's row, for the right column's Coming up (services/aside.ts). */
 export interface OpenProcessRow {
   id: string;

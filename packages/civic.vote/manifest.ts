@@ -115,7 +115,7 @@ const descriptor = defineDescriptor({
   creation: { resident: { drafts: "/votes/drafts" }, admin: true, system: false },
   deadline: { action: "process.close", source: "state.voting_closes_at" },
   brief: true,
-  tables: ["vote_records", "vote_participation", "active_vote_keys", "vote_drafts"],
+  tables: ["vote_records", "vote_participation", "vote_drafts"],
   outside_services: [],
   examples: {
     draft: { title: "Conformance vote", description: "Should the hub try this?" },
@@ -171,18 +171,10 @@ export const VOTE_MANIFEST = defineManifest({
       ],
       owner: "civic.vote",
     },
-    {
-      // Retired 2026-10-10: only read and cleared (early voters collecting
-      // a key; close). Drop this entry with the table.
-      table: "active_vote_keys",
-      columns: ["user_id", "process_id", "receipt_id"],
-      owner: "civic.vote",
-    },
   ],
   tables: [
     { name: "vote_records", rows: "export", key: ["receipt_id"], holds: "ballots, each under a receipt code and never linked to the voter" },
     { name: "vote_participation", rows: "export", key: ["user_id", "process_id"], holds: "who has voted in each vote (never how)" },
-    { name: "active_vote_keys", rows: "export", key: ["user_id", "process_id"], holds: "the short-lived link between a voter and their receipt while a vote is open" },
     { name: "vote_drafts", rows: "export", key: ["id"], holds: "residents' unfinished vote drafts" },
   ],
   jobs: [],
@@ -243,7 +235,7 @@ export const VOTE_MANIFEST = defineManifest({
   },
   capabilities: {
     activities: { emit: ["civic.process.proposed", "civic.process.threshold_met", "civic.process.started", "civic.process.vote_submitted", "civic.process.ended", "civic.process.aggregation_completed", "civic.process.result_published"], listen: [] },
-    state: { read: ["own-process"], write: ["own-process"], tables: ["vote_records", "vote_participation", "active_vote_keys", "vote_drafts"] },
+    state: { read: ["own-process"], write: ["own-process"], tables: ["vote_records", "vote_participation", "vote_drafts"] },
     adapters: [],
     network: { egress: [] },
     identity: { claims: ["participant-ref"] },

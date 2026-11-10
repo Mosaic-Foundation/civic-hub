@@ -22,6 +22,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
+// POST /votes/:id/claim-receipt left the list in the console slice (2026-11-10),
+// with the bridge it read (active_vote_keys).
 const BEFORE: string[] = JSON.parse(readFileSync(join(here, "../fixtures/plugins/routes-before.json"), "utf8"));
 
 /** Added on purpose since e92804c, each with why. */

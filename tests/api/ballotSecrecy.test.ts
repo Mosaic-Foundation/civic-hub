@@ -47,7 +47,7 @@ const DB_URL = process.env.CIVIC_TEST_DATABASE_URL?.trim() || "postgresql://post
 const FLOYD = "floyd.civic.social";
 const tag = Date.now().toString(36);
 const OPTIONS = ["Yes", "No", "Unsure"];
-const VOTERS = 10; // 0–8 vote through the app; 9 is the early voter
+const VOTERS = 10; // all vote through the app (the early voter's bridge was dropped, 2026-11-10)
 
 type Row = Record<string, unknown>;
 interface Voter {
@@ -109,7 +109,7 @@ afterAll(async () => {
 
 describe("votes and changes, with the receipt the voter holds", () => {
   it("each first vote returns a receipt and a change key; the server keeps no bridge", async () => {
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < VOTERS; i++) {
       const v = voters[i];
       const option = OPTIONS[i % 3];
       const res = await vote(v, option, null);
@@ -122,7 +122,6 @@ describe("votes and changes, with the receipt the voter holds", () => {
       v.choice = option;
       castOrder.push(receipt_id);
     }
-    expect(await localRest(`active_vote_keys?process_id=eq.${voteId}`)).toEqual([]);
   });
 
   it("a change with the receipt keeps the receipt and moves the tally", async () => {
@@ -155,36 +154,8 @@ describe("votes and changes, with the receipt the voter holds", () => {
     expect(theirs.body.code).toBe("receipt_not_accepted");
   });
 
-  it("a voter from before the change collects a key once, and can then change their vote", async () => {
-    const early = voters[9];
-    // Cast the way the code before 2026-10-10 did: the legacy cast_vote, which
-    // writes the bridge.
-    const legacy = (await localRest("rpc/cast_vote", {
-      method: "POST",
-      body: JSON.stringify({ p_hub_id: "floyd", p_process_id: voteId, p_user_id: early.userId, p_choice: "Yes", p_event: null }),
-    })) as { receipt_id: string };
-    castOrder.push(legacy.receipt_id);
-    expect(await localRest(`active_vote_keys?process_id=eq.${voteId}&user_id=eq.${early.userId}`)).toHaveLength(1);
-
-    const claimed = await call("POST", `/votes/${voteId}/claim-receipt`, FLOYD, {}, early.token);
-    expect(claimed.status, JSON.stringify(claimed.body)).toBe(200);
-    expect(claimed.body).toMatchObject({ receipt_id: legacy.receipt_id, choice: "Yes" });
-    expect(await localRest(`active_vote_keys?process_id=eq.${voteId}`)).toEqual([]);
-
-    const again = await call("POST", `/votes/${voteId}/claim-receipt`, FLOYD, {}, early.token);
-    expect(again.status).toBe(404);
-    expect(again.body.code).toBe("no_receipt_to_claim");
-
-    early.receipt = { receipt_id: claimed.body.receipt_id, change_key: claimed.body.change_key };
-    const changed = await vote(early, "No");
-    expect(changed.status, JSON.stringify(changed.body)).toBe(200);
-    expect(changed.body.result.receipt_id).toBe(legacy.receipt_id);
-    early.choice = "No";
-  });
-
-  it("someone who has not voted collects nothing", async () => {
-    const stranger = await mintSession("floyd", `secrecy-${tag}-stranger@example.test`);
-    const res = await call("POST", `/votes/${voteId}/claim-receipt`, FLOYD, {}, stranger);
+  it("the early voter's collection route is gone with the bridge", async () => {
+    const res = await call("POST", `/votes/${voteId}/claim-receipt`, FLOYD, {}, voters[9].token);
     expect(res.status).toBe(404);
   });
 
@@ -220,8 +191,8 @@ describe("holding the raw data, nothing links a voter to a ballot", () => {
   const userIds = () => voters.map((v) => v.userId);
   const receipts = () => voters.map((v) => v.receipt!.receipt_id);
 
-  it("no bridge row, and no row in any table holds both a voter and a receipt", async () => {
-    expect((await db.query("select 1 from active_vote_keys where process_id = $1", [voteId])).rowCount).toBe(0);
+  it("no bridge table, and no row in any table holds both a voter and a receipt", async () => {
+    expect((await db.query("select to_regclass('public.active_vote_keys') as t")).rows[0].t).toBeNull();
 
     const tables = (
       await db.query<{ t: string }>(
@@ -321,9 +292,7 @@ describe("holding the raw data, nothing links a voter to a ballot", () => {
         const ids = rows.map((r) => String(r.receipt_id));
         expect(ids).toEqual([...ids].sort());
       }
-      if (file === "active_vote_keys.jsonl") {
-        expect(lines.filter((l) => l.includes(voteId))).toEqual([]);
-      }
+      expect(file).not.toBe("active_vote_keys.jsonl");
     }
     expect(offenders).toEqual([]);
   }, 120_000);

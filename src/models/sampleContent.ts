@@ -35,7 +35,6 @@ export const MARKED_TABLES = ["processes", "events", "users"] as const;
  * (`proposals` and `projects` share their process's id.)
  */
 export const PROCESS_CHILD_COLUMNS: Readonly<Record<string, readonly string[]>> = {
-  active_vote_keys: ["process_id"],
   brief_responses: ["brief_id"],
   community_inputs: ["process_id"],
   deliberation_submissions: ["process_id"],
@@ -173,7 +172,6 @@ type BuiltinParticipationKind =
  * process itself does. With PARTICIPATION_TABLES they cover the whole list.
  */
 export const NOT_PARTICIPATION: Readonly<Record<string, string>> = {
-  active_vote_keys: "a voter's key while a vote is open; their ballot is counted through vote_participation",
   events: "the log of the actions counted here",
   process_links: "links between processes",
   project_updates: "written by the project's own author",
