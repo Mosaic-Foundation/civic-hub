@@ -568,7 +568,8 @@ for (const vp of VIEWPORTS) {
       const open = page.getByRole("button", { name: "Archive event" });
       await expect(open).toHaveCount(1);
       await open.click();
-      await page.getByPlaceholder("Reason (for your records)").fill("A test of archiving");
+      await expect(page.getByText("its creator will receive this reason in their email")).toBeVisible();
+      await page.getByPlaceholder("Reason", { exact: true }).fill("A test of archiving");
       await page.getByRole("button", { name: "Yes, archive" }).click();
       await expect(page).toHaveURL(/\/events$/);
       const gone = await request.get(`${apiOf(DEMO)}/process/${event.id}`, { headers: headers(DEMO, "") });

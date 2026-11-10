@@ -69,13 +69,21 @@ export default function AdminArchiveButton({
             <input
               type="text"
               className="admin-archive-reason-input"
-              placeholder="Reason (for your records)"
+              placeholder="Reason"
+              aria-describedby={`archive-reason-note-${processId}`}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               maxLength={500}
               disabled={submitting}
             />
           </label>
+          <p
+            id={`archive-reason-note-${processId}`}
+            className="admin-archive-note"
+          >
+            If this {itemLabel} is still open, its creator will receive this
+            reason in their email.
+          </p>
           <div className="admin-archive-actions">
             <button
               type="button"
