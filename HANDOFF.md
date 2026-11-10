@@ -6,7 +6,8 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## The console slice: one row per plugin, release approvals, fewer codes, the space-type record — 2026-11-10
 
-- **State:** on `multi-tenant` (`7a256cb`..`dfc5846` pushed by Adam; then the row Approve fix and this entry). No migrations. Not production (at `ac2b4c4`).
+- **State:** on `multi-tenant`, through `e73ab38` pushed; the vote-table drop (`7a707a0`, `8ec5d4d`) and this update
+  to push. Two migrations: the drop, then Votes 0.3.0's catalog entry. Not production (at `ac2b4c4`).
   Dev deploys from the push; `release.sh dev --yes` checks it. Wire: identical (9,185 local events, before and after).
 - **Archive dialog** (`7a256cb`): under the reason, "If this <item> is still open, its creator will receive this reason
   in their email." The placeholder is "Reason" (was "for your records").
@@ -29,8 +30,16 @@ Updated after every Claude Code session. Records what was built, what's incomple
   table, so nothing new crosses the seam; the console reads the names through `GET /control/session`. Mail reads the
   product name, support address and maintainer from it, byte-identical. Console codes use `CIVIC_OPERATOR_MAIL_FROM`
   (unset: the member sender, as before); set it to a mosaic.social address once that domain is verified.
-- **Legacy vote tables:** waiting on Adam's production `active_vote_keys` count. Note: dropping them changes
-  `packages/civic.vote` (its manifest lists `active_vote_keys`), so it means a Votes version and catalog entry too.
+- **Legacy vote tables dropped** (`7a707a0`, `8ec5d4d`; Adam approved; production held 0 rows): migration
+  `20261110150000_drop_legacy_vote_bridge` (drops `claim_vote_key`, `cast_vote`, `active_vote_keys`; not additive),
+  and **Votes 0.3.0, required** (`20261110150408_catalog_civic_vote_0_3_0.sql`): no claim-receipt route, no early
+  receipt collection on the vote page, no clear at close, no archived-vote drain in the hourly job; the secrecy
+  rules now fail if the bridge comes back. Approve Votes 0.3.0 in dev's console after the release.
+- **Production incident (2026-11-10):** Adam ran the three DROP lines in production's SQL editor by mistake, which
+  left production's code (`ac2b4c4`) missing what it expects (health 503, the hourly vote job and the close's clear
+  erroring). He then ran `Restore-Vote-Bridge-Production-2026-11-10.sql` (management folder): the table and both
+  functions back, empty, exactly as before (tested locally). The production release that ships Votes 0.3.0 drops
+  them again; the migration uses IF EXISTS either way.
 - **Open for Adam:** create `CIVIC_RELEASE_SECRET` (dev, then production); commit the ADR-015 amendment; mosaic.social.
 
 ---

@@ -104,6 +104,11 @@ first time that layer has been runnable from a clean checkout.
 - **Local noise:** many runs of the console specs use up the operator's code requests ("Too many attempts"); the
   archive-note step in `events.spec.ts` was flaky once in WebKit at phone width on CI and passed on retry.
 - **Wire:** before and after on the same local database, 9,185 events identical.
+- **The vote-table drop:** `ballotSecrecyRules` (the bridge coming back fails; no code names it or its functions);
+  `ballotSecrecy.test.ts` (no bridge table; every voter through the app; the claim route answers 404; no
+  `active_vote_keys.jsonl` in an export); `forHub`/`exportManifest` counts (44 hub tables, 57 tables); the parity and
+  routes fixtures. `catalog:add` green for Votes 0.3.0 (38 conformance tests). Local: unit and API 3,807 passed
+  (the known local noise, `auditConcurrency` passing alone); Playwright 283 passed.
 
 ---
 
