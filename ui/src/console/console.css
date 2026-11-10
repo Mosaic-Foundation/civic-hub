@@ -282,7 +282,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
 .cx-fb-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
 .cx-fb-issue { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 8px; flex: 1 1 280px; }
 .cx-fb-issue .cx-fb-control { flex: 1 1 220px; }
-.cx-fb-controls select, .cx-fb-controls input, .cx-fb-status-filter select { min-height: 40px; }
+.cx-fb-controls select, .cx-fb-controls input, .cx-fb-status-filter select, .cx-plugin-version-field select { min-height: 40px; }
 .cx-fb-stream-bug { background: var(--cx-danger-bg); color: var(--cx-danger); }
 .cx-fb-stream-feature { background: color-mix(in srgb, var(--cx-accent) 18%, transparent); color: var(--cx-accent); }
 .cx-fb-stream-admin { background: var(--cx-surface-2); color: var(--cx-text); }
@@ -447,3 +447,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
 .cx-plugin-status { font-size: 0.8rem; padding: 1px 8px; border-radius: 999px; background: var(--cx-surface-2, rgba(0, 0, 0, 0.06)); }
 .cx-plugin-pending { background: var(--cx-warn-bg); color: var(--cx-warn); }
 .cx-plugin-withdrawn { color: var(--cx-muted); }
+/* One row per plugin (console slice): the version it runs, Approve on the newest waiting, and the version dropdown. */
+.cx-plugin-running { background: var(--cx-ok-bg); color: var(--cx-ok); }
+.cx-plugin-pending-line { justify-content: flex-start; }
+.cx-plugin-pending-line p { margin: 0; }

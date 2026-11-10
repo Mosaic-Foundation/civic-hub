@@ -19,7 +19,7 @@ const CONSOLE_UI = `${UI.protocol}//console.localhost${UI.port ? `:${UI.port}` :
 const STRAW = "@civic-social-examples/plugin-straw-poll";
 
 async function statusOf(page: Page): Promise<string> {
-  return (await page.getByTestId(`catalog-${STRAW}`).first().locator(".cx-plugin-status").first().innerText()).trim();
+  return (await page.getByTestId(`catalog-${STRAW}`).first().getByTestId("catalog-version-status").innerText()).trim();
 }
 
 test("one code confirms catalog changes for ten minutes; each change is still recorded", async ({ page, context }) => {
@@ -27,7 +27,7 @@ test("one code confirms catalog changes for ten minutes; each change is still re
   const [name, value] = cookie.split("=");
   await context.addCookies([{ name: name!, value: decodeURIComponent(value!), domain: "console.localhost", path: "/" }]);
   await page.goto(`${CONSOLE_UI}#/plugins`);
-  // The newest version (the list is newest first).
+  // The plugin's row (one per plugin; its record shows the newest version).
   const entry = page.getByTestId(`catalog-${STRAW}`).first();
   await expect(entry).toBeVisible();
   await expect(page.getByTestId("catalog-confirmed")).toHaveCount(0);
@@ -51,7 +51,7 @@ test("one code confirms catalog changes for ten minutes; each change is still re
   // The next ones go through at once.
   for (const step of steps.slice(1)) {
     await entry.getByRole("button", { name: step, exact: true }).click();
-    await expect(entry.locator(".cx-plugin-status").first()).toHaveText(step === "Approve" ? "Approved" : "Withdrawn");
+    await expect(entry.getByTestId("catalog-version-status")).toHaveText(step === "Approve" ? "Approved" : "Withdrawn");
     await expect(dialog).toHaveCount(0);
   }
 
@@ -64,6 +64,6 @@ test("one code confirms catalog changes for ten minutes; each change is still re
   // Leave it withdrawn (still inside the window: no code).
   if ((await statusOf(page)) === "Approved") {
     await entry.getByRole("button", { name: "Withdraw", exact: true }).click();
-    await expect(entry.locator(".cx-plugin-status").first()).toHaveText("Withdrawn");
+    await expect(entry.getByTestId("catalog-version-status")).toHaveText("Withdrawn");
   }
 });
