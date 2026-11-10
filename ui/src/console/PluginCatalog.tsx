@@ -22,6 +22,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { api, ApiError, type PluginCatalog, type PluginCatalogEntry } from "./api";
 import { useStepUp } from "./StepUp";
 import { pluginRows, type PluginRow } from "./pluginRows";
+import { releaseCommitOf } from "../../../src/shared/firstParty";
 
 function when(iso: string | null): string {
   if (!iso) return "";
@@ -159,7 +160,15 @@ function VersionRecord({
       <p className="cx-small cx-muted">
         Passed the conformance checks on {when(e.conformance.ran_at)}
         {e.conformance.commit ? <> (<span className="cx-mono">{e.conformance.commit}</span>)</> : null}.
-        {e.approved_at && <> Approved by {e.approved_by} on {when(e.approved_at)}.</>}
+        {e.approved_at &&
+          (releaseCommitOf(e.approved_by) ? (
+            <>
+              {" "}
+              Approved by release at <span className="cx-mono">{releaseCommitOf(e.approved_by)}</span> on {when(e.approved_at)}.
+            </>
+          ) : (
+            <> Approved by {e.approved_by} on {when(e.approved_at)}.</>
+          ))}
         {e.status === "approved" && (e.signed ? <> Signed ({e.signature_key}).</> : <> Not signed with this deployment&rsquo;s key.</>)}
         {e.withdrawn_at && <> Withdrawn on {when(e.withdrawn_at)}.</>}
       </p>

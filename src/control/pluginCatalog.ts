@@ -29,6 +29,7 @@ import { deploymentKeys, signatureVerifies, signRow, type SignatureMode } from "
 import { packageVerdicts, refreshPackages, type PackageVerdict } from "../plugins/loader.js";
 import { grantInPlainWords } from "../shared/pluginGrant.js";
 import { loadedPackages } from "../plugins/loader.js";
+import { isFirstPartyName, releaseApprover } from "../shared/firstParty.js";
 
 export interface CatalogEntryView extends CatalogRow {
   /** Whether this deployment loads this package version with exactly these files. */
@@ -114,6 +115,60 @@ export async function approveEntry(id: string, by: string, notes: string | null)
   if (!after) throw new CatalogStateError("This entry changed while you were looking at it. Reload and try again.");
   await refreshPackages();
   return { before, after };
+}
+
+export interface ReleaseRequest {
+  package: string;
+  version: string;
+  hash: string;
+}
+
+export type ReleaseOutcome =
+  | { package: string; version: string; result: "approved"; id: string; signature_key: string | null }
+  | { package: string; version: string; result: "pending"; reason: string };
+
+/**
+ * A release's approval (ADR-015 amendment, console slice): scripts/release.sh
+ * has checked that CI ran green on `commit` and that each entry's fingerprint
+ * is the files at that commit; here each is approved and signed exactly as the
+ * console's Approve does, by `release@<commit>`, if, and only if, it is a
+ * first-party package's entry, still pending, with that very fingerprint.
+ * Anything else stays pending, with the reason, for the operator.
+ */
+export async function releaseApproveEntries(commit: string, requests: readonly ReleaseRequest[]): Promise<ReleaseOutcome[]> {
+  const rows = await readCatalog();
+  const out: ReleaseOutcome[] = [];
+  for (const want of requests) {
+    const pending = (reason: string): ReleaseOutcome => ({ package: want.package, version: want.version, result: "pending", reason });
+    if (!isFirstPartyName(want.package)) {
+      out.push(pending("Not a first-party package: the operator approves it in the console."));
+      continue;
+    }
+    const forVersion = rows.filter((r) => r.package === want.package && r.version === want.version);
+    const row = forVersion.find((r) => r.hash === want.hash);
+    if (!row) {
+      out.push(
+        pending(
+          forVersion.length
+            ? `The catalog's fingerprint for this version (${forVersion.map((r) => r.hash).join(", ")}) is not the one CI tested (${want.hash}).`
+            : "No catalog entry for this version.",
+        ),
+      );
+      continue;
+    }
+    if (row.status !== "pending") {
+      out.push(pending(`This entry is ${row.status}; a release approves only a pending one.`));
+      continue;
+    }
+    try {
+      const { after } = await approveEntry(row.id, releaseApprover(commit), `Approved by release at ${commit}: CI green on that commit, fingerprint matched.`);
+      out.push({ package: want.package, version: want.version, result: "approved", id: after.id, signature_key: after.signature_key });
+    } catch (err) {
+      if (!(err instanceof CatalogStateError)) throw err;
+      out.push(pending(err.message));
+    }
+  }
+  return out;
 }
 
 /**

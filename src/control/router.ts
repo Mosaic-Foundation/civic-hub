@@ -99,7 +99,8 @@ import {
   withDerivedCode,
   type ControlHub,
 } from "./hubs.js";
-import { approveEntry, catalogView, CatalogStateError, setEntryRequired, signApprovedEntries, withdrawEntry } from "./pluginCatalog.js";
+import { approveEntry, catalogView, CatalogStateError, releaseApproveEntries, setEntryRequired, signApprovedEntries, withdrawEntry, type ReleaseRequest } from "./pluginCatalog.js";
+import { isReleaseAuthorized, parseReleaseApproval } from "./releaseAuth.js";
 
 const COOKIE = "civic_console";
 const CSRF_HEADER = "x-civic-console";
@@ -345,6 +346,28 @@ export function controlRouter(): Router {
     if (session) await audited(res, { actor: session.email, action: "console.sign_out" });
     clearSessionCookie(req, res);
     res.json({ ok: true });
+  }));
+
+  // A release's approval of first-party entries CI proved (ADR-015
+  // amendment): scripts/release.sh with CIVIC_RELEASE_SECRET, not a session.
+  // The server signs, as the console's Approve does; the key never leaves it.
+  r.post("/control/plugins/release-approve", route(async (req, res) => {
+    if (!isReleaseAuthorized(req.headers.authorization)) {
+      res.status(401).json({ error: "Not a release." });
+      return;
+    }
+    const { commit, entries } = parseReleaseApproval(req.body);
+    const outcomes = await releaseApproveEntries(commit, entries as ReleaseRequest[]);
+    for (const o of outcomes) {
+      await audited(res, {
+        actor: `release@${commit}`,
+        action: o.result === "approved" ? "plugin.approve" : "plugin.release_pending",
+        hubId: null,
+        before: null,
+        after: { ...o, commit, confirmed: "release" },
+      });
+    }
+    res.json({ commit, entries: outcomes });
   }));
 
   // Everything below needs a session.

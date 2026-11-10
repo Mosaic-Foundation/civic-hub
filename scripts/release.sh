@@ -10,7 +10,11 @@
 #   2. the working tree is clean, on the dev branch, not behind origin;
 #   3. db-push.sh --dry-run, and the migrations it would apply;
 #   4. one question: apply them and push?
-#   5. db-push.sh;
+#   5. db-push.sh; then the plugin catalog: the console approves and signs
+#      each first-party entry CI ran green on this exact commit with the
+#      fingerprint of its files here (scripts/catalog-release-approve.ts,
+#      ADR-015 amendment); the pause for the operator's approval remains only
+#      for what is left (third-party, CI not green, a fingerprint mismatch);
 #   6. /api/health on the old code: status ok, no schema gaps;
 #      then, when us-jurisdictions.sha256 differs from the live commit's, the
 #      jurisdiction list is loaded (RELEASE_*_DB_ENV in release.config);
@@ -102,9 +106,13 @@ MSG
     exit 1
   fi
   HUB_URL="$RELEASE_PROD_URL"
+  CONSOLE_URL="$RELEASE_PROD_CONSOLE_URL"
+  SECRET_ENV="$RELEASE_PROD_SECRET_ENV"
   LABEL="PRODUCTION"
 else
   HUB_URL="$RELEASE_DEV_URL"
+  CONSOLE_URL="$RELEASE_DEV_CONSOLE_URL"
+  SECRET_ENV="$RELEASE_DEV_SECRET_ENV"
   LABEL="dev"
 fi
 BRANCH="$RELEASE_DEV_BRANCH"
@@ -189,6 +197,18 @@ signatures() {
 # E15: the push to production waits on this, not on a "y".
 catalog_unapproved() {
   node --env-file="$DB_ENV" --import tsx scripts/catalog-unapproved.ts
+}
+
+# A release's approval of first-party entries (ADR-015 amendment): one line
+# per package not approved on the target, "approve|approved|pending name@ver
+# [why]" (scripts/catalog-release-approve.ts). With --check it decides and
+# says, and asks nothing; without, it asks the console to approve and sign
+# the first-party entries CI proved green at HEAD. The key stays on the server.
+release_approve() {
+  local secret_args=()
+  [[ -f "$SECRET_ENV" ]] && secret_args=(--env-file="$SECRET_ENV")
+  node --env-file="$DB_ENV" ${secret_args[@]+"${secret_args[@]}"} --import tsx scripts/catalog-release-approve.ts \
+    --console "$CONSOLE_URL" --commit "$HEAD_SHA" "$@"
 }
 
 # How many packages config/plugins.json lists.
@@ -332,12 +352,20 @@ if [[ "$TARGET" == "prod" || "${RELEASE_CHECK_CATALOG:-}" == "1" ]]; then
   [[ -f "$DB_ENV" ]] || stop "No env file at $DB_ENV: the release cannot see which plugin catalog entries the target has approved." \
     "Write CIVIC_TARGET_DATABASE_URL for production there (RUNBOOK-release.md), then run this again."
   UNAPPROVED="$(catalog_unapproved)" || stop "Could not read the target's plugin catalog (output above)."
+  # First-party entries already there, pending, that this release will approve
+  # (CI green at HEAD, fingerprint matching) are not refusals.
+  RELEASE_WILL=""
+  if [[ -n "$UNAPPROVED" ]]; then
+    RELEASE_WILL="$(release_approve --check | sed -n 's/^approve //p')" || RELEASE_WILL=""
+  fi
   ARRIVING=""; REFUSED=""
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
     pkgver="${line% *}"; status="${line##* }"; dir_ver="${pkgver##*@}"
     if [[ "$status" == "missing" ]] && printf '%s\n' "$MIGRATIONS" | grep -q "_catalog_.*_${dir_ver//./_}\.sql"; then
       ARRIVING+="$pkgver"$'\n'
+    elif printf '%s\n' "$RELEASE_WILL" | grep -qxF "$pkgver"; then
+      ARRIVING+="$pkgver (first-party, CI green: this release approves it)"$'\n'
     else
       REFUSED+="$line"$'\n'
     fi
@@ -372,9 +400,27 @@ else
   # deployment's console the new code would not mount that package, so it is
   # approved now, between the migrations and the code.
   CATALOG_ENTRIES=$(printf '%s\n' "$MIGRATIONS" | grep -c '_catalog_' || true)
-  if (( CATALOG_ENTRIES > 0 )); then
-    note "$CATALOG_ENTRIES plugin catalog entr$( (( CATALOG_ENTRIES == 1 )) && echo y || echo ies) arrived, waiting for approval."
-    note "Approve each in the console (Plugins) before the code goes out; a package without an approved entry is not mounted."
+  # ADR-015 amendment: a first-party entry CI proved green at this commit is
+  # approved and signed by the console at the release's request; only what is
+  # left (third-party, CI not green, a fingerprint mismatch) waits for the
+  # operator. With every entry approved, there is no pause.
+  STILL_PENDING=""
+  if [[ -f "$DB_ENV" ]]; then
+    RELEASE_OUT="$(release_approve)" || stop "The release's catalog approval failed (output above). The code is not pushed." \
+      "Approve the entries in the console (Plugins), then run this again: it finds no migrations and pushes."
+    if [[ -n "$RELEASE_OUT" ]]; then
+      note "Catalog entries this code runs:"
+      printf '%s\n' "$RELEASE_OUT" | sed 's/^/        /'
+    fi
+    STILL_PENDING="$(printf '%s\n' "$RELEASE_OUT" | grep '^pending ' || true)"
+    [[ -n "$RELEASE_OUT" && -z "$STILL_PENDING" ]] && ok "every entry this code runs is approved (the release approved the first-party ones)"
+  elif (( CATALOG_ENTRIES > 0 )); then
+    STILL_PENDING="no env file at $DB_ENV: the release cannot read the catalog"
+  fi
+  # The pause is for entries arriving now; production's check below covers
+  # everything else.
+  if [[ -n "$STILL_PENDING" ]] && (( CATALOG_ENTRIES > 0 )); then
+    note "Waiting for the operator's approval in the console (Plugins); a package without an approved entry is not mounted."
     ask "Approved in the console, push the code?" || stop "You said no. The migrations are in; the code is not pushed." \
       "Approve the entries in the console (Plugins), then run this again: it finds no migrations and pushes."
   fi

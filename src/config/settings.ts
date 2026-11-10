@@ -53,6 +53,7 @@ export const SETTINGS = s({
 
   // --- The plugin catalog's signatures (plugin session 2, ADR-015) -----------
   CIVIC_CATALOG_SIGNING_KEY: { purpose: "The catalog signing key (an Ed25519 private key, PEM, or that PEM in base64): the console signs an approval with it, the loader verifies with its public half. One per deployment.", type: "secret", layer: "engine" },
+  CIVIC_RELEASE_SECRET: { purpose: "Bearer token scripts/release.sh presents to approve first-party catalog entries CI proved (ADR-015 amendment); the console signs them with CIVIC_CATALOG_SIGNING_KEY. Unset: no release approves anything, and the release pauses for the operator as before.", type: "secret", layer: "engine" },
   CIVIC_CATALOG_TRUSTED_KEYS: { purpose: "Retired catalog keys still trusted while the approvals are signed again: comma-separated public keys (base64 DER, as the console shows them).", type: "string", layer: "engine" },
   CIVIC_CATALOG_SIGNATURES: { purpose: "transition: an approved row without a signature still mounts on its hash, a signed one must verify; required: a row without a valid signature is unapproved.", type: "string", layer: "engine", default: "transition" },
 

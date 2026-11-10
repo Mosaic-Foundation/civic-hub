@@ -34,6 +34,7 @@
 // deployment. On the local stack and in CI, scripts/catalog-approve-local.ts
 // approves it.
 
+import { isFirstPartyName } from "../src/shared/firstParty.js";
 import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -129,6 +130,12 @@ async function main(): Promise<void> {
     const entry = (loadedPackages() as Array<{ dir: string; pkg: PluginPackage }>).find((p) => p.dir === dir);
     if (!entry) fail(`${dir} did not load`);
     pkg = entry.pkg;
+  }
+  // First-party (ADR-015 amendment): a package under packages/ named in the
+  // @civic-social/ scope, which a release may approve once CI proves it. An
+  // outside folder may not claim the scope.
+  if (outside && isFirstPartyName(pkg.name)) {
+    fail(`${pkg.name} is named in the @civic-social/ scope, which is for packages built under packages/ in this repository. Rename it to submit it from outside.`);
   }
   const hash = hashPackage(resolve(ROOT, dir));
   const m = pkg.manifest;
