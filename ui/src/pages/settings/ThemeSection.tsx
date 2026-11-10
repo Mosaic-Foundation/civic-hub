@@ -84,7 +84,10 @@ function ThemeEditor({ f }: { f: FormApi }) {
   return (
     <>
       <div className="settings-field">
-        <span className="form-label settings-field-label">Preset</span>
+        <div className="settings-field-label-row">
+          <span className="form-label settings-field-label">Preset</span>
+          <HelpButton k={KEY} label="Colours" />
+        </div>
         <p className="form-hint">
           Choosing a preset starts over from its colours; your own picks below
           are cleared.

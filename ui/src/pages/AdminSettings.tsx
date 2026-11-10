@@ -26,6 +26,7 @@ import PeopleSection from "./settings/PeopleSection";
 import OfficialsSection from "./settings/OfficialsSection";
 import ParticipationSection from "./settings/ParticipationSection";
 import PluginsSection from "./settings/PluginsSection";
+import SettingsSearch from "./settings/SettingsSearch";
 import "./AdminSettings.css";
 
 interface SectionEntry {
@@ -86,13 +87,25 @@ function SettingsPage() {
   function go(e: React.MouseEvent, id: string) {
     e.preventDefault();
     if (id === current!.id) return;
+    leaveFor(`/admin/settings/${id}`);
+  }
+
+  /** To another section, asking first when this one has unsaved edits. */
+  function leaveFor(path: string) {
     if (dirty.size === 0) {
-      navigate(`/admin/settings/${id}`);
+      navigate(path);
       return;
     }
     void askDiscard().then((leave) => {
-      if (leave) navigate(`/admin/settings/${id}`, { replace: replaceGuardEntry() });
+      if (leave) navigate(path, { replace: replaceGuardEntry() });
     });
+  }
+
+  /** A search result: within this section the edits stay; elsewhere, as the rail. */
+  function goToSetting(path: string) {
+    const section = path.replace(/^\/admin\/settings\//, "").split("#")[0];
+    if (section === current!.id) navigate(path);
+    else leaveFor(path);
   }
 
   const rail = (
@@ -135,6 +148,8 @@ function SettingsPage() {
           Everything about this hub that you can change. Saved changes take
           effect straight away; there is nothing to redeploy.
         </p>
+
+        <SettingsSearch onGo={goToSetting} />
 
         <div className={`settings-layout${columnSlot ? " settings-layout--in-column" : ""}`}>
           {columnSlot ? createPortal(rail, columnSlot) : rail}

@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { helpEntry, helpUrl } from "../../../src/shared/helpRegistry";
+import { anchorForKey, helpEntry, helpUrl } from "../../../src/shared/helpRegistry";
 import "./HelpButton.css";
 
 /**
@@ -8,6 +8,9 @@ import "./HelpButton.css";
  * with a link to the right place in the docs. Renders nothing for a key the
  * registry doesn't have; tests/unit/helpRegistry.test.ts makes sure every
  * setting and section has one.
+ *
+ * It carries the setting's anchor (data-help-anchor), so a link from the
+ * settings search scrolls to it and marks its field.
  *
  * Never put it inside a <label> or a <button>: a click would reach them.
  */
@@ -50,7 +53,9 @@ export default function HelpButton({ k, label }: { k: string; label: string }) {
 
   if (!entry) return null;
   return (
-    <span className="help" ref={wrapRef}>
+    // data-help-anchor: a link to the setting lands here (settings search;
+    // useScrollToHash in ui/src/hooks/useAnchor.ts).
+    <span className="help" ref={wrapRef} data-help-anchor={anchorForKey(k)}>
       <button
         ref={buttonRef}
         type="button"

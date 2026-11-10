@@ -34,6 +34,10 @@ import {
 } from "../../services/api";
 import { useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
 import { useAnchoredOpen } from "../../hooks/useAnchor";
+import { anchorForKey } from "../../../../src/shared/helpRegistry";
+
+const ALLOWLIST_ANCHORS = ["allowlist", anchorForKey("mode.allowlist")];
+const WAITLIST_ANCHORS = ["waitlist", anchorForKey("mode.waitlist")];
 import { SampleRemovalWarning } from "./sampleWarning";
 
 const MODES: ReadonlyArray<{ id: "beta" | "live"; title: string; body: string }> = [
@@ -426,9 +430,10 @@ function AllowlistAndWaitlist({ live }: { live: boolean }) {
   const [saved, setSaved] = useState("");
   const [text, setText] = useState("");
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
-  // Closed until clicked, or until a link names them (#allowlist, #waitlist).
-  const [allowOpen, setAllowOpen] = useAnchoredOpen("allowlist");
-  const [waitOpen, setWaitOpen] = useAnchoredOpen("waitlist");
+  // Closed until clicked, or until a link names them (#allowlist, #waitlist,
+  // or the settings search's #mode-allowlist, #mode-waitlist).
+  const [allowOpen, setAllowOpen] = useAnchoredOpen(ALLOWLIST_ANCHORS);
+  const [waitOpen, setWaitOpen] = useAnchoredOpen(WAITLIST_ANCHORS);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [copied, setCopied] = useState(false);

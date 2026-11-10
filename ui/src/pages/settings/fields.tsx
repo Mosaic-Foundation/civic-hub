@@ -566,11 +566,18 @@ export function NumberField({ f, k, label, hint, placeholder, unit }: Common & {
   );
 }
 
-/** A value the platform sets: shown, never editable here. */
-export function ReadOnlyField({ label, value, hint }: { label: string; value: string; hint?: React.ReactNode }) {
+/**
+ * A value the platform sets: shown, never editable here. `k`, when it is a
+ * setting's, gives it the setting's "?" (and so its anchor for the settings
+ * search).
+ */
+export function ReadOnlyField({ label, value, hint, k }: { label: string; value: string; hint?: React.ReactNode; k?: string }) {
   return (
     <div className="settings-field">
-      <span className="form-label settings-field-label">{label}</span>
+      <div className="settings-field-label-row">
+        <span className="form-label settings-field-label">{label}</span>
+        {k && <HelpButton k={k} label={label} />}
+      </div>
       <p className="settings-readonly">{value || "Not set"}</p>
       {hint && <p className="form-hint">{hint}</p>}
     </div>

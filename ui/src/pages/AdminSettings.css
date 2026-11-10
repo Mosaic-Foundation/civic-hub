@@ -1658,3 +1658,73 @@
   border-radius: var(--radius-md);
   background: var(--color-surface);
 }
+
+/* The search box (settings search, 2026-11-10; ./settings/SettingsSearch.tsx):
+   above the sections, its results a panel under it. */
+.settings-search {
+  position: relative;
+  max-width: var(--max-width-feed);
+  margin: calc(var(--space-2) * -1) 0 var(--space-6);
+}
+
+.settings-search-icon {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.settings-search .settings-search-input {
+  width: 100%;
+  padding-left: calc(var(--space-3) + var(--space-4) + var(--space-2));
+}
+
+.settings-search-panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  z-index: var(--z-overlay);
+  background: var(--color-surface-raised);
+  border: var(--space-px) solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.settings-search-results {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1) 0;
+}
+
+.settings-search-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+.settings-search-result.is-active {
+  background: var(--color-primary-wash);
+}
+
+.settings-search-label {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.settings-search-where {
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
+}
+
+.settings-search-empty {
+  margin: 0;
+  padding: var(--space-3);
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
+}

@@ -26,6 +26,7 @@
 
 import { featureSettingsPanel } from "../../features";
 import { useApi } from "../../hooks/useApi";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import SectionForm from "./SectionForm";
 import {
@@ -41,6 +42,9 @@ import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections
 import { useHub, type Hub } from "../../config/hub";
 import { feedbackContactEmail } from "../../../../src/shared/platform";
 import { pluginAnchor } from "../../../../src/shared/adminAnchors";
+import { pluginPanelAnchors } from "../../../../src/shared/settingsSearch";
+import { anchorForKey } from "../../../../src/shared/helpRegistry";
+
 import { useAnchoredOpen } from "../../hooks/useAnchor";
 import HelpButton from "../../components/HelpButton";
 import { HUB_FEATURES } from "../../../../src/shared/hubFeatures";
@@ -58,6 +62,9 @@ import {
   type JobRunRecord,
   type JobRunsEntry,
 } from "../../services/api";
+
+/** The "?"s of Install, Remove and Update, inside an installed plugin's panel. */
+const INSTALL_ANCHORS = ["plugins.install", "plugins.remove", "plugins.update"].map(anchorForKey);
 
 type PluginId = (typeof PLUGIN_SECTION_ORDER)[number];
 
@@ -177,13 +184,23 @@ function PluginCard({
   const setup = hub.plugins.setup(id);
   // Collapsed until clicked, or until a link names it
   // (/admin/settings/plugins#feedback; admin menu slice, 2026-10-13).
+  // The settings search links to a setting inside it (#plugin-vote-min-duration-days),
+  // which opens it too.
   const anchor = pluginAnchor(id);
-  const [open, setOpen] = useAnchoredOpen(anchor);
+  // An installed plugin's panel holds Install, Remove and Update.
+  const installed = !!install;
+  const inside = useMemo(
+    () => [...pluginPanelAnchors(id), ...(installed ? INSTALL_ANCHORS : [])],
+    [id, installed],
+  );
+  const anchors = useMemo(() => [anchor, ...inside], [anchor, inside]);
+  const [open, setOpen] = useAnchoredOpen(anchors);
   const bodyId = `plugin-${anchor}-body`;
   return (
     <section
       id={anchor}
       data-anchor=""
+      data-anchors={inside.join(" ")}
       className={`plugin-card${on ? "" : " plugin-card-off"}${open ? " is-open" : ""}`}
       aria-label={pluginCopy(id, hub).name}
     >

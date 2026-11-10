@@ -12,6 +12,7 @@ function GoverningLaw({ f }: { f: FormApi }) {
   if (law?.source === "place") {
     return (
       <ReadOnlyField
+        k="legal.governing_state"
         label="Governing law (state)"
         value={law.state}
         hint="From this hub's jurisdiction: its Terms use this state's law, so there's nothing to set here."
