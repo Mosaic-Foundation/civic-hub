@@ -76,6 +76,30 @@ describe("GET /api/feed/closing", () => {
   });
 });
 
+describe("the hub's reminder window (feed.closing_reminder_hours)", () => {
+  afterAll(async () => {
+    await call("PUT", "/admin/hub/settings", FLOYD, { section: "theme", values: { "feed.closing_reminder_hours": "" } }, admin);
+  });
+
+  it("follows an admin's hours, one value for every type, and 0 turns the cards off", async () => {
+    // 100 hours: the one 72 hours out comes in.
+    let res = await call("PUT", "/admin/hub/settings", FLOYD, { section: "theme", values: { "feed.closing_reminder_hours": "100" } }, admin);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    let listed = ((await call("GET", "/api/feed/closing", FLOYD)).body.closing as Array<{ process_id: string }>).map((d) => d.process_id);
+    expect(listed).toEqual(expect.arrayContaining([ids.soon, ids.later]));
+
+    res = await call("PUT", "/admin/hub/settings", FLOYD, { section: "theme", values: { "feed.closing_reminder_hours": "0" } }, admin);
+    expect(res.status).toBe(200);
+    expect((await call("GET", "/api/feed/closing", FLOYD)).body.closing).toEqual([]);
+
+    // Past 14 days, or not a whole number, is refused.
+    for (const bad of ["337", "-1", "1.5"]) {
+      const r = await call("PUT", "/admin/hub/settings", FLOYD, { section: "theme", values: { "feed.closing_reminder_hours": bad } }, admin);
+      expect(r.status, bad).toBe(400);
+    }
+  });
+});
+
 describe("GET /api/aside", () => {
   it("has no closing dates: Coming up is the calendar's (Events 4)", async () => {
     const res = await call("GET", "/api/aside", FLOYD);

@@ -168,6 +168,8 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "nav.layout", kind: "choice", options: ["sidebar", "top_tabs", "three_columns"] },
     { key: "nav.section_order", kind: "section_order" },
     { key: "nav.aside_cards", kind: "aside_cards" },
+    // The feed's closing reminders (Events 4): hours before a close, up to 14 days; 0 is off.
+    { key: "feed.closing_reminder_hours", kind: "number", min: 0, max: 336 },
   ],
   // Since Phase 2c (Adam, 2026-09-24): every plugin's on/off, and beneath it
   // the settings that plugin has. Settings another section already owns

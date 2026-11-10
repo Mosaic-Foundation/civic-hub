@@ -29,7 +29,7 @@ import { BAR_SECTION_COUNT, parseSectionOrder } from "../../../../src/shared/nav
 import HelpButton from "../../components/HelpButton";
 import SectionForm, { type FormApi } from "./SectionForm";
 import { Link } from "react-router-dom";
-import { RadioCards, SortableList, Switch } from "../../kit";
+import { RadioCards, Select, SortableList, Switch } from "../../kit";
 import { ASIDE_SETTING_KEY, asideCardsInOrder } from "../../aside/registry";
 import { parseAsideCards, withOrder } from "../../../../src/shared/asideCards";
 import { useHub } from "../../config/hub";
@@ -515,7 +515,73 @@ function NavigationFields({ f }: { f: FormApi }) {
           </button>
         )}
       </div>
+
+      <ClosingReminderField f={f} />
     </>
+  );
+}
+
+const REMINDER_KEY = "feed.closing_reminder_hours";
+
+/**
+ * How long before a vote, proposal or conversation closes the feed says so
+ * (Events 4): one value for every type, in hours or days, stored in hours.
+ * Empty is the default, 48 hours; 0 turns the reminders off.
+ */
+function ClosingReminderField({ f }: { f: FormApi }) {
+  const id = useId();
+  const stored = f.value(REMINDER_KEY);
+  const hours = stored.trim() === "" ? 48 : Number(stored);
+  const inDays = Number.isInteger(hours) && hours > 0 && hours % 24 === 0;
+  const unit: "days" | "hours" = inDays ? "days" : "hours";
+  const amount = Number.isFinite(hours) ? (inDays ? hours / 24 : hours) : 48;
+  const save = (n: number, u: "days" | "hours") => {
+    const total = Math.max(0, Math.round(u === "days" ? n * 24 : n));
+    f.set(REMINDER_KEY, String(Math.min(total, 336)));
+  };
+  return (
+    <div className="settings-field" id="feed-closing-reminder-hours">
+      <div className="settings-field-label-row">
+        <label className="form-label settings-field-label" htmlFor={id}>
+          Closing reminders in the feed
+        </label>
+        <HelpButton k={REMINDER_KEY} label="Closing reminders in the feed" />
+      </div>
+      <p className="form-hint">
+        How long before a vote, proposal or conversation closes a reminder shows in the feed. The same for every kind.
+        0 turns the reminders off; at most 14 days.
+      </p>
+      <span className="settings-number-row">
+        <input
+          id={id}
+          type="number"
+          inputMode="numeric"
+          className="form-input"
+          min={0}
+          max={unit === "days" ? 14 : 336}
+          step={1}
+          value={amount}
+          onChange={(e) => save(Number(e.target.value), unit)}
+          disabled={f.disabled}
+          style={{ maxWidth: "10ch" }}
+        />
+        <Select
+          aria-label="Unit"
+          value={unit}
+          onChange={(e) => save(amount, e.target.value as "days" | "hours")}
+          disabled={f.disabled}
+          style={{ maxWidth: "14ch" }}
+        >
+          <option value="hours">hours</option>
+          <option value="days">days</option>
+        </Select>
+      </span>
+      {stored && (
+        <button type="button" className="admin-remove-section" onClick={() => f.set(REMINDER_KEY, "")} disabled={f.disabled}>
+          Use the default (48 hours)
+        </button>
+      )}
+    </div>
   );
 }
 

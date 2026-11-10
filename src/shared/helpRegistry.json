@@ -364,6 +364,12 @@
     "anchor": "nav-aside-cards",
     "pending": true
   },
+  "feed.closing_reminder_hours": {
+    "text": "How long before a vote, proposal or conversation closes a \"Closes tomorrow at 5:00 PM\" card shows in the feed. One value for every kind, 48 hours unless set; 0 turns the cards off.",
+    "page": "/reference/settings/theme",
+    "anchor": "feed-closing-reminder-hours",
+    "pending": true
+  },
   "nav.section_order": {
     "text": "The order of the hub's sections everywhere they appear. Feed is always first; the first four are the tabs on a phone's bottom bar, and the rest are under More.",
     "page": "/reference/settings/theme",

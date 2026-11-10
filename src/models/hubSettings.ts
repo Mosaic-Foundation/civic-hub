@@ -67,6 +67,11 @@ export const KEYS = {
   // every card shown in the default order (src/shared/asideCards.ts). Public:
   // every visitor's page draws the column.
   NAV_ASIDE_CARDS: "nav.aside_cards",
+  // How long before a vote, proposal or conversation closes its "closing soon"
+  // card shows in the feed (Events 4, Adam 2026-11-09), in hours. One value
+  // for every type; unset is 48, 0 turns the cards off. Admin-only: the server
+  // reads it (services/closingSoon.ts).
+  FEED_CLOSING_REMINDER_HOURS: "feed.closing_reminder_hours",
 
   COPY_INTRO_BODY: "copy.intro_body",
   COPY_RESIDENCY_INTRO: "copy.residency_intro",
