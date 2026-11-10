@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { SpacesLink } from "./SpacesLink";
 import {
   api,
   type AuditEntry,
@@ -75,7 +76,7 @@ export default function HubDetailPage({ id }: { id: string }) {
     <section>
       {dialog}
       <p className="cx-crumb">
-        <a href={href({ name: "hubs" })}>Hubs</a> / <span className="cx-mono">{hub.id}</span>
+        <SpacesLink href={href({ name: "hubs" })} /> / <span className="cx-mono">{hub.id}</span>
       </p>
       <div className="cx-page-head">
         <div>

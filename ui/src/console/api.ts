@@ -218,7 +218,13 @@ function browserTimeZone(): string {
 
 export const api = {
   session: () =>
-    request<{ email: string | null; operator_configured: boolean; console_hostname: string | null }>("GET", "/session"),
+    request<{
+      email: string | null;
+      operator_configured: boolean;
+      console_hostname: string | null;
+      /** What a space is called (the space-type record); absent from an older server. */
+      space_type?: { id: string; display_name: string; noun: string; noun_plural: string };
+    }>("GET", "/session"),
   requestCode: (email: string) => request<{ message: string }>("POST", "/auth/request-code", { email, tz: browserTimeZone() }),
   verify: (email: string, code: string) => request<{ email: string }>("POST", "/auth/verify", { email, code, tz: browserTimeZone() }),
   logout: () => request<{ ok: true }>("POST", "/auth/logout"),

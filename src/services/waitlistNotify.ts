@@ -8,6 +8,7 @@
 // notification must not turn a successful signup into a 500 for the person
 // who just filled in the form.
 
+import { CIVIC_HUB } from "../shared/spaceTypes.js";
 import { sendEmail, unsentReason } from "../utils/email.js";
 import { getAdminEmailsSync, hubDisplayNameSync } from "./hubSettings.js";
 
@@ -80,7 +81,7 @@ export function renderWaitlistNotification(signup: WaitlistSignup): {
 
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;">
-      <h1 style="font-size:18px;font-weight:600;margin:0 0 12px;">New Civic Hub waitlist signup</h1>
+      <h1 style="font-size:18px;font-weight:600;margin:0 0 12px;">New ${CIVIC_HUB.displayName} waitlist signup</h1>
       ${
         signup.name
           ? `<p style="margin:0 0 4px;color:#374151;"><strong>Name:</strong> ${escapeHtml(signup.name)}</p>`

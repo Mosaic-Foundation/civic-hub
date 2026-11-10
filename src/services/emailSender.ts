@@ -25,6 +25,9 @@
 import { getSettingSync } from "./hubSettings.js";
 import { adapters } from "../adapters/index.js";
 import { KEYS } from "../models/hubSettings.js";
+import { readSetting } from "../config/env.js";
+import type { SettingName } from "../config/settings.js";
+import { currentSpaceType } from "../shared/spaceTypes.js";
 
 
 export interface Sender {
@@ -81,3 +84,16 @@ export function currentSender(): Sender {
 }
 
 
+
+/**
+ * The sender for mail to the platform's operators (the console's codes): the
+ * space type's operator sender (src/shared/spaceTypes.ts) when its setting is
+ * set; unset, the member sender, exactly as before (console slice, 2026-11-10).
+ */
+export function operatorSender(): Sender {
+  const op = currentSpaceType().operatorSender;
+  const raw = readSetting(op.setting as SettingName);
+  if (!raw) return currentSender();
+  const parsed = parseSender(raw);
+  return { name: parsed.name, address: parsed.address, from: parsed.name ? `${quoteName(parsed.name)} <${parsed.address}>` : parsed.address };
+}

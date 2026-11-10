@@ -6,6 +6,8 @@
 // preview beside the form shows the result as it is filled in — styled text
 // only, built from the shared pure helpers, never the hub's own components.
 
+import { useSpaceNames } from "./spaceNames";
+import { SpacesLink } from "./SpacesLink";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type ConsoleConfig, type HubMode, type SlugSuggestion } from "./api";
 import { go, href } from "./route";
@@ -42,6 +44,7 @@ function placeWithoutState(name: string): string {
 }
 
 export default function CreateHub() {
+  const spaceNames = useSpaceNames();
   const [config, setConfig] = useState<ConsoleConfig | null>(null);
   // Only what the operator typed. Suggestions are computed, never stored here.
   const [form, setForm] = useState({
@@ -187,9 +190,9 @@ export default function CreateHub() {
   return (
     <section className="cx-create-page">
       <p className="cx-crumb">
-        <a href={href({ name: "hubs" })}>Hubs</a> / New
+        <SpacesLink href={href({ name: "hubs" })} /> / New
       </p>
-      <h1 className="cx-title">Create a hub</h1>
+      <h1 className="cx-title">Create a {spaceNames.noun}</h1>
       <p className="cx-muted">
         Creates the hub's registry row and its starter settings, with its first admin. Grey text in a field is a
         suggestion: it is used as it is unless you type over it.

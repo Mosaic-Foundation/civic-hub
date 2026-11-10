@@ -9,6 +9,7 @@
 // listFeedback() is the admin read path (/admin/feedback). It is the only
 // reader: feedback never flows through emitEvent() and is never public.
 
+import { CIVIC_HUB } from "../../shared/spaceTypes.js";
 import { ConflictError, NotFoundError, ValidationError } from "../../errors/index.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { sendEmail, unsentReason } from "../../utils/email.js";
@@ -420,7 +421,7 @@ function renderOperatorEmail(s: FeedbackSubmission): string {
           : "Anonymous";
   return `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;">
-      <h1 style="font-size:18px;font-weight:600;margin:0 0 12px;">New Civic Hub feedback — ${escapeHtml(s.category)}</h1>
+      <h1 style="font-size:18px;font-weight:600;margin:0 0 12px;">New ${CIVIC_HUB.displayName} feedback — ${escapeHtml(s.category)}</h1>
       <p style="margin:0 0 4px;color:#374151;"><strong>From:</strong> ${fromLabel}</p>
       <p style="margin:12px 0 4px;color:#374151;"><strong>Submitted:</strong> ${escapeHtml(formatDateUS(s.created_at))}</p>
       ${s.screenshot_url ? `<p style="margin:4px 0;color:#374151;"><strong>Screenshot:</strong> <a href="${escapeHtml(s.screenshot_url)}">${escapeHtml(s.screenshot_url)}</a></p>` : ""}

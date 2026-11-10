@@ -7,6 +7,7 @@
 // nothing leaves the console: the one email is to a sender who consented,
 // when their report is fixed, sent from their hub.
 
+import { CIVIC_HUB } from "../shared/spaceTypes.js";
 import { ControlInputError, listHubs } from "./hubs.js";
 import { inHubScope } from "./inHub.js";
 import {
@@ -137,20 +138,20 @@ export function renderFixedEmail(
   const excerpt = item.message.length > 280 ? `${item.message.slice(0, 279)}…` : item.message;
   const subject = `Your ${what} on ${hubName} is done`;
   const text = [
-    `Thanks for your ${what} on ${hubName}. Civic.Social, which maintains the software, has marked it fixed.`,
+    `Thanks for your ${what} on ${hubName}. ${CIVIC_HUB.maintainer}, which maintains the software, has marked it fixed.`,
     "",
     `You wrote: "${excerpt}"`,
     "",
     hubUrl,
     "",
-    `You get this because you said Civic.Social may contact you about it. This is the only email about it.`,
+    `You get this because you said ${CIVIC_HUB.maintainer} may contact you about it. This is the only email about it.`,
   ].join("\n");
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;">
-      <p style="margin:0 0 12px;">Thanks for your ${what} on ${escapeHtml(hubName)}. Civic.Social, which maintains the software, has marked it fixed.</p>
+      <p style="margin:0 0 12px;">Thanks for your ${what} on ${escapeHtml(hubName)}. ${CIVIC_HUB.maintainer}, which maintains the software, has marked it fixed.</p>
       <div style="margin:0 0 16px;padding:12px 16px;background:#f3f4f6;border-radius:8px;line-height:1.5;font-size:14px;">${escapeHtml(excerpt).replace(/\n/g, "<br>")}</div>
       <p style="margin:0 0 16px;"><a href="${escapeHtml(hubUrl)}">${escapeHtml(hubName)}</a></p>
-      <p style="margin:0;color:#6b7280;font-size:12px;">You get this because you said Civic.Social may contact you about it. This is the only email about it.</p>
+      <p style="margin:0;color:#6b7280;font-size:12px;">You get this because you said ${CIVIC_HUB.maintainer} may contact you about it. This is the only email about it.</p>
     </div>
   `;
   return { subject, html, text };

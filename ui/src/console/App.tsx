@@ -10,8 +10,9 @@ import Invites from "./Invites";
 import FeedbackInbox from "./FeedbackInbox";
 import PluginCatalogPage from "./PluginCatalog";
 import Dashboard from "./Dashboard";
+import { capital, DEFAULT_SPACE_NAMES, SpaceNamesContext, type SpaceNames } from "./spaceNames";
 
-type Session = { email: string | null; operator_configured: boolean };
+type Session = { email: string | null; operator_configured: boolean; space_type?: SpaceNames };
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -48,7 +49,9 @@ export default function App() {
   if (!session) return <main className="cx-center cx-muted">Loading…</main>;
   if (!session.email) return <SignIn configured={session.operator_configured} onSignedIn={load} />;
 
+  const names = session.space_type ?? DEFAULT_SPACE_NAMES;
   return (
+    <SpaceNamesContext.Provider value={names}>
     <div className="cx-shell">
       <header className="cx-header">
         <a className="cx-brand" href={href({ name: "hubs" })}>
@@ -59,7 +62,7 @@ export default function App() {
             Dashboard
           </a>
           <a href={href({ name: "hubs" })} aria-current={route.name === "hubs" || route.name === "hub" ? "page" : undefined}>
-            Hubs
+            {capital(names.noun_plural)}
           </a>
           <a href={href({ name: "invites" })} aria-current={route.name === "invites" ? "page" : undefined}>
             Invite codes
@@ -104,5 +107,6 @@ export default function App() {
         {route.name === "plugins" && <PluginCatalogPage />}
       </main>
     </div>
+    </SpaceNamesContext.Provider>
   );
 }

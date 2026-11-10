@@ -13,6 +13,7 @@
 // console mints with no address is still a code, copied from the screen
 // (shared/hubInvite.ts inviteMessage).
 
+import { CIVIC_HUB } from "../shared/spaceTypes.js";
 import { INVITE_SUBJECT, inviteSignInLink } from "../shared/hubInvite.js";
 import { PLATFORM_CONTACT_EMAIL, PLATFORM_SETUP_GUIDE_URL } from "../shared/platform.js";
 
@@ -26,7 +27,7 @@ export function renderInviteEmail(input: { startHost: string; linkToken: string;
   const link = inviteSignInLink(startHost, input.linkToken);
   const until = new Date(input.expiresAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
   const intro =
-    "You're invited to create a Civic Hub: a place for your community to make sense of issues, decide and act together. You'll be its first admin, and it starts as a demo you can look around in and make your own.";
+    `You're invited to create a ${CIVIC_HUB.displayName}: a place for your community to make sense of issues, decide and act together. You'll be its first admin, and it starts as a demo you can look around in and make your own.`;
   const text = [
     "Hello,",
     "",

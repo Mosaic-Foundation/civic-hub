@@ -85,6 +85,7 @@ export const SETTINGS = s({
   ANTHROPIC_API_KEY: { purpose: "The AI adapter's Anthropic key. Unset: AI features answer \"not set up\".", type: "secret", layer: "hosting" },
   ANTHROPIC_MODEL: { purpose: "The model the AI adapter asks.", type: "string", layer: "hosting", default: "claude-sonnet-4-6" },
   RESEND_API_KEY: { purpose: "The mail adapter's Resend key. Unset: mail is logged, not sent.", type: "secret", layer: "hosting" },
+  CIVIC_OPERATOR_MAIL_FROM: { purpose: "From address for mail to the platform's operators (the console's codes), on a domain verified with the provider. Unset: RESEND_FROM, as before. See src/shared/spaceTypes.ts.", type: "string", layer: "hosting" },
   RESEND_FROM: { purpose: "Default From address (a hub's own setting wins).", type: "string", layer: "hosting", aliases: ["SMTP_FROM"] },
   POLIS_AUTH_TOKEN: { purpose: "The deliberation adapter's Polis service token.", type: "secret", layer: "hosting" },
   SEARCHAPI_API_KEY: { purpose: "Video adapter: SearchAPI transcripts (second choice).", type: "secret", layer: "hosting" },

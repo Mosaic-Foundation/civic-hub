@@ -107,6 +107,7 @@ export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: s
     subject: purpose === "sign_in" ? "Your Civic Social console code" : "Confirm a Civic Social console change",
     html: rendered.html,
     text: rendered.text,
+    audience: "operator",
   });
   if (!result.sent) {
     console.warn(`[control] code email NOT sent (${result.error}).`);

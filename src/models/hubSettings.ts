@@ -8,6 +8,7 @@
 // Pure by construction — no database, no request — so CI can test the rules
 // that decide what a hub is allowed to expose.
 
+import { CIVIC_HUB } from "../shared/spaceTypes.js";
 import { PLUGIN_SECTION_ORDER, type PluginId } from "../shared/hubSettingsSections.js";
 import { HUB_FEATURE_IDS } from "../shared/hubFeatures.js";
 
@@ -289,7 +290,8 @@ export const ENV_FALLBACKS: Readonly<Record<string, readonly string[]>> = {
   [KEYS.PEOPLE_BOARD_EMAILS]: ["CIVIC_BOARD_EMAILS"],
   [KEYS.PEOPLE_BRIEF_RECIPIENTS]: ["BOARD_RECIPIENT_EMAIL"],
 
-  [KEYS.EMAIL_FROM_ADDRESS]: ["RESEND_FROM", "SMTP_FROM"],
+  // The space type's member sender (src/shared/spaceTypes.ts), then its old name.
+  [KEYS.EMAIL_FROM_ADDRESS]: [CIVIC_HUB.memberSender.setting, "SMTP_FROM"],
   [KEYS.EMAIL_POSTAL_ADDRESS]: ["HUB_POSTAL_ADDRESS"],
 
   [KEYS.PLUGIN_CONVERSATION_POLIS_URL]: ["VITE_HUB_POLIS_URL", "POLIS_BASE_URL"],

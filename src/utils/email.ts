@@ -14,7 +14,7 @@
 // Both are no-ops for a live hub on a properly configured deployment.
 
 import { adapters } from "../adapters/index.js";
-import { currentSender } from "../services/emailSender.js";
+import { currentSender, operatorSender } from "../services/emailSender.js";
 import { allowDelivery, type MailPurpose } from "../services/mailGuard.js";
 import { hubModeHoldReason } from "../shared/delivery.js";
 
@@ -35,6 +35,12 @@ export interface SendEmailInput {
   text?: string;
   /** What the message is, where that changes who may receive it (mailGuard). */
   purpose?: MailPurpose;
+  /**
+   * Who it is to: people inside a space (the default: its admins, members,
+   * invitees) or the platform's operators, which the space type's operator
+   * sender sends (src/shared/spaceTypes.ts).
+   */
+  audience?: "member" | "operator";
 }
 
 export interface SendEmailResult {
@@ -79,7 +85,7 @@ export async function sendEmail(
     return { sent: false, error: transport.notConfiguredReason() };
   }
 
-  const sender = currentSender();
+  const sender = input.audience === "operator" ? operatorSender() : currentSender();
   if (transport.isSandboxSender(sender.address)) {
     console.warn(
       `[email] sending as the provider's sandbox (${sender.address}) — only the ` +

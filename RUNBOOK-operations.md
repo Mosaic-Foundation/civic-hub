@@ -282,6 +282,7 @@ refused in production (`src/config/devFlags.ts`).
 | `ANTHROPIC_API_KEY` | hosting | secret | no |  | The AI adapter's Anthropic key. Unset: AI features answer "not set up". |
 | `ANTHROPIC_MODEL` | hosting | string | no | `claude-sonnet-4-6` | The model the AI adapter asks. |
 | `RESEND_API_KEY` | hosting | secret | no |  | The mail adapter's Resend key. Unset: mail is logged, not sent. |
+| `CIVIC_OPERATOR_MAIL_FROM` | hosting | string | no |  | From address for mail to the platform's operators (the console's codes), on a domain verified with the provider. Unset: RESEND_FROM, as before. See src/shared/spaceTypes.ts. |
 | `RESEND_FROM`<br>`SMTP_FROM` (older name) | hosting | string | no |  | Default From address (a hub's own setting wins). |
 | `POLIS_AUTH_TOKEN` | hosting | secret | no |  | The deliberation adapter's Polis service token. |
 | `SEARCHAPI_API_KEY` | hosting | secret | no |  | Video adapter: SearchAPI transcripts (second choice). |

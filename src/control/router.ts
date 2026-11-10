@@ -100,6 +100,7 @@ import {
   type ControlHub,
 } from "./hubs.js";
 import { approveEntry, catalogView, CatalogStateError, releaseApproveEntries, setEntryRequired, signApprovedEntries, withdrawEntry, type ReleaseRequest } from "./pluginCatalog.js";
+import { spaceTypeView } from "../shared/spaceTypes.js";
 import { isReleaseAuthorized, parseReleaseApproval } from "./releaseAuth.js";
 
 const COOKIE = "civic_console";
@@ -324,6 +325,9 @@ export function controlRouter(): Router {
       email: session?.email ?? null,
       operator_configured: admin.ok,
       console_hostname: consoleHostname(),
+      // What a space is called, for the console's headings (the space-type
+      // record, src/shared/spaceTypes.ts): read before signing in.
+      space_type: spaceTypeView(),
     });
   }));
 

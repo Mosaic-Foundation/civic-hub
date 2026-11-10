@@ -3,11 +3,13 @@
 //
 // Shared by the server and the hub UI. Pure.
 
+import { CIVIC_HUB } from "./spaceTypes.js";
+
 /**
  * Where to write when a hub has not given its own contact address
  * (`legal.contact_email`): the legal pages, About, sign-in emails.
  */
-export const PLATFORM_CONTACT_EMAIL = "contact@civic.social";
+export const PLATFORM_CONTACT_EMAIL = CIVIC_HUB.supportAddress;
 
 /**
  * The banner every new hub starts with (Adam, 2026-10-08): an aerial view of
