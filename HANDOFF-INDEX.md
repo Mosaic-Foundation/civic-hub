@@ -193,7 +193,7 @@ numbers below, or just grep the heading.
 - Read paths stop trusting `?actor=` — 5838–5883
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
-### Multi-tenancy (the `multi-tenant` branch)
+### Multi-tenancy (the `dev` branch, named `multi-tenant` until 2026-11-10)
 - **Invite codes and the start page (2026-10-08, session 4b)**: entitlements
   (`src/control/entitlements.ts`), the console's Invite codes tab, the start
   page on `CIVIC_START_HOSTNAME` (`src/control/startRouter.ts`,

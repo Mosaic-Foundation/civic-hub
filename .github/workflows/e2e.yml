@@ -3,14 +3,14 @@ name: E2E
 # The Playwright suite (tests/e2e) against a production build of the UI, on
 # the same local Supabase stack the API tests use (ci.yml). Added in Audit 4.
 #
-# When it runs (Adam, 2026-10-12): every push to `multi-tenant`, so a release
+# When it runs (Adam, 2026-10-12): every push to `dev` (named `multi-tenant` until 2026-11-10), so a release
 # is checked before `main` is fast-forwarded to it; not when only documents
 # changed; a newer push cancels the run it supersedes; and by hand from the
 # Actions tab (workflow_dispatch) on any branch.
 
 on:
   push:
-    branches: [multi-tenant]
+    branches: [dev]
     paths-ignore:
       - "**/*.md"
       - "docs/**"

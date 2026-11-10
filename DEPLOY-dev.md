@@ -1,4 +1,8 @@
-# DEPLOY-dev.md — putting the `multi-tenant` branch on a dev deployment
+# DEPLOY-dev.md — putting the `dev` branch on a dev deployment
+
+> **2026-11-10:** the branch was renamed from `multi-tenant` to `dev`. This
+> page is the original 2026-09-22 setup record; read `multi-tenant` below as
+> `dev`. Vercel → `civic-hub-dev` tracks `dev` as its production branch.
 
 Adam runs this. Written 2026-09-22, at the end of Phase 1 part two plus the
 login-hardening pass. Nothing here touches production.

@@ -7,7 +7,7 @@ for the next slice.
 ---
 
 You are working in `civic-hub/` inside the Civic-Social-Mono repo, on the
-`multi-tenant` branch (create it from `main` if it does not exist; otherwise
+`dev` branch (named `multi-tenant` until 2026-11-10; create it from `main` if it does not exist; otherwise
 `git pull` and merge `main` into it first).
 
 Read, in this order, and nothing else until you need it:
@@ -32,7 +32,7 @@ Rules for this session:
 - Every slice ends with: tests green (`npm test`, and Playwright if UI changed),
   a short entry prepended to HANDOFF.md, TESTING.md updated for any test
   layer, suite, or check the slice added or changed, a commit on
-  `multi-tenant`, and everything put away: `./scripts/local-stack.sh stop`
+  `dev`, and everything put away: `./scripts/local-stack.sh stop`
   (the dev servers the session started, the local stack, Docker).
 - If a decision is not covered by BUILD-PLAN-multi-tenant.md, stop and ask
   Adam before choosing. Do not guess at names of settings keys or columns.

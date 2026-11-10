@@ -83,7 +83,7 @@ Floyd's fingerprint was identical before and after Athens was restored.
    network has no IPv6). Not the transaction pooler (6543): the restore holds
    one transaction and sets session state. The last two lines are only needed
    when the bundle has images.
-3. **The repo on `multi-tenant` with dependencies installed** (`npm install`
+3. **The repo on `dev` with dependencies installed** (`npm install`
    brings `pg`).
 
 ---

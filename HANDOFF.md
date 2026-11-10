@@ -4,6 +4,19 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The development branch is renamed from `multi-tenant` to `dev` — 2026-11-10
+
+- **What changed:** the long-lived branch that deploys to dev (Vercel `civic-hub-dev`) is now `dev`; `main` is still
+  production. `scripts/release.config` (`RELEASE_DEV_BRANCH` defaults to `dev`), `.github/workflows/e2e.yml` (runs on
+  pushes to `dev`), the session allow-list in `.claude/settings.json`, and the current procedures (RUNBOOK-release,
+  RUNBOOK-restore-hub, SESSION-START, TESTING, DEPLOY-dev, HANDOFF-INDEX) say `dev`. `ci.yml` runs on every push and
+  `smoke.yml` keys on the Vercel environment name, so neither needed a change. The backups repo
+  (`civic-hub-backups`, `hub-exports.yml`) now checks out `dev` for the dev target.
+- **Left as written:** older HANDOFF entries, RUNBOOK-cutover, RUNBOOK-release-1 and the ADRs say `multi-tenant`
+  because that was the branch's name then. `BUILD-PLAN-multi-tenant.md` keeps its name: it is the plan, not a branch.
+- **Outside the repo (Adam):** GitHub branch rename, Vercel `civic-hub-dev` production branch → `dev`, local branch
+  rename. No branch protection or rulesets existed on `multi-tenant`.
+
 ## The console slice: one row per plugin, release approvals, fewer codes, the space-type record — 2026-11-10
 
 - **State:** on `multi-tenant`, through `e73ab38` pushed; the vote-table drop (`7a707a0`, `8ec5d4d`) and this update
