@@ -26,7 +26,8 @@
 
 import type { ControlHub, CreateHubInput, FollowOn, HandoverResult, HandoverView, HubAiLimitsView, HubConfigView, PluginState } from "./hubs.js";
 import type { JurisdictionMatch, Jurisdiction, SlugSuggestion } from "./jurisdictions.js";
-import type { CatalogView, ReleaseOutcome, ReleaseRequest } from "./pluginCatalog.js";
+import type { CatalogView, ReleaseOutcome, ReleasePlanItem, ReleaseRequest } from "./pluginCatalog.js";
+import type { Signature } from "../shared/catalogSignature.js";
 import type { CatalogRow } from "../db/pluginCatalog.js";
 import type { InboxView, FeedbackUpdateResult } from "./platformFeedback.js";
 import type { HubExportResult } from "./hubExport.js";
@@ -55,6 +56,7 @@ export type {
   Jurisdiction,
   JurisdictionMatch,
   ReleaseOutcome,
+  ReleasePlanItem,
   ReleaseRequest,
   SampleRefreshReport,
   SampleSeedReport,
@@ -144,10 +146,15 @@ export interface OperatorApi {
   dashboard(opts: { fresh: boolean; now: string }): Promise<SectionResult[]>;
 
   // --- Plugin catalog (ADR-014, ADR-015) ---
+  // The console signs (src/control/catalogKey.ts); the hub stores a signature
+  // only if it verifies against a key the deployment trusts.
   catalog(): Promise<CatalogView>;
-  approveEntry(id: string, by: string, notes: string | null): Promise<{ before: CatalogRow; after: CatalogRow }>;
-  releaseApprove(commit: string, entries: readonly ReleaseRequest[]): Promise<ReleaseOutcome[]>;
-  signApproved(): Promise<{ key: string; signed: Array<Pick<CatalogRow, "id" | "package" | "version" | "hash">> }>;
+  /** Approve with the console's signature over the row (null: the console has no key; refused once signatures are required). */
+  approveEntry(id: string, by: string, notes: string | null, signature: Signature | null): Promise<{ before: CatalogRow; after: CatalogRow }>;
+  /** Which of a release's entries it may approve (first-party, pending, the fingerprint CI tested), and why not the rest. */
+  releasePlan(entries: readonly ReleaseRequest[]): Promise<ReleasePlanItem[]>;
+  /** Store the console's signatures for approved entries; returns what was stored. */
+  storeSignatures(items: ReadonlyArray<{ id: string } & Signature>): Promise<Array<Pick<CatalogRow, "id" | "package" | "version" | "hash">>>;
   setRequired(id: string, required: boolean): Promise<{ before: CatalogRow; after: CatalogRow; moved: number }>;
   withdrawEntry(id: string, by: string, notes: string | null): Promise<{ before: CatalogRow; after: CatalogRow }>;
 
@@ -189,8 +196,8 @@ export const OPERATOR_METHODS = [
   "dashboard",
   "catalog",
   "approveEntry",
-  "releaseApprove",
-  "signApproved",
+  "releasePlan",
+  "storeSignatures",
   "setRequired",
   "withdrawEntry",
   "feedbackInbox",

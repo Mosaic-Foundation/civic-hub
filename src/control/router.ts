@@ -49,6 +49,9 @@ import { consoleAdminEmail, consoleHostname, isConsoleHost, startHostname } from
 import { ControlInputError } from "./errors.js";
 import { spaceTypeView } from "../shared/spaceTypes.js";
 import { isReleaseAuthorized, parseReleaseApproval } from "./releaseAuth.js";
+import { consoleKey, signEntry } from "./catalogKey.js";
+import { releaseApprover } from "../shared/firstParty.js";
+import type { ReleaseOutcome } from "../operator/api.js";
 
 const COOKIE = "civic_console";
 const CSRF_HEADER = "x-civic-console";
@@ -181,10 +184,36 @@ async function windowedStepUp(req: Request, res: Response): Promise<"code" | "wi
   return "code";
 }
 
-/** The catalog view, with until when this session's catalog actions need no code. */
+/**
+ * The catalog view, with until when this session's catalog actions need no
+ * code, and the signing state as the console sees it: its own key (the hub
+ * holds only public halves; the console split, step 2), and how many
+ * approved entries are not signed with it.
+ */
 async function catalogFor(op: OperatorApi, res: Response) {
   const until = res.locals.controlSession?.catalog_confirmed_until ?? null;
-  return { ...(await op.catalog()), confirmed_until: until && Date.parse(until) > Date.now() ? until : null };
+  const view = await op.catalog();
+  const { key, problem } = consoleKey();
+  const notTrusted =
+    key && view.signing.key && view.signing.key.id !== key.id
+      ? `This console signs with ${key.id}, but the hub deployment's current key is ${view.signing.key.id}: set its CIVIC_CATALOG_PUBLIC_KEY to this console's key.`
+      : null;
+  return {
+    ...view,
+    signing: {
+      ...view.signing,
+      key: key ? { id: key.id, public_key: key.publicKey } : null,
+      problem: problem ?? notTrusted ?? view.signing.problem,
+      unsigned: view.entries.filter((e) => e.status === "approved" && (!key || e.signature_key !== key.id || !e.signed)).length,
+    },
+    confirmed_until: until && Date.parse(until) > Date.now() ? until : null,
+  };
+}
+
+/** The console's signature over a catalog entry, read from the hub; null without a key or without the entry. */
+async function signatureFor(op: OperatorApi, id: string) {
+  const entry = (await op.catalog()).entries.find((e) => e.id === id);
+  return entry ? signEntry(entry) : null;
 }
 
 async function loadHub(op: OperatorApi, req: Request, res: Response): Promise<ControlHub | null> {
@@ -275,7 +304,27 @@ export function controlRouter(op: OperatorApi): Router {
       return;
     }
     const { commit, entries } = parseReleaseApproval(req.body);
-    const outcomes = await op.releaseApprove(commit, entries);
+    // The hub says which entries a release may approve; the console signs
+    // each and approves it as its Approve does, by release@<commit>.
+    const outcomes: ReleaseOutcome[] = [];
+    for (const item of await op.releasePlan(entries)) {
+      if (item.result === "pending") {
+        outcomes.push(item);
+        continue;
+      }
+      try {
+        const { after } = await op.approveEntry(
+          item.row.id,
+          releaseApprover(commit),
+          `Approved by release at ${commit}: CI green on that commit, fingerprint matched.`,
+          signEntry(item.row),
+        );
+        outcomes.push({ package: item.package, version: item.version, result: "approved", id: after.id, signature_key: after.signature_key });
+      } catch (err) {
+        if (!(err instanceof CivicError) || err.status !== 409) throw err;
+        outcomes.push({ package: item.package, version: item.version, result: "pending", reason: err.message });
+      }
+    }
     for (const o of outcomes) {
       await audited(res, {
         actor: `release@${commit}`,
@@ -680,7 +729,7 @@ export function controlRouter(op: OperatorApi): Router {
     const confirmed = await windowedStepUp(req, res);
     if (!confirmed) return;
     const notes = catalogNotes(req.body);
-    const { before, after } = await op.approveEntry(String(req.params.id), actor(res), notes);
+    const { before, after } = await op.approveEntry(String(req.params.id), actor(res), notes, await signatureFor(op, String(req.params.id)));
     await audited(res, {
       actor: actor(res),
       action: "plugin.approve",
@@ -696,13 +745,20 @@ export function controlRouter(op: OperatorApi): Router {
   r.post("/control/plugins/sign", route(async (req, res) => {
     const confirmed = await windowedStepUp(req, res);
     if (!confirmed) return;
-    const { key, signed } = await op.signApproved();
+    const { key, problem } = consoleKey();
+    if (!key) {
+      throw new ControlInputError(`This console has no catalog key to sign with (CIVIC_CATALOG_SIGNING_KEY${problem ? `: ${problem}` : " is not set"}).`, 409);
+    }
+    // Every approved entry not signed by this key: the rows approved before
+    // signatures, and every row again after a rotation.
+    const toSign = (await op.catalog()).entries.filter((e) => e.status === "approved" && (e.signature_key !== key.id || !e.signed));
+    const signed = await op.storeSignatures(toSign.map((e) => ({ id: e.id, ...signEntry(e)! })));
     await audited(res, {
       actor: actor(res),
       action: "plugin.sign",
       hubId: null,
       before: null,
-      after: { key, entries: signed, confirmed },
+      after: { key: key.id, entries: signed, confirmed },
     });
     res.json(await catalogFor(op, res));
   }));

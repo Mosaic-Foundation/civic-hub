@@ -563,7 +563,7 @@ else
   fi
   IFS='|' read -r SIG_MODE SIG_KEY SIG_UNSIGNED <<<"$(signatures)"
   if [[ -z "$SIG_KEY" ]]; then
-    note "No catalog key on this deployment (CIVIC_CATALOG_SIGNING_KEY): approvals are checked by fingerprint only ($SIG_MODE)."
+    note "No catalog key on this deployment (CIVIC_CATALOG_PUBLIC_KEY, or CIVIC_CATALOG_SIGNING_KEY while the console shares it): approvals are checked by fingerprint only ($SIG_MODE)."
     SIG_RESULT="no key ($SIG_MODE)"
   else
     if [[ "$SIG_UNSIGNED" != "0" ]]; then

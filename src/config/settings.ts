@@ -52,8 +52,9 @@ export const SETTINGS = s({
   CIVIC_HUB_SIGNING_KEY: { purpose: "The key hub tokens are signed with (PostgREST's JWT secret or a private JWK).", type: "secret", layer: "engine", required: { when: "CIVIC_HUB_MINTED_TOKEN" } },
 
   // --- The plugin catalog's signatures (plugin session 2, ADR-015) -----------
-  CIVIC_CATALOG_SIGNING_KEY: { purpose: "The catalog signing key (an Ed25519 private key, PEM, or that PEM in base64): the console signs an approval with it, the loader verifies with its public half. One per deployment.", type: "secret", layer: "engine" },
+  CIVIC_CATALOG_SIGNING_KEY: { purpose: "The catalog signing key (an Ed25519 private key, PEM, or that PEM in base64): the console's, which signs an approval with it (src/control/catalogKey.ts). The hub reads only its public half, and only while CIVIC_CATALOG_PUBLIC_KEY is unset; once the console has its own deployment it lives only there.", type: "secret", layer: "engine" },
   CIVIC_RELEASE_SECRET: { purpose: "Bearer token scripts/release.sh presents to approve first-party catalog entries CI proved (ADR-015 amendment); the console signs them with CIVIC_CATALOG_SIGNING_KEY. Unset: no release approves anything, and the release pauses for the operator as before.", type: "secret", layer: "engine" },
+  CIVIC_CATALOG_PUBLIC_KEY: { purpose: "The console's catalog key, its public half (base64 DER, as the console's Plugins page shows it): what the hub verifies approvals with once the console is its own deployment. Unset: the public half of CIVIC_CATALOG_SIGNING_KEY, when this deployment has it.", type: "string", layer: "engine" },
   CIVIC_CATALOG_TRUSTED_KEYS: { purpose: "Retired catalog keys still trusted while the approvals are signed again: comma-separated public keys (base64 DER, as the console shows them).", type: "string", layer: "engine" },
   CIVIC_CATALOG_SIGNATURES: { purpose: "transition: an approved row without a signature still mounts on its hash, a signed one must verify; required: a row without a valid signature is unapproved.", type: "string", layer: "engine", default: "transition" },
 

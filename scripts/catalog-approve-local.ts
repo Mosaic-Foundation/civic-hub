@@ -21,7 +21,7 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { hashPackage } from "../src/plugins/hash.js";
-import { parseSigningKey, signRow } from "../src/plugins/signature.js";
+import { parseSigningKey, signRow } from "../src/shared/catalogSignature.js";
 import type { PluginCapabilities } from "../src/shared/pluginGrant.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");

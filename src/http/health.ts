@@ -81,7 +81,7 @@ export const healthHandler = route(async (req: Request, res: Response) => {
       // signature this deployment has not verified. The release waits for 0.
       signatures: {
         mode: keys.mode,
-        key: keys.signing?.id ?? null,
+        key: keys.primary?.id ?? null,
         unsigned: packages.filter((p) => p.mounted && !p.signed).length,
       },
     },

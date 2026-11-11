@@ -14,7 +14,8 @@ import type { CatalogRow } from "../../src/db/pluginCatalog.js";
 import type { ConfiguredPackage, PluginPackage } from "../../src/plugins/package.js";
 import { readFileSync } from "node:fs";
 import { generateKeyPairSync } from "node:crypto";
-import { catalogKeys, parseSigningKey, signRow, TEST_KEY_PUBLIC } from "../../src/plugins/signature.js";
+import { catalogKeys, parseSigningKey, TEST_KEY_PUBLIC } from "../../src/plugins/signature.js";
+import { signRow } from "../../src/shared/catalogSignature.js";
 
 const real = loadedPackages().find((p) => p.pkg.name === "@civic-social/plugin-wordcloud")!;
 
@@ -196,7 +197,7 @@ describe("signed approvals (plugin session 2, ADR-015)", () => {
     expect(parseSigningKey(TEST_PEM, false).publicKey).toBe(TEST_KEY_PUBLIC);
     expect(() => parseSigningKey(TEST_PEM, true)).toThrow("the committed test key");
     const onDeployment = catalogKeys({ mode: "required", key: TEST_PEM, trusted: TEST_KEY_PUBLIC, production: true });
-    expect(onDeployment.signing).toBeNull();
+    expect(onDeployment.primary).toBeNull();
     expect(onDeployment.trusted.size).toBe(0);
     expect(onDeployment.problem).toContain("the committed test key");
   });

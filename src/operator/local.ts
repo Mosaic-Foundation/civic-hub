@@ -58,9 +58,9 @@ import {
   CatalogStateError,
   approveEntry,
   catalogView,
-  releaseApproveEntries,
+  releasePlan,
   setEntryRequired,
-  signApprovedEntries,
+  storeSignatures,
   withdrawEntry,
 } from "./pluginCatalog.js";
 import { feedbackInbox, updateFeedbackItem } from "./platformFeedback.js";
@@ -225,9 +225,9 @@ export function localOperator(): OperatorApi {
     dashboard: ({ fresh, now }) => hubDashboardSections({ fresh, now: new Date(now) }),
 
     catalog: () => catalogView(),
-    approveEntry: (id, by, notes) => catalogChange(() => approveEntry(id, by, notes)),
-    releaseApprove: (commit, entries) => releaseApproveEntries(commit, entries),
-    signApproved: () => catalogChange(() => signApprovedEntries()),
+    approveEntry: (id, by, notes, signature) => catalogChange(() => approveEntry(id, by, notes, signature)),
+    releasePlan: (entries) => releasePlan(entries),
+    storeSignatures: (items) => catalogChange(() => storeSignatures(items)),
     setRequired: (id, required) => catalogChange(() => setEntryRequired(id, required)),
     withdrawEntry: (id, by, notes) => catalogChange(() => withdrawEntry(id, by, notes)),
 
