@@ -66,7 +66,6 @@ const SERVICE_ROLE = [
   "move_hub_hostname",
   "rate_limit_retry_at",
   "rate_limit_take",
-  "take_platform_sign_in_attempt",
   "tenancy_catalog",
 ].sort();
 
