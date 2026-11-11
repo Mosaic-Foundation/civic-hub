@@ -91,6 +91,23 @@ export interface Realm {
   timeZone: string;
   /** Whether codes come with a sign-in link. */
   links: boolean;
+  /**
+   * Where this realm's attempts are counted. Unset: the hubs' counters (the
+   * auth store). The console and the start page count in their own
+   * (src/control/rateLimits.ts; the console split, step 3b).
+   */
+  rateLimits?: RateLimiter;
+}
+
+/** The three rate-limit operations the code rules use. */
+export interface RateLimiter {
+  takeRateLimit(checks: readonly RateLimitCheck[]): Promise<RateLimitCheck | null>;
+  rateLimitRetryAt(check: RateLimitCheck): Promise<Date | null>;
+  rateLimitBucket(scope: string, by: string, value: string): string;
+}
+
+function limiter(realm: Pick<Realm, "rateLimits">): RateLimiter {
+  return realm.rateLimits ?? authStore.get();
 }
 
 export interface IssuedCode {
@@ -129,9 +146,9 @@ function refuse(message: string, code: string, at: Date): RateLimitedError {
 
 /** Take the checks, or throw "Too many attempts. Try again after …". */
 async function take(realm: Realm, checks: RateLimitCheck[], messageFor?: (c: RateLimitCheck, at: Date) => [string, string]): Promise<void> {
-  const refused = await authStore.get().takeRateLimit(checks);
+  const refused = await limiter(realm).takeRateLimit(checks);
   if (!refused) return;
-  const at = (await authStore.get().rateLimitRetryAt(refused)) ?? new Date(Date.now() + refused.windowMs);
+  const at = (await limiter(realm).rateLimitRetryAt(refused)) ?? new Date(Date.now() + refused.windowMs);
   const [message, code] = messageFor?.(refused, at) ?? [tooManyMessage(at, realm.timeZone), "rate_limited"];
   throw refuse(message, code, at);
 }
@@ -226,7 +243,7 @@ export async function checkCode(store: CodeStore, realm: Realm, ip: string, pres
   };
   // Refused before a try is spent, so a machine over its wrong tries at this
   // address can't burn the owner's codes.
-  const wait = await authStore.get().rateLimitRetryAt(wrongBucket);
+  const wait = await limiter(realm).rateLimitRetryAt(wrongBucket);
   if (wait) throw refuse(tooManyMessage(wait, realm.timeZone), "rate_limited", wait);
 
   const rows = await store.take({ email }, CODE_RULES.maxTries);
@@ -237,7 +254,7 @@ export async function checkCode(store: CodeStore, realm: Realm, ip: string, pres
   if (!match) {
     // A wrong try only: counted after the fact (a refusal here records nothing
     // and changes nothing; the check above is what holds the line).
-    await authStore.get().takeRateLimit([wrongBucket]);
+    await limiter(realm).takeRateLimit([wrongBucket]);
     if (rows.every((r) => r.attempts >= CODE_RULES.maxTries)) throw new ValidationError(BURNED_CODE, "code_burned");
     throw new ValidationError(WRONG_CODE, "invalid_code");
   }
@@ -246,6 +263,6 @@ export async function checkCode(store: CodeStore, realm: Realm, ip: string, pres
 }
 
 /** The bucket name, for tests that read rate_limit_hits. */
-export function codeBucket(realm: Pick<Realm, "scope">, step: string, by: string, value: string): string {
-  return authStore.get().rateLimitBucket(`${realm.scope}.${step}`, by, value);
+export function codeBucket(realm: Pick<Realm, "scope" | "rateLimits">, step: string, by: string, value: string): string {
+  return limiter(realm).rateLimitBucket(`${realm.scope}.${step}`, by, value);
 }

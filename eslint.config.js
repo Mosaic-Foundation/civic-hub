@@ -171,8 +171,7 @@ const CONSOLE_MAY_IMPORT = [
   // Generic plumbing, copied at the extraction:
   "src/config/env.ts",
   "src/errors/index.ts",
-  "src/db/client.ts", // the console's own tables, until they move to their own schema (split step 3)
-  "src/db/rateLimit.ts",
+  "src/db/rateLimit.ts", // rateLimitBucket and the check's type (pure)
   "src/utils/email.ts",
   "src/utils/hash.ts",
   "src/utils/id.ts",

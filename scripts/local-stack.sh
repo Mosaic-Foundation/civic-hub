@@ -103,6 +103,8 @@ load_fixtures() {
   # The plugin catalog's pending entries for this checkout's packages, approved
   # as the local operator would in the console (ADR-014).
   env -i PATH="$PATH" HOME="$HOME" CIVIC_TEST_DATABASE_URL="$DB_URL" node --import tsx scripts/catalog-approve-local.ts
+  # The console's own database login (the console split, step 3b).
+  env -i PATH="$PATH" HOME="$HOME" CIVIC_TEST_DATABASE_URL="$DB_URL" node --import tsx scripts/console-db-local.ts
 }
 
 cmd_start() {

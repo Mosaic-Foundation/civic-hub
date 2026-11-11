@@ -269,6 +269,7 @@ refused in production (`src/config/devFlags.ts`).
 | `CIVIC_CONSOLE_ADMIN_EMAIL` | engine | email | when CIVIC_CONSOLE_HOSTNAME is set |  | The console's one operator. |
 | `CIVIC_START_HOSTNAME` | engine | string | no |  | The start page's hostname. Unset: no start page. |
 | `CIVIC_PLATFORM_DOMAIN` | engine | string | no |  | The domain hubs live under (civic.social), whose reserved names no hub may take. Unset: the console hostname's parent, as before the console split. |
+| `CIVIC_CONSOLE_DATABASE_URL` | engine | secret | no |  | The console's own database login (civic_console, rights on schema console only): a Postgres connection string, on Vercel Supabase's pooler on port 6543. Made by scripts/console-db-login.ts. Unset with a console hostname: the console and the start page answer that they cannot reach their data; the hubs are unaffected. |
 | `CIVIC_OPERATOR_TOKEN` | engine | secret | no |  | Bearer token the console presents to this hub deployment's operator API (/operator/*). Unset: the operator API answers 404; a console on the same deployment calls the hub in-process. |
 | `CIVIC_OPERATOR_URL` | engine | url | no |  | Where the console calls the hub deployment's operator API, with CIVIC_OPERATOR_TOKEN: its API base (on Vercel https://<a hub's hostname>/api). Unset: the console calls the hub in-process (one deployment). |
 | `CIVIC_DEV_HUB` | dev | string | no | `athens` | Local development: the hub a bare localhost resolves to. |

@@ -27,6 +27,8 @@ export function refuseRemote(env: NodeJS.ProcessEnv): void {
 /** The Supabase CLI's local stack and its fixed, public service-role key (ci.yml). */
 export const LOCAL_STACK = {
   SUPABASE_URL: "http://127.0.0.1:54321",
+  // The console's own database login (the console split, step 3b; scripts/console-db-local.ts).
+  CIVIC_CONSOLE_DATABASE_URL: "postgresql://civic_console:local-console-only@127.0.0.1:54322/postgres",
   SUPABASE_SERVICE_ROLE_KEY:
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU",
 };

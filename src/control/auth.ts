@@ -1,12 +1,12 @@
-// @civic-raw-client-importer: the super admin's codes and sessions are platform data, not any hub's.
 // The super admin's sign-in: an emailed code to the one allowed address, a
 // session, and step-up — a second, fresh code — before anything destructive.
 //
 // The code's rules (lifetime, live codes, tries, the email itself) are a
 // hub's, from src/modules/civic.auth/codeRules.ts and otp.ts. What differs is
-// where things are kept: `platform_sign_in_codes` and `control_sessions`,
-// platform tables with deny-all RLS, and codes and session tokens are stored
-// only as SHA-256 hashes.
+// where things are kept: `console.platform_sign_in_codes` and
+// `console.control_sessions`, the console's own tables (its own database
+// login, ./db.ts), and codes and session tokens are stored only as SHA-256
+// hashes.
 //
 // Only CIVIC_CONSOLE_ADMIN_EMAIL is ever sent a code. Anyone else who asks
 // gets the same answer and nothing is sent or stored, so the form does not
@@ -14,8 +14,8 @@
 
 import { env } from "../config/env.js";
 import { CivicError, RateLimitedError, codeForStatus } from "../errors/index.js";
-import { getDb } from "../db/client.js";
-import { HOUR_MS, releaseRateLimit, retryAt, takeRateLimit } from "../db/rateLimit.js";
+import { q } from "./db.js";
+import { HOUR_MS, consoleRateLimits } from "./rateLimits.js";
 import { randomToken, sha256Hex } from "../utils/hash.js";
 import { sendEmail, mailConfigured } from "../utils/email.js";
 import { renderCodeEmail } from "../modules/civic.auth/otp.js";
@@ -53,8 +53,8 @@ function consoleRealm(timeZone: unknown) {
 /** Count one step against the IP, or refuse with the time it can try again. */
 async function limit(step: keyof typeof CONSOLE_LIMITS, ip: string, timeZone: string): Promise<void> {
   const check = { scope: `console.${step}`, by: "ip", value: ip, limit: CONSOLE_LIMITS[step].ip, windowMs: HOUR_MS };
-  if (!(await takeRateLimit([check]))) return;
-  const at = (await retryAt(check)) ?? new Date(Date.now() + HOUR_MS);
+  if (!(await consoleRateLimits.takeRateLimit([check]))) return;
+  const at = (await consoleRateLimits.rateLimitRetryAt(check)) ?? new Date(Date.now() + HOUR_MS);
   throw new RateLimitedError(tooManyMessage(at, timeZone), "rate_limited", { extra: { retry_at: at.toISOString() } });
 }
 
@@ -116,7 +116,7 @@ export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: s
       // is withdrawn and the request counts for nothing. Said, so the
       // operator does not wait for an email that is not coming.
       await withdrawPlatformCode("console", purpose, email, sha256Hex(issued.code));
-      await releaseRateLimit(issued.counted);
+      await consoleRateLimits.release(issued.counted);
       throw new ControlAuthError("The code email could not be sent just now, and nothing was counted. Try again in a moment.", 502);
     }
     // As a hub's sign-in: with no mailer at all (local development) the code
@@ -157,11 +157,12 @@ export const CATALOG_WINDOW_MS = 10 * 60 * 1000;
 export async function createSession(email: string): Promise<{ token: string; expiresAt: string }> {
   const token = randomToken();
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
-  const { error } = await getDb()
-    .from("control_sessions")
-    .insert({ token_hash: sha256(token), email, expires_at: expiresAt });
-  if (error) throw new Error(`control_sessions write failed: ${error.message}`);
+  await q("INSERT INTO console.control_sessions (token_hash, email, expires_at) VALUES ($1, $2, $3)", [sha256(token), email, expiresAt]);
   return { token, expiresAt };
+}
+
+function iso(v: unknown): string | null {
+  return v == null ? null : v instanceof Date ? v.toISOString() : String(v);
 }
 
 /**
@@ -171,31 +172,32 @@ export async function createSession(email: string): Promise<{ token: string; exp
  */
 export async function sessionFromToken(token: string | undefined): Promise<ControlSession | null> {
   if (!token) return null;
-  const { data, error } = await getDb()
-    .from("control_sessions")
-    .select("email, expires_at, revoked_at, catalog_confirmed_until")
-    .eq("token_hash", sha256(token))
-    .maybeSingle();
-  if (error || !data) return null;
-  const row = data as { email: string; expires_at: string; revoked_at: string | null; catalog_confirmed_until: string | null };
-  if (row.revoked_at || Date.now() > Date.parse(row.expires_at)) return null;
+  let row: { email: string; expires_at: unknown; revoked_at: unknown; catalog_confirmed_until: unknown } | undefined;
+  try {
+    ({ rows: [row] } = await q<NonNullable<typeof row>>(
+      "SELECT email, expires_at, revoked_at, catalog_confirmed_until FROM console.control_sessions WHERE token_hash = $1",
+      [sha256(token)],
+    ));
+  } catch (err) {
+    console.warn("[control] session read failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+  if (!row) return null;
+  const expiresAt = iso(row.expires_at)!;
+  if (row.revoked_at || Date.now() > Date.parse(expiresAt)) return null;
   if (!isConsoleAdmin(row.email)) return null;
-  return { email: row.email, expires_at: row.expires_at, catalog_confirmed_until: row.catalog_confirmed_until ?? null };
+  return { email: row.email, expires_at: expiresAt, catalog_confirmed_until: iso(row.catalog_confirmed_until) };
 }
 
 /** A fresh code was entered for a catalog action: the session's catalog actions need none for ten minutes. */
 export async function confirmCatalogWindow(token: string | undefined): Promise<string | null> {
   if (!token) return null;
   const until = new Date(Date.now() + CATALOG_WINDOW_MS).toISOString();
-  const { error } = await getDb().from("control_sessions").update({ catalog_confirmed_until: until }).eq("token_hash", sha256(token));
-  if (error) throw new Error(`control_sessions write failed: ${error.message}`);
+  await q("UPDATE console.control_sessions SET catalog_confirmed_until = $2 WHERE token_hash = $1", [sha256(token), until]);
   return until;
 }
 
 export async function revokeSession(token: string | undefined): Promise<void> {
   if (!token) return;
-  await getDb()
-    .from("control_sessions")
-    .update({ revoked_at: new Date().toISOString() })
-    .eq("token_hash", sha256(token));
+  await q("UPDATE console.control_sessions SET revoked_at = now() WHERE token_hash = $1", [sha256(token)]);
 }

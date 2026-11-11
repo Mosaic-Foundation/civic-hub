@@ -1,63 +1,60 @@
-// @civic-raw-client-importer: the console's and the start page's codes are platform data, not any hub's.
 // Where the console and the start page keep their emailed codes
-// (platform_sign_in_codes, 20261014000000), for the shared rules in
-// src/modules/civic.auth/codeRules.ts: lock the code, not the person.
+// (console.platform_sign_in_codes, 20261014000000, moved 20261111000000), for
+// the shared rules in src/modules/civic.auth/codeRules.ts: lock the code, not
+// the person. As civic_console (./db.ts); counted in the console's own rate
+// limits (./rateLimits.ts).
 
-import { getDb } from "../db/client.js";
+import { q } from "./db.js";
+import { consoleRateLimits } from "./rateLimits.js";
 import { resolveTimeZone } from "../utils/hubTime.js";
 import { CODE_RULES, type CodeRow, type CodeStore, type Realm } from "../modules/civic.auth/codeRules.js";
 
 export type PlatformRealm = "console" | "start";
 export type CodePurpose = "sign_in" | "step_up";
 
+function iso(v: unknown): string {
+  return v instanceof Date ? v.toISOString() : String(v);
+}
+
 export function platformCodeStore(realm: PlatformRealm, purpose: CodePurpose): CodeStore {
-  const table = () => getDb().from("platform_sign_in_codes");
   return {
     async live(email) {
-      const { data, error } = await table()
-        .select("expires_at, attempts")
-        .eq("realm", realm)
-        .eq("purpose", purpose)
-        .eq("email", email)
-        .gt("expires_at", new Date().toISOString());
-      if (error) throw new Error(`platform_sign_in_codes read failed: ${error.message}`);
-      return ((data ?? []) as Array<{ expires_at: string; attempts: number }>)
-        .filter((r) => r.attempts < CODE_RULES.maxTries)
-        .map((r) => r.expires_at);
+      const { rows } = await q<{ expires_at: unknown; attempts: number }>(
+        `SELECT expires_at, attempts FROM console.platform_sign_in_codes
+          WHERE realm = $1 AND purpose = $2 AND email = $3 AND expires_at > now()`,
+        [realm, purpose, email],
+      );
+      return rows.filter((r) => r.attempts < CODE_RULES.maxTries).map((r) => iso(r.expires_at));
     },
     async insert(row) {
-      const { error } = await table().insert({ ...row, realm, purpose });
-      if (error) throw new Error(`platform_sign_in_codes write failed: ${error.message}`);
+      await q(
+        `INSERT INTO console.platform_sign_in_codes (realm, purpose, email, code_hash, link_hash, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [realm, purpose, row.email, row.code_hash, row.link_hash, row.expires_at],
+      );
     },
     async take(by, maxTries) {
-      const { data, error } = await getDb().rpc("take_platform_sign_in_attempt", {
-        p_realm: realm,
-        p_purpose: purpose,
-        p_email: "email" in by ? by.email : null,
-        p_link_hash: "linkHash" in by ? by.linkHash : null,
-        p_max: maxTries,
-      });
-      if (error) throw new Error(`take_platform_sign_in_attempt failed: ${error.message}`);
-      return (data ?? []) as CodeRow[];
+      const { rows } = await q<CodeRow & { expires_at: unknown }>(
+        "SELECT id, email, code_hash, link_hash, attempts, expires_at FROM console.take_platform_sign_in_attempt($1, $2, $3, $4, $5)",
+        [realm, purpose, "email" in by ? by.email : null, "linkHash" in by ? by.linkHash : null, maxTries],
+      );
+      return rows.map((r) => ({ ...r, expires_at: iso(r.expires_at) }));
     },
     async spend(id) {
-      const { data, error } = await table().delete().eq("id", id).select("id");
-      if (error) throw new Error(`platform_sign_in_codes delete failed: ${error.message}`);
-      return (data ?? []).length > 0;
+      const { rowCount } = await q("DELETE FROM console.platform_sign_in_codes WHERE id = $1", [id]);
+      return (rowCount ?? 0) > 0;
     },
   };
 }
 
 /** Withdraw one code before it was ever delivered (its email could not be sent). */
 export async function withdrawPlatformCode(realm: PlatformRealm, purpose: CodePurpose, email: string, codeHash: string): Promise<void> {
-  const { error } = await getDb()
-    .from("platform_sign_in_codes")
-    .delete()
-    .eq("realm", realm)
-    .eq("purpose", purpose)
-    .eq("email", email)
-    .eq("code_hash", codeHash);
-  if (error) throw new Error(`platform_sign_in_codes delete failed: ${error.message}`);
+  await q("DELETE FROM console.platform_sign_in_codes WHERE realm = $1 AND purpose = $2 AND email = $3 AND code_hash = $4", [
+    realm,
+    purpose,
+    email,
+    codeHash,
+  ]);
 }
 
 /**
@@ -72,5 +69,6 @@ export function platformRealm(realm: PlatformRealm, ipLimits: Realm["ipLimits"],
     ipLimits,
     timeZone: resolveTimeZone(typeof timeZone === "string" ? timeZone : null),
     links: false,
+    rateLimits: consoleRateLimits,
   };
 }

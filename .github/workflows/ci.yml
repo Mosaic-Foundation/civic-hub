@@ -184,6 +184,11 @@ jobs:
       - name: Approve the checkout's catalog entries (local operator)
         run: npx tsx scripts/catalog-approve-local.ts
 
+      # The console's own database login (the console split, step 3b), with
+      # its local-only password.
+      - name: Console database login (local)
+        run: npx tsx scripts/console-db-local.ts
+
       # Signed approvals (ADR-015): the committed test key (every deployment
       # refuses it), with signatures required, so this run proves the servers
       # mount the catalog on the local operator's signatures (made with the
@@ -268,6 +273,7 @@ jobs:
           # The super admin (src/control/), on its own hostname, with its one
           # operator. tests/api/control.test.ts talks to it with Host set.
           CIVIC_CONSOLE_HOSTNAME: console.localhost
+          CIVIC_CONSOLE_DATABASE_URL: postgresql://civic_console:local-console-only@127.0.0.1:54322/postgres
           CIVIC_CONSOLE_ADMIN_EMAIL: operator@example.test
           # The start page (session 4b): tests/api/startPage.test.ts.
           CIVIC_START_HOSTNAME: start.localhost
@@ -417,6 +423,11 @@ jobs:
       - name: Approve the checkout's catalog entries (local operator)
         run: npx tsx scripts/catalog-approve-local.ts
 
+      # The console's own database login (the console split, step 3b), with
+      # its local-only password.
+      - name: Console database login (local)
+        run: npx tsx scripts/console-db-local.ts
+
       # Signed approvals (ADR-015): the committed test key (every deployment
       # refuses it), with signatures required, so this run proves the servers
       # mount the catalog on the local operator's signatures (made with the
@@ -447,6 +458,7 @@ jobs:
           CIVIC_DEV_HUB: athens
           CIVIC_JURISDICTION: us-va-floyd
           CIVIC_CONSOLE_HOSTNAME: console.localhost
+          CIVIC_CONSOLE_DATABASE_URL: postgresql://civic_console:local-console-only@127.0.0.1:54322/postgres
           CIVIC_CONSOLE_ADMIN_EMAIL: operator@example.test
           CIVIC_START_HOSTNAME: start.localhost
           CIVIC_ANON_SECRET: ci-only-anon-secret

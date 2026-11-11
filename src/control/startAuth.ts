@@ -1,4 +1,3 @@
-// @civic-raw-client-importer: the start page's codes, sessions and rate-limit counters are platform data, held before any hub exists.
 // The start page's sign-in (session 4b, 2026-10-08): a session opened by a
 // good invite code, then an emailed code to whatever address the person
 // gives, then the create. An invite the console emailed skips the emailed code:
@@ -7,19 +6,20 @@
 // The code's rules (lifetime, throttle, wrong-guess cap, lockout, the email
 // itself) are a hub's, from src/modules/civic.auth/otp.ts, as the console's
 // are. Codes and session tokens are stored only as SHA-256 hashes, in
-// `platform_sign_in_codes` and `start_sessions` (platform tables, deny-all RLS).
+// `console.platform_sign_in_codes` and `console.start_sessions`, as
+// civic_console (./db.ts; the console split, step 3b).
 //
 // Rate limits live in the database, so they hold across serverless
 // instances: by IP for every step, and by email for code requests. IPs and
-// emails are stored hashed. Since Audit 2 (2026-10-11) they go through the
-// platform's one limiter (src/db/rateLimit.ts, rate_limit_take), which counts
-// and records in one transaction; start_attempts, which counted and then
-// inserted from here, was dropped by Audit 3.
+// emails are stored hashed. They go through the console's limiter
+// (./rateLimits.ts, console.rate_limit_take), which counts and records in
+// one transaction.
 
 import { env } from "../config/env.js";
 import { CivicError, codeForStatus } from "../errors/index.js";
-import { getDb } from "../db/client.js";
-import { HOUR_MS, rateLimitBucket, takeRateLimit } from "../db/rateLimit.js";
+import { q } from "./db.js";
+import { rateLimitBucket } from "../db/rateLimit.js";
+import { HOUR_MS, consoleRateLimits } from "./rateLimits.js";
 import { randomToken, sha256Hex } from "../utils/hash.js";
 import { sendEmail, mailConfigured } from "../utils/email.js";
 import { renderCodeEmail } from "../modules/civic.auth/otp.js";
@@ -84,7 +84,7 @@ export async function rateLimit(step: StartStep, ip: string, email?: string): Pr
   if (email && limits.email !== undefined) {
     checks.push({ scope: `start.${step}`, by: "email", value: email, limit: limits.email, windowMs: HOUR_MS });
   }
-  const refused = await takeRateLimit(checks);
+  const refused = await consoleRateLimits.takeRateLimit(checks);
   if (refused) throw new StartError(TOO_MANY, 429);
 }
 
@@ -103,39 +103,39 @@ export interface StartSession {
  */
 export async function openStartSession(entitlementId: string, email: string | null = null): Promise<string> {
   const token = randomToken();
-  const { error } = await getDb().from("start_sessions").insert({
-    token_hash: sha256(token),
+  await q("INSERT INTO console.start_sessions (token_hash, email, entitlement_id, expires_at) VALUES ($1, $2, $3, $4)", [
+    sha256(token),
     email,
-    entitlement_id: entitlementId,
-    expires_at: new Date(Date.now() + START_SESSION_TTL_MS).toISOString(),
-  });
-  if (error) throw new Error(`start_sessions write failed: ${error.message}`);
+    entitlementId,
+    new Date(Date.now() + START_SESSION_TTL_MS).toISOString(),
+  ]);
   return token;
 }
 
 export async function startSessionFromToken(token: string | undefined): Promise<StartSession | null> {
   if (!token) return null;
-  const { data, error } = await getDb()
-    .from("start_sessions")
-    .select("token_hash, email, entitlement_id, expires_at, revoked_at")
-    .eq("token_hash", sha256(token))
-    .maybeSingle();
-  if (error || !data) return null;
-  const row = data as StartSession & { revoked_at: string | null };
-  if (row.revoked_at || Date.now() > Date.parse(row.expires_at)) return null;
-  return { token_hash: row.token_hash, email: row.email, entitlement_id: row.entitlement_id, expires_at: row.expires_at };
+  let row: (Omit<StartSession, "expires_at"> & { expires_at: unknown; revoked_at: unknown }) | undefined;
+  try {
+    ({ rows: [row] } = await q<NonNullable<typeof row>>(
+      "SELECT token_hash, email, entitlement_id, expires_at, revoked_at FROM console.start_sessions WHERE token_hash = $1",
+      [sha256(token)],
+    ));
+  } catch (err) {
+    console.warn("[start] session read failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+  if (!row) return null;
+  const expiresAt = row.expires_at instanceof Date ? row.expires_at.toISOString() : String(row.expires_at);
+  if (row.revoked_at || Date.now() > Date.parse(expiresAt)) return null;
+  return { token_hash: row.token_hash, email: row.email, entitlement_id: row.entitlement_id, expires_at: expiresAt };
 }
 
 async function setSessionEmail(session: StartSession, email: string): Promise<void> {
-  const { error } = await getDb().from("start_sessions").update({ email }).eq("token_hash", session.token_hash);
-  if (error) throw new Error(`start_sessions write failed: ${error.message}`);
+  await q("UPDATE console.start_sessions SET email = $2 WHERE token_hash = $1", [session.token_hash, email]);
 }
 
 export async function endStartSession(session: StartSession): Promise<void> {
-  await getDb()
-    .from("start_sessions")
-    .update({ revoked_at: new Date().toISOString() })
-    .eq("token_hash", session.token_hash);
+  await q("UPDATE console.start_sessions SET revoked_at = now() WHERE token_hash = $1", [session.token_hash]);
 }
 
 // --- The emailed code ------------------------------------------------------------

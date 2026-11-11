@@ -11,17 +11,24 @@ const hits: string[] = [];
 const codes: Array<{ purpose: string; code_hash: string }> = [];
 const mail = { configured: true, fail: true };
 
-vi.mock("../../src/db/rateLimit.js", async (orig) => ({
-  ...(await orig<typeof import("../../src/db/rateLimit.js")>()),
-  takeRateLimit: async (checks: Array<{ scope: string }>) => {
-    for (const c of checks) hits.push(c.scope);
-    return null;
-  },
-  retryAt: async () => null,
-  releaseRateLimit: async (checks: Array<{ scope: string }>) => {
-    for (const c of checks) hits.splice(hits.lastIndexOf(c.scope), 1);
-  },
-}));
+// The console's own limiter (src/control/rateLimits.ts; the console split, step 3b).
+vi.mock("../../src/control/rateLimits.js", async (orig) => {
+  const real = await orig<typeof import("../../src/control/rateLimits.js")>();
+  return {
+    ...real,
+    consoleRateLimits: {
+      rateLimitBucket: real.consoleRateLimits.rateLimitBucket,
+      takeRateLimit: async (checks: Array<{ scope: string }>) => {
+        for (const c of checks) hits.push(c.scope);
+        return null;
+      },
+      rateLimitRetryAt: async () => null,
+      release: async (checks: Array<{ scope: string }>) => {
+        for (const c of checks) hits.splice(hits.lastIndexOf(c.scope), 1);
+      },
+    },
+  };
+});
 vi.mock("../../src/control/config.js", async (orig) => ({
   ...(await orig<typeof import("../../src/control/config.js")>()),
   consoleAdminEmail: () => ({ ok: true, email: OPERATOR }),
@@ -45,12 +52,7 @@ vi.mock("../../src/control/platformCodes.js", async (orig) => ({
   },
 }));
 
-// The code rules reach the limiter through the auth store, bound before the mock above: bind it over the mock.
-const limiter = await import("../../src/db/rateLimit.js");
-const { authStore } = await import("../../src/modules/civic.auth/store.js");
-const { authStoreImpl } = await import("../../src/stores/auth.js");
-authStore.bind({ ...authStoreImpl, takeRateLimit: limiter.takeRateLimit, rateLimitRetryAt: limiter.retryAt });
-
+// The code rules take the console's limiter from its realm (platformRealm), so the mock above is the one they use.
 const { requestCode } = await import("../../src/control/auth.js");
 
 beforeEach(() => {

@@ -15,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { CURRENT_LEGAL_VERSION } from "../../src/shared/legal.js";
 import { localRest, localStack } from "../fixtures/adminSession.js";
+import { consoleSql } from "../fixtures/consoleDb.js";
 import { OPERATOR, auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
 import { START_HOST, cookieFrom, freshIp, plantInviteLink, plantStartCode, signedInStart, startCall } from "../fixtures/startCall.js";
 
@@ -409,6 +410,7 @@ describe("an invite the console emailed", () => {
       const { url, key } = localStack();
       process.env.SUPABASE_URL = url;
       process.env.SUPABASE_SERVICE_ROLE_KEY = key;
+      process.env.CIVIC_CONSOLE_DATABASE_URL ||= "postgresql://civic_console:local-console-only@127.0.0.1:54322/postgres";
       const { installAdapters } = await import("../../src/adapters/index.js");
       const { fakeMail } = await import("../../src/adapters/fakes/mail.js");
       const { sendFreshInviteLink } = await import("../../src/control/inviteRefresh.js");
@@ -535,7 +537,10 @@ describe("rate limits", () => {
   it("stores hashed buckets: no address or email in the clear", async () => {
     const ip = freshIp();
     await startCall("POST", "/start/invite", { body: { code: "ZZZZ-ZZZZ-ZZZZ" }, ip });
-    const rows = (await localRest(`rate_limit_hits?select=bucket&bucket=like.start.*&order=at.desc&limit=50`)) as Array<{ bucket: string }>;
+    // The console's own counters (console.rate_limit_hits; the console split, step 3b).
+    const rows = await consoleSql<{ bucket: string }>(
+      "select bucket from console.rate_limit_hits where bucket like 'start.%' and at > now() - interval '1 minute' order by at desc limit 50",
+    );
     expect(rows.length).toBeGreaterThan(0);
     for (const r of rows) {
       expect(r.bucket).toMatch(/^start\.[a-z_]+:(ip|email|ip_email):[0-9a-f]{64}$/);

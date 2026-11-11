@@ -13,6 +13,7 @@ import { consoleCall, mintConsoleSession, OPERATOR } from "../fixtures/consoleCa
 import { localRest } from "../fixtures/adminSession.js";
 import { freshTestIp } from "../fixtures/helpers.js";
 import { rateLimitBucket } from "../../src/db/rateLimit.js";
+import { consoleSql } from "../fixtures/consoleDb.js";
 
 const op = encodeURIComponent(OPERATOR);
 
@@ -21,14 +22,15 @@ async function codes(purpose: string): Promise<number> {
 }
 
 async function hits(scope: string, by: string, value: string): Promise<number> {
-  return ((await localRest(`rate_limit_hits?select=id&bucket=eq.${encodeURIComponent(rateLimitBucket(scope, by, value))}`)) as unknown[]).length;
+  // The console's own counters (console.rate_limit_hits; the console split, step 3b).
+  return (await consoleSql("select id from console.rate_limit_hits where bucket = $1", [rateLimitBucket(scope, by, value)])).length;
 }
 
 /** The operator with no codes waiting and no recent code emails, as after a quiet hour. */
 async function quiet(): Promise<void> {
   await localRest(`platform_sign_in_codes?realm=eq.console&email=eq.${op}`, { method: "DELETE" });
   for (const scope of ["console.code_email", "console.new_code"]) {
-    await localRest(`rate_limit_hits?bucket=like.${encodeURIComponent(`${scope}:email:`)}*`, { method: "DELETE" });
+    await consoleSql("delete from console.rate_limit_hits where bucket like $1", [`${scope}:email:%`]);
   }
 }
 

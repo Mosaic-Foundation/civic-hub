@@ -166,6 +166,8 @@ async function main(): Promise<void> {
 
   const db = new pg.Client({ connectionString: st.dbUrl });
   await db.connect();
+  // The console's own database login (the console split, step 3b), local only.
+  await db.query("ALTER ROLE civic_console WITH LOGIN PASSWORD 'local-console-only'").catch(() => undefined);
   const hubsBefore = new Set((await db.query<{ id: string }>("select id from hubs")).rows.map((r) => r.id));
   let server: ChildProcess | null = null;
   let tablesMade: string[] = [];
@@ -213,6 +215,7 @@ async function main(): Promise<void> {
       NODE_ENV: "development",
       CIVIC_ADMIN_EMAILS: "admin@example.test",
       CIVIC_CONSOLE_HOSTNAME: "console.localhost",
+      CIVIC_CONSOLE_DATABASE_URL: consoleDbUrl(st.dbUrl),
       CIVIC_CONSOLE_ADMIN_EMAIL: "operator@example.test",
       CIVIC_ANON_SECRET: "conformance-only-anon-secret",
       CRON_SECRET: CRON,
@@ -277,3 +280,11 @@ async function main(): Promise<void> {
 }
 
 await main();
+
+/** The local stack's database as the console's login (civic_console, local-only password). */
+function consoleDbUrl(dbUrl: string): string {
+  const u = new URL(dbUrl);
+  u.username = "civic_console";
+  u.password = "local-console-only";
+  return u.toString();
+}

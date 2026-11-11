@@ -1,4 +1,3 @@
-// @civic-raw-client-importer: entitlements are platform data, held before any hub exists; read and written as the service role.
 // Entitlements: a right to do something on the platform (session 4b, Adam
 // 2026-10-08). Today one kind, "create one hub", granted by an invite code
 // the operator mints in the console. A later payment creates the same kind
@@ -17,10 +16,14 @@
 //   createHub()          (the caller);
 //   redeemEntitlement()  records the use and releases the hold, or
 //   releaseClaim()       releases it after a failed create.
+//
+// Kept in the console's own schema (console.entitlements, console.
+// entitlement_links, console.entitlement_redemptions), as civic_console
+// (./db.ts; the console split, step 3b).
 
 import { CivicError, codeForStatus } from "../errors/index.js";
 import { createHash, randomInt } from "node:crypto";
-import { getDb } from "../db/client.js";
+import { q } from "./db.js";
 import { randomToken, sha256Hex } from "../utils/hash.js";
 import { generateId } from "../utils/id.js";
 import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
@@ -86,6 +89,19 @@ export function hashInviteCode(normalized: string): string {
 
 const COLUMNS =
   "id, kind, quantity, used, source, code_hint, note, created_by, created_at, expires_at, revoked_at, revoked_by, claimed_until, claimed_by";
+
+const TIME_COLUMNS = ["created_at", "expires_at", "revoked_at", "claimed_until"] as const;
+
+/** A row as Postgres returns it (timestamps as Date) → the shape the console sends. */
+function asRow(raw: Record<string, unknown>): EntitlementRow {
+  const out: Record<string, unknown> = { ...raw };
+  for (const k of TIME_COLUMNS) out[k] = iso(raw[k]);
+  return out as unknown as EntitlementRow;
+}
+
+function iso(v: unknown): string | null {
+  return v == null ? null : v instanceof Date ? v.toISOString() : String(v);
+}
 
 export interface EntitlementRow {
   id: string;
@@ -157,44 +173,40 @@ export function parseSendInvite(body: unknown): { email: string; code: string } 
 export async function mintInvite(input: MintInput, actor: string): Promise<{ code: string; entitlement: EntitlementView }> {
   const code = generateInviteCode();
   const normalized = normalizeInviteCode(code)!;
-  const row = {
-    id: generateId("ent"),
-    kind: "hub.create" satisfies EntitlementKind,
-    quantity: 1,
-    used: 0,
-    source: "invite" satisfies EntitlementSource,
-    code_hash: hashInviteCode(normalized),
-    code_hint: normalized.slice(-4),
-    note: input.note,
-    created_by: actor,
-    expires_at: new Date(Date.now() + input.days * 24 * 60 * 60 * 1000).toISOString(),
-  };
-  const { data, error } = await getDb().from("entitlements").insert(row).select(COLUMNS).single();
-  if (error) throw new Error(`entitlements write failed: ${error.message}`);
-  const saved = data as EntitlementRow;
+  const { rows } = await q(
+    `INSERT INTO console.entitlements (id, kind, quantity, used, source, code_hash, code_hint, note, created_by, expires_at)
+     VALUES ($1, $2, 1, 0, $3, $4, $5, $6, $7, $8)
+     RETURNING ${COLUMNS}`,
+    [
+      generateId("ent"),
+      "hub.create" satisfies EntitlementKind,
+      "invite" satisfies EntitlementSource,
+      hashInviteCode(normalized),
+      normalized.slice(-4),
+      input.note,
+      actor,
+      new Date(Date.now() + input.days * 24 * 60 * 60 * 1000).toISOString(),
+    ],
+  );
+  const saved = asRow(rows[0]!);
   return { code, entitlement: { ...saved, status: entitlementStatus(saved), redemptions: [] } };
 }
 
 export async function listEntitlements(limit = 200): Promise<EntitlementView[]> {
-  const db = getDb();
-  const { data, error } = await db
-    .from("entitlements")
-    .select(COLUMNS)
-    .order("created_at", { ascending: false })
-    .limit(Math.min(Math.max(limit, 1), 500));
-  if (error) throw new Error(`entitlements read failed: ${error.message}`);
-  const rows = (data ?? []) as EntitlementRow[];
+  const { rows: raw } = await q(`SELECT ${COLUMNS} FROM console.entitlements ORDER BY created_at DESC LIMIT $1`, [
+    Math.min(Math.max(limit, 1), 500),
+  ]);
+  const rows = raw.map(asRow);
   const byId = new Map<string, Redemption[]>();
   if (rows.length > 0) {
-    const { data: used, error: usedErr } = await db
-      .from("entitlement_redemptions")
-      .select("entitlement_id, email, created_hub_id, at")
-      .in("entitlement_id", rows.map((r) => r.id))
-      .order("at", { ascending: true });
-    if (usedErr) throw new Error(`entitlement_redemptions read failed: ${usedErr.message}`);
-    for (const r of (used ?? []) as Array<{ entitlement_id: string; email: string; created_hub_id: string | null; at: string }>) {
+    const { rows: used } = await q<{ entitlement_id: string; email: string; created_hub_id: string | null; at: unknown }>(
+      `SELECT entitlement_id, email, created_hub_id, at FROM console.entitlement_redemptions
+        WHERE entitlement_id = ANY($1::text[]) ORDER BY at ASC`,
+      [rows.map((r) => r.id)],
+    );
+    for (const r of used) {
       const list = byId.get(r.entitlement_id) ?? [];
-      list.push({ email: r.email, hub_id: r.created_hub_id, at: r.at });
+      list.push({ email: r.email, hub_id: r.created_hub_id, at: iso(r.at)! });
       byId.set(r.entitlement_id, list);
     }
   }
@@ -203,9 +215,8 @@ export async function listEntitlements(limit = 200): Promise<EntitlementView[]> 
 }
 
 export async function getEntitlement(id: string): Promise<EntitlementRow | null> {
-  const { data, error } = await getDb().from("entitlements").select(COLUMNS).eq("id", id).maybeSingle();
-  if (error) throw new Error(`entitlements read failed: ${error.message}`);
-  return (data as EntitlementRow | null) ?? null;
+  const { rows } = await q(`SELECT ${COLUMNS} FROM console.entitlements WHERE id = $1`, [id]);
+  return rows[0] ? asRow(rows[0]) : null;
 }
 
 /**
@@ -217,16 +228,14 @@ export async function revokeEntitlement(id: string, actor: string): Promise<{ be
   if (!before) throw new EntitlementError("No such code.", 404);
   if (before.revoked_at) throw new EntitlementError("This code is already revoked.");
   if (before.used >= before.quantity) throw new EntitlementError("This code has been used; there is nothing left to revoke.");
-  const { data, error } = await getDb()
-    .from("entitlements")
-    .update({ revoked_at: new Date().toISOString(), revoked_by: actor })
-    .eq("id", id)
-    .is("revoked_at", null)
-    .select(COLUMNS)
-    .maybeSingle();
-  if (error) throw new Error(`entitlements write failed: ${error.message}`);
-  if (!data) throw new EntitlementError("This code changed while you were looking at it. Reload the list.", 409);
-  return { before, after: data as EntitlementRow };
+  const { rows } = await q(
+    `UPDATE console.entitlements SET revoked_at = now(), revoked_by = $2
+      WHERE id = $1 AND revoked_at IS NULL
+      RETURNING ${COLUMNS}`,
+    [id, actor],
+  );
+  if (!rows[0]) throw new EntitlementError("This code changed while you were looking at it. Reload the list.", 409);
+  return { before, after: asRow(rows[0]) };
 }
 
 // --- The start page: check, claim, redeem ------------------------------------
@@ -243,13 +252,8 @@ function usable(row: EntitlementRow, kind: EntitlementKind, now = Date.now()): b
 export async function checkInviteCode(raw: unknown, kind: EntitlementKind = "hub.create"): Promise<EntitlementRow> {
   const normalized = normalizeInviteCode(raw);
   if (!normalized) throw new EntitlementError(INVITE_REFUSED, 403);
-  const { data, error } = await getDb()
-    .from("entitlements")
-    .select(COLUMNS)
-    .eq("code_hash", hashInviteCode(normalized))
-    .maybeSingle();
-  if (error) throw new Error(`entitlements read failed: ${error.message}`);
-  const row = data as EntitlementRow | null;
+  const { rows } = await q(`SELECT ${COLUMNS} FROM console.entitlements WHERE code_hash = $1`, [hashInviteCode(normalized)]);
+  const row = rows[0] ? asRow(rows[0]) : null;
   if (!row || !usable(row, kind)) throw new EntitlementError(INVITE_REFUSED, 403);
   return row;
 }
@@ -280,14 +284,10 @@ export async function createInviteLink(
 ): Promise<{ token: string; expiresAt: string }> {
   const token = randomToken();
   const expiresAt = inviteLinkExpiry(entitlement.expires_at);
-  const { error } = await getDb().from("entitlement_links").insert({
-    token_hash: sha256Hex(token),
-    entitlement_id: entitlement.id,
-    email,
-    expires_at: expiresAt,
-    refreshed: opts.refreshed ?? false,
-  });
-  if (error) throw new Error(`entitlement_links write failed: ${error.message}`);
+  await q(
+    "INSERT INTO console.entitlement_links (token_hash, entitlement_id, email, expires_at, refreshed) VALUES ($1, $2, $3, $4, $5)",
+    [sha256Hex(token), entitlement.id, email, expiresAt, opts.refreshed ?? false],
+  );
   return { token, expiresAt };
 }
 
@@ -314,29 +314,24 @@ export interface InviteLinkLookup {
 export async function inviteLinkState(raw: unknown, now = Date.now()): Promise<InviteLinkLookup> {
   const none: InviteLinkLookup = { state: "unknown", email: null, entitlement: null, hub_id: null };
   if (typeof raw !== "string" || !raw || raw.length > 128) return none;
-  const { data, error } = await getDb()
-    .from("entitlement_links")
-    .select("entitlement_id, email, expires_at, spent_at")
-    .eq("token_hash", sha256Hex(raw))
-    .maybeSingle();
-  if (error) throw new Error(`entitlement_links read failed: ${error.message}`);
-  const link = data as { entitlement_id: string; email: string; expires_at: string; spent_at: string | null } | null;
-  if (!link) return none;
+  const { rows: links } = await q<{ entitlement_id: string; email: string; expires_at: unknown; spent_at: unknown }>(
+    "SELECT entitlement_id, email, expires_at, spent_at FROM console.entitlement_links WHERE token_hash = $1",
+    [sha256Hex(raw)],
+  );
+  const found0 = links[0];
+  if (!found0) return none;
+  const link = { ...found0, expires_at: iso(found0.expires_at)!, spent_at: iso(found0.spent_at) };
   const entitlement = await getEntitlement(link.entitlement_id);
   if (!entitlement) return none;
   const found = { email: link.email, entitlement, hub_id: null };
   const status = entitlementStatus(entitlement, now);
   if (status === "used") {
-    const { data: made, error: madeErr } = await getDb()
-      .from("entitlement_redemptions")
-      .select("created_hub_id")
-      .eq("entitlement_id", entitlement.id)
-      .not("created_hub_id", "is", null)
-      .order("at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (madeErr) throw new Error(`entitlement_redemptions read failed: ${madeErr.message}`);
-    return { ...found, state: "redeemed", hub_id: (made as { created_hub_id: string } | null)?.created_hub_id ?? null };
+    const { rows: made } = await q<{ created_hub_id: string }>(
+      `SELECT created_hub_id FROM console.entitlement_redemptions
+        WHERE entitlement_id = $1 AND created_hub_id IS NOT NULL ORDER BY at DESC LIMIT 1`,
+      [entitlement.id],
+    );
+    return { ...found, state: "redeemed", hub_id: made[0]?.created_hub_id ?? null };
   }
   if (status !== "unused") return { ...found, state: "ended" };
   if (link.spent_at) return { ...found, state: "spent" };
@@ -356,14 +351,11 @@ export const FRESH_LINK_DAILY_LIMIT = `Three fresh links have been sent today. U
  */
 export async function checkFreshLinkLimit(entitlementId: string, now = Date.now()): Promise<void> {
   const dayAgo = new Date(now - 86_400_000).toISOString();
-  const { data, error } = await getDb()
-    .from("entitlement_links")
-    .select("created_at")
-    .eq("entitlement_id", entitlementId)
-    .eq("refreshed", true)
-    .gt("created_at", dayAgo);
-  if (error) throw new Error(`entitlement_links read failed: ${error.message}`);
-  const times = ((data ?? []) as Array<{ created_at: string }>).map((r) => Date.parse(r.created_at));
+  const { rows } = await q<{ created_at: unknown }>(
+    "SELECT created_at FROM console.entitlement_links WHERE entitlement_id = $1 AND refreshed AND created_at > $2",
+    [entitlementId, dayAgo],
+  );
+  const times = rows.map((r) => Date.parse(iso(r.created_at)!));
   if (times.filter((t) => t > now - 60_000).length >= FRESH_LINK_PER_MINUTE) throw new EntitlementError(FRESH_LINK_TOO_SOON, 429);
   if (times.length >= FRESH_LINK_PER_DAY) throw new EntitlementError(FRESH_LINK_DAILY_LIMIT, 429);
 }
@@ -376,23 +368,17 @@ export async function checkFreshLinkLimit(entitlementId: string, now = Date.now(
 export async function spendInviteLink(raw: unknown): Promise<{ entitlement_id: string; email: string }> {
   const refused = new EntitlementError(INVITE_LINK_REFUSED, 403);
   if (typeof raw !== "string" || !raw || raw.length > 128) throw refused;
-  const db = getDb();
   const hash = sha256Hex(raw);
-  const { data: found, error: readErr } = await db.from("entitlement_links").select("entitlement_id").eq("token_hash", hash).maybeSingle();
-  if (readErr) throw new Error(`entitlement_links read failed: ${readErr.message}`);
-  if (!found || !(await entitlementStillUsable((found as { entitlement_id: string }).entitlement_id))) throw refused;
-  const now = new Date().toISOString();
-  const { data, error } = await db
-    .from("entitlement_links")
-    .update({ spent_at: now })
-    .eq("token_hash", hash)
-    .is("spent_at", null)
-    .gt("expires_at", now)
-    .select("entitlement_id, email")
-    .maybeSingle();
-  if (error) throw new Error(`entitlement_links write failed: ${error.message}`);
-  if (!data) throw refused;
-  return data as { entitlement_id: string; email: string };
+  const { rows: found } = await q<{ entitlement_id: string }>("SELECT entitlement_id FROM console.entitlement_links WHERE token_hash = $1", [hash]);
+  if (!found[0] || !(await entitlementStillUsable(found[0].entitlement_id))) throw refused;
+  const { rows } = await q<{ entitlement_id: string; email: string }>(
+    `UPDATE console.entitlement_links SET spent_at = now()
+      WHERE token_hash = $1 AND spent_at IS NULL AND expires_at > now()
+      RETURNING entitlement_id, email`,
+    [hash],
+  );
+  if (!rows[0]) throw refused;
+  return rows[0];
 }
 
 /** Is this entitlement still usable (the start page re-checks before each step)? */
@@ -410,45 +396,39 @@ export async function claimEntitlement(id: string, email: string): Promise<Entit
   const row = await getEntitlement(id);
   if (!row || !usable(row, "hub.create")) throw new EntitlementError(INVITE_REFUSED, 403);
   const now = new Date();
-  const { data, error } = await getDb()
-    .from("entitlements")
-    .update({ claimed_until: new Date(now.getTime() + CLAIM_MS).toISOString(), claimed_by: email })
-    .eq("id", id)
-    .eq("used", row.used)
-    .is("revoked_at", null)
-    .gt("expires_at", now.toISOString())
-    .or(`claimed_until.is.null,claimed_until.lt.${now.toISOString()}`)
-    .select(COLUMNS)
-    .maybeSingle();
-  if (error) throw new Error(`entitlements claim failed: ${error.message}`);
-  if (!data) throw new EntitlementError(INVITE_REFUSED, 403);
-  return data as EntitlementRow;
+  const { rows } = await q(
+    `UPDATE console.entitlements SET claimed_until = $2, claimed_by = $3
+      WHERE id = $1 AND used = $4 AND revoked_at IS NULL AND expires_at > $5
+        AND (claimed_until IS NULL OR claimed_until < $5)
+      RETURNING ${COLUMNS}`,
+    [id, new Date(now.getTime() + CLAIM_MS).toISOString(), email, row.used, now.toISOString()],
+  );
+  if (!rows[0]) throw new EntitlementError(INVITE_REFUSED, 403);
+  return asRow(rows[0]);
 }
 
 /** A create failed: the entitlement is unused again. */
 export async function releaseClaim(id: string, email: string): Promise<void> {
-  const { error } = await getDb()
-    .from("entitlements")
-    .update({ claimed_until: null, claimed_by: null })
-    .eq("id", id)
-    .eq("claimed_by", email);
-  if (error) console.error(`[start] releasing the claim on ${id} failed: ${error.message}`);
+  try {
+    await q("UPDATE console.entitlements SET claimed_until = NULL, claimed_by = NULL WHERE id = $1 AND claimed_by = $2", [id, email]);
+  } catch (err) {
+    console.error(`[start] releasing the claim on ${id} failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 /** The hub exists: record the use, count it, release the hold. */
 export async function redeemEntitlement(claimed: EntitlementRow, email: string, hubId: string): Promise<EntitlementRow> {
-  const db = getDb();
-  const { error: logErr } = await db
-    .from("entitlement_redemptions")
-    .insert({ entitlement_id: claimed.id, email, created_hub_id: hubId });
-  if (logErr) throw new Error(`entitlement_redemptions write failed: ${logErr.message}`);
-  const { data, error } = await db
-    .from("entitlements")
-    .update({ used: claimed.used + 1, claimed_until: null, claimed_by: null })
-    .eq("id", claimed.id)
-    .eq("used", claimed.used)
-    .select(COLUMNS)
-    .maybeSingle();
-  if (error || !data) throw new Error(`entitlements redeem failed: ${error?.message ?? "the row changed during the create"}`);
-  return data as EntitlementRow;
+  await q("INSERT INTO console.entitlement_redemptions (entitlement_id, email, created_hub_id) VALUES ($1, $2, $3)", [
+    claimed.id,
+    email,
+    hubId,
+  ]);
+  const { rows } = await q(
+    `UPDATE console.entitlements SET used = $3, claimed_until = NULL, claimed_by = NULL
+      WHERE id = $1 AND used = $2
+      RETURNING ${COLUMNS}`,
+    [claimed.id, claimed.used, claimed.used + 1],
+  );
+  if (!rows[0]) throw new Error("entitlements redeem failed: the row changed during the create");
+  return asRow(rows[0]);
 }
