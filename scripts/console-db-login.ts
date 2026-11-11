@@ -12,6 +12,11 @@
 // printed. Running it again replaces the password: update the Vercel setting
 // after.
 //
+// Before the console-schema migration (20261111000000) has run on the project
+// it makes the role itself (the migration's CREATE ROLE is "if not exists"),
+// so the password and the Vercel setting can be in place before the release
+// that needs them; the two checks then wait for that release.
+//
 // Reads the project's admin connection from ~/civic-keys: dev-db.env (dev),
 // prod-pg.env (prod), CIVIC_TARGET_DATABASE_URL.
 
@@ -45,11 +50,17 @@ if (ref !== expected) throw new Error(`${adminFile} points at project ${ref}, no
 
 const password = randomBytes(24).toString("base64url");
 
+let schemaReady = false;
 const a = new pg.Client({ connectionString: admin.toString(), ssl: { rejectUnauthorized: false } });
 await a.connect();
 try {
   const role = await a.query("SELECT 1 FROM pg_roles WHERE rolname = 'civic_console'");
-  if (role.rowCount === 0) throw new Error("No civic_console role here: release migration 20261111000000_console_schema first.");
+  if (role.rowCount === 0) {
+    // As the migration makes it; the migration's grants follow at the release.
+    await a.query("CREATE ROLE civic_console NOLOGIN NOINHERIT");
+    console.log("ok  made the civic_console role (the release's migration gives it its rights)");
+  }
+  schemaReady = (await a.query("SELECT 1 FROM pg_namespace WHERE nspname = 'console'")).rowCount === 1;
   // ALTER ROLE takes no bind parameters; the password is base64url, so quoting is safe.
   await a.query(`ALTER ROLE civic_console WITH LOGIN PASSWORD '${password}'`);
 } finally {
@@ -66,14 +77,19 @@ consoleUrl.port = "6543";
 const c = new pg.Client({ connectionString: consoleUrl.toString(), ssl: { rejectUnauthorized: false } });
 await c.connect();
 try {
-  const own = await c.query("SELECT count(*)::int AS n FROM console.control_sessions");
-  console.log(`ok  as civic_console: its own tables answer (${own.rows[0].n} console session rows)`);
-  try {
-    await c.query("SELECT 1 FROM public.hubs LIMIT 1");
-    throw new Error("civic_console could read public.hubs: it must not. Check the migration's grants before going on.");
-  } catch (err) {
-    if (err instanceof Error && /permission denied/.test(err.message)) console.log("ok  as civic_console: hub tables are refused");
-    else throw err;
+  if (!schemaReady) {
+    await c.query("SELECT 1");
+    console.log("ok  as civic_console: it can log in. Its tables arrive with the release; the console uses them from then on.");
+  } else {
+    const own = await c.query("SELECT count(*)::int AS n FROM console.control_sessions");
+    console.log(`ok  as civic_console: its own tables answer (${own.rows[0].n} console session rows)`);
+    try {
+      await c.query("SELECT 1 FROM public.hubs LIMIT 1");
+      throw new Error("civic_console could read public.hubs: it must not. Check the migration's grants before going on.");
+    } catch (err) {
+      if (err instanceof Error && /permission denied/.test(err.message)) console.log("ok  as civic_console: hub tables are refused");
+      else throw err;
+    }
   }
 } finally {
   await c.end();
