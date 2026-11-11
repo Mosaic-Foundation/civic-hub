@@ -21,7 +21,7 @@
  * `--confirm <slug>` (the same slug, typed again) it:
  *   1. exports the hub to <out>/civic-hub-export-<slug>-<stamp>.tar.gz — kept
  *      locally, the hub's one remaining copy; exports/ is gitignored;
- *   2. in one transaction: writes the hub.purge control_audit_log row, deletes
+ *   2. in one transaction: writes the hub.purge console.control_audit_log row, deletes
  *      every row with its hub_id (child-first; the append-only tables with
  *      triggers suspended, as restore does), and deletes its hubs row;
  *   3. removes its stored images.

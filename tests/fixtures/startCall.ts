@@ -7,7 +7,7 @@
 import { createHash, randomInt } from "node:crypto";
 import { request } from "node:http";
 import { API_BASE } from "./helpers.js";
-import { localRest } from "./adminSession.js";
+import { consoleSql } from "./consoleDb.js";
 
 /** Must match the server's CIVIC_START_HOSTNAME (CI sets it). */
 export const START_HOST = process.env.CIVIC_TEST_START_HOST ?? "start.localhost";
@@ -78,20 +78,12 @@ const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
 /** Put a known sign-in code in place for `email`, as if it had been emailed. */
 export async function plantStartCode(email: string, code: string): Promise<void> {
-  await localRest(`platform_sign_in_codes?realm=eq.start&email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
-  await localRest("platform_sign_in_codes", {
-    method: "POST",
-    headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({
-      realm: "start",
-      purpose: "sign_in",
-      email,
-      code_hash: sha256(code),
-      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
-      created_at: new Date(Date.now() - 60 * 1000).toISOString(),
-      attempts: 0,
-    }),
-  });
+  await consoleSql("delete from console.platform_sign_in_codes where realm = 'start' and email = $1", [email]);
+  await consoleSql(
+    `insert into console.platform_sign_in_codes (realm, purpose, email, code_hash, expires_at, created_at, attempts)
+     values ('start', 'sign_in', $1, $2, $3, $4, 0)`,
+    [email, sha256(code), new Date(Date.now() + 10 * 60 * 1000).toISOString(), new Date(Date.now() - 60 * 1000).toISOString()],
+  );
 }
 
 /**
@@ -99,16 +91,12 @@ export async function plantStartCode(email: string, code: string): Promise<void>
  * mail itself is not readable from a test, and the token is stored only hashed.
  */
 export async function plantInviteLink(entitlementId: string, email: string, token: string, expiresAt?: string): Promise<void> {
-  await localRest("entitlement_links", {
-    method: "POST",
-    headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({
-      token_hash: sha256(token),
-      entitlement_id: entitlementId,
-      email,
-      expires_at: expiresAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    }),
-  });
+  await consoleSql("insert into console.entitlement_links (token_hash, entitlement_id, email, expires_at) values ($1, $2, $3, $4)", [
+    sha256(token),
+    entitlementId,
+    email,
+    expiresAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  ]);
 }
 
 /**

@@ -50,6 +50,7 @@ import { ControlInputError } from "./errors.js";
 import { spaceTypeView } from "../shared/spaceTypes.js";
 import { isReleaseAuthorized, parseReleaseApproval } from "./releaseAuth.js";
 import { consoleKey, signEntry } from "./catalogKey.js";
+import { refusePastHostname } from "./hostnameHistory.js";
 import { releaseApprover } from "../shared/firstParty.js";
 import type { ReleaseOutcome } from "../operator/api.js";
 
@@ -412,6 +413,7 @@ export function controlRouter(op: OperatorApi): Router {
 
   r.post("/control/hubs", route(async (req, res) => {
     const input = await op.parseCreate((req.body ?? {}) as Record<string, unknown>);
+    await refusePastHostname(input.hostname);
     const { hub, settings } = await op.createHub(input, {
       allowedModes: CONSOLE_CREATE_MODES,
       updatedBy: `console:${actor(res)}`,
@@ -453,6 +455,7 @@ export function controlRouter(op: OperatorApi): Router {
     const hub = await loadHub(op, req, res);
     if (!hub) return;
     const plan = await op.planConfig(hub.id, (req.body ?? {}) as Record<string, unknown>);
+    await refusePastHostname(plan.changes.hostname as string | undefined, hub.id);
     if (Object.keys(plan.changes).length === 0) {
       res.json(await detail(op, hub.id));
       return;

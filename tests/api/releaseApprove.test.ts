@@ -11,6 +11,7 @@
 // nothing mounts them).
 
 import { afterAll, describe, expect, it } from "vitest";
+import { consoleSql } from "../fixtures/consoleDb.js";
 import { randomBytes } from "node:crypto";
 import { request } from "node:http";
 import { localRest } from "../fixtures/adminSession.js";
@@ -129,9 +130,10 @@ describe.skipIf(!SECRET)("a release's approval of first-party entries", () => {
     expect(after.notes).toContain(`Approved by release at ${COMMIT}`);
     const health = (await (await fetch(`${API_BASE}/health`)).json()) as { plugins?: { signatures?: { key?: string } } };
     if (health.plugins?.signatures?.key) expect(after.signature_key).toBe(health.plugins.signatures.key);
-    const audit = (await localRest(
-      `control_audit_log?select=action,actor_email,after&action=eq.plugin.approve&after->>id=eq.${id}`,
-    )) as Array<{ actor_email: string; after: { confirmed: string } }>;
+    const audit = await consoleSql<{ actor_email: string; after: { confirmed: string } }>(
+      "select action, actor_email, after from console.control_audit_log where action = 'plugin.approve' and after->>'id' = $1",
+      [id],
+    );
     expect(audit).toEqual([expect.objectContaining({ actor_email: `release@${COMMIT}`, after: expect.objectContaining({ confirmed: "release" }) })]);
   });
 

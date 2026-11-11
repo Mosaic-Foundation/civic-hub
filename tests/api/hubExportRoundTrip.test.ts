@@ -270,7 +270,7 @@ describe.skipIf(NO_OBJECT_STORAGE)("hub export → import → restore, on the lo
     expect(s.rows[0].ok).toBe(true);
 
     expect((await db.query("select jurisdiction_ocd_id from hubs where id = $1", [HUB])).rows[0].jurisdiction_ocd_id).toBe(OCD);
-    const audit = await db.query("select actor_email from control_audit_log where action = 'hub.import' and target_hub_id = $1", [HUB]);
+    const audit = await db.query("select actor_email from console.control_audit_log where action = 'hub.import' and target_hub_id = $1", [HUB]);
     expect(audit.rows.map((x) => x.actor_email)).toEqual(["ci@example.test"]);
 
     const res = await hubConfig(HOST);
@@ -293,7 +293,7 @@ describe.skipIf(NO_OBJECT_STORAGE)("hub export → import → restore, on the lo
     expect(r.code, r.out).toBe(0);
     expect((await db.query("select title from processes where id = $1", [ids.vote])).rows[0].title).toBe("New park benches?");
     expect((await db.query("select count(*)::int as n from community_inputs where id = $1", [ids.comment])).rows[0].n).toBe(1);
-    const audit = await db.query("select before, after from control_audit_log where action = 'hub.restore' and target_hub_id = $1", [HUB]);
+    const audit = await db.query("select before, after from console.control_audit_log where action = 'hub.restore' and target_hub_id = $1", [HUB]);
     expect(audit.rows).toHaveLength(1);
     expect(audit.rows[0].before.rows.community_inputs).toBe(0);
     expect(audit.rows[0].after.cleared_append_only).toEqual(["events", "review_turns"]);

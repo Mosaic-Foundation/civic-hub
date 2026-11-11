@@ -20,7 +20,7 @@
  * Otherwise, in one transaction: the `hubs` row, every table in foreign-key
  * order, image URLs rewritten to the target's storage, the counts and the
  * content fingerprint re-read and compared with the bundle's, and a
- * `hub.import` row in control_audit_log. Images are uploaded first, under the
+ * `hub.import` row in console.control_audit_log. Images are uploaded first, under the
  * hub's prefix, and removed again if the transaction fails.
  *
  * --hostname moves the hub to a new host (e.g. athens.localhost locally).

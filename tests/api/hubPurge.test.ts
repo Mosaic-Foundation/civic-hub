@@ -132,7 +132,7 @@ describe("purge-hub.ts", () => {
     const hub = await db.query("select id from hubs where id = $1", [REAL]);
     expect(hub.rowCount).toBe(1);
     expect(await hubIdRows(REAL)).toBe(before);
-    const audit = await db.query("select 1 from control_audit_log where action = 'hub.purge' and target_hub_id = $1", [REAL]);
+    const audit = await db.query("select 1 from console.control_audit_log where action = 'hub.purge' and target_hub_id = $1", [REAL]);
     expect(audit.rowCount).toBe(0);
   }, 60_000);
 
@@ -194,7 +194,7 @@ describe("purge-hub.ts", () => {
 
     // The audit row: the full hubs row before, the bundle after.
     const audit = await db.query(
-      "select actor_email, before, after from control_audit_log where action = 'hub.purge' and target_hub_id = $1",
+      "select actor_email, before, after from console.control_audit_log where action = 'hub.purge' and target_hub_id = $1",
       [SAMPLE],
     );
     expect(audit.rowCount).toBe(1);
@@ -203,7 +203,7 @@ describe("purge-hub.ts", () => {
     expect(audit.rows[0].before.created_at).toBeTruthy();
     expect(audit.rows[0].after.bundle).toBe(path);
     // The earlier rows (hub.create, hub.archive) survive the purge.
-    const history = await db.query("select action from control_audit_log where target_hub_id = $1 order by id", [SAMPLE]);
+    const history = await db.query("select action from console.control_audit_log where target_hub_id = $1 order by id", [SAMPLE]);
     expect(history.rows.map((x) => x.action)).toEqual(expect.arrayContaining(["hub.create", "hub.archive", "hub.purge"]));
 
     // The slug and hostname are free: the console creates the hub again.

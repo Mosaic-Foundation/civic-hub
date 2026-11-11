@@ -8,6 +8,7 @@
 // printed by `supabase start` on every machine.
 
 import { createHash, randomBytes } from "node:crypto";
+import pg from "pg";
 
 const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
@@ -43,6 +44,24 @@ export function localStack(): { url: string; key: string } {
     );
   }
   return { url, key: process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || LOCAL_SERVICE_ROLE_KEY };
+}
+
+/**
+ * One SQL statement against the LOCAL stack's database (CIVIC_TEST_DATABASE_URL,
+ * else the stack's default), as its owner. For the console's own tables
+ * (schema console), which PostgREST does not serve (the console split).
+ */
+export async function localSql<T extends pg.QueryResultRow = pg.QueryResultRow>(sql: string, params: unknown[] = []): Promise<T[]> {
+  const dbUrl = process.env.CIVIC_TEST_DATABASE_URL?.trim() || "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+  const host = new URL(dbUrl).hostname;
+  if (host !== "127.0.0.1" && host !== "localhost") throw new Error(`conformance: refusing SQL against ${host}; local stack only.`);
+  const client = new pg.Client({ connectionString: dbUrl });
+  await client.connect();
+  try {
+    return (await client.query<T>(sql, params)).rows;
+  } finally {
+    await client.end();
+  }
 }
 
 /** A PostgREST call against the LOCAL stack, as the service role. */

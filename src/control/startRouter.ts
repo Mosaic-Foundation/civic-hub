@@ -54,6 +54,7 @@ import {
   releaseClaim,
 } from "./entitlements.js";
 import type { ControlHub, HubMode, OperatorApi } from "../operator/api.js";
+import { refusePastHostname } from "./hostnameHistory.js";
 import {
   START_SESSION_TTL_MS,
   StartError,
@@ -404,6 +405,8 @@ export function startRouter(op: OperatorApi): Router {
     if (input.hubKind === "place" && input.jurisdictionCustom) {
       throw new StartError("Choose your jurisdiction from the list. If it isn't there, a Neighbourhood or association hub can type its name.");
     }
+
+    await refusePastHostname(input.hostname);
 
     // Hold the code, create, then spend it. A create that fails releases it.
     const claimed = await claimEntitlement(s.entitlement_id, s.email);

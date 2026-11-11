@@ -10,6 +10,7 @@
 // the local stack.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { consoleSql } from "../fixtures/consoleDb.js";
 import { call } from "../fixtures/hostCall.js";
 import { freshTestIp } from "../fixtures/helpers.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
@@ -259,8 +260,9 @@ describe("Civic.Social's status flows back", () => {
     const second = await consoleCall("PATCH", `/control/feedback/${copyId}`, { cookie, body: { status: "fixed" } });
     expect(second.body.sender_told).toBeUndefined();
 
-    const audit = (await localRest(
-      `control_audit_log?select=action,after&target_hub_id=eq.${HUB}&action=eq.feedback.update`,
+    const audit = (await consoleSql(
+      "select action, after from console.control_audit_log where target_hub_id = $1 and action = 'feedback.update'",
+      [HUB],
     )) as Row[];
     expect(audit.length).toBeGreaterThanOrEqual(3);
     expect(JSON.stringify(audit)).not.toContain(RESIDENT);

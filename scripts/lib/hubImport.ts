@@ -18,7 +18,7 @@
 //   - What went in is proved before commit: row counts per table and the
 //     content fingerprint, recomputed from the target, must equal the
 //     bundle's.
-//   - Every import and every restore writes a `control_audit_log` row.
+//   - Every import and every restore writes a `console.control_audit_log` row.
 //
 // Two statements run with `session_replication_role = replica` (triggers and
 // foreign-key checks suspended), each narrowly: putting back the exact
@@ -403,8 +403,10 @@ export async function planImport(client: pg.Client, b: LoadedBundle, opts: Impor
         "Set them, or pass --no-images to load the rows alone (image URLs then keep pointing at the old host).",
     );
   }
-  if (!catalog.columns.has("control_audit_log")) {
-    problems.push("The target has no control_audit_log table; every import is recorded there. Apply the migrations first.");
+  // The console's audit log, in its own schema since the console split (20261111000000).
+  const audit = await client.query("select to_regclass('console.control_audit_log') as t");
+  if (!audit.rows[0]?.t) {
+    problems.push("The target has no console.control_audit_log table; every import is recorded there. Apply the migrations first.");
   }
 
   // Schema: every table and column the bundle brings must exist on the target.
@@ -438,7 +440,7 @@ export async function planImport(client: pg.Client, b: LoadedBundle, opts: Impor
     }
     // A hostname once used by another hub stays taken (Phase 5 part one).
     const moved = await client.query(
-      "select target_hub_id from control_audit_log where before->>'hostname' = $1 and target_hub_id is distinct from $2 limit 1",
+      "select target_hub_id from console.control_audit_log where before->>'hostname' = $1 and target_hub_id is distinct from $2 limit 1",
       [hubRow.hostname, hubId],
     );
     if (moved.rowCount) problems.push(`hubs: hostname ${String(hubRow.hostname)} was used by hub "${moved.rows[0].target_hub_id}" and stays taken.`);
@@ -710,7 +712,7 @@ export async function applyImport(
     }
 
     await client.query(
-      "insert into control_audit_log (actor_email, action, target_hub_id, before, after) values ($1, $2, $3, $4, $5)",
+      "insert into console.control_audit_log (actor_email, action, target_hub_id, before, after) values ($1, $2, $3, $4, $5)",
       [
         opts.actor,
         opts.mode === "restore" ? "hub.restore" : "hub.import",

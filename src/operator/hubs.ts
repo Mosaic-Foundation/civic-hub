@@ -197,8 +197,11 @@ export async function hubJurisdictionType(hubId: string): Promise<JurisdictionTy
 /**
  * Hostnames that were ever a hub's stay taken, like archived hubs' slugs:
  * old links, published events and DID documents point at them. A hub's
- * current hostname is caught by the unique constraint; a hostname a hub had
- * before an edit lives only in the audit log's `before`, so that is checked.
+ * current hostname is caught by the unique constraint, and one it moved from
+ * is in hubs.previous_hostnames (20261008000000). A hostname changed before
+ * that column existed is only in the console's audit log, which the console
+ * checks itself (src/control/hostnameHistory.ts; the console split): the hub
+ * does not read the console's data.
  */
 export async function hostnameTakenBy(hostname: string, exceptHubId?: string): Promise<string | null> {
   const db = getDb();
@@ -213,16 +216,6 @@ export async function hostnameTakenBy(hostname: string, exceptHubId?: string): P
   const movedFrom = (moved ?? []) as Array<{ id: string }>;
   if (movedFrom.length > 0 && movedFrom[0].id !== exceptHubId) {
     return `"${hostname}" was hub "${movedFrom[0].id}"'s address and now redirects to it. A hostname a hub has used stays taken.`;
-  }
-  const { data: past } = await db
-    .from("control_audit_log")
-    .select("target_hub_id")
-    .eq("action", "hub.update")
-    .eq("before->>hostname", hostname)
-    .limit(1);
-  const prior = (past ?? []) as Array<{ target_hub_id: string | null }>;
-  if (prior.length > 0 && prior[0].target_hub_id !== exceptHubId) {
-    return `"${hostname}" was hub "${prior[0].target_hub_id}"'s hostname. A hostname a hub has used stays taken.`;
   }
   return null;
 }

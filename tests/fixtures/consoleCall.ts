@@ -5,7 +5,7 @@
 // and the session are the conformance suite's own (kit/conformance).
 
 import { createHash } from "node:crypto";
-import { localRest } from "./adminSession.js";
+import { consoleSql } from "./consoleDb.js";
 import { OPERATOR } from "../../kit/conformance/src/support/console.js";
 
 export {
@@ -22,20 +22,12 @@ const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 export async function plantCode(purpose: "sign_in" | "step_up", code: string, email = OPERATOR): Promise<void> {
   // In place of any codes the address already has (one row per code since
   // the sign-in slice, 2026-10-14).
-  await localRest(`platform_sign_in_codes?realm=eq.console&purpose=eq.${purpose}&email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
-  await localRest("platform_sign_in_codes", {
-    method: "POST",
-    headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({
-      realm: "console",
-      email,
-      purpose,
-      code_hash: sha256(code),
-      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
-      created_at: new Date(Date.now() - 60 * 1000).toISOString(),
-      attempts: 0,
-    }),
-  });
+  await consoleSql("delete from console.platform_sign_in_codes where realm = 'console' and purpose = $1 and email = $2", [purpose, email]);
+  await consoleSql(
+    `insert into console.platform_sign_in_codes (realm, email, purpose, code_hash, expires_at, created_at, attempts)
+     values ('console', $1, $2, $3, $4, $5, 0)`,
+    [email, purpose, sha256(code), new Date(Date.now() + 10 * 60 * 1000).toISOString(), new Date(Date.now() - 60 * 1000).toISOString()],
+  );
 }
 
 export interface AuditRowForTest {
@@ -47,7 +39,8 @@ export interface AuditRowForTest {
 }
 
 export async function auditFor(hubId: string): Promise<AuditRowForTest[]> {
-  return (await localRest(
-    `control_audit_log?target_hub_id=eq.${hubId}&select=action,actor_email,target_hub_id,before,after&order=id.asc`,
-  )) as AuditRowForTest[];
+  return consoleSql<AuditRowForTest & Record<string, unknown>>(
+    "select action, actor_email, target_hub_id, before, after from console.control_audit_log where target_hub_id = $1 order by id asc",
+    [hubId],
+  );
 }

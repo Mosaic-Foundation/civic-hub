@@ -10,7 +10,7 @@
  * In one transaction: every row of the hub's exported tables is deleted, the
  * bundle's rows are loaded, counts and the content fingerprint are re-read
  * and compared with the bundle's, and a `hub.restore` row (rows before,
- * bundle and rows after) is written to control_audit_log. Any failure rolls
+ * bundle and rows after) is written to console.control_audit_log. Any failure rolls
  * all of it back. The `hubs` row is kept as it is on the target (the console
  * owns it); `sessions` go with the hub's users, so its residents sign in
  * again. Images are uploaded under the hub's prefix, overwriting same keys.

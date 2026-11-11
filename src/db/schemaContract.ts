@@ -42,9 +42,9 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "hubs", columns: ["id", "protocol_hub_id", "hostname", "name", "space_did", "status", "custody_arrangement", "custodian", "assurance_level"], owner: "core/hubRegistry" },
   // The super admin (src/control/, 20260926010000).
   { table: "hubs", columns: ["archived_at"], owner: "control" },
-  { table: "platform_sign_in_codes", columns: ["realm", "purpose", "email", "code_hash", "link_hash", "attempts", "expires_at"], owner: "control" },
-  { table: "control_sessions", columns: ["token_hash", "email", "expires_at", "revoked_at"], owner: "control" },
-  { table: "control_audit_log", columns: ["actor_email", "action", "target_hub_id", "before", "after"], owner: "control" },
+  // The console's own tables left the hub's contract at the console split
+  // (step 3c): they are in schema console, the console's, read as its own
+  // login (src/control/db.ts).
   // Jurisdictions (20260927000000): the reference list and the hub's link to it.
   { table: "jurisdictions", columns: ["ocd_id", "census_geoid", "state", "type", "official_name", "display_name"], owner: "control" },
   { table: "hubs", columns: ["jurisdiction_ocd_id", "jurisdiction_custom"], owner: "control" },

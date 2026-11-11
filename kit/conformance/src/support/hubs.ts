@@ -16,16 +16,20 @@ export async function dropHubs(client: pg.Client, ids: string[]): Promise<void> 
         order by 1`,
     )
   ).rows.map((r) => r.table_name);
-  const also: Array<[string, string]> = [
-    ["platform_feedback", "source_hub_id"],
-    ["control_audit_log", "target_hub_id"],
-    ["entitlement_redemptions", "created_hub_id"],
+  // [schema, table, column]: the console's tables are in schema console (the console split).
+  const also: Array<[string, string, string]> = [
+    ["public", "platform_feedback", "source_hub_id"],
+    ["console", "control_audit_log", "target_hub_id"],
+    ["console", "entitlement_redemptions", "created_hub_id"],
   ];
   await client.query("begin");
   try {
     await client.query("set local session_replication_role = replica");
     for (const t of tables) await client.query(`delete from public."${t}" where hub_id = any($1)`, [ids]);
-    for (const [t, c] of also) await client.query(`delete from public."${t}" where "${c}" = any($1)`, [ids]);
+    for (const [sch, t, c] of also) {
+      const exists = (await client.query("select to_regclass($1) as r", [`${sch}.${t}`])).rows[0]?.r;
+      if (exists) await client.query(`delete from "${sch}"."${t}" where "${c}" = any($1)`, [ids]);
+    }
     await client.query("delete from hubs where id = any($1)", [ids]);
     await client.query("commit");
   } catch (err) {

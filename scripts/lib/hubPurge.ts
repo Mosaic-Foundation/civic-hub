@@ -155,7 +155,7 @@ export async function applyPurge(
     if (again.problems.length) throw new PurgeRefused("The hub changed since the plan was made.", again.problems);
 
     const a = await client.query<{ id: number }>(
-      "insert into control_audit_log (actor_email, action, target_hub_id, before, after) values ($1, 'hub.purge', $2, $3, $4) returning id",
+      "insert into console.control_audit_log (actor_email, action, target_hub_id, before, after) values ($1, 'hub.purge', $2, $3, $4) returning id",
       [audit.actor, hubId, JSON.stringify(again.hub), JSON.stringify(audit.after)],
     );
 

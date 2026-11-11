@@ -43,13 +43,14 @@ async function mint(note = `for test ${run}`, days?: number): Promise<{ code: st
 }
 
 async function entitlement(id: string): Promise<EntitlementRow> {
-  const rows = (await localRest(`entitlements?id=eq.${id}&select=*`)) as EntitlementRow[];
+  const rows = (await consoleSql("select * from console.entitlements where id = $1", [id])) as unknown as EntitlementRow[];
   return rows[0]!;
 }
 
 async function inviteAudit(id: string): Promise<Array<{ action: string; actor_email: string; after: any }>> {
-  return (await localRest(
-    `control_audit_log?after->>entitlement_id=eq.${id}&select=action,actor_email,target_hub_id,after&order=id.asc`,
+  return (await consoleSql(
+    "select action, actor_email, target_hub_id, after from console.control_audit_log where after->>'entitlement_id' = $1 order by id asc",
+    [id],
   )) as Array<{ action: string; actor_email: string; after: any }>;
 }
 
@@ -198,10 +199,7 @@ describe("a code that cannot be used gets one answer", () => {
     await ask("not a code"); // malformed
 
     const expired = await mint();
-    await localRest(`entitlements?id=eq.${expired.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ expires_at: new Date(Date.now() - 1000).toISOString() }),
-    });
+    await consoleSql("update console.entitlements set expires_at = $2 where id = $1", [expired.id, new Date(Date.now() - 1000).toISOString()]);
     await ask(expired.code);
 
     const revoked = await mint();
@@ -209,7 +207,7 @@ describe("a code that cannot be used gets one answer", () => {
     await ask(revoked.code);
 
     const used = await mint();
-    await localRest(`entitlements?id=eq.${used.id}`, { method: "PATCH", body: JSON.stringify({ used: 1 }) });
+    await consoleSql("update console.entitlements set used = 1 where id = $1", [used.id]);
     await ask(used.code);
 
     for (const a of answers) expect(a).toEqual({ status: 403, error: REFUSED });
@@ -242,7 +240,7 @@ describe("an invite the console emailed", () => {
     const email = `linked-${run}@example.test`;
     const sent = await consoleCall("POST", `/control/invites/${id}/send`, { cookie: consoleCookie, body: { email, code } });
     expect(sent.status, JSON.stringify(sent.body)).toBe(200);
-    const rows = (await localRest(`entitlement_links?entitlement_id=eq.${id}&select=*`)) as Array<Record<string, string | boolean | null>>;
+    const rows = (await consoleSql("select * from console.entitlement_links where entitlement_id = $1", [id])) as Array<Record<string, string | boolean | null>>;
     expect(rows).toHaveLength(1);
     expect(rows[0]!.email).toBe(email);
     expect(rows[0]!.spent_at).toBeNull();
@@ -254,7 +252,7 @@ describe("an invite the console emailed", () => {
     // An invite ending sooner than seven days: the link ends with it.
     const short = await mint(`short-${run}`, 2);
     await consoleCall("POST", `/control/invites/${short.id}/send`, { cookie: consoleCookie, body: { email, code: short.code } });
-    const [link] = (await localRest(`entitlement_links?entitlement_id=eq.${short.id}&select=expires_at`)) as Array<{ expires_at: string }>;
+    const [link] = await consoleSql<{ expires_at: string }>("select expires_at from console.entitlement_links where entitlement_id = $1", [short.id]);
     const invite = (await entitlement(short.id)) as unknown as { expires_at: string };
     expect(Date.parse(link!.expires_at)).toBe(Date.parse(invite.expires_at));
   });
@@ -337,12 +335,12 @@ describe("an invite the console emailed", () => {
     const ended = await refused(`link-${run}-rev`, ip);
     expect(ended.link_state).toBe("ended");
     expect(ended.error).toBe("This invite has ended. To ask for a new one, write to contact@civic.social.");
-    const rows = (await localRest(`entitlement_links?entitlement_id=eq.${revoked.id}&select=spent_at`)) as Array<{ spent_at: string | null }>;
+    const rows = await consoleSql<{ spent_at: string | null }>("select spent_at from console.entitlement_links where entitlement_id = $1", [revoked.id]);
     expect(rows[0]!.spent_at).toBeNull();
 
     const lapsed = await mint();
     await plantInviteLink(lapsed.id, `lapsed-${run}@example.test`, `link-${run}-lapsed`);
-    await localRest(`entitlements?id=eq.${lapsed.id}`, { method: "PATCH", body: JSON.stringify({ expires_at: new Date(Date.now() - 1000).toISOString() }) });
+    await consoleSql("update console.entitlements set expires_at = $2 where id = $1", [lapsed.id, new Date(Date.now() - 1000).toISOString()]);
     expect((await refused(`link-${run}-lapsed`, ip)).link_state).toBe("ended");
     const noFresh = await startCall("POST", "/start/invite-link/refresh", { body: { token: `link-${run}-lapsed` }, ip });
     expect(noFresh.status).toBe(403);
@@ -371,10 +369,10 @@ describe("an invite the console emailed", () => {
 
     // Two minutes on, twice more; then the day's three are used.
     const age = async () =>
-      localRest(`entitlement_links?entitlement_id=eq.${id}&refreshed=eq.true`, {
-        method: "PATCH",
-        body: JSON.stringify({ created_at: new Date(Date.now() - 2 * 60_000).toISOString() }),
-      });
+      consoleSql("update console.entitlement_links set created_at = $2 where entitlement_id = $1 and refreshed", [
+        id,
+        new Date(Date.now() - 2 * 60_000).toISOString(),
+      ]);
     await age();
     expect((await ask()).status).toBe(200);
     await age();
@@ -385,7 +383,7 @@ describe("an invite the console emailed", () => {
     expect(fourth.body.error).toMatch(/Three fresh links have been sent today.*contact@civic\.social/);
 
     // Every fresh link went to the same address, and the console's own send never counts.
-    const rows = (await localRest(`entitlement_links?entitlement_id=eq.${id}&select=email,refreshed`)) as Array<{ email: string; refreshed: boolean }>;
+    const rows = await consoleSql<{ email: string; refreshed: boolean }>("select email, refreshed from console.entitlement_links where entitlement_id = $1", [id]);
     expect(rows.filter((r) => r.refreshed)).toHaveLength(3);
     expect(new Set(rows.map((r) => r.email))).toEqual(new Set([email]));
     expect((await inviteAudit(id)).filter((a) => a.action === "invite.link_refresh")).toHaveLength(3);
@@ -580,7 +578,7 @@ describe("creating a hub", () => {
 
     const sent = await startCall("POST", "/start/request-code", { cookie, ip, body: { email } });
     expect(sent.status, JSON.stringify(sent.body)).toBe(200);
-    const stored = (await localRest(`platform_sign_in_codes?realm=eq.start&email=eq.${encodeURIComponent(email)}&select=code_hash`)) as Array<{ code_hash: string }>;
+    const stored = await consoleSql<{ code_hash: string }>("select code_hash from console.platform_sign_in_codes where realm = 'start' and email = $1", [email]);
     expect(stored[0]!.code_hash).toMatch(/^[0-9a-f]{64}$/);
     await plantStartCode(email, "778899");
     const verified = await startCall("POST", "/start/verify", { cookie, ip, body: { email: email.toUpperCase(), code: "778899" } });

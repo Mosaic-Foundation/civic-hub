@@ -819,27 +819,6 @@
       "owner": "civic.input"
     },
     {
-      "table": "control_audit_log",
-      "columns": [
-        "actor_email",
-        "action",
-        "target_hub_id",
-        "before",
-        "after"
-      ],
-      "owner": "control"
-    },
-    {
-      "table": "control_sessions",
-      "columns": [
-        "token_hash",
-        "email",
-        "expires_at",
-        "revoked_at"
-      ],
-      "owner": "control"
-    },
-    {
       "table": "deliberation_drafts",
       "columns": [
         "sources",
@@ -1038,19 +1017,6 @@
         "fixed_notified_at"
       ],
       "owner": "civic.feedback"
-    },
-    {
-      "table": "platform_sign_in_codes",
-      "columns": [
-        "realm",
-        "purpose",
-        "email",
-        "code_hash",
-        "link_hash",
-        "attempts",
-        "expires_at"
-      ],
-      "owner": "control"
     },
     {
       "table": "plugin_catalog",

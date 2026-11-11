@@ -7,7 +7,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { request } from "node:http";
 import { API_BASE, freshTestIp } from "./http.js";
-import { localRest } from "./localStack.js";
+import { localSql } from "./localStack.js";
 
 /** Must match the server's CIVIC_CONSOLE_HOSTNAME / CIVIC_CONSOLE_ADMIN_EMAIL (CI sets both). */
 export const CONSOLE_HOST = process.env.CIVIC_TEST_CONSOLE_HOST ?? "console.localhost";
@@ -72,13 +72,11 @@ const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 /** A signed-in console session for the operator; returns the Cookie header value. */
 export async function mintConsoleSession(email = OPERATOR): Promise<string> {
   const token = randomBytes(32).toString("base64url");
-  await localRest("control_sessions", {
-    method: "POST",
-    body: JSON.stringify({
-      token_hash: sha256(token),
-      email,
-      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-    }),
-  });
+  // The console's own table (schema console; the console split).
+  await localSql("insert into console.control_sessions (token_hash, email, expires_at) values ($1, $2, $3)", [
+    sha256(token),
+    email,
+    new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  ]);
   return `civic_console=${encodeURIComponent(token)}`;
 }

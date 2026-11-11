@@ -9,6 +9,7 @@
 
 import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { consoleSql } from "../fixtures/consoleDb.js";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintDemoSession, mintSession, plantHubCode } from "../fixtures/adminSession.js";
 import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
@@ -233,24 +234,21 @@ describe("per-IP and per-address limits (lock the code, not the person)", () => 
     const expires = new Date(Date.now() + 600_000).toISOString();
     for (const realm of ["console", "start"]) {
       for (const code of ["193846", "193847"]) {
-        await localRest("platform_sign_in_codes", {
-          method: "POST",
-          body: JSON.stringify({ realm, purpose: "sign_in", email, code_hash: sha256(code), expires_at: expires }),
-        });
+        await consoleSql(
+          "insert into console.platform_sign_in_codes (realm, purpose, email, code_hash, expires_at) values ($1, 'sign_in', $2, $3, $4)",
+          [realm, email, sha256(code), expires],
+        );
       }
       const taken = await Promise.all(
         Array.from({ length: 12 }, () =>
-          localRest("rpc/take_platform_sign_in_attempt", {
-            method: "POST",
-            body: JSON.stringify({ p_realm: realm, p_purpose: "sign_in", p_email: email, p_link_hash: null, p_max: 5 }),
-          }) as Promise<unknown[]>,
+          consoleSql("select * from console.take_platform_sign_in_attempt($1, 'sign_in', $2, null, 5)", [realm, email]),
         ),
       );
       // Two codes, five tries each, however many arrive at once.
       expect(taken.reduce((n, rows) => n + rows.length, 0)).toBe(10);
       expect(taken.filter((rows) => rows.length === 2)).toHaveLength(5);
     }
-    await localRest(`platform_sign_in_codes?email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
+    await consoleSql("delete from console.platform_sign_in_codes where email = $1", [email]);
   });
 });
 

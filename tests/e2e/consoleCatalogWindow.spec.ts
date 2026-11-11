@@ -13,6 +13,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { localRest } from "../fixtures/adminSession.js";
 import { mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { consoleSql } from "../fixtures/consoleDb.js";
 
 const UI = new URL(process.env.CIVIC_E2E_UI_ORIGIN?.trim() || "http://localhost:5173");
 const CONSOLE_UI = `${UI.protocol}//console.localhost${UI.port ? `:${UI.port}` : ""}/console.html`;
@@ -57,9 +58,10 @@ test("one code confirms catalog changes for ten minutes; each change is still re
   }
 
   const [row] = (await localRest(`plugin_catalog?select=id&package=eq.${encodeURIComponent(STRAW)}&order=created_at.desc&limit=1`)) as Array<{ id: string }>;
-  const audit = (await localRest(
-    `control_audit_log?select=action,after&action=in.(plugin.approve,plugin.withdraw)&after->>id=eq.${row!.id}&order=id.desc&limit=3`,
-  )) as Array<{ action: string; after: { confirmed: string } }>;
+  const audit = await consoleSql<{ action: string; after: { confirmed: string } }>(
+    "select action, after from console.control_audit_log where action in ('plugin.approve', 'plugin.withdraw') and after->>'id' = $1 order by id desc limit 3",
+    [row!.id],
+  );
   expect(audit.reverse().map((r) => r.after.confirmed)).toEqual(["code", "window", "window"]);
 
   // Leave it withdrawn (still inside the window: no code).

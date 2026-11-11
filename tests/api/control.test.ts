@@ -9,6 +9,8 @@
 // rule working: an archived hub's slug stays taken.)
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import pg from "pg";
+import { consoleSql } from "../fixtures/consoleDb.js";
 import { request as httpRequest } from "node:http";
 import { call } from "../fixtures/hostCall.js";
 import { API_BASE } from "../fixtures/helpers.js";
@@ -90,7 +92,7 @@ describe("sign-in", () => {
     const stranger = `stranger-${run}@example.test`;
     const res = await consoleCall("POST", "/control/auth/request-code", { body: { email: stranger } });
     expect(res.status).toBe(200);
-    const rows = (await localRest(`platform_sign_in_codes?email=eq.${encodeURIComponent(stranger)}`)) as unknown[];
+    const rows = await consoleSql("select id from console.platform_sign_in_codes where email = $1", [stranger]);
     expect(rows).toHaveLength(0);
   });
 
@@ -276,7 +278,7 @@ describe("edit a hub", () => {
       body: { hostname: "Not A Host", step_up_code: code },
     });
     expect(bad.status).toBe(409);
-    const rows = (await localRest(`platform_sign_in_codes?realm=eq.console&email=eq.${encodeURIComponent(OPERATOR)}&purpose=eq.step_up`)) as unknown[];
+    const rows = await consoleSql("select id from console.platform_sign_in_codes where realm = 'console' and email = $1 and purpose = 'step_up'", [OPERATOR]);
     expect(rows).toHaveLength(1);
   });
 });
@@ -365,18 +367,22 @@ describe("archive", () => {
     expect(actions).toEqual(["hub.create", "hub.archive", "hub.unarchive"]);
   });
 
-  it("the audit log is append-only, even for the service role", async () => {
-    const { url, key } = localStack();
-    for (const method of ["DELETE", "PATCH"]) {
-      const res = await fetch(`${url}/rest/v1/control_audit_log?target_hub_id=eq.${slug}`, {
-        method,
-        headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        body: method === "PATCH" ? JSON.stringify({ action: "rewritten" }) : undefined,
-      });
-      // 42501 twice over: the service role holds only SELECT and INSERT on
-      // this table, and behind that grant a trigger refuses UPDATE and DELETE.
-      expect(res.ok, method).toBe(false);
-      expect((await res.json()).code).toBe("42501");
+  it("the audit log is append-only, even for the console's own login", async () => {
+    // As civic_console (the console split): it holds only SELECT and INSERT on
+    // this table (42501), and behind that grant a trigger refuses UPDATE and
+    // DELETE for every role.
+    const asConsole = new pg.Client({ connectionString: "postgresql://civic_console:local-console-only@127.0.0.1:54322/postgres" });
+    await asConsole.connect();
+    try {
+      for (const sql of [
+        "delete from console.control_audit_log where target_hub_id = $1",
+        "update console.control_audit_log set action = 'rewritten' where target_hub_id = $1",
+      ]) {
+        const err = (await asConsole.query(sql, [slug]).catch((e: unknown) => e)) as { code?: string };
+        expect(err.code, sql).toBe("42501");
+      }
+    } finally {
+      await asConsole.end();
     }
     expect((await auditFor(slug)).length).toBe(3);
   });

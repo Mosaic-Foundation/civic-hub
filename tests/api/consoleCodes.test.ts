@@ -18,7 +18,7 @@ import { consoleSql } from "../fixtures/consoleDb.js";
 const op = encodeURIComponent(OPERATOR);
 
 async function codes(purpose: string): Promise<number> {
-  return ((await localRest(`platform_sign_in_codes?select=id&realm=eq.console&purpose=eq.${purpose}&email=eq.${op}`)) as unknown[]).length;
+  return (await consoleSql("select id from console.platform_sign_in_codes where realm = 'console' and purpose = $1 and email = $2", [purpose, OPERATOR])).length;
 }
 
 async function hits(scope: string, by: string, value: string): Promise<number> {
@@ -28,7 +28,7 @@ async function hits(scope: string, by: string, value: string): Promise<number> {
 
 /** The operator with no codes waiting and no recent code emails, as after a quiet hour. */
 async function quiet(): Promise<void> {
-  await localRest(`platform_sign_in_codes?realm=eq.console&email=eq.${op}`, { method: "DELETE" });
+  await consoleSql("delete from console.platform_sign_in_codes where realm = 'console' and email = $1", [OPERATOR]);
   for (const scope of ["console.code_email", "console.new_code"]) {
     await consoleSql("delete from console.rate_limit_hits where bucket like $1", [`${scope}:email:%`]);
   }
@@ -101,9 +101,10 @@ describe("one code confirms catalog and hub actions for ten minutes", () => {
 
     expect((await act(second)).status).toBe(200);
     expect((await act(third)).status).toBe(200);
-    const audit = (await localRest(
-      `control_audit_log?select=action,after&action=in.(plugin.approve,plugin.withdraw)&after->>id=eq.${entry.id}&order=id.desc&limit=3`,
-    )) as Array<{ action: string; after: { confirmed: string } }>;
+    const audit = await consoleSql<{ action: string; after: { confirmed: string } }>(
+      "select action, after from console.control_audit_log where action in ('plugin.approve', 'plugin.withdraw') and after->>'id' = $1 order by id desc limit 3",
+      [entry.id],
+    );
     expect(audit.reverse().map((r) => [r.action.split(".")[1], r.after.confirmed])).toEqual([
       [first, "code"],
       [second, "window"],
@@ -125,17 +126,18 @@ describe("one code confirms catalog and hub actions for ten minutes", () => {
     expect(exported.body.error).toBe("step_up_required");
     const archive = await consoleCall("POST", `/control/hubs/${slug}/archive`, { cookie: session, body: {} });
     expect(archive.status, JSON.stringify(archive.body)).toBe(200);
-    const [archived] = (await localRest(
-      `control_audit_log?select=after&action=eq.hub.archive&target_hub_id=eq.${slug}&order=id.desc&limit=1`,
-    )) as Array<{ after: { confirmed: string } }>;
+    const [archived] = await consoleSql<{ after: { confirmed: string } }>(
+      "select after from console.control_audit_log where action = 'hub.archive' and target_hub_id = $1 order by id desc limit 1",
+      [slug],
+    );
     expect(archived!.after.confirmed).toBe("window");
 
     // When the ten minutes are over, a code again.
     const token = decodeURIComponent(session.split("=")[1]!);
-    await localRest(`control_sessions?token_hash=eq.${await sha(token)}`, {
-      method: "PATCH",
-      body: JSON.stringify({ catalog_confirmed_until: new Date(Date.now() - 1000).toISOString() }),
-    });
+    await consoleSql("update console.control_sessions set catalog_confirmed_until = $2 where token_hash = $1", [
+      await sha(token),
+      new Date(Date.now() - 1000).toISOString(),
+    ]);
     const after = await act(third === "approve" ? "withdraw" : "approve");
     expect(after.status).toBe(403);
     // Leave it withdrawn.
