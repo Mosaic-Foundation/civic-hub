@@ -10,6 +10,7 @@
 import { envVar, processEnv } from "../config/env.js";
 import { CivicError, codeForStatus } from "../errors/index.js";
 import { DEFAULT_HUB_BANNER } from "../shared/platform.js";
+import { PLUGIN_NAMES } from "../shared/pluginNames.js";
 import { getDb } from "../db/client.js";
 import { eventToRow } from "../events/eventStore.js";
 import { buildEvent } from "../events/eventEmitter.js";
@@ -151,6 +152,8 @@ async function writeSettings(hubId: string, values: Record<string, string>, by: 
 
 export interface PluginState {
   id: PluginId;
+  /** What the hub calls it (src/shared/pluginNames.ts). */
+  name: string;
   enabled: boolean;
   /** Where the value comes from: the hub's own row, a deployment env var, or the default (on). */
   source: "hub" | "environment" | "default";
@@ -169,10 +172,11 @@ export async function hubPlugins(hubId: string): Promise<PluginState[]> {
   const stored = await settingRows(hubId, keys);
   return PLUGIN_IDS.map((id) => {
     const key = `plugin.${id}.enabled`;
-    if (stored[key] !== undefined) return { id, enabled: asBoolean(stored[key], true), source: "hub" };
+    const name = PLUGIN_NAMES[id] ?? id;
+    if (stored[key] !== undefined) return { id, name, enabled: asBoolean(stored[key], true), source: "hub" };
     const env = envFallback(key);
-    if (env !== undefined) return { id, enabled: asBoolean(env, true), source: "environment" };
-    return { id, enabled: true, source: "default" };
+    if (env !== undefined) return { id, name, enabled: asBoolean(env, true), source: "environment" };
+    return { id, name, enabled: true, source: "default" };
   });
 }
 

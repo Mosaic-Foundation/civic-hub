@@ -8,6 +8,7 @@
 
 import { RESERVED_HUB_SLUG_PURPOSES } from "../models/hub.js";
 import { KEYS, PLUGIN_IDS } from "../models/hubSettings.js";
+import { PLUGIN_NAMES } from "../shared/pluginNames.js";
 import { autoRefreshOn, refreshesSamples } from "../shared/sampleRefresh.js";
 import { getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
@@ -109,6 +110,7 @@ export function localOperator(): OperatorApi {
         platform_domain: platformDomain(),
         reserved_slugs: { ...RESERVED_HUB_SLUG_PURPOSES },
         plugin_ids: PLUGIN_IDS,
+        plugin_names: { ...PLUGIN_NAMES },
         // The create form disables "Start with sample content" for the rest.
         sample_kinds: kindsWithSamples(),
         production_database: isProductionDatabase(),

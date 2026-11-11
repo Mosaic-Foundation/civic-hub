@@ -80,6 +80,8 @@ export interface CreateInfo {
   platform_domain: string | null;
   reserved_slugs: Record<string, string>;
   plugin_ids: readonly string[];
+  /** What each plugin is called, by id. */
+  plugin_names: Record<string, string>;
   sample_kinds: string[];
   production_database: boolean;
   hub_specific_env_vars: string[];

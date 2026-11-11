@@ -357,6 +357,7 @@ export function controlRouter(op: OperatorApi): Router {
       platform_domain: info.platform_domain,
       reserved_slugs: info.reserved_slugs,
       plugin_ids: info.plugin_ids,
+      plugin_names: info.plugin_names,
       // The create form disables "Start with sample content" for the rest.
       sample_kinds: info.sample_kinds,
       production_database: info.production_database,
