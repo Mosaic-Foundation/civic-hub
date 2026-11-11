@@ -1,6 +1,6 @@
 // @civic-raw-client-importer: import writes a hub's objects into the target install's bucket with that install's service key.
 //
-// Loading a hub bundle (src/control/hubBundle/format.ts) into a database —
+// Loading a hub bundle (src/operator/hubBundle/format.ts) into a database —
 // the engine behind scripts/import-hub.ts and scripts/restore-hub.ts.
 //
 // It talks to Postgres directly with `pg` (ADR-005), so the same code loads a
@@ -43,9 +43,9 @@ import {
   type BundleImage,
   type BundleManifest,
   type Row,
-} from "../../src/control/hubBundle/format.js";
-import type { HubRowReader } from "../../src/control/hubBundle/export.js";
-import { unpackTarGz } from "../../src/control/hubBundle/tar.js";
+} from "../../src/operator/hubBundle/format.js";
+import type { HubRowReader } from "../../src/operator/hubBundle/export.js";
+import { unpackTarGz } from "../../src/operator/hubBundle/tar.js";
 
 export class ImportRefused extends Error {
   constructor(message: string, readonly problems: string[] = []) {

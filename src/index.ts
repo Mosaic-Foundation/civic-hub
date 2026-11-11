@@ -4,10 +4,11 @@
 import { env } from "./config/env.js";
 import hubApp from "./app.js";
 import { withConsole } from "./control/index.js";
+import { localOperator } from "./operator/local.js";
 
 // The super admin on CIVIC_CONSOLE_HOSTNAME (console.localhost locally);
 // every other host is the hub app. See src/control/index.ts.
-const app = withConsole(hubApp);
+const app = withConsole(hubApp, localOperator());
 
 const PORT = parseInt(env.PORT ?? "3000", 10);
 

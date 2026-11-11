@@ -1,4 +1,6 @@
-// Dashboard section "Jobs and backups": one row per scheduled job, and the backup.
+// Dashboard section "Jobs and backups", the hub's half: one row per scheduled job.
+// The console adds the backup (src/control/dashboard/registry.ts), which it
+// reads from an outside service.
 //
 // A job's last run is its last scheduled run in job_last_run (every run,
 // including the ones that did nothing; the per-hub job_runs keeps only runs
@@ -14,8 +16,7 @@
 import { JOBS, isPlatformJob } from "../../jobs/registry.js";
 import { isLate, nextRun } from "../../jobs/schedule.js";
 import { readJobLastRuns, type JobLastRun } from "../../db/jobLastRun.js";
-import { backupStatus, type BackupStatus, type OutsideResult } from "./outside.js";
-import type { SectionContext } from "./registry.js";
+import type { SectionContext } from "../../shared/dashboardRun.js";
 
 export interface JobRow {
   id: string;
@@ -31,7 +32,6 @@ export interface JobRow {
 
 export interface JobsSection {
   jobs: JobRow[];
-  backup: OutsideResult<BackupStatus>;
 }
 
 export function jobRows(lastRuns: Record<string, JobLastRun>, now: Date): JobRow[] {
@@ -60,6 +60,5 @@ export function jobRows(lastRuns: Record<string, JobLastRun>, now: Date): JobRow
 }
 
 export async function loadJobs(ctx: SectionContext): Promise<JobsSection> {
-  const [lastRuns, backup] = await Promise.all([readJobLastRuns(), backupStatus(ctx.fresh)]);
-  return { jobs: jobRows(lastRuns, ctx.now), backup };
+  return { jobs: jobRows(await readJobLastRuns(), ctx.now) };
 }

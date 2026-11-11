@@ -311,7 +311,7 @@ export interface HubAdminAuditEntry {
   after: unknown;
 }
 
-/** Civic.Social's feedback inbox (feedback routing): src/control/platformFeedback.ts. */
+/** Civic.Social's feedback inbox (feedback routing): src/operator/platformFeedback.ts. */
 export type FeedbackStatus = "received" | "planned" | "fixed";
 export type FeedbackStream = "bug" | "feature" | "admin";
 

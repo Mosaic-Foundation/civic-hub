@@ -15,7 +15,7 @@
 
 import { hostingEnv as env } from "../../config/env.js";
 import { cached } from "./cache.js";
-import type { SectionContext } from "./registry.js";
+import type { SectionContext } from "../../shared/dashboardRun.js";
 
 export const OUTSIDE_TIMEOUT_MS = 5_000;
 

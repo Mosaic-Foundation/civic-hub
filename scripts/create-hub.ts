@@ -14,7 +14,7 @@
  *
  * WHAT THIS IS. The command-line twin of the super admin's Create hub screen
  * (Phase 5 part one, 2026-09-26). Both call createHub() in
- * src/control/hubs.ts — the same validation (slug, reserved names, hostname,
+ * src/operator/hubs.ts — the same validation (slug, reserved names, hostname,
  * archived hubs' slugs and hostnames, the MEETING_* / FLOYD_NEWS_* guard) and
  * the same writes. This script only adds its own, stricter policy below.
  *
@@ -35,8 +35,8 @@
  */
 
 import type { HubKind } from "../src/shared/hubKind.js";
-import { createHub, planCreateHub, ControlInputError } from "../src/control/hubs.js";
-import { addStarterWordcloud } from "../src/control/inHub.js";
+import { createHub, planCreateHub, ControlInputError } from "../src/operator/hubs.js";
+import { addStarterWordcloud } from "../src/operator/inHub.js";
 import { isHubMode, type HubMode } from "../src/models/hub.js";
 
 /** This script's policy: never demo (the console may), never production. */
@@ -101,7 +101,7 @@ async function main(): Promise<void> {
 
   let jurisdictionName = jurisdiction;
   if (ocdId && !jurisdictionName) {
-    const { getJurisdiction } = await import("../src/control/jurisdictions.js");
+    const { getJurisdiction } = await import("../src/operator/jurisdictions.js");
     jurisdictionName = (await getJurisdiction(ocdId))?.display_name ?? null;
   }
   const input = {

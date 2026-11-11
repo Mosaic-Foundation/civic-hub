@@ -267,6 +267,9 @@ refused in production (`src/config/devFlags.ts`).
 | `CIVIC_CONSOLE_HOSTNAME` | engine | string | no |  | The console's hostname. Unset: no console on this deployment. |
 | `CIVIC_CONSOLE_ADMIN_EMAIL` | engine | email | when CIVIC_CONSOLE_HOSTNAME is set |  | The console's one operator. |
 | `CIVIC_START_HOSTNAME` | engine | string | no |  | The start page's hostname. Unset: no start page. |
+| `CIVIC_PLATFORM_DOMAIN` | engine | string | no |  | The domain hubs live under (civic.social), whose reserved names no hub may take. Unset: the console hostname's parent, as before the console split. |
+| `CIVIC_OPERATOR_TOKEN` | engine | secret | no |  | Bearer token the console presents to this hub deployment's operator API (/operator/*). Unset: the operator API answers 404; a console on the same deployment calls the hub in-process. |
+| `CIVIC_OPERATOR_URL` | engine | url | no |  | Where the console calls the hub deployment's operator API, with CIVIC_OPERATOR_TOKEN: its API base (on Vercel https://<a hub's hostname>/api). Unset: the console calls the hub in-process (one deployment). |
 | `CIVIC_DEV_HUB` | dev | string | no | `athens` | Local development: the hub a bare localhost resolves to. |
 | `CIVIC_HUB_ID` | engine | string | no |  | Fallback hub id for code with no hub in scope. |
 | `HUB_NAME` | engine | string | no |  | Fallback hub name (also a hub-setting fallback). |

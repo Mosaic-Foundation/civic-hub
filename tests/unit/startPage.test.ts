@@ -12,6 +12,9 @@ import {
 } from "../../src/control/entitlements.js";
 import { isConsoleHost, isStartHost, startHostname, startHubDomain } from "../../src/control/config.js";
 import { startCreateBody } from "../../src/control/startRouter.js";
+import { kindsWithSamples } from "../../src/services/sampleTemplates.js";
+
+const KINDS = kindsWithSamples();
 import { hubSlugRejectionReason } from "../../src/models/hub.js";
 
 const saved = { start: process.env.CIVIC_START_HOSTNAME, console: process.env.CIVIC_CONSOLE_HOSTNAME };
@@ -113,6 +116,7 @@ describe("the start page's form → create input", () => {
       { slug: "Northside", name: "Northside Civic Hub", hub_kind: "issue", mode: "live", hostname: "evil.example.com", admin_email: "x@example.test" },
       email,
       "dev.civic.social",
+      KINDS,
     );
     expect(body).toMatchObject({
       slug: "northside",
@@ -126,15 +130,15 @@ describe("the start page's form → create input", () => {
   });
 
   it("makes the contact address the creator's unless given, and the operator only when given", () => {
-    expect(startCreateBody({ slug: "a1" }, email, "x.test").ownership).toEqual({ "legal.contact_email": email });
-    expect(startCreateBody({ slug: "a1", operator_name: "The Group", contact_email: "hi@example.test" }, email, "x.test").ownership).toEqual({
+    expect(startCreateBody({ slug: "a1" }, email, "x.test", KINDS).ownership).toEqual({ "legal.contact_email": email });
+    expect(startCreateBody({ slug: "a1", operator_name: "The Group", contact_email: "hi@example.test" }, email, "x.test", KINDS).ownership).toEqual({
       "legal.operator_name": "The Group",
       "legal.contact_email": "hi@example.test",
     });
   });
 
   it("gives no address without a slug", () => {
-    expect(startCreateBody({}, email, "civic.social").hostname).toBe("");
+    expect(startCreateBody({}, email, "civic.social", KINDS).hostname).toBe("");
   });
 });
 

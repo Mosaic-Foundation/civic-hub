@@ -27,20 +27,6 @@ export function isConsoleHost(hostHeader: string | undefined | null): boolean {
   return host !== null && normalizeHostname(hostHeader) === host;
 }
 
-/**
- * The domain hubs live under, taken from the console's own hostname:
- * console.civic.social → civic.social. A new hub may not take a reserved
- * name under it (www.civic.social, polis.civic.social…). Null when the
- * console hostname has no parent worth reserving under.
- */
-export function platformDomain(): string | null {
-  const host = consoleHostname();
-  if (!host) return null;
-  const dot = host.indexOf(".");
-  const parent = dot >= 0 ? host.slice(dot + 1) : "";
-  return parent.includes(".") ? parent : null;
-}
-
 export type AdminEmailConfig =
   | { ok: true; email: string }
   | { ok: false; problem: string };
@@ -57,24 +43,8 @@ export function consoleAdminEmail(): AdminEmailConfig {
   return { ok: true, email: raw };
 }
 
-/**
- * Production Supabase hosts. Creating a hub there is what the MEETING_* /
- * FLOYD_NEWS_* guard protects (./hubs.ts). Same list as the seed guard in
- * src/controllers/debugController.ts.
- */
-const PRODUCTION_SUPABASE_HOSTS: readonly string[] = [
-  "nfhyypwoporfggqcerli.supabase.co", // Civic-Hub-Floyd — production
-];
-
-export function isProductionDatabase(): boolean {
-  const raw = env.SUPABASE_URL?.trim();
-  if (!raw) return false;
-  try {
-    return PRODUCTION_SUPABASE_HOSTS.includes(new URL(raw).hostname.toLowerCase());
-  } catch {
-    return false;
-  }
-}
+// The platform domain and the production-database check moved to the hub's
+// side at the console split: src/operator/platform.ts.
 
 // --- The start page (session 4b, 2026-10-08) ---------------------------------
 //

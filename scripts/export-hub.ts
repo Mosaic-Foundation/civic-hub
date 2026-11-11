@@ -1,7 +1,7 @@
 /**
  * Export one hub as a bundle: every row the export manifest names, the hub's
  * `hubs` row and settings, and every stored image it owns, with a README that
- * explains each file. Format: src/control/hubBundle/format.ts.
+ * explains each file. Format: src/operator/hubBundle/format.ts.
  *
  *   node --env-file=.env --import tsx scripts/export-hub.ts --hub athens \
  *     [--out exports] [--archive] [--no-images]
@@ -29,10 +29,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { userInfo } from "node:os";
 import { hubArg } from "./lib/hubScope.js";
-import { bundleName, exportHub, memorySink, type BundleSink, type HubRowReader, type ObjectReader } from "../src/control/hubBundle/export.js";
-import { supabaseRowReader } from "../src/control/hubBundle/supabaseReader.js";
+import { bundleName, exportHub, memorySink, type BundleSink, type HubRowReader, type ObjectReader } from "../src/operator/hubBundle/export.js";
+import { supabaseRowReader } from "../src/operator/hubBundle/supabaseReader.js";
 import { supabaseObjectReader } from "../src/hosting/supabaseStorage.js";
-import { packTarGz } from "../src/control/hubBundle/tar.js";
+import { packTarGz } from "../src/operator/hubBundle/tar.js";
 import { postImageBucket } from "../src/services/postImageStorage.js";
 import { connectFromEnv, pgRowReader } from "./lib/hubImport.js";
 

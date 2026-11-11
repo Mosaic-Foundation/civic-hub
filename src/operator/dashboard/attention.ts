@@ -31,7 +31,7 @@ import { hubOrigin } from "../../utils/baseUrl.js";
 import { listHubs, type ControlHub } from "../hubs.js";
 import { inHubScope } from "../inHub.js";
 import { HUB_GROUP_ORDER, hubGroup, type HubGroup } from "./hubs.js";
-import type { SectionContext } from "./registry.js";
+import type { SectionContext } from "../../shared/dashboardRun.js";
 
 export const FEEDBACK_DAYS = 7;
 const EPOCH = "1970-01-01T00:00:00.000Z";

@@ -10,7 +10,7 @@ import { PLATFORM_CONTACT_EMAIL } from "../../src/shared/platform.js";
 import { ENV_FALLBACKS, KEYS } from "../../src/models/hubSettings.js";
 import { currentSender, operatorSender } from "../../src/services/emailSender.js";
 import { renderInviteEmail } from "../../src/control/inviteEmail.js";
-import { renderFixedEmail } from "../../src/control/platformFeedback.js";
+import { renderFixedEmail } from "../../src/operator/platformFeedback.js";
 
 const saved = { ...process.env };
 afterEach(() => {

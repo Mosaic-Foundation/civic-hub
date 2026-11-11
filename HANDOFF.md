@@ -1724,7 +1724,7 @@ is signed out. Report and merge steps:
 - **Hubs:** one row per hub, live, beta, demo, then archived (collapsed). Mode, health (up, degraded with the schema
   gaps and why, down with why), the commit the hub reports and whether it is the console's own, members (the Members
   plugin's count rule), days since the newest non-sample event. Health is each hub's `/api/health` fetched by the
-  console's server, cached a minute (`src/control/dashboard/hubHealth.ts`): 8 s per attempt, one retry after a
+  console's server, cached a minute (`src/operator/dashboard/hubHealth.ts`): 8 s per attempt, one retry after a
   failed or timed-out attempt, at most 5 hubs asked at once; a hub that answers on the retry is "slow" with the
   check's time, never down (after dev's first look, below).
 - **Jobs and backups:** one row per job in `src/jobs/registry.ts`: last scheduled run, result, duration, hubs failed,
@@ -1784,11 +1784,14 @@ Adam on dev: one long list, the jobs and waiting counts far below 15 hubs. Now (
 
 ### Dashboard: adding a section
 
-1. **Loader:** a function `(ctx: { now, fresh }) => Promise<data>` in `src/control/dashboard/<name>.ts`. Counts
-   only, nothing per person; read a hub's data inside `inHubScope(hub.id, …)`; cache an outside read with
-   `cached()`. Throwing is fine: that section alone shows "could not be loaded".
-2. **Register it:** one entry in `DASHBOARD_SECTIONS` (`src/control/dashboard/registry.ts`): `{ id, name, load }`,
-   optionally `timeoutMs`. Order there is order on the page.
+1. **Loader:** a function `(ctx: { now, fresh }) => Promise<data>`. A section that reads hub data is the hub's:
+   `src/operator/dashboard/<name>.ts`, reading a hub's data inside `inHubScope(hub.id, …)`. One that reads only an
+   outside service is the console's: `src/control/dashboard/<name>.ts`, caching with `cached()` (the console split,
+   2026-11-10: the console reaches hub data only through the operator API). Counts only, nothing per person.
+   Throwing is fine: that section alone shows "could not be loaded".
+2. **Register it:** one entry in `HUB_DASHBOARD_SECTIONS` (`src/operator/dashboard/registry.ts`) or
+   `CONSOLE_DASHBOARD_SECTIONS` (`src/control/dashboard/registry.ts`): `{ id, name, load }`, optionally
+   `timeoutMs`. The hub's come in their order, with the console's after "jobs".
 3. **View:** an entry under the same id in `SECTION_VIEWS` (`ui/src/console/dashboardSections.tsx`): `tab` (its
    tab's name), `summarize(data, now)` (its Overview tile: tone, big figure, label, one line, and the concerns it
    adds to "Needs a look"), and `render` (its tab, with any filter chips). Its data shape goes in
@@ -2259,7 +2262,7 @@ cause was a digest link that didn't scroll to its row on CI's slower machine, fi
    - It goes to stream `admin`, with the admin's address.
    - It doesn't appear on the hub's tab and works with Feedback off.
    - It is the fifth item in the Admin menu, with its "?" and the anchor `/admin#contact-civic-social`.
-5. **The console's inbox** (`#/feedback`, `src/control/platformFeedback.ts`, `ui/src/console/FeedbackInbox.tsx`):
+5. **The console's inbox** (`#/feedback`, `src/operator/platformFeedback.ts`, `ui/src/console/FeedbackInbox.tsx`):
    - It covers every hub, with likely duplicates grouped (`src/shared/feedbackDuplicates.ts`: same stream and page,
      word overlap ≥ 0.5). The nav shows the count still received.
    - Each item shows its hub (the name, from data), its origin and, only with consent, the sender's address.
@@ -4455,7 +4458,7 @@ purge, platform postal address". **Not finished: the jurisdiction data**
   unlisted unreferenced rows, checksum in the table comment → second run is a
   no-op; any install), `scripts/lib/csv.ts`, `config/jurisdictions/SOURCES.md`.
   Both licenses verified (Census: US government work; OCD: CC0 1.0).
-- **Console:** `src/control/jurisdictions.ts` (states, type-ahead, hubs
+- **Console:** `src/operator/jurisdictions.ts` (states, type-ahead, hubs
   serving, slug suggestion) and routes `GET /control/jurisdictions/states`,
   `GET /control/jurisdictions`, `GET /control/slug-suggestion`. Create form:
   `ui/src/console/JurisdictionPicker.tsx` (state → type → type-ahead, or
@@ -4523,7 +4526,7 @@ purge, platform postal address". **Not finished: the jurisdiction data**
 (`src/events/activitySerializer.ts`), the discovery manifest's
 `jurisdictions` (`discoveryController.ts`), via `civicPlaceCode()` /
 `processJurisdiction()` in `src/config/hub.ts`; (2) registry/console:
-`hubs.jurisdiction_code`, `src/control/hubs.ts` (create, edit, validation,
+`hubs.jurisdiction_code`, `src/operator/hubs.ts` (create, edit, validation,
 `defaultGoverningBody`'s `us-va-` test), `/api/hub-config`; (3) UI: the
 console forms; the hub UI shows the name, not the code, except a raw badge on
 `Process.tsx` (`voteState.jurisdiction`); (4) data: `20260922010000`
@@ -4872,7 +4875,7 @@ signed URL, objects swept after 24 h; every deadline close stamped with
 
 | Step | Commit | What |
 |---|---|---|
-| 1–3 | `c0d2393` | `scripts/export-hub.ts`, `import-hub.ts`, `restore-hub.ts`; `src/control/hubBundle/` (format, tar, exporter, Supabase readers); `scripts/lib/hubImport.ts` (pg engine); round-trip + unit tests |
+| 1–3 | `c0d2393` | `scripts/export-hub.ts`, `import-hub.ts`, `restore-hub.ts`; `src/operator/hubBundle/` (format, tar, exporter, Supabase readers); `scripts/lib/hubImport.ts` (pg engine); round-trip + unit tests |
 | 4 | `088112e` | Console "Export this hub" (step-up, audited, signed link); `hub-exports` bucket `20260926020000`; platform-scoped jobs in the registry; `hub_exports_sweep` |
 | 6 | `66c41d7` | `ProcessAction.at`; deadline-stamped closes; `vote_close` job; `events.recorded_at` `20260926030000`; digest by `recorded_at` |
 | 5 | (this commit) | `RUNBOOK-restore-hub.md`, rehearsed |
@@ -5016,7 +5019,7 @@ the first paying hub or any self-serve sign-up.
 - **Step-up** (`step_up_code` in the body, spent on use): hostname change,
   suspending, mode change, removing an admin, archiving. Validation runs
   first, so a refused change does not spend the code.
-- **Hubs:** `src/control/hubs.ts`. `createHub()` is the one create path; the
+- **Hubs:** `src/operator/hubs.ts`. `createHub()` is the one create path; the
   console allows demo/beta/live (demo default), `scripts/create-hub.ts` keeps
   beta/live and refuses production. Create writes the row + the same starter
   settings as before, plus `copy.governing_body_name`; a settings failure

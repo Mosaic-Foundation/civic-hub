@@ -56,7 +56,7 @@ jobs:
       # the failure says what it is. Added 2026-09-24 (multi-tenant Phase 4).
       - name: Place-name check
         run: npx tsx scripts/check-place-names.ts
-      # Only src/db/, src/control/, scripts/ and tests/ may import the raw,
+      # Only src/db/, src/control/, src/operator/, scripts/ and tests/ may import the raw,
       # service-role database client, and each such file says why with a
       # `@civic-raw-client-importer:` tag (eslint.config.js). Everything else
       # reaches data through forHub(). Added 2026-09-24 (multi-tenant 2b).

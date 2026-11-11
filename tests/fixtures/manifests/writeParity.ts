@@ -11,7 +11,7 @@ import { PLUGIN_IDS } from "../../../src/models/hubSettings.js";
 import { PROCESS_TYPE_PLUGINS, processTypeDisplays, getAllHandlers } from "../../../src/processes/registry.js";
 import { HUB_TABLES } from "../../../src/db/forHub.js";
 import { EXPORT_MANIFEST, currentRequirements } from "../../../src/db/schemaContract.js";
-import { TABLE_KEYS } from "../../../src/control/hubBundle/format.js";
+import { TABLE_KEYS } from "../../../src/operator/hubBundle/format.js";
 import { mappedEventTypes } from "../../../src/events/activitySerializer.js";
 import { PLUGIN_SECTION_ORDER, SETTINGS_SECTIONS } from "../../../src/shared/hubSettingsSections.js";
 import { JOBS } from "../../../src/jobs/registry.js";

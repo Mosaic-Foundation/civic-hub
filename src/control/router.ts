@@ -14,27 +14,10 @@ import { clientIp } from "../utils/clientIp.js";
 import { CivicError } from "../errors/index.js";
 import { logUnexpected, newRef } from "../http/route.js";
 import { flushErrors } from "../utils/errorTracking.js";
-import { RESERVED_HUB_SLUG_PURPOSES, type HubMode } from "../models/hub.js";
-import { autoRefreshOn, refreshesSamples } from "../shared/sampleRefresh.js";
-import { KEYS } from "../models/hubSettings.js";
 import { PLUGINS_OWNER_NOTE } from "../shared/settingOwners.js";
-import { PLUGIN_IDS } from "../models/hubSettings.js";
-import { listAudit, listHubAdminAudit, recordAudit } from "./audit.js";
-import { exportHubArchive } from "./hubExport.js";
-import { listStates, searchJurisdictions, suggestSlug } from "./jurisdictions.js";
-import { getHubBySlug } from "../db/hubs.js";
-import { fetchHubSettings } from "../db/hubSettingsStore.js";
-import { withHubScope } from "../config/hubContext.js";
-import { refreshSamples, type SampleRefreshReport } from "../services/sampleRefresh.js";
-import { describeJobRun } from "../jobs/describe.js";
-import { recordJobRun } from "../services/jobRuns.js";
-import { kindsWithSamples, samplePreviews, sampleTemplateTitles } from "../services/sampleTemplates.js";
-import { sampleNames } from "../services/sampleNames.js";
-import { describeInvites } from "../services/adminInvite.js";
-import { addStarterWordcloud, inviteAdmins, seedSampleInHub } from "./inHub.js";
-import { feedbackInbox, updateFeedbackItem } from "./platformFeedback.js";
-import { countReceived } from "../db/platformFeedback.js";
+import { listAudit, recordAudit } from "./audit.js";
 import { gatherDashboard } from "./dashboard/registry.js";
+import type { ControlHub, HubMode, OperatorApi } from "../operator/api.js";
 import {
   CODE_SENT,
   ControlAuthError,
@@ -62,44 +45,8 @@ import {
 } from "./entitlements.js";
 import { renderInviteEmail } from "./inviteEmail.js";
 import { mailConfigured, sendEmail, unsentReason } from "../utils/email.js";
-import {
-  consoleAdminEmail,
-  consoleHostname,
-  isConsoleHost,
-  isProductionDatabase,
-  platformDomain,
-  startHostname,
-} from "./config.js";
-import {
-  ControlInputError,
-  archiveHub,
-  changedFields,
-  configChangeNeedsStepUp,
-  createHub,
-  describeFollowOn,
-  getHub,
-  hubHandover,
-  hubAdmins,
-  hubAiLimits,
-  updateHubAiLimits,
-  hubConfigView,
-  hubPlugins,
-  hubSpecificEnvVars,
-  listHubs,
-  parseAdminList,
-  parseConfigPatch,
-  parseCreateInput,
-  parseHandoverPatch,
-  productionCreateGuard,
-  setHubAdmins,
-  unarchiveHub,
-  updateHandover,
-  updateHubConfig,
-  validateHubConfig,
-  withDerivedCode,
-  type ControlHub,
-} from "./hubs.js";
-import { approveEntry, catalogView, CatalogStateError, releaseApproveEntries, setEntryRequired, signApprovedEntries, withdrawEntry, type ReleaseRequest } from "./pluginCatalog.js";
+import { consoleAdminEmail, consoleHostname, isConsoleHost, startHostname } from "./config.js";
+import { ControlInputError } from "./errors.js";
 import { spaceTypeView } from "../shared/spaceTypes.js";
 import { isReleaseAuthorized, parseReleaseApproval } from "./releaseAuth.js";
 
@@ -235,49 +182,22 @@ async function windowedStepUp(req: Request, res: Response): Promise<"code" | "wi
 }
 
 /** The catalog view, with until when this session's catalog actions need no code. */
-async function catalogFor(res: Response) {
+async function catalogFor(op: OperatorApi, res: Response) {
   const until = res.locals.controlSession?.catalog_confirmed_until ?? null;
-  return { ...(await catalogView()), confirmed_until: until && Date.parse(until) > Date.now() ? until : null };
+  return { ...(await op.catalog()), confirmed_until: until && Date.parse(until) > Date.now() ? until : null };
 }
 
-async function loadHub(req: Request, res: Response): Promise<ControlHub | null> {
-  const hub = await getHub(String(req.params.id));
+async function loadHub(op: OperatorApi, req: Request, res: Response): Promise<ControlHub | null> {
+  const hub = await op.getHub(String(req.params.id));
   if (!hub) res.status(404).json({ error: "No such hub." });
   return hub;
 }
 
-/**
- * "Refresh samples" (2026-10-07): the daily sample refresh, now, for one demo
- * hub, plus any template the hub lacks. Recorded like the job's own run, in
- * the hub's job_runs; no audit row (Adam).
- */
-async function refreshSamplesInHub(hubId: string): Promise<{ refresh: SampleRefreshReport; titles: Record<string, string> }> {
-  const row = await getHubBySlug(hubId);
-  if (!row) throw new Error(`hub ${hubId} not found`);
-  const settings = await fetchHubSettings(hubId);
-  return withHubScope(row, settings, async () => {
-    const started = new Date();
-    const report = await refreshSamples({ now: started, addMissing: true });
-    const run = describeJobRun("sample_refresh", { status: 200, body: report as unknown as Record<string, unknown> });
-    if (run) await recordJobRun("sample_refresh", started, run, { ...report, trigger: "console" });
-    // Titles beside the ids, filled with this hub's names, so the console
-    // says what it added by name (3b follow-up).
-    return { refresh: report, titles: sampleTemplateTitles(sampleNames()) };
-  });
-}
-
-async function hubDetail(hub: ControlHub) {
-  return {
-    hub,
-    config: await hubConfigView(hub),
-    handover: await hubHandover(hub),
-    plugins: await hubPlugins(hub.id),
-    admins: await hubAdmins(hub.id),
-    ai_limits: await hubAiLimits(hub),
-    // "Keep sample content fresh automatically" (2026-11-05): the hub admin's
-    // switch, shown on the Sample content card.
-    samples: { auto_refresh: autoRefreshOn((await fetchHubSettings(hub.id))[KEYS.SAMPLES_AUTO_REFRESH]) },
-  };
+/** A hub's page, which has to exist: it was just read or changed. */
+async function detail(op: OperatorApi, hubId: string) {
+  const d = await op.hubDetail(hubId);
+  if (!d) throw new Error(`hub ${hubId} not found on read-back`);
+  return d;
 }
 
 /** The action is done; record it. A failed record is reported, not hidden. */
@@ -300,17 +220,7 @@ function catalogNotes(body: unknown): string | null {
   return v.trim();
 }
 
-/** A catalog change, its state errors answered as the console's 400s. */
-async function catalogChange<T>(fn: () => Promise<T>): Promise<T> {
-  try {
-    return await fn();
-  } catch (err) {
-    if (err instanceof CatalogStateError) throw new ControlInputError(err.message, 409);
-    throw err;
-  }
-}
-
-export function controlRouter(): Router {
+export function controlRouter(op: OperatorApi): Router {
   const r = express.Router();
   r.use(requireConsoleHost);
   r.use(express.json({ limit: "64kb" }));
@@ -365,7 +275,7 @@ export function controlRouter(): Router {
       return;
     }
     const { commit, entries } = parseReleaseApproval(req.body);
-    const outcomes = await releaseApproveEntries(commit, entries as ReleaseRequest[]);
+    const outcomes = await op.releaseApprove(commit, entries);
     for (const o of outcomes) {
       await audited(res, {
         actor: `release@${commit}`,
@@ -391,21 +301,21 @@ export function controlRouter(): Router {
   // --- What the create form needs to know ---
 
   r.get("/control/config", route(async (_req, res) => {
-    const hubs = await listHubs();
+    const info = await op.createInfo();
     res.json({
       console_hostname: consoleHostname(),
-      platform_domain: platformDomain(),
-      reserved_slugs: RESERVED_HUB_SLUG_PURPOSES,
-      plugin_ids: PLUGIN_IDS,
+      platform_domain: info.platform_domain,
+      reserved_slugs: info.reserved_slugs,
+      plugin_ids: info.plugin_ids,
       // The create form disables "Start with sample content" for the rest.
-      sample_kinds: kindsWithSamples(),
-      production_database: isProductionDatabase(),
-      hub_specific_env_vars: hubSpecificEnvVars(),
-      create_refusal: productionCreateGuard(hubs.length),
+      sample_kinds: info.sample_kinds,
+      production_database: info.production_database,
+      hub_specific_env_vars: info.hub_specific_env_vars,
+      create_refusal: info.create_refusal,
       // The create form's preview: a sample card's first line, placeholders
       // and all, per "<kind>:<type>" — a card that will really be seeded
       // (review R21); the form fills them from what is typed.
-      sample_previews: samplePreviews(),
+      sample_previews: info.sample_previews,
     });
   }));
 
@@ -414,7 +324,7 @@ export function controlRouter(): Router {
   // The state dropdown. Empty when the list has not been loaded; the form
   // then offers only "Other / not listed".
   r.get("/control/jurisdictions/states", route(async (_req, res) => {
-    res.json({ states: await listStates() });
+    res.json({ states: await op.listStates() });
   }));
 
   // The type-ahead: ?state=va&type=town&q=flo. Each match names the hubs
@@ -422,7 +332,7 @@ export function controlRouter(): Router {
   r.get("/control/jurisdictions", route(async (req, res) => {
     const str = (v: unknown) => (typeof v === "string" ? v : "");
     res.json({
-      matches: await searchJurisdictions({
+      matches: await op.searchJurisdictions({
         state: str(req.query.state),
         type: str(req.query.type),
         q: str(req.query.q),
@@ -434,7 +344,7 @@ export function controlRouter(): Router {
   // The shortest free address: ?name=Floyd town&type=town&state=va.
   r.get("/control/slug-suggestion", route(async (req, res) => {
     const str = (v: unknown) => (typeof v === "string" ? v : "");
-    res.json(await suggestSlug({ name: str(req.query.name), type: str(req.query.type) || null, state: str(req.query.state) || null }));
+    res.json(await op.suggestSlug({ name: str(req.query.name), type: str(req.query.type) || null, state: str(req.query.state) || null }));
   }));
 
   // --- The Dashboard (the dashboard slice): every section's loader at once ---
@@ -442,18 +352,18 @@ export function controlRouter(): Router {
   // ?fresh=1 is the page's Refresh button: skip the one-minute caches.
   r.get("/control/dashboard", route(async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
-    res.json(await gatherDashboard({ fresh: req.query.fresh === "1" }));
+    res.json(await gatherDashboard(op, { fresh: req.query.fresh === "1" }));
   }));
 
   // --- Hubs ---
 
   r.get("/control/hubs", route(async (_req, res) => {
-    res.json({ hubs: await listHubs() });
+    res.json({ hubs: await op.listHubs() });
   }));
 
   r.post("/control/hubs", route(async (req, res) => {
-    const input = parseCreateInput((req.body ?? {}) as Record<string, unknown>);
-    const { hub, settings } = await createHub(input, {
+    const input = await op.parseCreate((req.body ?? {}) as Record<string, unknown>);
+    const { hub, settings } = await op.createHub(input, {
       allowedModes: CONSOLE_CREATE_MODES,
       updatedBy: `console:${actor(res)}`,
     });
@@ -464,7 +374,7 @@ export function controlRouter(): Router {
     let sample: unknown = null;
     if (input.sampleContent) {
       try {
-        const report = await seedSampleInHub(hub.id);
+        const report = await op.seedSamples(hub.id);
         await audited(res, { actor: actor(res), action: "hub.sample_seed", hubId: hub.id, before: null, after: report });
         sample = report;
       } catch (err) {
@@ -472,65 +382,58 @@ export function controlRouter(): Router {
         sample = { error: err instanceof Error ? err.message : String(err) };
       }
     }
-    const starter = await addStarterWordcloud(hub.id, `console:${actor(res)}`);
+    const starter = await op.addStarterWordcloud(hub.id, `console:${actor(res)}`);
     // The first admin hears about it (review R38).
-    const invites = await inviteAdmins(hub.id, input.admins);
+    const invites = await op.inviteAdmins(hub.id, input.admins);
     res.status(201).json({
-      ...(await hubDetail(hub)),
+      ...(await detail(op, hub.id)),
       sample_content: sample,
       starter_wordcloud: starter,
-      invites,
-      message: describeInvites(invites),
+      invites: invites.report,
+      message: invites.message,
     });
   }));
 
   r.get("/control/hubs/:id", route(async (req, res) => {
-    const hub = await loadHub(req, res);
-    if (hub) res.json(await hubDetail(hub));
+    const d = await op.hubDetail(String(req.params.id));
+    if (!d) res.status(404).json({ error: "No such hub." });
+    else res.json(d);
   }));
 
   r.patch("/control/hubs/:id", route(async (req, res) => {
-    const hub = await loadHub(req, res);
+    const hub = await loadHub(op, req, res);
     if (!hub) return;
-    const before = await hubConfigView(hub);
-    let changes = changedFields(before, parseConfigPatch((req.body ?? {}) as Record<string, unknown>));
-    if (Object.keys(changes).length === 0) {
-      res.json(await hubDetail(hub));
+    const plan = await op.planConfig(hub.id, (req.body ?? {}) as Record<string, unknown>);
+    if (Object.keys(plan.changes).length === 0) {
+      res.json(await detail(op, hub.id));
       return;
     }
-    await validateHubConfig(hub, changes);
     let confirmed: "code" | "window" | null = null;
-    if (configChangeNeedsStepUp(changes)) {
+    if (plan.needs_step_up) {
       const how = await windowedStepUp(req, res);
       if (!how) return;
       confirmed = how;
     }
-    changes = await withDerivedCode(hub, changes);
-    const followOn = await updateHubConfig(hub, changes, actor(res));
-    const priorValues = Object.fromEntries(
-      Object.keys(changes).map((k) => [k, (before as unknown as Record<string, unknown>)[k]]),
-    );
+    const { changes, follow_on: followOn, message } = await op.applyConfig(hub.id, plan.changes, actor(res));
     await audited(res, {
       actor: actor(res),
       action: "hub.update",
       hubId: hub.id,
-      before: priorValues,
+      before: plan.before,
       after: {
         ...(Object.keys(followOn.carried).length ? { ...changes, carried: followOn.carried } : changes),
         ...(confirmed ? { confirmed } : {}),
       },
     });
-    res.json({ ...(await hubDetail((await getHub(hub.id))!)), follow_on: followOn, message: describeFollowOn(followOn) });
+    res.json({ ...(await detail(op, hub.id)), follow_on: followOn, message });
   }));
 
   // What residents see, while the hub is a demo (review R48). Refused once
   // it has left demo: then it is the hub's admins' (src/shared/settingOwners.ts).
   r.put("/control/hubs/:id/handover", route(async (req, res) => {
-    const hub = await loadHub(req, res);
+    const hub = await loadHub(op, req, res);
     if (!hub) return;
-    if (hub.archived_at) throw new ControlInputError("This hub is archived.");
-    const patch = parseHandoverPatch(req.body);
-    const result = await updateHandover(hub, patch, actor(res));
+    const { result, message } = await op.updateHandover(hub.id, req.body, actor(res));
     if (Object.keys(result.after).length > 0) {
       await audited(res, {
         actor: actor(res),
@@ -540,18 +443,17 @@ export function controlRouter(): Router {
         after: Object.keys(result.carried).length ? { ...result.after, carried: result.carried } : result.after,
       });
     }
-    res.json({ ...(await hubDetail((await getHub(hub.id))!)), follow_on: result, message: describeFollowOn(result) });
+    res.json({ ...(await detail(op, hub.id)), follow_on: result, message });
   }));
 
   // AI limits (Audit 2, A6): the operator's overrides of the defaults, at any
   // time. Not destructive, so no step-up; audited.
   r.put("/control/hubs/:id/ai-limits", route(async (req, res) => {
-    const hub = await loadHub(req, res);
+    const hub = await loadHub(op, req, res);
     if (!hub) return;
-    if (hub.archived_at) throw new ControlInputError("This hub is archived.");
-    const result = await updateHubAiLimits(hub, req.body, actor(res));
+    const result = await op.updateAiLimits(hub.id, req.body, actor(res));
     await audited(res, { actor: actor(res), action: "hub.ai_limits", hubId: hub.id, before: result.before, after: result.after });
-    res.json(await hubDetail((await getHub(hub.id))!));
+    res.json(await detail(op, hub.id));
   }));
 
   // Plugin switches are the hub's admins' after create (review R10, Adam
@@ -562,77 +464,72 @@ export function controlRouter(): Router {
   }));
 
   r.put("/control/hubs/:id/admins", route(async (req, res) => {
-    const hub = await loadHub(req, res);
+    const hub = await loadHub(op, req, res);
     if (!hub) return;
-    const next = parseAdminList(req.body);
-    const before = await hubAdmins(hub.id);
+    const { before, next } = await op.planAdmins(hub.id, req.body);
     if (JSON.stringify(before) === JSON.stringify(next)) {
-      res.json(await hubDetail(hub));
+      res.json(await detail(op, hub.id));
       return;
     }
     // Any change to who runs a hub takes a fresh code, adding as well as
     // removing, as on the hub's own Admins page (review R52).
     const confirmed = await windowedStepUp(req, res);
     if (!confirmed) return;
-    await setHubAdmins(hub.id, next, actor(res));
+    await op.setAdmins(hub.id, next, actor(res));
     await audited(res, { actor: actor(res), action: "hub.admins", hubId: hub.id, before, after: next });
-    const invites = await inviteAdmins(hub.id, next.filter((e) => !before.includes(e)));
-    res.json({ ...(await hubDetail(hub)), invites, message: describeInvites(invites) });
+    const invites = await op.inviteAdmins(hub.id, next.filter((e) => !before.includes(e)));
+    res.json({ ...(await detail(op, hub.id)), invites: invites.report, message: invites.message });
   }));
 
-  // Demo and beta hubs (refreshesSamples): a live hub never gets samples back.
+  // Demo and beta hubs only (the hub refuses the rest): a live hub never gets samples back.
   r.post("/control/hubs/:id/samples/refresh", route(async (req, res) => {
-    const hub = await loadHub(req, res);
+    const hub = await loadHub(op, req, res);
     if (!hub) return;
-    if (hub.archived_at) throw new ControlInputError("This hub is archived.");
-    if (!refreshesSamples(hub.mode)) {
-      throw new ControlInputError("Samples are refreshed on demo and beta hubs only; this hub is in " + hub.mode + " mode.");
-    }
     // Titles beside ids, so the console names what it added (3b follow-up).
-    res.json(await refreshSamplesInHub(hub.id));
+    res.json(await op.refreshSamples(hub.id));
   }));
 
   r.post("/control/hubs/:id/archive", route(async (req, res) => {
-    const hub = await loadHub(req, res);
+    const hub = await loadHub(op, req, res);
     if (!hub) return;
     if (hub.archived_at) throw new ControlInputError("This hub is already archived.");
     const confirmed = await windowedStepUp(req, res);
     if (!confirmed) return;
-    await archiveHub(hub);
-    const after = (await getHub(hub.id))!;
+    await op.archive(hub.id);
+    const after = await detail(op, hub.id);
     await audited(res, {
       actor: actor(res),
       action: "hub.archive",
       hubId: hub.id,
       before: { status: hub.status, archived_at: hub.archived_at },
-      after: { status: after.status, archived_at: after.archived_at, confirmed },
+      after: { status: after.hub.status, archived_at: after.hub.archived_at, confirmed },
     });
-    res.json(await hubDetail(after));
+    res.json(after);
   }));
 
   r.post("/control/hubs/:id/unarchive", route(async (req, res) => {
-    const hub = await loadHub(req, res);
+    const hub = await loadHub(op, req, res);
     if (!hub) return;
-    await unarchiveHub(hub);
-    const after = (await getHub(hub.id))!;
+    await op.unarchive(hub.id);
+    const after = await detail(op, hub.id);
     await audited(res, {
       actor: actor(res),
       action: "hub.unarchive",
       hubId: hub.id,
       before: { status: hub.status, archived_at: hub.archived_at },
-      after: { status: after.status, archived_at: after.archived_at },
+      after: { status: after.hub.status, archived_at: after.hub.archived_at },
     });
-    res.json(await hubDetail(after));
+    res.json(after);
   }));
 
   // An export carries the hub's personal data off the platform: step-up,
   // and recorded before the link is handed over. The link lives ten
   // minutes; the object is swept after 24 hours (the audit row stays).
   r.post("/control/hubs/:id/export", route(async (req, res) => {
-    const hub = await loadHub(req, res);
+    const hub = await loadHub(op, req, res);
     if (!hub) return;
     if (!(await stepUp(req, res))) return;
-    const result = await exportHubArchive(hub.id, actor(res));
+    const result = await op.exportHub(hub.id, actor(res));
     await audited(res, {
       actor: actor(res),
       action: "hub.export",
@@ -732,26 +629,26 @@ export function controlRouter(): Router {
   // What the hub's own admins did with a fresh code (Phase 7): read from the
   // hub's hub_admin_audit_log, nothing copied into control_audit_log.
   r.get("/control/hubs/:id/admin-audit", route(async (req, res) => {
-    const hub = await loadHub(req, res);
-    if (hub) res.json({ entries: await listHubAdminAudit(hub.id, Number(req.query.limit) || 100) });
+    const hub = await loadHub(op, req, res);
+    if (hub) res.json({ entries: await op.hubAdminAudit(hub.id, Number(req.query.limit) || 100) });
   }));
 
   // Civic.Social's feedback inbox, across hubs (feedback routing): software
   // reports and hub admins' messages, grouped by likely duplicates.
   r.get("/control/feedback", route(async (req, res) => {
-    res.json(await feedbackInbox({ stream: req.query.stream, status: req.query.status }));
+    res.json(await op.feedbackInbox({ stream: req.query.stream, status: req.query.status }));
   }));
 
   // The nav's count: items Civic.Social has not looked at yet.
   r.get("/control/feedback/count", route(async (_req, res) => {
-    res.json({ received: await countReceived() });
+    res.json({ received: await op.feedbackCount() });
   }));
 
   // Status (flows back to the hub's badge) and the GitHub issue link. Fixed,
   // for a consenting sender, emails them once. The audit row carries the
   // status and link only, never the sender's address.
   r.patch("/control/feedback/:id", route(async (req, res) => {
-    const result = await updateFeedbackItem(String(req.params.id), req.body);
+    const result = await op.updateFeedback(String(req.params.id), req.body);
     if (!result) {
       res.status(404).json({ error: "not_found", message: "No such feedback item." });
       return;
@@ -774,7 +671,7 @@ export function controlRouter(): Router {
   // The plugin catalog (ADR-014): every entry, with its grant in plain words
   // and whether this deployment's files match it; what the deployment mounts.
   r.get("/control/plugins", route(async (_req, res) => {
-    res.json(await catalogFor(res));
+    res.json(await catalogFor(op, res));
   }));
 
   // Approving a catalog entry lets every hub on this deployment run that
@@ -783,7 +680,7 @@ export function controlRouter(): Router {
     const confirmed = await windowedStepUp(req, res);
     if (!confirmed) return;
     const notes = catalogNotes(req.body);
-    const { before, after } = await catalogChange(() => approveEntry(String(req.params.id), actor(res), notes));
+    const { before, after } = await op.approveEntry(String(req.params.id), actor(res), notes);
     await audited(res, {
       actor: actor(res),
       action: "plugin.approve",
@@ -791,7 +688,7 @@ export function controlRouter(): Router {
       before: { id: before.id, status: before.status },
       after: { id: after.id, package: after.package, version: after.version, hash: after.hash, status: after.status, signature_key: after.signature_key, confirmed },
     });
-    res.json(await catalogFor(res));
+    res.json(await catalogFor(op, res));
   }));
 
   // Signing the entries approved before signatures (and every entry again
@@ -799,7 +696,7 @@ export function controlRouter(): Router {
   r.post("/control/plugins/sign", route(async (req, res) => {
     const confirmed = await windowedStepUp(req, res);
     if (!confirmed) return;
-    const { key, signed } = await catalogChange(() => signApprovedEntries());
+    const { key, signed } = await op.signApproved();
     await audited(res, {
       actor: actor(res),
       action: "plugin.sign",
@@ -807,7 +704,7 @@ export function controlRouter(): Router {
       before: null,
       after: { key, entries: signed, confirmed },
     });
-    res.json(await catalogFor(res));
+    res.json(await catalogFor(op, res));
   }));
 
   // Marking a version required moves every hub on an older one to it, without
@@ -817,7 +714,7 @@ export function controlRouter(): Router {
     if (!confirmed) return;
     const required = (req.body as { required?: unknown } | undefined)?.required;
     if (typeof required !== "boolean") throw new ControlInputError('Send { "required": true } or { "required": false }.', 400);
-    const { before, after, moved } = await catalogChange(() => setEntryRequired(String(req.params.id), required));
+    const { before, after, moved } = await op.setRequired(String(req.params.id), required);
     await audited(res, {
       actor: actor(res),
       action: "plugin.required",
@@ -825,7 +722,7 @@ export function controlRouter(): Router {
       before: { id: before.id, required: before.required },
       after: { id: after.id, package: after.package, version: after.version, required: after.required, hubs_moved: moved, confirmed },
     });
-    res.json(await catalogFor(res));
+    res.json(await catalogFor(op, res));
   }));
 
   // Withdrawing stops every server mounting that version within a minute.
@@ -833,7 +730,7 @@ export function controlRouter(): Router {
     const confirmed = await windowedStepUp(req, res);
     if (!confirmed) return;
     const notes = catalogNotes(req.body);
-    const { before, after } = await catalogChange(() => withdrawEntry(String(req.params.id), actor(res), notes));
+    const { before, after } = await op.withdrawEntry(String(req.params.id), actor(res), notes);
     await audited(res, {
       actor: actor(res),
       action: "plugin.withdraw",
@@ -841,7 +738,7 @@ export function controlRouter(): Router {
       before: { id: before.id, status: before.status },
       after: { id: after.id, package: after.package, version: after.version, hash: after.hash, status: after.status, confirmed },
     });
-    res.json(await catalogFor(res));
+    res.json(await catalogFor(op, res));
   }));
 
   // Anything else on the console host is not a hub page.

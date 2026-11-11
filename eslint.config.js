@@ -17,7 +17,7 @@
 //
 //   // @civic-raw-client-importer: <why this file needs it>
 //
-// and the tag is honoured only under src/db/, src/control/, src/hosting/
+// and the tag is honoured only under src/db/, src/control/, src/operator/, src/hosting/
 // (Supabase Storage, ADR-012), scripts/ and tests/ (the tests that prove what the database refuses, run against the
 // local stack only). A tag anywhere else is itself an error, so a request
 // module cannot tag its way out. Contract: BUILD-PLAN-multi-tenant.md →
@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 import tsParser from "@typescript-eslint/parser";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-const ALLOWED_ROOTS = ["src/db/", "src/control/", "src/hosting/", "scripts/", "tests/"];
+const ALLOWED_ROOTS = ["src/db/", "src/control/", "src/operator/", "src/hosting/", "scripts/", "tests/"];
 const RAW_PACKAGES = [/^@supabase\/supabase-js(\/|$)/];
 const PROVIDER_TAG = /^\s*\/\/\s*@civic-raw-client\b(?!-)/m;
 const IMPORTER_TAG = /@civic-raw-client-importer:\s*\S/;
@@ -62,7 +62,7 @@ function isTaggedModule(fromFile, spec) {
 const rawClientRule = {
   meta: {
     type: "problem",
-    docs: { description: "The raw database client is for src/db/, src/control/ and scripts/ only." },
+    docs: { description: "The raw database client is for src/db/, src/control/, src/operator/ and scripts/ only." },
     schema: [],
   },
   create(context) {
@@ -81,7 +81,7 @@ const rawClientRule = {
           node,
           message:
             `"${spec}" is the raw, service-role database client and sees every hub. ` +
-            "Outside src/db/, src/control/ and scripts/, reach data through forHub(hubId) " +
+            "Outside src/db/, src/control/, src/operator/ and scripts/, reach data through forHub(hubId) " +
             "(src/db/forHub.ts).",
         });
       } else if (!tagged) {
@@ -100,7 +100,7 @@ const rawClientRule = {
           context.report({
             node,
             message:
-              "@civic-raw-client-importer is honoured only under src/db/, src/control/, src/hosting/, " +
+              "@civic-raw-client-importer is honoured only under src/db/, src/control/, src/operator/, src/hosting/, " +
               "scripts/ and tests/. Convert this file to forHub() instead.",
           });
         }
@@ -155,6 +155,72 @@ const controlBoundaryRule = {
   },
 };
 
+// The console seam (the console split, Seam-Audit-2026-11-10.md): the console
+// (src/control/) reaches hubs only through the operator API. A console file
+// may import its own directory, src/shared/ (plain data and functions), the
+// operator API's contract (src/operator/api.ts), and the generic plumbing
+// below, which the console takes a copy of when it moves to its own
+// repository. Anything else of the hub's is refused: ask the hub through
+// src/operator/api.ts instead. The list shrinks; it never grows without a
+// reason in this comment.
+const CONSOLE_DIR = "src/control/";
+const CONSOLE_MAY_IMPORT = [
+  "src/control/",
+  "src/shared/",
+  "src/operator/api.ts",
+  // Generic plumbing, copied at the extraction:
+  "src/config/env.ts",
+  "src/errors/index.ts",
+  "src/db/client.ts", // the console's own tables, until they move to their own schema (split step 3)
+  "src/db/rateLimit.ts",
+  "src/utils/email.ts",
+  "src/utils/hash.ts",
+  "src/utils/id.ts",
+  "src/utils/clientIp.ts",
+  "src/utils/hubTime.ts",
+  "src/utils/errorTracking.ts",
+  "src/modules/civic.auth/otp.ts",
+  "src/modules/civic.auth/codeRules.ts",
+  "src/http/route.ts",
+  "src/http/health.ts",
+  "src/http/clientErrors.ts",
+  "src/middleware/hub.ts", // normalizeHostname only
+];
+
+function relTarget(fromFile, spec) {
+  const target = relative(ROOT, resolve(dirname(fromFile), spec)).split("\\").join("/");
+  return target.replace(/\.js$/, ".ts");
+}
+
+const consoleSeamRule = {
+  meta: {
+    type: "problem",
+    docs: { description: "The console (src/control/) reaches hubs only through the operator API (src/operator/api.ts)." },
+    schema: [],
+  },
+  create(context) {
+    const rel = relative(ROOT, context.filename).split("\\").join("/");
+    if (!rel.startsWith(CONSOLE_DIR)) return {};
+    function check(node, spec) {
+      if (typeof spec !== "string" || !spec.startsWith(".")) return;
+      const target = relTarget(context.filename, spec);
+      if (CONSOLE_MAY_IMPORT.some((a) => (a.endsWith("/") ? target.startsWith(a) : target === a))) return;
+      context.report({
+        node,
+        message:
+          `"${spec}" is the hub's (${target}). The console reaches hubs only through the operator API: ` +
+          "add a method to src/operator/api.ts (and ./local.ts) and call it. See the civic/console-seam comment in eslint.config.js.",
+      });
+    }
+    return {
+      ImportDeclaration: (n) => check(n, n.source.value),
+      ExportNamedDeclaration: (n) => n.source && check(n, n.source.value),
+      ExportAllDeclaration: (n) => check(n, n.source.value),
+      ImportExpression: (n) => n.source.type === "Literal" && check(n, n.source.value),
+    };
+  },
+};
+
 // The hosting boundary (Architecture 5, ADR-012): the engine knows nothing
 // about where it runs. Outside the hosting layer this refuses:
 //   - importing src/hosting/ (the vendors' implementations, the console's
@@ -165,7 +231,7 @@ const controlBoundaryRule = {
 // hosting layer itself, the console (src/control/), the composition roots
 // (src/app.ts, src/index.ts, api/), scripts and tests.
 const HOSTING_DIR = "src/hosting/";
-const HOSTING_IMPORTERS = ["src/hosting/", "src/control/", "api/", "scripts/", "tests/"];
+const HOSTING_IMPORTERS = ["src/hosting/", "src/control/", "src/operator/", "api/", "scripts/", "tests/"];
 const HOSTING_ENTRY_FILES = ["src/index.ts", "src/app.ts"];
 const VENDOR_PACKAGES = [/^youtube-transcript(\/|$)/, /^@anthropic-ai\//, /^resend$/, /^@sentry\//, /^@vercel\//];
 
@@ -231,7 +297,7 @@ const hostingBoundaryRule = {
 //     src/controllers/. It calls a service or a module.
 // Every module, controller and caller was converted when the rule came in;
 // it has no exemptions.
-const PROCESS_TABLE_OWNERS = ["src/services/processService.ts", "src/services/processRows.ts", "src/db/", "src/control/hubBundle/"];
+const PROCESS_TABLE_OWNERS = ["src/services/processService.ts", "src/services/processRows.ts", "src/db/", "src/operator/hubBundle/"];
 const QUERY_NAMES = new Set(["forHub", "readAll", "inChunks", "getDb", "getHubTokenDb"]);
 
 function resolvesIntoDb(fromFile, spec) {
@@ -319,7 +385,7 @@ const PEOPLE_LIST_READERS = {
   "src/models/hubSettings.ts": "the key names",
   "src/controllers/hubPeopleController.ts": "the admin panel edits the lists",
   "src/controllers/adminSettingsController.ts": "the admin panel shows the lists",
-  "src/control/hubs.ts": "the console sets a hub's admins (create, handover)",
+  "src/operator/hubs.ts": "the console sets a hub's admins through the operator API (create, handover)",
   "src/services/mailGuard.ts": "mail: who may receive the hub's mail",
   "src/jobs/adminDigest.ts": "mail: the admin digest's recipients",
   "src/services/cronAlerts.ts": "mail: meeting-summary notices to admins",
@@ -606,8 +672,8 @@ export default [
     languageOptions: { parser: tsParser, sourceType: "module", ecmaVersion: "latest" },
     // Other plugins' disable comments may exist in the tree; they are not errors here.
     linterOptions: { reportUnusedDisableDirectives: "off" },
-    plugins: { civic: { rules: { "raw-client": rawClientRule, "control-boundary": controlBoundaryRule, "authz-seam": authzSeamRule, "hosting-boundary": hostingBoundaryRule, "db-convention": dbConventionRule, "package-boundary": packageBoundaryRule } } },
-    rules: { "civic/raw-client": "error", "civic/control-boundary": "error", "civic/authz-seam": "error", "civic/hosting-boundary": "error", "civic/db-convention": "error", "civic/package-boundary": "error" },
+    plugins: { civic: { rules: { "raw-client": rawClientRule, "control-boundary": controlBoundaryRule, "console-seam": consoleSeamRule, "authz-seam": authzSeamRule, "hosting-boundary": hostingBoundaryRule, "db-convention": dbConventionRule, "package-boundary": packageBoundaryRule } } },
+    rules: { "civic/raw-client": "error", "civic/control-boundary": "error", "civic/console-seam": "error", "civic/authz-seam": "error", "civic/hosting-boundary": "error", "civic/db-convention": "error", "civic/package-boundary": "error" },
   },
   // One typed config module (Audit 4, F7): the server and api/ read their
   // environment only through src/config/env.ts. Scripts and tests read their

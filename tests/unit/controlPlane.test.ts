@@ -3,13 +3,14 @@
 // one-person operator setting.
 
 import { afterEach, describe, expect, it } from "vitest";
-import { consoleAdminEmail, isConsoleHost, platformDomain } from "../../src/control/config.js";
-import { hostnameShapeProblem, hubSpecificEnvVars, productionCreateGuard } from "../../src/control/hubs.js";
-import { configChangeNeedsStepUp } from "../../src/control/hubs.js";
+import { consoleAdminEmail, isConsoleHost } from "../../src/control/config.js";
+import { platformDomain } from "../../src/operator/platform.js";
+import { hostnameShapeProblem, hubSpecificEnvVars, productionCreateGuard } from "../../src/operator/hubs.js";
+import { configChangeNeedsStepUp } from "../../src/operator/hubs.js";
 
 const saved = { ...process.env };
 afterEach(() => {
-  for (const k of ["SUPABASE_URL", "CIVIC_CONSOLE_HOSTNAME", "CIVIC_CONSOLE_ADMIN_EMAIL"]) {
+  for (const k of ["SUPABASE_URL", "CIVIC_CONSOLE_HOSTNAME", "CIVIC_CONSOLE_ADMIN_EMAIL", "CIVIC_PLATFORM_DOMAIN", "CIVIC_START_HOSTNAME"]) {
     if (saved[k] === undefined) delete process.env[k];
     else process.env[k] = saved[k];
   }
@@ -49,11 +50,22 @@ describe("hostnames", () => {
   it("refuses the console's own hostname and reserved names under the platform domain", () => {
     process.env.CIVIC_CONSOLE_HOSTNAME = "console.civic.social";
     expect(platformDomain()).toBe("civic.social");
-    expect(hostnameShapeProblem("console.civic.social")).toContain("console's own");
+    expect(hostnameShapeProblem("console.civic.social")).toContain("platform's own");
     expect(hostnameShapeProblem("polis.civic.social")).toContain("reserved");
     expect(hostnameShapeProblem("floyd.civic.social")).toContain("reserved");
     expect(hostnameShapeProblem("athens.civic.social")).toBeNull();
     expect(hostnameShapeProblem("polis.example.org")).toBeNull();
+  });
+
+  it("takes the platform domain outright once the console lives elsewhere (the console split)", () => {
+    process.env.CIVIC_CONSOLE_HOSTNAME = "console.mosaic.social";
+    process.env.CIVIC_PLATFORM_DOMAIN = "civic.social";
+    process.env.CIVIC_START_HOSTNAME = "start.civic.social";
+    expect(platformDomain()).toBe("civic.social");
+    expect(hostnameShapeProblem("polis.civic.social")).toContain("reserved");
+    expect(hostnameShapeProblem("start.civic.social")).toContain("platform's own");
+    expect(hostnameShapeProblem("console.mosaic.social")).toContain("platform's own");
+    expect(hostnameShapeProblem("polis.mosaic.social")).toBeNull();
   });
 
   it("refuses what is not a bare hostname", () => {

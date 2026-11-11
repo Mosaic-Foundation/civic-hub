@@ -8,7 +8,7 @@ install (`scripts/import-hub.ts`; see "Moving a hub out" at the end).
 
 Tools: `scripts/export-hub.ts`, `scripts/restore-hub.ts` (and
 `scripts/lib/hubImport.ts` behind them). Bundle format: the `README.md` inside
-any export, and `src/control/hubBundle/format.ts`. Decisions:
+any export, and `src/operator/hubBundle/format.ts`. Decisions:
 `BUILD-PLAN-multi-tenant.md` → Phase 5 → "Part two"; ADR-005.
 
 ---

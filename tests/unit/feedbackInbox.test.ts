@@ -1,10 +1,10 @@
 // The console's feedback inbox: what a status or issue-link change accepts,
 // and the one email a consenting sender gets when their report is fixed
-// (src/control/platformFeedback.ts). Pure parts only; the API layer covers
+// (src/operator/platformFeedback.ts). Pure parts only; the API layer covers
 // the database.
 
 import { describe, expect, it } from "vitest";
-import { parseFeedbackPatch, renderFixedEmail } from "../../src/control/platformFeedback.js";
+import { parseFeedbackPatch, renderFixedEmail } from "../../src/operator/platformFeedback.js";
 import { normalizePagePath } from "../../src/modules/civic.feedback/index.js";
 
 describe("inbox changes", () => {

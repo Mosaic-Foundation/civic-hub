@@ -1,5 +1,5 @@
 // The Dashboard's views, one per section id the server lists
-// (src/control/dashboard/registry.ts). Each view has:
+// (src/operator/dashboard/registry.ts). Each view has:
 //   - tab: the short name on its tab;
 //   - summarize: the section's tile on the Overview (a tone, a headline
 //     number, a line) and its concerns for "Needs a look";

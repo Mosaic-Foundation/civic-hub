@@ -57,6 +57,8 @@ import { getAllHandlers } from "./processes/registry.js";
 import { awaitPackages, mountPackageRoutes } from "./plugins/mount.js";
 import { mountFeatureRoutes } from "./plugins/features.js";
 import { API_SECURITY_HEADERS } from "./shared/securityHeaders.js";
+import { operatorRouter } from "./operator/router.js";
+import { localOperator } from "./operator/local.js";
 
 // Every declared setting, checked once (src/config/settings.ts, ADR-012): a
 // missing required one or a value of the wrong type stops the start here,
@@ -129,6 +131,11 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// The operator API (console split, src/operator/api.ts): the console's way in,
+// once it is its own deployment. The deployment's, not a hub's, so before hub
+// resolution; answers 404 everywhere unless CIVIC_OPERATOR_TOKEN is set.
+app.use(operatorRouter(localOperator));
 
 // Hub resolution — hostname to hub, before anything reads or writes data.
 // One deployment serves many hubs, so which hub a request belongs to is the

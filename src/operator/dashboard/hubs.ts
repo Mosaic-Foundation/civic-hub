@@ -16,7 +16,7 @@ import { memberVisibility } from "../../services/members.js";
 import { listHubs, type ControlHub } from "../hubs.js";
 import { inHubScope } from "../inHub.js";
 import { hubHealth, type HubHealth } from "./hubHealth.js";
-import type { SectionContext } from "./registry.js";
+import type { SectionContext } from "../../shared/dashboardRun.js";
 
 export type HubGroup = "live" | "beta" | "demo" | "archived";
 

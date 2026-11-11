@@ -13,7 +13,7 @@
 // The prompt names no place (the place-name rule): it reads right in a town,
 // a school district, an organization or a campaign.
 //
-// Callers: hub creation (src/control/inHub.ts: the console, the start page,
+// Callers: hub creation (src/operator/inHub.ts: the console, the start page,
 // scripts/create-hub.ts), sample removal (src/services/sampleContent.ts), and
 // scripts/add-starter-wordcloud.ts for hubs made before this existed.
 

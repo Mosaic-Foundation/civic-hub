@@ -7,7 +7,7 @@
 // process: a ballot, a comment, an endorsement, a project update, a link.
 //
 // This file is the one place that says which column of which table names a
-// process. The export leaves those rows behind (src/control/hubBundle/
+// process. The export leaves those rows behind (src/operator/hubBundle/
 // format.ts → isSampleContentRow) and removal deletes them
 // (src/services/sampleContent.ts), both from these lists, so the two can never
 // disagree about what "all sample content" is. tests/unit/sampleContent.test.ts

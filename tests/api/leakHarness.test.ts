@@ -648,6 +648,9 @@ describe("GET, as Athens, with Floyd's ids", () => {
 const X = { reason: "leak harness", title: `x ${MARKER_A}`, body: `x ${MARKER_A}`, description: "x" };
 type WritePlan = { body?: Record<string, unknown>; skip?: string };
 const WRITE_PLAN: Record<string, WritePlan> = {
+  "POST /operator/rpc/:method": {
+    skip: "the operator API (console split): the deployment's, not a hub's; 404 without CIVIC_OPERATOR_TOKEN, 401 without its bearer (tests/unit/operatorApi.test.ts)",
+  },
   "POST /process/:id/links": { body: { to_id: "", relation: "references" } },
   "DELETE /process/:id/links/:linkId": {},
   "POST /process/:id/edit": { body: { title: X.title, description: X.description } },

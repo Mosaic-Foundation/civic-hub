@@ -42,7 +42,7 @@ describe("civic/package-boundary", () => {
       `import { aiComplete } from "../../src/adapters/ai.js";`,
       `import { sendEmail } from "../../src/services/mailer.js";`,
       `import { installHosting } from "../../src/hosting/index.js";`,
-      `import { listHubs } from "../../src/control/hubs.js";`,
+      `import { listHubs } from "../../src/operator/hubs.js";`,
       `import type { HubDb } from "../../src/db/forHub.js";`,
       `import { createClient } from "@supabase/supabase-js";`,
       `import x from "../civic.vote/service.js";`,
@@ -87,7 +87,7 @@ describe("civic/package-boundary", () => {
     }
     for (const code of [
       `import { forHub } from "../../src/db/forHub.js";`,
-      `import { listHubs } from "../../src/control/hubs.js";`,
+      `import { listHubs } from "../../src/operator/hubs.js";`,
       `import { castBallot } from "../../src/db/atomic.js";`,
       `import x from "../../packages/civic.vote/service.js";`,
       `import { createClient } from "@supabase/supabase-js";`,

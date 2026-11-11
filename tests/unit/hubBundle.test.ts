@@ -15,9 +15,9 @@ import {
   publicObjectPrefix,
   targetImageKey,
   type Row,
-} from "../../src/control/hubBundle/format.js";
-import { exportHub, memorySink, ownedObjectKeys, type HubRowReader, type ObjectReader } from "../../src/control/hubBundle/export.js";
-import { packTarGz, unpackTarGz } from "../../src/control/hubBundle/tar.js";
+} from "../../src/operator/hubBundle/format.js";
+import { exportHub, memorySink, ownedObjectKeys, type HubRowReader, type ObjectReader } from "../../src/operator/hubBundle/export.js";
+import { packTarGz, unpackTarGz } from "../../src/operator/hubBundle/tar.js";
 import { KEYS, KEY_ALIASES } from "../../src/models/hubSettings.js";
 import { ImportRefused, checkBundle, connectFromEnv, insertOrder } from "../../scripts/lib/hubImport.js";
 

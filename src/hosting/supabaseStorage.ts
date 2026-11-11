@@ -20,7 +20,7 @@ import { UnavailableError } from "../errors/index.js";
 import { getDb, getHubTokenDb, hubTokensEnabled } from "../db/client.js";
 import type { ObjectStore, StoredObject } from "../adapters/objectStore.js";
 
-/** The console's export reader shape (src/control/hubBundle/export.ts, ObjectReader). */
+/** The console's export reader shape (src/operator/hubBundle/export.ts, ObjectReader). */
 export interface StorageObjectReader {
   storageBaseUrl: string;
   bucket: string;
@@ -107,7 +107,7 @@ export const supabaseStorage: ObjectStore = {
   },
 };
 
-/** The console's reader over this deployment's own storage, for a hub export (src/control/hubBundle/). */
+/** The console's reader over this deployment's own storage, for a hub export (src/operator/hubBundle/). */
 export function supabaseObjectReader(bucket: string): StorageObjectReader {
   const base = env.SUPABASE_URL;
   if (!base) throw new Error("export: SUPABASE_URL is not set");

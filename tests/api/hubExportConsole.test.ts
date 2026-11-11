@@ -17,7 +17,7 @@ import pg from "pg";
 import { localStack } from "../fixtures/adminSession.js";
 import { auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
 import { NO_OBJECT_STORAGE, api } from "../fixtures/helpers.js";
-import { unpackTarGz } from "../../src/control/hubBundle/tar.js";
+import { unpackTarGz } from "../../src/operator/hubBundle/tar.js";
 
 const HUB = "athens";
 const BUCKET = "hub-exports";

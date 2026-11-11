@@ -5,7 +5,7 @@
 // path gives no way to probe for partial matches.
 
 import { env } from "../config/env.js";
-import { ControlInputError } from "./hubs.js";
+import { ControlInputError } from "./errors.js";
 
 export function isReleaseAuthorized(authorization: string | undefined): boolean {
   const secret = env.CIVIC_RELEASE_SECRET;

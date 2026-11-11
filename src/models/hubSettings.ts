@@ -57,7 +57,7 @@ export const KEYS = {
   // session, 2026-11-07) "three_columns"; unset is
   // top_tabs, so a hub made before the slice is unchanged until its admin
   // chooses, and a new hub is created with "top_tabs" (design pass, 2026-10-29)
-  // (src/control/hubs.ts). Phones get the bottom bar under either.
+  // (src/operator/hubs.ts). Phones get the bottom bar under either.
   // `nav.section_order` is a JSON array of section ids (Feed is always
   // first and never listed); unset is the registry's default order. One
   // order drives every layout. Both public: every visitor's page draws them.
@@ -215,7 +215,7 @@ export const KEYS = {
   // The Members plugin (Adam, 2026-10-14). Below `min_count` members,
   // residents see no count, no avatar stack and no Members page; admins always
   // see the count. Unset is 0 (shown, as before the plugin); new hubs are
-  // created with 10 (src/control/hubs.ts). `page_before_threshold` "true"
+  // created with 10 (src/operator/hubs.ts). `page_before_threshold` "true"
   // shows the page (and its section) anyway; the count still waits.
   PLUGIN_MEMBERS_MIN_COUNT: "plugin.members.min_count",
   PLUGIN_MEMBERS_PAGE_BEFORE_THRESHOLD: "plugin.members.page_before_threshold",

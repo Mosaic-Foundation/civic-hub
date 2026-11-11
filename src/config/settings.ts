@@ -64,6 +64,9 @@ export const SETTINGS = s({
   CIVIC_CONSOLE_HOSTNAME: { purpose: "The console's hostname. Unset: no console on this deployment.", type: "string", layer: "engine" },
   CIVIC_CONSOLE_ADMIN_EMAIL: { purpose: "The console's one operator.", type: "email", layer: "engine", required: { when: "CIVIC_CONSOLE_HOSTNAME" } },
   CIVIC_START_HOSTNAME: { purpose: "The start page's hostname. Unset: no start page.", type: "string", layer: "engine" },
+  CIVIC_PLATFORM_DOMAIN: { purpose: "The domain hubs live under (civic.social), whose reserved names no hub may take. Unset: the console hostname's parent, as before the console split.", type: "string", layer: "engine" },
+  CIVIC_OPERATOR_TOKEN: { purpose: "Bearer token the console presents to this hub deployment's operator API (/operator/*). Unset: the operator API answers 404; a console on the same deployment calls the hub in-process.", type: "secret", layer: "engine" },
+  CIVIC_OPERATOR_URL: { purpose: "Where the console calls the hub deployment's operator API, with CIVIC_OPERATOR_TOKEN: its API base (on Vercel https://<a hub's hostname>/api). Unset: the console calls the hub in-process (one deployment).", type: "url", layer: "engine" },
   CIVIC_DEV_HUB: { purpose: "Local development: the hub a bare localhost resolves to.", type: "string", layer: "dev", default: "athens" },
 
   // --- Deployment-wide identity fallbacks (a hub's own row wins) -------------

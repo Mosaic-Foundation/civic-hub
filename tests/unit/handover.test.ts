@@ -19,7 +19,7 @@ import {
   parseConfigPatch,
   parseCreateInput,
   parseHandoverPatch,
-} from "../../src/control/hubs.js";
+} from "../../src/operator/hubs.js";
 import { isPublicKey } from "../../src/models/hubSettings.js";
 import { fieldSpec } from "../../src/shared/hubSettingsSections.js";
 import { movedToFromResponse } from "../../ui/src/config/hubConfig.js";

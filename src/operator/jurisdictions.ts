@@ -18,7 +18,7 @@ import {
 } from "../shared/jurisdictionType.js";
 import { baseName, slugCandidates } from "../shared/jurisdictionNames.js";
 import { ControlInputError, hostnameTakenBy } from "./hubs.js";
-import { platformDomain } from "./config.js";
+import { platformDomain } from "./platform.js";
 
 export interface Jurisdiction {
   ocd_id: string;

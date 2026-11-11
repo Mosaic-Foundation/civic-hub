@@ -1,6 +1,6 @@
 // Names derived from a jurisdiction reference row (20260927000000): the slug
 // candidates the console offers, and the jurisdiction code the create form
-// fills in. Shared by the server (src/control/jurisdictions.ts) and the
+// fills in. Shared by the server (src/operator/jurisdictions.ts) and the
 // console UI. Pure; names no place.
 
 import type { ReferenceJurisdictionType } from "./jurisdictionType.js";

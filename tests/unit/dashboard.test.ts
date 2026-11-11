@@ -3,8 +3,10 @@
 // answers and their "not connected", and the jobs' rows from an empty table.
 
 import { afterEach, describe, expect, it } from "vitest";
-import { runSection, gatherDashboard, type DashboardSection } from "../../src/control/dashboard/registry.js";
-import { checkWithRetry, readHealth } from "../../src/control/dashboard/hubHealth.js";
+import { runSection, runSections, type DashboardSection } from "../../src/shared/dashboardRun.js";
+import { gatherDashboard } from "../../src/control/dashboard/registry.js";
+import type { OperatorApi } from "../../src/operator/api.js";
+import { checkWithRetry, readHealth } from "../../src/operator/dashboard/hubHealth.js";
 import {
   backupStatus,
   errorsStatus,
@@ -13,8 +15,9 @@ import {
   uptimeStatus,
   SETUP,
 } from "../../src/control/dashboard/outside.js";
-import { jobRows } from "../../src/control/dashboard/jobs.js";
+import { jobRows } from "../../src/operator/dashboard/jobs.js";
 import { clearDashboardCache } from "../../src/control/dashboard/cache.js";
+import { clearDashboardCache as clearHubDashboardCache } from "../../src/operator/dashboard/cache.js";
 import { JOBS } from "../../src/jobs/registry.js";
 
 const KEYS = ["HEALTHCHECKS_READ_KEY", "BETTERSTACK_API_TOKEN", "SENTRY_READ_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT"];
@@ -26,6 +29,7 @@ afterEach(() => {
     else process.env[k] = saved[k];
   }
   clearDashboardCache();
+  clearHubDashboardCache();
 });
 
 function fakeFetch(status: number, body: unknown, seen: string[] = []): typeof fetch {
@@ -40,7 +44,8 @@ describe("dashboard sections", () => {
     const slow: DashboardSection = { id: "slow", name: "Slow", load: () => new Promise(() => {}), timeoutMs: 50 };
     const quick: DashboardSection = { id: "quick", name: "Quick", load: async () => ({ n: 1 }) };
     const broken: DashboardSection = { id: "broken", name: "Broken", load: async () => { throw new Error("boom"); } };
-    const page = await gatherDashboard({ sections: [slow, quick, broken] });
+    const sections = await runSections([slow, quick, broken], { now: new Date(), fresh: false });
+    const page = { sections, gathered_at: new Date().toISOString() };
     expect(page.sections.map((s) => [s.id, s.status])).toEqual([
       ["slow", "timeout"],
       ["quick", "ok"],
@@ -56,6 +61,21 @@ describe("dashboard sections", () => {
     const r = await runSection({ id: "x", name: "X", load: async () => 1 }, { now: new Date(), fresh: false });
     expect(r.status).toBe("ok");
     expect(r.ms).toBeGreaterThanOrEqual(0);
+  });
+
+  it("the console adds its own sections after the hub's Jobs, and the backup into Jobs (the console split)", async () => {
+    delete process.env.HEALTHCHECKS_READ_KEY;
+    const op = {
+      dashboard: async () => [
+        { id: "hubs", name: "Hubs", status: "ok", ms: 1, data: { hubs: [] } },
+        { id: "jobs", name: "Jobs and backups", status: "ok", ms: 1, data: { jobs: [] } },
+        { id: "attention", name: "Waiting for attention", status: "ok", ms: 1, data: {} },
+      ],
+    } as unknown as OperatorApi;
+    const own: DashboardSection = { id: "outside", name: "Uptime and errors", load: async () => ({ ok: true }) };
+    const page = await gatherDashboard(op, { sections: [own] });
+    expect(page.sections.map((s) => s.id)).toEqual(["hubs", "jobs", "outside", "attention"]);
+    expect((page.sections[1].data as { backup: { state: string } }).backup.state).toBe("not_connected");
   });
 });
 

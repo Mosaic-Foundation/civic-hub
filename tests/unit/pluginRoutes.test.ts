@@ -28,6 +28,8 @@ const BEFORE: string[] = JSON.parse(readFileSync(join(here, "../fixtures/plugins
 
 /** Added on purpose since e92804c, each with why. */
 const ADDED: Record<string, string> = {
+  // The console split (2026-11-10): the operator API, 404 unless CIVIC_OPERATOR_TOKEN is set.
+  "POST /operator/rpc/:method": "the console's calls to the hub deployment (src/operator/api.ts)",
   // The layout session (2026-11-07; ADR-019): the three-column layout's right column.
   "GET /aside": "the right column's facts: announcements and the member count (deadlines moved to the feed, Events 4)",
   "GET /api/aside": "the same, at the URL the UI reads locally (Vercel strips /api)",

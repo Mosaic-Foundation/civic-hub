@@ -1,4 +1,4 @@
-// What GET /control/dashboard answers (src/control/dashboard/). The console
+// What GET /control/dashboard answers (src/control/dashboard/, with the hub's sections from src/operator/dashboard/). The console
 // imports nothing from the server's src/control, so the shapes are restated
 // here; the Playwright suite (tests/e2e/dashboard.spec.ts) reads the page the
 // server fills, so a drift shows there.

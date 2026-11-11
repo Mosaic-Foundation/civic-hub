@@ -24,7 +24,7 @@
 //                             from this server (Host set to the hub), never
 //                             the hub's real address, and a hub whose slug
 //                             contains "slow" never answers, so tests reach
-//                             the timeout (src/control/dashboard/hubHealth.ts)
+//                             the timeout (src/operator/dashboard/hubHealth.ts)
 //   CIVIC_PLUGINS_UNVERIFIED=on — every configured plugin package is mounted
 //                             without an approved catalog row (ADR-014): for
 //                             `npm run catalog:add`'s conformance run, which

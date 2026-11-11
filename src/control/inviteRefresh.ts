@@ -16,7 +16,6 @@ import {
   type InviteLinkLookup,
   type InviteLinkState,
 } from "./entitlements.js";
-import { hubSignInUrl } from "./inHub.js";
 import { renderInviteEmail } from "./inviteEmail.js";
 import { mailConfigured, sendEmail, unsentReason } from "../utils/email.js";
 import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
@@ -36,7 +35,14 @@ export function canRefresh(state: InviteLinkState): boolean {
   return state === "spent" || state === "expired";
 }
 
-export async function describeRefusedLink(lookup: InviteLinkLookup): Promise<RefusedLink> {
+/**
+ * `signInUrl` gives a hub's sign-in page (the operator API's hubSignInUrl);
+ * without it a redeemed invite's page has no link.
+ */
+export async function describeRefusedLink(
+  lookup: InviteLinkLookup,
+  signInUrl?: (hubId: string) => Promise<string>,
+): Promise<RefusedLink> {
   const contact = `write to ${PLATFORM_CONTACT_EMAIL}`;
   switch (lookup.state) {
     case "spent":
@@ -58,7 +64,7 @@ export async function describeRefusedLink(lookup: InviteLinkLookup): Promise<Ref
         error: "This invite has already been used to create a hub. Sign in to it there.",
         link_state: "redeemed",
         email: null,
-        hub_url: lookup.hub_id ? await hubSignInUrl(lookup.hub_id).catch(() => null) : null,
+        hub_url: lookup.hub_id && signInUrl ? await signInUrl(lookup.hub_id).catch(() => null) : null,
       };
     case "ended":
       return { error: `This invite has ended. To ask for a new one, ${contact}.`, link_state: "ended", email: null, hub_url: null };

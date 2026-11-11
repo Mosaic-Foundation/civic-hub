@@ -35,7 +35,6 @@
 import { env } from "../config/env.js";
 import { CURRENT_LEGAL_VERSION } from "../shared/legal.js";
 import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
-import { legalSummaries } from "../services/hubDocuments.js";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { recordAudit } from "./audit.js";
 import { CivicError } from "../errors/index.js";
@@ -54,9 +53,7 @@ import {
   redeemEntitlement,
   releaseClaim,
 } from "./entitlements.js";
-import { ControlInputError, createHub, parseCreateInput, type ControlHub } from "./hubs.js";
-import { addStarterWordcloud, handoffUrl, inviteAdmins, seedSampleInHub } from "./inHub.js";
-import { checkSlug, listStates, searchJurisdictions, suggestSlug } from "./jurisdictions.js";
+import type { ControlHub, HubMode, OperatorApi } from "../operator/api.js";
 import {
   START_SESSION_TTL_MS,
   StartError,
@@ -70,10 +67,7 @@ import {
   verifyStartCode,
   type StartSession,
 } from "./startAuth.js";
-import { kindsWithSamples } from "../services/sampleTemplates.js";
-import { describeInvites } from "../services/adminInvite.js";
 import { sendEmail } from "../utils/email.js";
-import type { HubMode } from "../models/hub.js";
 
 const COOKIE = "civic_start";
 const CSRF_HEADER = "x-civic-start";
@@ -221,7 +215,12 @@ async function notifyOperator(hub: ControlHub, email: string, note: string | nul
  * own domain, them as the first admin, samples on where the kind has them,
  * every plugin on.
  */
-export function startCreateBody(body: Record<string, unknown>, email: string, hubDomain: string): Record<string, unknown> {
+export function startCreateBody(
+  body: Record<string, unknown>,
+  email: string,
+  hubDomain: string,
+  sampleKinds: readonly string[],
+): Record<string, unknown> {
   const str = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
   const slug = str(body.slug, 64).toLowerCase();
   const kind = str(body.hub_kind, 32) || "place";
@@ -241,7 +240,7 @@ export function startCreateBody(body: Record<string, unknown>, email: string, hu
     timezone: body.timezone,
     admin_email: email,
     mode: "demo",
-    sample_content: (kindsWithSamples() as string[]).includes(kind),
+    sample_content: sampleKinds.includes(kind),
     ownership: {
       ...(operator ? { "legal.operator_name": operator } : {}),
       "legal.contact_email": contact,
@@ -249,7 +248,7 @@ export function startCreateBody(body: Record<string, unknown>, email: string, hu
   };
 }
 
-export function startRouter(): Router {
+export function startRouter(op: OperatorApi): Router {
   const r = express.Router();
   r.use(requireStartHost);
   r.use(express.json({ limit: "32kb" }));
@@ -286,7 +285,7 @@ export function startRouter(): Router {
     } catch (e) {
       // Refused: say what happened and what to do next (pilot readiness 3).
       if (!(e instanceof EntitlementError)) throw e;
-      res.status(403).json(await describeRefusedLink(await inviteLinkState(raw)));
+      res.status(403).json(await describeRefusedLink(await inviteLinkState(raw), (id) => op.hubSignInUrl(id)));
       return;
     }
     const token = await openStartSession(link.entitlement_id, link.email);
@@ -342,7 +341,7 @@ export function startRouter(): Router {
 
   r.get("/start/config", route(async (req, res) => {
     await signedIn(req);
-    res.json({ hub_domain: startHubDomain(), sample_kinds: kindsWithSamples() });
+    res.json({ hub_domain: startHubDomain(), sample_kinds: (await op.createInfo()).sample_kinds });
   }));
 
   // The plain-language summaries of what pressing Create agrees to. The full
@@ -350,7 +349,7 @@ export function startRouter(): Router {
   r.get("/start/legal", route(async (req, res) => {
     await signedIn(req);
     const str = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 200) : "");
-    const summaries = legalSummaries({
+    const summaries = await op.legalSummaries({
       HUB_KIND: str(req.query.kind),
       // The place the form has chosen, or words that stand for it until then.
       PLACE: str(req.query.place) || "the place your hub serves",
@@ -361,13 +360,13 @@ export function startRouter(): Router {
 
   r.get("/start/jurisdictions/states", route(async (req, res) => {
     await signedIn(req);
-    res.json({ states: await listStates() });
+    res.json({ states: await op.listStates() });
   }));
 
   r.get("/start/jurisdictions", route(async (req, res) => {
     await signedIn(req);
     const str = (v: unknown) => (typeof v === "string" ? v : "");
-    const matches = await searchJurisdictions({
+    const matches = await op.searchJurisdictions({
       state: str(req.query.state),
       type: str(req.query.type),
       q: str(req.query.q),
@@ -380,7 +379,7 @@ export function startRouter(): Router {
   r.get("/start/slug-suggestion", route(async (req, res) => {
     await signedIn(req);
     const str = (v: unknown) => (typeof v === "string" ? v : "");
-    res.json(await suggestSlug({ name: str(req.query.name), type: str(req.query.type) || null, state: str(req.query.state) || null }));
+    res.json(await op.suggestSlug({ name: str(req.query.name), type: str(req.query.type) || null, state: str(req.query.state) || null }));
   }));
 
   // The address as it is typed: free, or taken with a free one beside it.
@@ -389,7 +388,7 @@ export function startRouter(): Router {
     await signedIn(req);
     await rateLimit("slug_check", clientIp(req));
     const str = (v: unknown) => (typeof v === "string" ? v : "");
-    res.json(await checkSlug(str(req.query.slug).trim().toLowerCase(), str(req.query.state) || null));
+    res.json(await op.checkSlug(str(req.query.slug).trim().toLowerCase(), str(req.query.state) || null));
   }));
 
   // --- Create ---
@@ -399,7 +398,8 @@ export function startRouter(): Router {
     await rateLimit("create", clientIp(req));
     const hubDomain = startHubDomain();
     if (!hubDomain) throw new StartError("This page is not set up to create hubs.", 503);
-    const input = parseCreateInput(startCreateBody((req.body ?? {}) as Record<string, unknown>, s.email, hubDomain));
+    const sampleKinds = (await op.createInfo()).sample_kinds;
+    const input = await op.parseCreate(startCreateBody((req.body ?? {}) as Record<string, unknown>, s.email, hubDomain, sampleKinds));
     // A typed place belongs to a neighbourhood or association; a jurisdiction comes from the list.
     if (input.hubKind === "place" && input.jurisdictionCustom) {
       throw new StartError("Choose your jurisdiction from the list. If it isn't there, a Neighbourhood or association hub can type its name.");
@@ -409,7 +409,7 @@ export function startRouter(): Router {
     const claimed = await claimEntitlement(s.entitlement_id, s.email);
     let created: { hub: ControlHub; settings: Record<string, string> };
     try {
-      created = await createHub(input, { allowedModes: START_CREATE_MODES, updatedBy: `start:${s.email}` });
+      created = await op.createHub(input, { allowedModes: START_CREATE_MODES, updatedBy: `start:${s.email}` });
     } catch (err) {
       await releaseClaim(claimed.id, s.email);
       throw err;
@@ -435,7 +435,7 @@ export function startRouter(): Router {
     let sample: unknown = null;
     if (input.sampleContent) {
       try {
-        const report = await seedSampleInHub(hub.id);
+        const report = await op.seedSamples(hub.id);
         await audited({ actor: s.email, action: "hub.sample_seed", hubId: hub.id, before: null, after: report });
         sample = report;
       } catch (err) {
@@ -443,15 +443,15 @@ export function startRouter(): Router {
         sample = { error: "The sample content could not be added." };
       }
     }
-    await addStarterWordcloud(hub.id, `start:${s.email}`);
-    const invites = await inviteAdmins(hub.id, [s.email]);
+    await op.addStarterWordcloud(hub.id, `start:${s.email}`);
+    const invites = await op.inviteAdmins(hub.id, [s.email]);
     await notifyOperator(hub, s.email, spent.note, spent.code_hint);
-    const redirect = await handoffUrl(hub.id, s.email, CURRENT_LEGAL_VERSION);
+    const redirect = await op.handoffUrl(hub.id, s.email, CURRENT_LEGAL_VERSION);
     res.status(201).json({
       hub: { id: hub.id, name: hub.name, hostname: hub.hostname },
       redirect,
       sample_content: sample,
-      message: describeInvites(invites),
+      message: invites.message,
     });
   }));
 

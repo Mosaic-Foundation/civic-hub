@@ -38,7 +38,7 @@ export function typeDisplay(type: string | undefined): ProcessTypeDisplay | unde
   return processTypes().find((t) => t.type === type);
 }
 
-/** Unset (a hub made before the slice) is top tabs, as is a new hub (src/control/hubs.ts). */
+/** Unset (a hub made before the slice) is top tabs, as is a new hub (src/operator/hubs.ts). */
 export function navLayout(): NavLayout {
   const stored = setting("nav.layout");
   return stored === "sidebar" || stored === "three_columns" ? stored : "top_tabs";

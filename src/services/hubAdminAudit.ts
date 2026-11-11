@@ -7,7 +7,7 @@
 // under forced RLS, is written through forHub() like everything else the hub
 // app writes, and leaves with the hub's export. Append-only for every role
 // (trigger). The console reads it through the control plane
-// (src/control/hubs.ts → listHubAdminAudit); nothing is mirrored.
+// (src/operator/hubs.ts → listHubAdminAudit); nothing is mirrored.
 //
 // A write that fails throws, so the caller reports the action as not
 // recorded rather than quietly done.

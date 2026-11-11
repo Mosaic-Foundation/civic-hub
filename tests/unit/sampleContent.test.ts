@@ -18,7 +18,7 @@ import {
   sampleProcessId,
   sampleUserId,
 } from "../../src/models/sampleContent.js";
-import { isSampleContentRow } from "../../src/control/hubBundle/format.js";
+import { isSampleContentRow } from "../../src/operator/hubBundle/format.js";
 import {
   SAMPLE_AUTHORS,
   SAMPLE_TEMPLATES,

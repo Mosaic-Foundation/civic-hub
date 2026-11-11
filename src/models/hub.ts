@@ -147,7 +147,7 @@ export function hubModeChangeRejectionReason(
 /**
  * Slugs no NEW hub may be assigned, and what each one is for. THE ONE LIST
  * (Adam, 2026-09-26): every create path — the super admin's Create hub
- * (src/control/hubs.ts), scripts/create-hub.ts — refuses these through
+ * (src/operator/hubs.ts), scripts/create-hub.ts — refuses these through
  * hubSlugRejectionReason(), and the super admin also refuses `<name>.<the
  * platform domain>` as a hostname.
  *

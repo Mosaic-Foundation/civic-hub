@@ -36,7 +36,7 @@ import {
   isPluginId,
   type PluginId,
 } from "../models/hubSettings.js";
-import { consoleHostname, isProductionDatabase, platformDomain } from "./config.js";
+import { isProductionDatabase, platformDomain, platformHostnames } from "./platform.js";
 import { defaultGoverningBody, defaultGoverningBodyShort, isJurisdictionType, stateOfOcdId, type JurisdictionType } from "../shared/jurisdictionType.js";
 import { suggestedTimeZone } from "../shared/stateTimeZones.js";
 import { getJurisdiction, type Jurisdiction } from "./jurisdictions.js";
@@ -231,8 +231,7 @@ export function hostnameShapeProblem(hostname: string): string | null {
   if (!HOSTNAME_RE.test(hostname)) {
     return `"${hostname}" is not a hostname. Lowercase letters, digits, hyphens and dots, with no scheme, port or path.`;
   }
-  const consoleHost = consoleHostname();
-  if (consoleHost && hostname === consoleHost) return `"${hostname}" is the console's own hostname.`;
+  if (platformHostnames().includes(hostname)) return `"${hostname}" is one of the platform's own hostnames (the console or the start page).`;
   const domain = platformDomain();
   if (domain && hostname.endsWith(`.${domain}`)) {
     const label = hostname.slice(0, -domain.length - 1);

@@ -75,7 +75,7 @@ export interface EventLogReader {
   ): Promise<Array<{ measure: string; value: number }>>;
 }
 
-/** A section a feature adds to the console's Dashboard (src/control/dashboard/registry.ts). */
+/** A section a feature adds to the console's Dashboard (src/operator/dashboard/registry.ts). */
 export interface FeatureConsoleSection {
   id: string;
   name: string;
