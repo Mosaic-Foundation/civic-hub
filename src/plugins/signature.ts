@@ -6,16 +6,13 @@
 // anything but the console (a migration, a stolen database key) mounts
 // nothing once signatures are required.
 //
-// The console split (split step 2, 2026-11-10): the hub holds only the
-// public half. The private key is the console's (src/control/catalogKey.ts);
-// the bytes and the checks are shared (src/shared/catalogSignature.ts).
+// The console split (2026-11-10): the hub holds only the public half. The
+// private key is the console's (Mosaic-Foundation/mosaic-console); the bytes
+// and the checks are shared (src/shared/catalogSignature.ts).
 //
 // The keys the hub trusts:
 //   CIVIC_CATALOG_PUBLIC_KEY   the console's key, its public half (base64
 //                              DER, as the console's Plugins page shows it).
-//   CIVIC_CATALOG_SIGNING_KEY  until the console has its own deployment, the
-//                              console's private key is a setting of this one;
-//                              the hub reads only its public half from it.
 //   CIVIC_CATALOG_TRUSTED_KEYS retired keys still trusted during a rotation.
 //
 // Rotation: a new key in the console, its public half in
@@ -29,21 +26,20 @@
 //   required: a row without a valid signature is unapproved, and a deployment
 //     without a key mounts nothing.
 
-import { createPublicKey, type KeyObject } from "node:crypto";
+import type { KeyObject } from "node:crypto";
 import { env, isProductionEnv } from "../config/env.js";
 import {
   TEST_KEY_PUBLIC,
   keyId,
   parsePublicKey,
   parseSigningKey,
-  publicDer,
   signatureVerifies,
   type Signature,
   type SignedFields,
   type SigningKey,
 } from "../shared/catalogSignature.js";
 
-// No signRow here: the hub verifies, it never signs (the console does, src/control/catalogKey.ts).
+// No signRow here: the hub verifies, it never signs (the console does).
 export { TEST_KEY_PUBLIC, parseSigningKey, signatureVerifies, type Signature, type SignedFields, type SigningKey };
 
 export type SignatureMode = "transition" | "required";
@@ -60,13 +56,11 @@ export interface CatalogKeys {
 }
 
 export function catalogKeys(settings: {
-  key?: string;
   publicKey?: string;
   trusted?: string;
   mode?: string;
   production?: boolean;
 } = {
-  key: env.CIVIC_CATALOG_SIGNING_KEY,
   publicKey: env.CIVIC_CATALOG_PUBLIC_KEY,
   trusted: env.CIVIC_CATALOG_TRUSTED_KEYS,
   mode: env.CIVIC_CATALOG_SIGNATURES,
@@ -86,16 +80,6 @@ export function catalogKeys(settings: {
     else {
       primary = { id: keyId(pub), publicKey: der };
       trusted.set(primary.id, pub);
-    }
-  }
-  if (settings.key) {
-    try {
-      const signing = parseSigningKey(settings.key, production);
-      const pub = createPublicKey(signing.privateKey);
-      trusted.set(signing.id, pub);
-      primary ??= { id: signing.id, publicKey: publicDer(pub) };
-    } catch (err) {
-      problem ??= err instanceof Error ? err.message : String(err);
     }
   }
   for (const entry of (settings.trusted ?? "").split(",").map((s) => s.trim()).filter(Boolean)) {

@@ -189,13 +189,14 @@ jobs:
       - name: Console database login (local)
         run: npx tsx scripts/console-db-local.ts
 
-      # Signed approvals (ADR-015): the committed test key (every deployment
-      # refuses it), with signatures required, so this run proves the servers
-      # mount the catalog on the local operator's signatures (made with the
-      # same key by the step above) and nothing unsigned.
+      # Signed approvals (ADR-015): the committed test key's public half (every
+      # deployment refuses it), with signatures required, so this run proves
+      # the servers mount the catalog on the local operator's signatures (made
+      # with the test key by the step above) and nothing unsigned. The hub
+      # holds only the public half, as on Vercel (the console signs).
       - name: Catalog test key, signatures required
         run: |
-          echo "CIVIC_CATALOG_SIGNING_KEY=$(base64 < tests/fixtures/catalog/test-signing-key.pem | tr -d '\n')" >> "$GITHUB_ENV"
+          echo "CIVIC_CATALOG_PUBLIC_KEY=MCowBQYDK2VwAyEAqL0w/RwmbGgV5n2yWqG4RCvlkB4Spn1Zbb4niXH0QAM=" >> "$GITHUB_ENV"
           echo "CIVIC_CATALOG_SIGNATURES=required" >> "$GITHUB_ENV"
 
       # The minted-token server (below) signs hub tokens with the stack's JWT
@@ -420,13 +421,14 @@ jobs:
       - name: Console database login (local)
         run: npx tsx scripts/console-db-local.ts
 
-      # Signed approvals (ADR-015): the committed test key (every deployment
-      # refuses it), with signatures required, so this run proves the servers
-      # mount the catalog on the local operator's signatures (made with the
-      # same key by the step above) and nothing unsigned.
+      # Signed approvals (ADR-015): the committed test key's public half (every
+      # deployment refuses it), with signatures required, so this run proves
+      # the servers mount the catalog on the local operator's signatures (made
+      # with the test key by the step above) and nothing unsigned. The hub
+      # holds only the public half, as on Vercel (the console signs).
       - name: Catalog test key, signatures required
         run: |
-          echo "CIVIC_CATALOG_SIGNING_KEY=$(base64 < tests/fixtures/catalog/test-signing-key.pem | tr -d '\n')" >> "$GITHUB_ENV"
+          echo "CIVIC_CATALOG_PUBLIC_KEY=MCowBQYDK2VwAyEAqL0w/RwmbGgV5n2yWqG4RCvlkB4Spn1Zbb4niXH0QAM=" >> "$GITHUB_ENV"
           echo "CIVIC_CATALOG_SIGNATURES=required" >> "$GITHUB_ENV"
 
       - name: Unit tests

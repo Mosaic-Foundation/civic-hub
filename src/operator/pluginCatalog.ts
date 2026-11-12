@@ -111,7 +111,7 @@ function checkedSignature(row: CatalogRow, signed: Signature | null): Signature 
   if (!signed) {
     if (keys.mode === "required") {
       throw new CatalogStateError(
-        "The console has no catalog key (CIVIC_CATALOG_SIGNING_KEY) and signatures are required: an approval it cannot sign would mount nothing.",
+        "The console sent no signature (it has no catalog key) and signatures are required: an approval it cannot sign would mount nothing.",
       );
     }
     return null;

@@ -231,7 +231,7 @@ export function judge(
   const unsigned = (reason: string): PackageVerdict => ({ ...base, hash, mounted: false, signed: false, reason });
   if (keys.mode === "required") {
     if (keys.trusted.size === 0) {
-      return unsigned(`signatures are required and this deployment has no catalog key (CIVIC_CATALOG_SIGNING_KEY${keys.problem ? `: ${keys.problem}` : " is not set"})`);
+      return unsigned(`signatures are required and this deployment has no catalog key (CIVIC_CATALOG_PUBLIC_KEY${keys.problem ? `: ${keys.problem}` : " is not set"})`);
     }
     if (!row.signature) return unsigned("its approval is not signed; sign it in the console (Plugins: Sign approved entries)");
     if (!signed) return unsigned("its approval's signature does not verify against this deployment's catalog keys");

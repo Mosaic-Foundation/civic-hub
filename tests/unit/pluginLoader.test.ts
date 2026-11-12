@@ -143,7 +143,9 @@ describe("signed approvals (plugin session 2, ADR-015)", () => {
     const row = { ...base, ...over };
     return { ...row, ...signRow(row, parseSigningKey(pem, false)), signed_at: "2026-10-26T00:00:00Z" };
   };
-  const keys = (mode: string, key?: string, trusted?: string) => catalogKeys({ mode, key, trusted, production: false });
+  // The deployment trusts the public half of the console's key (CIVIC_CATALOG_PUBLIC_KEY).
+  const keys = (mode: string, pem?: string, trusted?: string) =>
+    catalogKeys({ mode, publicKey: pem ? parseSigningKey(pem, false).publicKey : undefined, trusted, production: false });
 
   it("transition, no key on this deployment: hash-only, signed or not", () => {
     expect(judge(real, hash, [base], keys("transition"))).toMatchObject({ mounted: true, signed: false });
@@ -175,7 +177,7 @@ describe("signed approvals (plugin session 2, ADR-015)", () => {
   it("required, no key on this deployment: nothing mounts, and it says which setting", () => {
     const v = judge(real, hash, [signedBy(TEST_PEM)], keys("required"));
     expect(v.mounted).toBe(false);
-    expect(v.reason).toContain("CIVIC_CATALOG_SIGNING_KEY");
+    expect(v.reason).toContain("CIVIC_CATALOG_PUBLIC_KEY");
     // An unknown mode is read as required.
     expect(catalogKeys({ mode: "sometimes", production: false }).mode).toBe("required");
   });
@@ -196,7 +198,7 @@ describe("signed approvals (plugin session 2, ADR-015)", () => {
   it("the committed test key is refused on a deployment", () => {
     expect(parseSigningKey(TEST_PEM, false).publicKey).toBe(TEST_KEY_PUBLIC);
     expect(() => parseSigningKey(TEST_PEM, true)).toThrow("the committed test key");
-    const onDeployment = catalogKeys({ mode: "required", key: TEST_PEM, trusted: TEST_KEY_PUBLIC, production: true });
+    const onDeployment = catalogKeys({ mode: "required", publicKey: TEST_KEY_PUBLIC, trusted: TEST_KEY_PUBLIC, production: true });
     expect(onDeployment.primary).toBeNull();
     expect(onDeployment.trusted.size).toBe(0);
     expect(onDeployment.problem).toContain("the committed test key");

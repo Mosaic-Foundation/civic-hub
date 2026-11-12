@@ -23,10 +23,6 @@ describe("a hub deployment with the console's public key only", () => {
     expect(signatureVerifies({ ...row, version: "0.2.1", ...signRow(row, consoleKey) }, hub.trusted)).toBe(false);
   });
 
-  it("prefers CIVIC_CATALOG_PUBLIC_KEY as the current key over a private key still set", () => {
-    const other = catalogKeys({ mode: "transition", publicKey: TEST_KEY_PUBLIC, key: TEST_PEM, production: false });
-    expect(other.primary?.publicKey).toBe(TEST_KEY_PUBLIC);
-  });
 
   it("refuses the committed test key on a deployment, and a value that is not a key", () => {
     const prod = catalogKeys({ mode: "required", publicKey: TEST_KEY_PUBLIC, production: true });
