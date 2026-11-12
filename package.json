@@ -23,6 +23,7 @@
     "plugins:sync": "tsx scripts/plugins-sync.ts",
     "sdk:build": "tsx kit/scripts/build-sdk.ts",
     "catalog:add": "tsx scripts/catalog-add.ts",
+    "operator": "tsx scripts/operator.ts",
     "check:tenancy": "tsx scripts/check-tenancy.ts",
     "tokens:check": "tsx scripts/check-tokens.ts",
     "tokens:update": "tsx scripts/check-tokens.ts --update",
