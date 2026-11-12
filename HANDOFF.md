@@ -4,6 +4,33 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The console leaves the hub: its old code is removed — 2026-11-11
+
+- **State:** on `dev`, `931cae9` (the removal and the tests) and `b2c733f` (public key only), then this entry;
+  not pushed, with `f9adf7e` (release.sh's console URL) from before. No migration, no package change, no catalog entry.
+- **Why:** the console split is live (Mosaic-Foundation/mosaic-console at console.mosaic.social and
+  console.dev.mosaic.social, which also serves start.civic.social). The hubs trust only the new console's key, and
+  the console code still in this repository was unreachable.
+- **Removed:** `src/control/` (the console's server, the start page's server, the front door that chose them by
+  hostname), `ui/src/console/`, `ui/src/start/`, `ui/console.html`, `ui/start.html`, `src/shared/hubInvite.ts`,
+  `features/analytics/consoleView.tsx` (the console has its own), the console and start host rules in `vercel.json`,
+  the extra Vite pages, and the lint rules `civic/control-boundary` and `civic/console-seam`. `src/index.ts` and
+  `api/index.ts` serve the hub app directly; it mounts `POST /client-errors` itself, before hub resolution.
+- **Settings the hub no longer reads:** `CIVIC_CONSOLE_HOSTNAME`, `CIVIC_CONSOLE_ADMIN_EMAIL`, `CIVIC_START_HOSTNAME`,
+  `CIVIC_CONSOLE_DATABASE_URL`, `CIVIC_OPERATOR_URL`, `CIVIC_RELEASE_SECRET`, `CIVIC_CATALOG_SIGNING_KEY`,
+  `HEALTHCHECKS_READ_KEY`, `BETTERSTACK_API_TOKEN`, `SENTRY_READ_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`. A hub still
+  set with one logs it at startup as "set but not a setting this hub reads"; nothing fails. The reserved names under
+  the platform domain now come from `CIVIC_PLATFORM_DOMAIN` alone (no fallback to the console's hostname).
+- **Catalog keys:** the hub verifies approvals with `CIVIC_CATALOG_PUBLIC_KEY` (and `CIVIC_CATALOG_TRUSTED_KEYS`)
+  only; the fallback that derived a public key from a private one is gone.
+- **Tests:** they make their hubs through the operator API (`tests/fixtures/operator.ts`); see TESTING.md. The
+  console's own tests left with it; the console repository has no suite yet.
+- **Kept on purpose:** the operator API (`src/operator/`), the `console` schema's migrations and
+  `scripts/console-db-*.ts` (the console's tables live in the hub's Supabase projects), `scripts/catalog-release-approve.ts`
+  (release.sh asks the console), and the operator mail sender (`CIVIC_OPERATOR_MAIL_FROM`), which nothing in the hub
+  sends with now: a small follow-up can drop it.
+- **For Adam:** release to dev, then production; then remove the old settings from both hub projects on Vercel.
+
 ## The settings search: find any hub setting by typing — 2026-11-10
 
 - **State:** on `dev`, `bbd89fd` (the index) and `67e689e` (the box and the links), then this entry; not pushed. No

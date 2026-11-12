@@ -87,6 +87,41 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## The console leaves the hub: tests make their hubs through the operator API (2026-11-11)
+
+- **The fixture:** `tests/fixtures/operator.ts` (on `kit/conformance/src/support/operator.ts`, which the
+  `civic-conformance` command uses too). `createHub(form)` does what the console's Create hub does, through
+  `POST /operator/rpc/<method>`: `parseCreate`, `createHub` (any mode), `seedSamples` when asked, the starter word
+  cloud, the admin invites; it answers `{ status: 201, body }` with the hub's detail, as the console's route did.
+  `updateHub`, `updateHandover`, `updateAiLimits`, `setAdmins`, `refreshSamples`, `archiveHub`, `unarchiveHub`,
+  `hubDetail` likewise; `catalog`, `approveEntry`, `withdrawEntry`, `setRequired`, `signApproved` for the plugin
+  catalog, signing with the committed test key (`testSignature`) only when the server trusts it.
+- **The server needs `CIVIC_OPERATOR_TOKEN=local-operator-only`** (CI, `.claude/launch.json` and Playwright's
+  `LOCAL_STACK` set it; `CIVIC_TEST_OPERATOR_TOKEN` overrides the value the tests send). Without it every operator
+  call answers 404. `CIVIC_CONSOLE_HOSTNAME`, `CIVIC_CONSOLE_ADMIN_EMAIL`, `CIVIC_START_HOSTNAME` and
+  `CIVIC_RELEASE_SECRET` are gone from every test setup.
+- **Signatures in CI:** the servers trust the test key's public half (`CIVIC_CATALOG_PUBLIC_KEY`); the hub no longer
+  reads a private key at all.
+- **Moved onto the operator API:** `control.test.ts` → `operatorHubs.test.ts`, `dashboard.test.ts` →
+  `operatorDashboard.test.ts` (the hub's sections), `hubExportConsole.test.ts` → `hubExportOperator.test.ts`, and the
+  hub-side parts of `feedbackRouting`, `jurisdictions`, `pluginPackages`, `sampleSeed`, `aiLimits`; about 25 more files
+  only make or archive their hubs through it. Unit: `controlPlane.test.ts` → `operatorRules.test.ts`,
+  `startPage.test.ts` → `startReserved.test.ts`; `operatorApi.test.ts` calls the router as the console does.
+- **Gone with the console** (they test the console, which is `Mosaic-Foundation/mosaic-console` now and has no suite
+  yet): the console's sign-in, fresh codes and the ten-minute window, its audit log, invite codes and the start page,
+  release approvals, its Dashboard's outside-service cards, its pages (`consolePluginRows`, `consoleCatalogWindow`,
+  the Handover panel, the Activity tile, the feedback inbox page, `startPage.spec.ts`), and the host routing
+  (`consoleRouting`, `controlBoundary`). They are in git history at `f9adf7e` for the console's own suite.
+- **Results (local, 2026-11-11):** unit 2,682 passed; UI 98; lint, typecheck, token check and the UI build clean.
+  API 1,041 passed in each mode (service role, minted tokens). Failing, and not this change: `sampleContent.test.ts`'s
+  two removal tests and two `leakHarness` tests, all 500s on `/admin/hub/sample-content*` and
+  `/admin/hub/mode/readiness` (`HubDbError: processes: a read with no limit returned 1000 rows`), the bloated local
+  stack named under "The settings search" below. Playwright (Chromium, the preview build) on every changed spec:
+  53 passed. Not run locally: `civic-conformance` (its CLI changed only in how it makes its two hubs; CI's developer
+  path runs it).
+
+---
+
 ## The settings search (2026-11-10)
 
 - **Unit:** `settingsSearch.test.ts`: every help key has a search entry or a reason in `NOT_IN_SEARCH` (so a new
