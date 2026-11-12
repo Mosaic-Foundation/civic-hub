@@ -32,7 +32,8 @@ On a laptop with Docker, `./scripts/run-anywhere/up.sh` does steps 1 to 3 and pr
    `node --import tsx scripts/load-jurisdictions.ts` with `CIVIC_TARGET_DATABASE_URL` set.
    **The plugin packages** the hub runs are `config/plugins.json`'s, and a server mounts each only when an approved
    catalog row records the hash of its files (ADR-014). The shipped packages' rows come with the migrations; for a
-   package you changed, run `npm run catalog:add -- packages/<dir>` and approve its entry in the console.
+   package you changed, run `npm run catalog:add -- packages/<dir>` and approve its entry with `npm run operator -- approve`
+   (see "Run your hubs without the console" below).
 3. **PostgREST**, with `PGRST_DB_URI=postgres://authenticator:<password>@<host>/<db>`, `PGRST_DB_SCHEMAS=public`,
    `PGRST_DB_ANON_ROLE=anon` and `PGRST_JWT_SECRET=<32 characters or more>`; then the `/rest/v1` rewrite in front of it.
 4. **The hub**, with at least:
@@ -54,6 +55,35 @@ On a laptop with Docker, `./scripts/run-anywhere/up.sh` does steps 1 to 3 and pr
    per job with its schedule from `src/jobs/registry.ts`. Each line runs `scripts/run-job.ts <job> --all`, the same run
    Vercel Cron makes through `/internal/<job>/run`: job_runs, job_last_run and the heartbeat are written the same way.
    (`npm run jobs:crontab` without `--script` prints lines that call the routes over HTTP with `CRON_SECRET` instead.)
+
+## Run your hubs without the console
+
+Civic.Social's console is its own private deployment; a self-hoster does not have it. `npm run operator` does what it
+does for a deployment, from your own computer, through the same door: the hub's operator API (`POST /operator/rpc/<method>`,
+`src/operator/api.ts`). Every check is the hub's; the command adds a yes/no before each change (`--yes` skips it).
+
+1. **On the hub:** set `CIVIC_OPERATOR_TOKEN` to a long random secret (`openssl rand -base64 48`). Unset, the operator
+   API answers 404 and the command cannot reach it.
+2. **Your catalog key** (approving plugins, ADR-015): `npm run operator -- key new ~/civic-operator/catalog-key.pem`
+   writes a private key only you can read and prints its public half. Set that as the hub's `CIVIC_CATALOG_PUBLIC_KEY`
+   and restart it. Keep the key file safe: a hub trusts only the approvals it signs.
+3. **On your computer**, an env file (not the hub's):
+
+   ```
+   CIVIC_OPERATOR_URL=https://hubs.example.org
+   CIVIC_OPERATOR_TOKEN=<the hub's token>
+   CIVIC_CATALOG_SIGNING_KEY_FILE=/Users/you/civic-operator/catalog-key.pem
+   CIVIC_OPERATOR_NAME=you@example.org
+   ```
+
+   Then `npm run operator -- check --env-file <that file>`: it reaches the hub and says whether it trusts your key.
+4. **Then:** `create slug=... name=... hostname=... admin_email=... mode=live` makes a hub (its admin is emailed an
+   invitation); `hubs`, `hub <id>`, `config <id> key=value`, `admins <id> <email>...`, `sign-in-link`, `export`,
+   `archive`; `catalog`, `approve <entry>`, `withdraw`, `require <entry> on|off`, and `sign-approved` (the approved
+   rows that came with the migrations, signed with your key once). `npm run operator -- help` lists everything;
+   `call <method> [json-args]` reaches any other operator method.
+
+The address must be `https://` (`http://` only for localhost): the token opens every hub on the deployment.
 
 ## What a self-hoster supplies
 

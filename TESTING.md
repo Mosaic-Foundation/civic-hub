@@ -87,6 +87,20 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## The operator command for self-hosters (2026-11-12)
+
+- **Unit** (`tests/unit/operatorCli.test.ts`, 18, no server): the command's settings (https only, except localhost;
+  the token asked for before any call), key=value parsing, the HTTP transport (`{ args }`, the bearer, a deployment
+  with no operator API explained); `key new` writes an owner-only key and never overwrites one; the committed test key
+  refused against a deployment; `approve` signs with the self-hoster's key and the hub's own `signatureVerifies`
+  accepts it, stops when the hub trusts another key or requires a key that is not set, and changes nothing on a no;
+  an id prefix two entries share is refused; `sign-approved` signs only approved rows its key has not signed; `create`
+  calls parseCreate → createHub → addStarterWordcloud → inviteAdmins; `config` shows before → after and applies the
+  hub's checked changes; `admins` invites only the new ones; `--json`.
+- **API, both modes** (`tests/api/operatorCommand.test.ts`, 4): against the running server over HTTP: create, list,
+  config, admins, detail and archive a hub; a reserved slug refused in the hub's words; a wrong token answers 401;
+  `check`. The command never touches the database itself.
+
 ## The console leaves the hub: tests make their hubs through the operator API (2026-11-11)
 
 - **The fixture:** `tests/fixtures/operator.ts` (on `kit/conformance/src/support/operator.ts`, which the

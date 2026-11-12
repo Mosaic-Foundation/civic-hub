@@ -4,6 +4,27 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The operator command for self-hosters — 2026-11-12
+
+- **What:** `npm run operator -- <command>` (`scripts/operator.ts`, logic in `scripts/lib/operatorCli.ts`): what the
+  console does for a hub deployment, for someone who runs the hub without Civic.Social's console. It is a second client
+  of the operator API (`POST /operator/rpc/<method>` with `CIVIC_OPERATOR_TOKEN`), so it holds no hub rule of its own;
+  in place of the console's sign-in and fresh codes it has possession of the token and a yes at the prompt.
+- **Commands:** `key new <file>` / `key show` (an Ed25519 catalog key in an owner-only file; prints the public half for
+  the hub's `CIVIC_CATALOG_PUBLIC_KEY`), `check`, `hubs`, `hub`, `create key=value...`, `config`, `admins`,
+  `sign-in-link`, `export`, `archive`, `unarchive`, `catalog`, `approve` (signed with the local key), `withdraw`,
+  `require on|off`, `sign-approved`, and `call <method> [json-args]` for anything else. `--json`, `--yes`, `--as`,
+  `--notes`, `--env-file`. Read-only: `check`, `hubs`, `hub`, `catalog`, `key show`, `sign-in-link`.
+- **Its settings** (the operator's own env file, not the hub's): `CIVIC_OPERATOR_URL` (https, or http on localhost),
+  `CIVIC_OPERATOR_TOKEN`, `CIVIC_CATALOG_SIGNING_KEY_FILE` (or `CIVIC_CATALOG_SIGNING_KEY`), `CIVIC_OPERATOR_NAME`.
+  The committed test key is refused unless the address is localhost.
+- **Choices:** `create` allows demo, beta and live, as the console does (with a note that demo turns off email
+  verification); records name the actor as the console does (`console:<name>`, the hub's own prefix), default
+  `<user name> (operator command)`.
+- **Docs:** RUN-ANYWHERE.md → "Run your hubs without the console". **Tests:** TESTING.md, 2026-11-12.
+- **Not done:** no console-only features (its audit log, invite codes, the start page, monitoring reads) — those are the
+  console's, not the hub's. No migration, no package change.
+
 ## The console leaves the hub: its old code is removed — 2026-11-11
 
 - **State:** on `dev`, `931cae9` (the removal and the tests) and `b2c733f` (public key only), then this entry;
