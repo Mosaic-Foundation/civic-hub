@@ -1,43 +1,18 @@
-// The console's Dashboard, the parts that need no database: the section
-// runner's timeout, reading a hub's health answer, the outside services'
-// answers and their "not connected", and the jobs' rows from an empty table.
+// The hub's sections of the console's Dashboard, the parts that need no
+// database: the section runner's timeout, reading a hub's health answer, and
+// the jobs' rows from an empty table. (The outside services' cards are the
+// console's, since the console split.)
 
 import { afterEach, describe, expect, it } from "vitest";
 import { runSection, runSections, type DashboardSection } from "../../src/shared/dashboardRun.js";
-import { gatherDashboard } from "../../src/control/dashboard/registry.js";
-import type { OperatorApi } from "../../src/operator/api.js";
 import { checkWithRetry, readHealth } from "../../src/operator/dashboard/hubHealth.js";
-import {
-  backupStatus,
-  errorsStatus,
-  parseErrors,
-  parseUptime,
-  uptimeStatus,
-  SETUP,
-} from "../../src/control/dashboard/outside.js";
 import { jobRows } from "../../src/operator/dashboard/jobs.js";
-import { clearDashboardCache } from "../../src/control/dashboard/cache.js";
-import { clearDashboardCache as clearHubDashboardCache } from "../../src/operator/dashboard/cache.js";
+import { clearDashboardCache } from "../../src/operator/dashboard/cache.js";
 import { JOBS } from "../../src/jobs/registry.js";
 
-const KEYS = ["HEALTHCHECKS_READ_KEY", "BETTERSTACK_API_TOKEN", "SENTRY_READ_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT"];
-const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
-
 afterEach(() => {
-  for (const k of KEYS) {
-    if (saved[k] === undefined) delete process.env[k];
-    else process.env[k] = saved[k];
-  }
   clearDashboardCache();
-  clearHubDashboardCache();
 });
-
-function fakeFetch(status: number, body: unknown, seen: string[] = []): typeof fetch {
-  return (async (url: string | URL | Request, init?: RequestInit) => {
-    seen.push(`${init?.method ?? "GET"} ${String(url)}`);
-    return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
-  }) as typeof fetch;
-}
 
 describe("dashboard sections", () => {
   it("a slow section times out on its own and the others still load", async () => {
@@ -63,20 +38,6 @@ describe("dashboard sections", () => {
     expect(r.ms).toBeGreaterThanOrEqual(0);
   });
 
-  it("the console adds its own sections after the hub's Jobs, and the backup into Jobs (the console split)", async () => {
-    delete process.env.HEALTHCHECKS_READ_KEY;
-    const op = {
-      dashboard: async () => [
-        { id: "hubs", name: "Hubs", status: "ok", ms: 1, data: { hubs: [] } },
-        { id: "jobs", name: "Jobs and backups", status: "ok", ms: 1, data: { jobs: [] } },
-        { id: "attention", name: "Waiting for attention", status: "ok", ms: 1, data: {} },
-      ],
-    } as unknown as OperatorApi;
-    const own: DashboardSection = { id: "outside", name: "Uptime and errors", load: async () => ({ ok: true }) };
-    const page = await gatherDashboard(op, { sections: [own] });
-    expect(page.sections.map((s) => s.id)).toEqual(["hubs", "jobs", "outside", "attention"]);
-    expect((page.sections[1].data as { backup: { state: string } }).backup.state).toBe("not_connected");
-  });
 });
 
 describe("a hub's health answer", () => {
@@ -143,76 +104,6 @@ describe("a hub's health check, with one retry", () => {
   it("a retry that finds the hub degraded says degraded, not slow", async () => {
     const h = await checkWithRetry(async (n) => (n === 1 ? noAnswer() : { status: 503, body: JSON.stringify({ schema: { gaps: ["t: c"] } }) }));
     expect(h).toMatchObject({ state: "degraded", attempts: 2, gaps: ["t: c"] });
-  });
-});
-
-describe("the outside services", () => {
-  it("each is not connected without its key, says how, and calls nothing", async () => {
-    for (const k of KEYS) delete process.env[k];
-    const seen: string[] = [];
-    const f = fakeFetch(200, {}, seen);
-    expect(await backupStatus(false, f)).toEqual({ state: "not_connected", setup: SETUP.backup });
-    expect(await uptimeStatus(false, f)).toEqual({ state: "not_connected", setup: SETUP.uptime });
-    expect(await errorsStatus(false, f)).toEqual({ state: "not_connected", setup: SETUP.errors });
-    expect(seen).toEqual([]);
-  });
-
-  it("Sentry needs the organization and project as well as the token", async () => {
-    process.env.SENTRY_READ_TOKEN = "t";
-    delete process.env.SENTRY_ORG;
-    expect((await errorsStatus(false, fakeFetch(200, []))).state).toBe("not_connected");
-  });
-
-  it("reads the backup check with a GET and the read-only key", async () => {
-    process.env.HEALTHCHECKS_READ_KEY = "read-only";
-    const seen: string[] = [];
-    const r = await backupStatus(false, fakeFetch(200, { checks: [{ status: "up", last_ping: "2026-10-17T12:17:30+00:00", next_ping: "2026-10-17T18:17:30+00:00" }] }, seen));
-    expect(r).toEqual({ state: "connected", data: { status: "up", last_ping: "2026-10-17T12:17:30+00:00", next_ping: "2026-10-17T18:17:30+00:00" } });
-    expect(seen).toEqual(["GET https://healthchecks.io/api/v3/checks/?slug=backup-dump"]);
-  });
-
-  it("a refused key or a failing service is an error on that card, not a throw", async () => {
-    process.env.HEALTHCHECKS_READ_KEY = "wrong";
-    expect(await backupStatus(true, fakeFetch(401, {}))).toEqual({ state: "error", message: "the key was refused (401)" });
-    expect(await backupStatus(true, fakeFetch(500, {}))).toEqual({ state: "error", message: "answered 500" });
-    expect(await backupStatus(true, fakeFetch(200, { checks: [] }))).toEqual({ state: "error", message: "no backup-dump check in the project" });
-  });
-
-  it("is cached for a minute unless fresh", async () => {
-    process.env.HEALTHCHECKS_READ_KEY = "k";
-    const seen: string[] = [];
-    const f = fakeFetch(200, { checks: [{ status: "up" }] }, seen);
-    await backupStatus(false, f);
-    await backupStatus(false, f);
-    expect(seen).toHaveLength(1);
-    await backupStatus(true, f);
-    expect(seen).toHaveLength(2);
-  });
-
-  it("reads Better Stack's monitors", () => {
-    expect(
-      parseUptime({ data: [
-        { attributes: { pronounceable_name: "Hub A", status: "up", last_checked_at: "2026-10-17T12:00:00Z" } },
-        { attributes: { url: "https://b.example/api/health", status: "down" } },
-      ] }),
-    ).toEqual({
-      up: 1,
-      total: 2,
-      monitors: [
-        { name: "Hub A", status: "up", last_checked_at: "2026-10-17T12:00:00Z" },
-        { name: "https://b.example/api/health", status: "down", last_checked_at: null },
-      ],
-    });
-  });
-
-  it("sums Sentry's last 24 hours per issue, busiest first", () => {
-    const r = parseErrors([
-      { title: "A", level: "error", stats: { "24h": [[1, 2], [2, 3]] }, permalink: "https://sentry.example/1" },
-      { title: "B", level: "warning", stats: { "24h": [[1, 9]] } },
-    ]);
-    expect(r.events).toBe(14);
-    expect(r.issues).toBe(2);
-    expect(r.top.map((t) => [t.title, t.count])).toEqual([["B", 9], ["A", 5]]);
   });
 });
 

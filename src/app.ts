@@ -47,6 +47,7 @@ import { ensureSeeded } from "./debug/autoSeed.js";
 import { normalizeHostname, resolveHub, resolveHubForHostname } from "./middleware/hub.js";
 import hubConfigRoutes from "./routes/hubConfigRoutes.js";
 import { healthHandler } from "./http/health.js";
+import { clientErrorsRouter } from "./http/clientErrors.js";
 import { validateEmailConfig } from "./utils/email.js";
 import { validateSchemaAtStartup, getSchemaReport } from "./db/schemaCheck.js";
 import { checkDevFlags } from "./config/devFlags.js";
@@ -136,6 +137,10 @@ app.use((req, res, next) => {
 // once it is its own deployment. The deployment's, not a hub's, so before hub
 // resolution; answers 404 everywhere unless CIVIC_OPERATOR_TOKEN is set.
 app.use(operatorRouter(localOperator));
+
+// A browser's error report (POST /client-errors): before hub resolution, so a
+// page that failed before its hub resolved can still report.
+app.use(clientErrorsRouter());
 
 // Hub resolution — hostname to hub, before anything reads or writes data.
 // One deployment serves many hubs, so which hub a request belongs to is the

@@ -2,7 +2,7 @@
  * Audit 2, A8 (2026-10-11): the pages work under the security headers.
  *
  * Visits the hub's pages (lists, one detail page of each kind the hub has,
- * an admin's Settings), the console and the start page, and fails on any
+ * an admin's Settings), and fails on any
  * Content Security Policy violation the browser reports, and on a page that
  * renders nothing.
  *
@@ -17,8 +17,6 @@ import { E2E_API_BASE } from "./hubApi.js";
 import { mintSession } from "../fixtures/adminSession.js";
 import { CONTENT_SECURITY_POLICY } from "../../src/shared/securityHeaders.js";
 
-const UI = new URL(process.env.CIVIC_E2E_UI_ORIGIN?.trim() || "http://localhost:5173");
-const at = (host: string, path: string) => `${UI.protocol}//${host}${UI.port ? `:${UI.port}` : ""}${path}`;
 
 /** Record every CSP violation the page reports, from before its first script. */
 async function watchViolations(page: Page): Promise<string[]> {
@@ -92,15 +90,3 @@ test("every page works under the Content Security Policy", async ({ page }) => {
   expect(violations, violations.join("\n")).toEqual([]);
 });
 
-test("the console and the start page work under it too", async ({ page }) => {
-  const consoleRes = await page.goto(at("console.localhost", "/console.html"));
-  test.skip(!consoleRes?.headers()["content-security-policy"], "Not served with the security headers (see above).");
-  const violations = await watchViolations(page);
-  await page.goto(at("console.localhost", "/console.html"));
-  await page.waitForLoadState("networkidle");
-  await expect(page.locator("body")).not.toBeEmpty();
-  await page.goto(at("start.localhost", "/start.html"));
-  await page.waitForLoadState("networkidle");
-  await expect(page.locator("body")).not.toBeEmpty();
-  expect(violations, violations.join("\n")).toEqual([]);
-});

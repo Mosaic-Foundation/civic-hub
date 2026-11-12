@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession, plantHubCode } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession } from "../fixtures/consoleCall.js";
+import { createHub } from "../fixtures/operator.js";
 import { freshTestIp } from "../fixtures/helpers.js";
 import { CURRENT_LEGAL_VERSION } from "../../src/shared/legal.js";
 
@@ -28,13 +28,10 @@ const ADMIN = `ld-admin-${run}@example.test`;
 const BOARD = `ld-board-${run}@example.test`;
 const ALL_ACCEPTABLE = ["name_and_place", "contact_email", "second_admin", "legal_reviewed", "samples"];
 
-let cookie = "";
 const admin: Record<string, string> = {};
 
 async function createDemoHub(slug: string, host: string): Promise<void> {
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: {
+  const res = await createHub({
       slug,
       name: `Leaving Demo ${slug}`,
       hostname: host,
@@ -43,12 +40,11 @@ async function createDemoHub(slug: string, host: string): Promise<void> {
       jurisdiction_name: "Test Township",
       jurisdiction_type: "town",
       jurisdiction_custom: true,
-      // No time zone: a custom place gets no suggestion, so readiness blocks.
+      
       timezone: "",
       mode: "demo",
       sample_content: true,
-    },
-  });
+    });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
 }
 
@@ -102,7 +98,6 @@ async function exists(host: string, id: string): Promise<boolean> {
 }
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
   for (const [slug, host] of [[KEEP, KEEP_HOST], [REMOVE, REMOVE_HOST]] as const) {
     await createDemoHub(slug, host);
     admin[host] = await mintSession(slug, ADMIN);
@@ -123,10 +118,7 @@ describe("a hub made for a listed place", () => {
     const [row] = (await localRest("jurisdictions?select=ocd_id&ocd_id=like.*state:co/county:*&limit=1")) as Array<{ ocd_id: string }>;
     if (!row) return ctx.skip();
     const slug = `ldt-${run}`;
-    const res = await consoleCall("POST", "/control/hubs", {
-      cookie,
-      body: { slug, name: `Leaving Demo tz ${run}`, hostname: `${slug}.localhost`, admin_email: ADMIN, hub_kind: "place", jurisdiction_ocd_id: row.ocd_id, timezone: "", mode: "demo" },
-    });
+    const res = await createHub({ slug, name: `Leaving Demo tz ${run}`, hostname: `${slug}.localhost`, admin_email: ADMIN, hub_kind: "place", jurisdiction_ocd_id: row.ocd_id, timezone: "", mode: "demo" });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     const [tz] = (await localRest(`hub_settings?hub_id=eq.${slug}&key=eq.identity.timezone&select=value`)) as Array<{ value: string }>;
     expect(tz?.value).toBe("America/Denver");

@@ -10,13 +10,13 @@
 //     is never invited, and neither is told apart from a sent invite;
 //   - the admin log records the addresses, never the message.
 //
-// Hubs made by the console (console.localhost, CI's env), archived in afterAll.
+// Hubs made through the operator API (tests/fixtures/operator.ts), archived in afterAll.
 
 import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub as newHub, archiveHub } from "../fixtures/operator.js";
 
 const run = Date.now().toString(36);
 const LIVE = `mil-${run}`;
@@ -25,7 +25,6 @@ const DEMO = `mid-${run}`;
 const host = (slug: string) => `${slug}.localhost`;
 const ADMIN = `members-admin-${run}@example.test`;
 const created: string[] = [];
-let cookie = "";
 
 type Row = Record<string, any>;
 
@@ -34,9 +33,7 @@ const seed = (hub: string, userId: string) => sha256(`civic-avatar:${hub}:${user
 const addr = (label: string) => `${label}-${run}@example.test`;
 
 async function createHub(slug: string, body: Row): Promise<void> {
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: {
+  const res = await newHub({
       slug,
       hostname: host(slug),
       admin_email: ADMIN,
@@ -45,8 +42,7 @@ async function createHub(slug: string, body: Row): Promise<void> {
       jurisdiction_custom: true,
       jurisdiction_type: "county",
       ...body,
-    },
-  });
+    });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   created.push(slug);
   // A new hub shows its members from 10 (the Members plugin, 2026-10-14);
@@ -71,7 +67,6 @@ function noAddresses(body: unknown): void {
 }
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
   await createHub(LIVE, { mode: "live" });
   await createHub(BETA, { mode: "beta" });
   await createHub(DEMO, { sample_content: true });
@@ -79,9 +74,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   for (const id of created) {
-    const code = String(100000 + Math.floor(Math.random() * 899999));
-    await plantCode("step_up", code);
-    const res = await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: code } });
+    const res = await archiveHub(id);
     if (res.status !== 200 && !/already archived/.test(res.body.error ?? "")) {
       throw new Error(`could not archive ${id}: ${JSON.stringify(res.body)}`);
     }

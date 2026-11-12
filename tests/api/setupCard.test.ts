@@ -1,18 +1,17 @@
 // The home page's "Set up your hub" card (pilot readiness 2, 2026-11-02): the
 // ticks come from the hub's state, and Dismiss and Skip belong to one admin's
-// account. Needs the console's env, as handover.test.ts does.
+// account. Needs the operator API, as handover.test.ts does.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub, setAdmins } from "../fixtures/operator.js";
 
 const run = Date.now().toString(36);
 const SLUG = `card-${run}`;
 const HOST = `${SLUG}.localhost`;
 const ADMIN = `card-admin-${run}@example.test`;
 const LATER = `card-later-${run}@example.test`;
-let cookie = "";
 let token = "";
 
 type Step = { id: string; label: string; hint: string; done: boolean; skipped: boolean; can_skip: boolean; link: string; help: string };
@@ -31,27 +30,21 @@ async function save(section: string, values: Record<string, string>) {
 }
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: {
+  const res = await createHub({
       slug: SLUG,
       name: "Card Hub",
       hostname: HOST,
       admin_email: ADMIN,
       hub_kind: "organization",
-      // What creation writes doesn't count as the hub's admins having looked at Legal.
+      
       ownership: { "legal.contact_email": `contact-${run}@example.test` },
-    },
-  });
+    });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   token = await mintSession(SLUG, ADMIN);
 });
 
 afterAll(async () => {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  await consoleCall("POST", `/control/hubs/${SLUG}/archive`, { cookie, body: { step_up_code: code } });
+  await archiveHub(SLUG);
 });
 
 describe("the Set up your hub card", () => {
@@ -140,9 +133,7 @@ describe("the Set up your hub card", () => {
     expect(dismissed.body.dismissed).toBe(true);
     expect((await call("GET", "/admin/hub/setup-card", HOST, undefined, token)).body.dismissed).toBe(true);
 
-    const code = String(100000 + Math.floor(Math.random() * 899999));
-    await plantCode("step_up", code);
-    const handover = await consoleCall("PUT", `/control/hubs/${SLUG}/admins`, { cookie, body: { admins: [ADMIN, LATER], step_up_code: code } });
+    const handover = await setAdmins(SLUG, { admins: [ADMIN, LATER] });
     expect(handover.status, JSON.stringify(handover.body)).toBe(200);
     const later = await mintSession(SLUG, LATER);
     const res = await call("GET", "/admin/hub/setup-card", HOST, undefined, later);

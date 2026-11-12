@@ -1,16 +1,16 @@
-// The jurisdiction reference list in the console (2026-09-27, Adam): the
+// The jurisdiction reference list the console uses (2026-09-27, Adam): the
 // state list and the type-ahead, the slug suggestion's order, creating a hub
 // from a listed jurisdiction or a custom one (never loose free text), several
 // hubs on one jurisdiction shown as information, and editing a hub's
-// jurisdiction with an audit row.
+// jurisdiction, through the hub's operator API (what the console calls).
 //
 // Fixture rows are fictional (state "zz"), written as the owner, removed in
-// afterAll. Needs the console on console.localhost (CI's env) and the local stack.
+// afterAll. Needs the local stack.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomBytes } from "node:crypto";
 import pg from "pg";
-import { auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub, operator, operatorCall, updateHub } from "../fixtures/operator.js";
 
 const DB_URL = process.env.CIVIC_TEST_DATABASE_URL?.trim() || "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 {
@@ -38,28 +38,22 @@ const ROWS = [
 ];
 
 let db: pg.Client;
-let cookie = "";
 const created: string[] = [];
 
-async function stepCode(): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  return code;
-}
 
 async function create(body: Record<string, unknown>) {
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { name: `Jurisdiction Test ${body.slug}`, hostname: `${body.slug}.localhost`, admin_email: `j-${tag}@example.test`, ...body },
-  });
+  const res = await createHub({ name: `Jurisdiction Test ${body.slug}`, hostname: `${body.slug}.localhost`, admin_email: `j-${tag}@example.test`, ...body });
   if (res.status === 201) created.push(String(body.slug));
   return res;
 }
 
 async function suggest(name: string, type: string, state = "zz") {
-  const res = await consoleCall("GET", `/control/slug-suggestion?${new URLSearchParams({ name, type, state })}`, { cookie });
-  expect(res.status, JSON.stringify(res.body)).toBe(200);
-  return res.body as { slug: string; hostname: string | null; passed_over: Array<{ slug: string; reason: string }> };
+  return (await operator("suggestSlug", { name, type, state })) as { slug: string; hostname: string | null; passed_over: Array<{ slug: string; reason: string }> };
+}
+
+/** The type-ahead over state "zz", as the console's search field asks it: { body: { matches } }. */
+async function search(type: string, q: string) {
+  return { body: { matches: await operator<any[]>("searchJurisdictions", { state: "zz", type, q }) } };
 }
 
 beforeAll(async () => {
@@ -72,47 +66,44 @@ beforeAll(async () => {
       r,
     );
   }
-  cookie = await mintConsoleSession();
 });
 
 afterAll(async () => {
   for (const id of created) {
-    await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+    await archiveHub(id);
   }
   await db.query("update hubs set jurisdiction_ocd_id = null where jurisdiction_ocd_id like 'ocd-division/country:us/state:zz%'");
   await db.query("delete from jurisdictions where state = 'zz'");
   await db.end();
 });
 
-describe("the reference list in the console", () => {
+describe("the reference list", () => {
   it("serves the states and a type-ahead over one state's jurisdictions of one type", async () => {
-    const states = await consoleCall("GET", "/control/jurisdictions/states", { cookie });
-    expect(states.status).toBe(200);
-    expect(states.body.states.map((s: { ocd_id: string }) => s.ocd_id)).toContain(OCD.state);
+    const states = await operator<Array<{ ocd_id: string }>>("listStates");
+    expect(states.map((s: { ocd_id: string }) => s.ocd_id)).toContain(OCD.state);
 
-    const prefix = await consoleCall("GET", `/control/jurisdictions?state=zz&type=town&q=${Name.slice(0, 4)}`, { cookie });
-    expect(prefix.status).toBe(200);
+    const prefix = await search("town", `${Name.slice(0, 4)}`);
     const ids = prefix.body.matches.map((m: { ocd_id: string }) => m.ocd_id);
     // "Tv…" first (the name starts with it), then "North Tv…" (a later word does).
     expect(ids).toEqual([OCD.town, OCD.north]);
     expect(prefix.body.matches[0]).toMatchObject({ display_name: `Town of ${Name}, Zedland`, census_geoid: `99${tag}1`, hubs: [] });
 
-    const counties = await consoleCall("GET", `/control/jurisdictions?state=zz&type=county&q=${Name} County`, { cookie });
+    const counties = await search("county", `${Name} County`);
     expect(counties.body.matches.map((m: { ocd_id: string }) => m.ocd_id)).toEqual([OCD.county]);
 
     // A consolidated city-county is a city as well as a county, and has a type of its own.
     for (const type of ["city", "city_county"]) {
-      const found = await consoleCall("GET", `/control/jurisdictions?state=zz&type=${type}&q=Metro`, { cookie });
+      const found = await search(type, "Metro");
       expect(found.body.matches.map((m: { ocd_id: string }) => m.ocd_id), type).toEqual([OCD.consolidated]);
       expect(found.body.matches[0].type).toBe("city_county");
     }
 
     // The two counties: the plain one, and the consolidated city-county, which
     // is a county too. Found by a word after the hyphen as well.
-    const metro = await consoleCall("GET", `/control/jurisdictions?state=zz&type=county&q=${Name}`, { cookie });
+    const metro = await search("county", `${Name}`);
     expect(metro.body.matches.map((m: { ocd_id: string }) => m.ocd_id).sort()).toEqual([OCD.county, OCD.consolidated].sort());
 
-    const bad = await consoleCall("GET", "/control/jurisdictions?state=zz&type=parish&q=x", { cookie });
+    const bad = await operatorCall("searchJurisdictions", { state: "zz", type: "parish", q: "x" });
     expect(bad.status).toBe(400);
   });
 
@@ -133,8 +124,8 @@ describe("the slug suggestion", () => {
     const county = await suggest(`${Name} County`, "county");
     expect(county.slug).toBe(`${BASE}-zz`);
     expect(county.passed_over).toEqual([{ slug: BASE, reason: "taken" }]);
-    // With a platform domain (console.<domain>) the address comes too; on
-    // console.localhost there is none, and the form leaves the hostname to the operator.
+    // With a platform domain (CIVIC_PLATFORM_DOMAIN) the address comes too;
+    // locally there is none, and the form leaves the hostname to the operator.
     if (county.hostname !== null) expect(county.hostname).toMatch(new RegExp(`^${BASE}-zz\\.`));
 
     expect((await suggest(`${Name} town`, "town")).slug).toBe(`${BASE}-zz`);
@@ -161,7 +152,7 @@ describe("creating a hub", () => {
       // Derived from the OCD id at creation: a town adds its type.
       jurisdiction_code: `us-zz-${BASE}-town`,
     });
-    const m = await consoleCall("GET", `/control/jurisdictions?state=zz&type=town&q=${Name}`, { cookie });
+    const m = await search("town", `${Name}`);
     const served = m.body.matches.find((x: { ocd_id: string }) => x.ocd_id === OCD.town).hubs.map((h: { id: string }) => h.id).sort();
     expect(served).toEqual([BASE, `${BASE}-town`, `${BASE}-zz`].sort());
   });
@@ -205,29 +196,22 @@ describe("creating a hub", () => {
 });
 
 describe("editing a hub's jurisdiction", () => {
-  it("moves it to another listed jurisdiction, audited", async () => {
-    const res = await consoleCall("PATCH", `/control/hubs/${BASE}`, {
-      cookie,
-      body: { jurisdiction_ocd_id: OCD.county, jurisdiction_name: `${Name} County, Zedland`, jurisdiction_type: "county" },
-    });
+  it("moves it to another listed jurisdiction, saying what it was", async () => {
+    const res = await updateHub(BASE, { jurisdiction_ocd_id: OCD.county, jurisdiction_name: `${Name} County, Zedland`, jurisdiction_type: "county" });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.hub.jurisdiction_ocd_id).toBe(OCD.county);
     // Never recomputed: the code the hub has published stays.
     expect(res.body.hub.jurisdiction_code).toBe(`us-zz-${BASE}-town`);
-    const typed = await consoleCall("PATCH", `/control/hubs/${BASE}`, { cookie, body: { jurisdiction_code: "us-zz-other" } });
+    const typed = await updateHub(BASE, { jurisdiction_code: "us-zz-other" });
     expect(typed.status).toBe(400);
-    const audit = (await auditFor(BASE)).find((a) => a.action === "hub.update");
-    expect(audit?.before).toMatchObject({ jurisdiction_ocd_id: OCD.town });
-    expect(audit?.after).toMatchObject({ jurisdiction_ocd_id: OCD.county, jurisdiction_name: `${Name} County, Zedland` });
+    expect(res.body.plan.before).toMatchObject({ jurisdiction_ocd_id: OCD.town });
+    expect(res.body.plan.changes).toMatchObject({ jurisdiction_ocd_id: OCD.county, jurisdiction_name: `${Name} County, Zedland` });
   });
 
   it("refuses custom while an OCD id stays, and accepts custom with the id cleared", async () => {
-    const bad = await consoleCall("PATCH", `/control/hubs/${BASE}`, { cookie, body: { jurisdiction_custom: true } });
+    const bad = await updateHub(BASE, { jurisdiction_custom: true });
     expect(bad.status).toBe(400);
-    const ok = await consoleCall("PATCH", `/control/hubs/${BASE}`, {
-      cookie,
-      body: { jurisdiction_custom: true, jurisdiction_ocd_id: null, jurisdiction_name: "Tv district" },
-    });
+    const ok = await updateHub(BASE, { jurisdiction_custom: true, jurisdiction_ocd_id: null, jurisdiction_name: "Tv district" });
     expect(ok.status, JSON.stringify(ok.body)).toBe(200);
     expect(ok.body.config).toMatchObject({ jurisdiction_custom: true, jurisdiction_ocd_id: null });
   });

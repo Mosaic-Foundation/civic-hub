@@ -1,24 +1,20 @@
 // Whose law a hub's Terms use (pilot readiness 2, 2026-11-02): a place hub's own
 // state, a whole state included; another kind's choice, else its location's
-// state, else the platform's default, marked. Needs the console's env and the
+// state, else the platform's default, marked. Needs the operator API and the
 // jurisdiction list (CI loads both).
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub } from "../fixtures/operator.js";
 
 const run = Date.now().toString(36);
 const created: string[] = [];
-let cookie = "";
 
 async function hub(tag: string, extra: Record<string, unknown>) {
   const slug = `law-${tag}-${run}`;
   const admin = `law-${tag}-${run}@example.test`;
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { slug, name: `Law ${tag}`, hostname: `${slug}.localhost`, admin_email: admin, ...extra },
-  });
+  const res = await createHub({ slug, name: `Law ${tag}`, hostname: `${slug}.localhost`, admin_email: admin, ...extra });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   created.push(slug);
   return { host: `${slug}.localhost`, token: await mintSession(slug, admin) };
@@ -35,14 +31,11 @@ const COUNTY = { ocd: "ocd-division/country:us/state:co/county:jefferson", name:
 const STATE = { ocd: "ocd-division/country:us/state:co", name: "Colorado" };
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
 });
 
 afterAll(async () => {
   for (const id of created) {
-    const code = String(100000 + Math.floor(Math.random() * 899999));
-    await plantCode("step_up", code);
-    await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: code } });
+    await archiveHub(id);
   }
 });
 

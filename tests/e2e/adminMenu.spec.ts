@@ -10,14 +10,14 @@
  * 5. The starter word cloud in the strip once the sample one goes; the
  *    picker's empty state.
  *
- * One demo hub with samples, made through the console's Create hub, visited on
+ * One demo hub with samples, made through the operator API, visited on
  * its own address (<slug>.localhost on the UI's port), and archived after.
- * Needs the console's env on the API (CIVIC_CONSOLE_HOSTNAME=console.localhost).
+ * Needs the operator API on the server (CIVIC_OPERATOR_TOKEN).
  */
 
 import { test, expect, type Page } from "@playwright/test";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub } from "../fixtures/operator.js";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 import { readFileSync } from "node:fs";
 
@@ -34,7 +34,6 @@ const ADMIN = `menu-admin-${run}@example.test`;
 const PHONE = { width: 375, height: 812 };
 const DESKTOP = { width: 1280, height: 860 };
 
-let consoleCookie = "";
 let adminToken = "";
 
 async function signedIn(page: Page, token: string): Promise<void> {
@@ -58,10 +57,7 @@ async function sessionFor(email: string): Promise<string> {
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async () => {
-  consoleCookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie: consoleCookie,
-    body: {
+  const res = await createHub({
       slug: SLUG,
       hostname: `${SLUG}.localhost`,
       admin_email: ADMIN,
@@ -70,16 +66,13 @@ test.beforeAll(async () => {
       jurisdiction_custom: true,
       jurisdiction_type: "county",
       sample_content: true,
-    },
-  });
+    });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   adminToken = await sessionFor(ADMIN);
 });
 
 test.afterAll(async () => {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  await consoleCall("POST", `/control/hubs/${SLUG}/archive`, { cookie: consoleCookie, body: { step_up_code: code } });
+  await archiveHub(SLUG);
 });
 
 async function reviewCount(page: Page): Promise<number> {

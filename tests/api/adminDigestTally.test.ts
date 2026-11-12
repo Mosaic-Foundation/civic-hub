@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession } from "../fixtures/consoleCall.js";
+import { createHub } from "../fixtures/operator.js";
 import { COC_FLAG } from "../fixtures/codeOfConduct.js";
 
 /**
@@ -46,11 +46,7 @@ async function submitProposal(title: string, description: string, extra: Record<
 }
 
 beforeAll(async () => {
-  const cookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { slug: HUB, name: `Digest Tally ${run}`, hostname: HOST, admin_email: ADMIN, hub_kind: "organization", mode: "beta" },
-  });
+  const res = await createHub({ slug: HUB, name: `Digest Tally ${run}`, hostname: HOST, admin_email: ADMIN, hub_kind: "organization", mode: "beta" });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   admin = await mintSession(HUB, ADMIN);
   resident = await mintSession(HUB, `adt-resident-${run}@example.test`);

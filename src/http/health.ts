@@ -6,9 +6,8 @@
 // passes and the schema has no gaps; 503 otherwise, so a monitor fails on a
 // real problem and not only on a dead server.
 //
-// Served by the hub app (src/app.ts) and, for the console and start page
-// hostnames, by the front door (src/control/index.ts). A host with no hub
-// (the console) reports the database and schema, and the hub check's mode only.
+// Served by the hub app (src/app.ts), ahead of hub resolution. A host with no
+// hub reports the database and schema, and the hub check's mode only.
 
 import type { Request, Response } from "express";
 import { route } from "./route.js";

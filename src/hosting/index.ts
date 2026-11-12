@@ -2,7 +2,7 @@
 // engine's. The engine (src/processes, src/modules, src/authz, src/events,
 // src/services, …) calls the adapters in src/adapters/; this file chooses
 // their implementations, once, at startup. Only the composition roots
-// (src/app.ts, src/index.ts, api/), src/control/ and scripts/ import from
+// (src/app.ts, src/index.ts, api/), src/operator/ and scripts/ import from
 // here (lint: civic/hosting-boundary).
 //
 // What lives in this layer: the vendors' implementations below; the

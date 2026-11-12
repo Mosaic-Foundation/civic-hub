@@ -13,7 +13,7 @@
  * 4. The invite email's link: /sign-in#invite=… → Confirm → the join step.
  * Admins see hidden members in Settings → People.
  *
- * One live hub made through the console's Create hub, visited on its own
+ * One live hub made through the operator API, visited on its own
  * address (<slug>.localhost on the UI's port), and archived after.
  * CIVIC_E2E_SHOTS=<dir> saves a screenshot of each page at each width.
  */
@@ -21,7 +21,7 @@
 import { createHash } from "node:crypto";
 import { test, expect, type Page } from "@playwright/test";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub } from "../fixtures/operator.js";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 
 const UI = new URL(process.env.CIVIC_E2E_UI_ORIGIN?.trim() || "http://localhost:5173");
@@ -33,7 +33,6 @@ const PHONE = { width: 375, height: 812 };
 const DESKTOP = { width: 1280, height: 860 };
 const SHOTS = process.env.CIVIC_E2E_SHOTS?.trim();
 
-let consoleCookie = "";
 let adminToken = "";
 let memberToken = "";
 let hiderToken = "";
@@ -73,10 +72,7 @@ async function shot(page: Page, name: string): Promise<void> {
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async ({ request }) => {
-  consoleCookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie: consoleCookie,
-    body: {
+  const res = await createHub({
       slug: SLUG,
       hostname: `${SLUG}.localhost`,
       admin_email: ADMIN,
@@ -85,8 +81,7 @@ test.beforeAll(async ({ request }) => {
       jurisdiction_custom: true,
       jurisdiction_type: "county",
       mode: "live",
-    },
-  });
+    });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   adminToken = await memberNamed(ADMIN, "Jordan Admin");
   memberToken = await memberNamed(addr("avery"), "Avery Lane");
@@ -102,9 +97,7 @@ test.beforeAll(async ({ request }) => {
 });
 
 test.afterAll(async () => {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  await consoleCall("POST", `/control/hubs/${SLUG}/archive`, { cookie: consoleCookie, body: { step_up_code: code } });
+  await archiveHub(SLUG);
 });
 
 for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const) {

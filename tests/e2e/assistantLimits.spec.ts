@@ -13,7 +13,7 @@ import { test, expect } from "@playwright/test";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 import { E2E_API_BASE as API } from "./hubApi";
-import { consoleCall, mintConsoleSession } from "../fixtures/consoleCall.js";
+import { updateAiLimits } from "../fixtures/operator.js";
 
 async function residentOn(page: import("@playwright/test").Page, hubId: string, tag: string): Promise<void> {
   const email = `${tag}-${Date.now()}@example.test`;
@@ -59,8 +59,7 @@ test("a refused message shows the server's reason in the chat", async ({ page, r
 test("over the hourly limit, the chat says to wait a while", async ({ page, request }) => {
   const { hub } = await (await request.get(`${API}/hub-config`)).json();
   // The operator sets one turn an hour for this hub, from the console.
-  const cookie = await mintConsoleSession();
-  const set = await consoleCall("PUT", `/control/hubs/${hub.id}/ai-limits`, { cookie, body: { user_per_hour: 1 } });
+  const set = await updateAiLimits(hub.id, { user_per_hour: 1 });
   expect(set.status, JSON.stringify(set.body)).toBe(200);
   try {
     await residentOn(page, hub.id, "chat-hourly-e2e");
@@ -78,6 +77,6 @@ test("over the hourly limit, the chat says to wait a while", async ({ page, requ
     await expect(page.getByText("You've asked the assistant a lot in a short time. Please wait a while and try again.")).toBeVisible();
     await expect(page.getByText("Something went wrong with the assistant")).toHaveCount(0);
   } finally {
-    await consoleCall("PUT", `/control/hubs/${hub.id}/ai-limits`, { cookie, body: { user_per_hour: null } });
+    await updateAiLimits(hub.id, { user_per_hour: null });
   }
 });

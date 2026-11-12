@@ -9,7 +9,6 @@ import { CIVIC_HUB, currentSpaceType, spaceTypeView } from "../../src/shared/spa
 import { PLATFORM_CONTACT_EMAIL } from "../../src/shared/platform.js";
 import { ENV_FALLBACKS, KEYS } from "../../src/models/hubSettings.js";
 import { currentSender, operatorSender } from "../../src/services/emailSender.js";
-import { renderInviteEmail } from "../../src/control/inviteEmail.js";
 import { renderFixedEmail } from "../../src/operator/platformFeedback.js";
 
 const saved = { ...process.env };
@@ -39,8 +38,6 @@ describe("the Civic Hub record", () => {
   });
 
   it("writes mail exactly as before", () => {
-    const invite = renderInviteEmail({ startHost: "start.localhost", linkToken: "t", email: "a@example.test", expiresAt: "2026-12-01T00:00:00Z" });
-    expect(invite.text).toContain("You're invited to create a Civic Hub: a place for your community");
     const fixed = renderFixedEmail(
       { stream: "bug", message: "It broke." } as Parameters<typeof renderFixedEmail>[0],
       "Floyd Civic Hub",

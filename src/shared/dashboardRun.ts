@@ -1,7 +1,7 @@
 // Running the console Dashboard's sections (the dashboard slice, 2026-10-17),
 // shared by both sides of the console split: the hub runs its own sections
-// (src/operator/dashboard/registry.ts) and the console runs the ones that read
-// outside services (src/control/dashboard/registry.ts). Pure: no database, no
+// (src/operator/dashboard/registry.ts) and the console (Mosaic-Foundation/mosaic-console) runs
+// the ones that read outside services. Pure: no database, no
 // settings.
 //
 // Every loader runs at once, each under its own timeout, so one slow source

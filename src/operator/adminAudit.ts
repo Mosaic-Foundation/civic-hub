@@ -1,6 +1,6 @@
 // @civic-raw-client-importer: the operator reads one hub's own admin log (hub data) for the console, as the service role.
 // The hub admins' own log, read for the console through the operator API
-// (./api.ts). Moved from src/control/audit.ts at the console split: the
+// (./api.ts). Moved here from the console at the console split: the
 // console no longer reads hub tables.
 
 import { getDb } from "../db/client.js";

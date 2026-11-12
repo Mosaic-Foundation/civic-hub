@@ -1,6 +1,5 @@
 // Dashboard section "Jobs and backups", the hub's half: one row per scheduled job.
-// The console adds the backup (src/control/dashboard/registry.ts), which it
-// reads from an outside service.
+// The console adds the backup, which it reads from an outside service.
 //
 // A job's last run is its last scheduled run in job_last_run (every run,
 // including the ones that did nothing; the per-hub job_runs keeps only runs

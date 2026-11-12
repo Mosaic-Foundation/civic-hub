@@ -1,18 +1,16 @@
 // Audit 2 (2026-10-11): sign-in that can't be brute-forced or abused, and demo
 // sessions that can never become privileged sessions.
 //
-// Two hubs the console creates for this file, so Athens and Floyd are
-// untouched: a DEMO hub (any six digits for ordinary visitors) and a BETA hub
-// (every code is real). Both are archived in afterAll.
-//
-// Needs the console's env, like tests/api/control.test.ts.
+// Two hubs made for this file through the operator API, so Athens and Floyd
+// are untouched: a DEMO hub (any six digits for ordinary visitors) and a BETA
+// hub (every code is real). Both are archived in afterAll.
 
 import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { consoleSql } from "../fixtures/consoleDb.js";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintDemoSession, mintSession, plantHubCode } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub as newHub, archiveHub } from "../fixtures/operator.js";
 import { freshTestIp } from "../fixtures/helpers.js";
 import { rateLimitBucket } from "../../src/db/rateLimit.js";
 
@@ -23,21 +21,12 @@ const BETA = `a2b-${run}`;
 const BETA_HOST = `${BETA}.localhost`;
 const DEMO_ADMIN = `a2d-admin-${run}@example.test`;
 const BETA_ADMIN = `a2b-admin-${run}@example.test`;
-let cookie = "";
 
 const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
-async function stepCode(): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  return code;
-}
 
 async function createHub(slug: string, host: string, admin: string, mode: "demo" | "beta"): Promise<void> {
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { slug, name: `Audit Two ${mode}`, hostname: host, admin_email: admin, hub_kind: "organization", mode },
-  });
+  const res = await newHub({ slug, name: `Audit Two ${mode}`, hostname: host, admin_email: admin, hub_kind: "organization", mode });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
 }
 
@@ -74,14 +63,13 @@ async function setSetting(hub: string, key: string, value: string): Promise<void
 }
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
   await createHub(DEMO, DEMO_HOST, DEMO_ADMIN, "demo");
   await createHub(BETA, BETA_HOST, BETA_ADMIN, "beta");
 });
 
 afterAll(async () => {
   for (const slug of [DEMO, BETA]) {
-    await consoleCall("POST", `/control/hubs/${slug}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+    await archiveHub(slug);
   }
 });
 
@@ -217,15 +205,6 @@ describe("per-IP and per-address limits (lock the code, not the person)", () => 
     expect((await call("POST", "/auth/verify", BETA_HOST, { email, code: "551178" })).status).toBe(200);
   });
 
-  it("the console allows five code requests per IP an hour", async () => {
-    const ip = freshTestIp();
-    for (let i = 0; i < 5; i++) {
-      const r = await consoleCall("POST", "/control/auth/request-code", { body: { email: `nobody-${i}@example.test` }, ip });
-      expect(r.status, JSON.stringify(r.body)).toBe(200);
-    }
-    const refused = await consoleCall("POST", "/control/auth/request-code", { body: { email: "nobody@example.test" }, ip });
-    expect(refused.status).toBe(429);
-  });
 
   it("the console's and the start page's code checks are atomic too, a try on every live code", async () => {
     // Straight at the function, on rows of this test's own, so the operator's

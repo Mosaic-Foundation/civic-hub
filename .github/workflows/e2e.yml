@@ -116,17 +116,14 @@ jobs:
           CIVIC_ADMIN_EMAILS: admin@example.test
           CIVIC_DEV_HUB: athens
           CIVIC_JURISDICTION: us-va-floyd
-          CIVIC_CONSOLE_HOSTNAME: console.localhost
-          CIVIC_CONSOLE_DATABASE_URL: postgresql://civic_console:local-console-only@127.0.0.1:54322/postgres
-          CIVIC_CONSOLE_ADMIN_EMAIL: operator@example.test
-          CIVIC_START_HOSTNAME: start.localhost
+          CIVIC_OPERATOR_TOKEN: local-operator-only
           # Every outside service is its in-memory fake (ADR-012): no AI, mail,
           # video, Polis, Sentry or Healthchecks call leaves the job. Submit's
           # Code of Conduct check is the fixed test rule the specs make flag
           # text (src/debug/fakeCodeOfConduct.ts).
           CIVIC_FAKE_ADAPTERS: "on"
-          # The console's Dashboard reads hubs' /health from this server
-          # (tests/e2e/dashboard.spec.ts), never a real hub's address.
+          # The Dashboard's hub checks read hubs' /health from this server,
+          # never a real hub's address.
           CIVIC_DASHBOARD_FAKE: "on"
           # The start page hands a new hub's admin to the UI here.
           CIVIC_UI_BASE_URL: http://localhost:4173

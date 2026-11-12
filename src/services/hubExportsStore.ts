@@ -2,7 +2,8 @@
 // hub" leaves an archive for the operator to download through a short-lived
 // signed URL, and where the hourly sweep deletes it again after 24 hours.
 // Both sides live here so the retention rule is written once. The hub app
-// only ever sweeps; writing and signing are the super admin's (src/control/).
+// only ever sweeps; writing and signing are the operator API's export
+// (src/operator/hubExport.ts), which the console calls.
 // Through the `objectStore` adapter (ADR-012): the bucket is private, and the
 // Supabase store reaches it as the service role only.
 

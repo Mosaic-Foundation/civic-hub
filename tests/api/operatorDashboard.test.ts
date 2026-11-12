@@ -1,12 +1,11 @@
-// The console's Dashboard (GET /control/dashboard, the dashboard slice, 2026-10-17).
+// The hub's sections of the console's Dashboard (the dashboard slice,
+// 2026-10-17), through the operator API's dashboard method, as the console
+// asks for them. The console's own sections (uptime and errors, the backup)
+// are the console's, since the console split.
 //
-// - only the console's operator gets it: no session, a hub's session, or a
-//   hub's hostname are refused;
 // - every section comes back, in order, each with its own status;
 // - a hub that never answers its health check is "down" after the timeout,
 //   and the page still answers with every other hub;
-// - with no outside keys (as in CI) the backup, uptime and errors cards are
-//   "not connected" with their setup line, and the page does not fail;
 // - an empty job_last_run shows every job as never run; a scheduled run
 //   records itself, a run for one hub by hand does not;
 // - the waiting counts are what is pending, not what is new since an admin
@@ -14,13 +13,13 @@
 //
 // Needs the server started with CIVIC_DASHBOARD_FAKE=on (as in CI): hubs'
 // health is read from the server itself, and a hub whose slug contains
-// "slow" never answers. Hubs are made by the console's Create hub and
-// archived in afterAll; planted rows are deleted.
+// "slow" never answers. Hubs are made through the operator API and archived
+// in afterAll; planted rows are deleted.
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub, operatorCall } from "../fixtures/operator.js";
 import { API_BASE } from "../fixtures/helpers.js";
 
 const run = Date.now().toString(36);
@@ -36,12 +35,12 @@ vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 type Row = Record<string, any>;
 type Section = { id: string; name: string; status: string; ms: number; data: any; message?: string };
 
-let cookie = "";
 const created: string[] = [];
 
 async function dashboard(fresh = false): Promise<{ status: number; body: { gathered_at: string; sections: Section[] } }> {
-  const res = await consoleCall("GET", `/control/dashboard${fresh ? "?fresh=1" : ""}`, { cookie });
-  return res;
+  const now = new Date().toISOString();
+  const res = await operatorCall("dashboard", { fresh, now });
+  return res.status === 200 ? { status: 200, body: { gathered_at: now, sections: res.body } } : res;
 }
 
 function section(body: { sections: Section[] }, id: string): Section {
@@ -59,11 +58,8 @@ async function attentionFor(hubId: string): Promise<Row> {
 }
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
   for (const [slug, name] of [[SLOW, "Slow Test Hub"], [FLAKY, "Flaky Test Hub"]]) {
-    const res = await consoleCall("POST", "/control/hubs", {
-      cookie,
-      body: {
+    const res = await createHub({
         slug,
         name,
         hostname: `${slug}.localhost`,
@@ -72,8 +68,7 @@ beforeAll(async () => {
         jurisdiction_custom: true,
         jurisdiction_type: "county",
         mode: "beta",
-      },
-    });
+      });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     created.push(slug);
   }
@@ -90,34 +85,15 @@ afterAll(async () => {
   await localRest(`waitlist?hub_id=eq.floyd&email=like.${MARK}*`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
   await localRest(`feedback_submissions?hub_id=eq.floyd&id=like.${MARK}*`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
   for (const id of created) {
-    await plantCode("step_up", "424242");
-    await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: "424242" } });
+    await archiveHub(id);
   }
 });
 
-describe("who gets the Dashboard", () => {
-  it("is refused without a console session", async () => {
-    expect((await consoleCall("GET", "/control/dashboard")).status).toBe(401);
-  });
-
-  it("is refused to a hub admin's session: a hub's sign-in is not the console's", async () => {
-    const hubSession = await mintSession("floyd", "admin@example.test");
-    const res = await consoleCall("GET", "/control/dashboard", { cookie: hubSession });
-    expect(res.status).toBe(401);
-  });
-
-  it("does not exist on a hub's hostname", async () => {
-    const hubAdmin = await mintSession("floyd", "admin@example.test");
-    const res = await call("GET", "/control/dashboard", FLOYD, undefined, hubAdmin);
-    expect(res.status).toBe(404);
-  });
-});
-
-describe("GET /control/dashboard", () => {
+describe("the hub's sections", () => {
   it("answers every section, in order, with when it was gathered", async () => {
     const res = await dashboard(false);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.sections.map((s) => s.id)).toEqual(["hubs", "jobs", "outside", "attention", "plugins", "activity"]);
+    expect(res.body.sections.map((s) => s.id)).toEqual(["hubs", "jobs", "attention", "plugins", "activity"]);
     expect(Math.abs(Date.now() - Date.parse(res.body.gathered_at))).toBeLessThan(60_000);
   });
 
@@ -173,16 +149,6 @@ describe("GET /control/dashboard", () => {
     expect(groups).toEqual([...groups].sort((a: number, b: number) => a - b));
   });
 
-  it("with no outside keys, the backup, uptime and errors are not connected and say how", async () => {
-    const res = await dashboard(false);
-    const backup = section(res.body, "jobs").data.backup;
-    const outside = section(res.body, "outside");
-    expect(outside.status).toBe("ok");
-    for (const card of [backup, outside.data.uptime, outside.data.errors]) {
-      expect(card.state).toBe("not_connected");
-      expect(card.setup).toMatch(/Vercel/);
-    }
-  });
 });
 
 describe("jobs", () => {

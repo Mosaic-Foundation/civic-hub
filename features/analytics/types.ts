@@ -1,5 +1,5 @@
 // The report every Activity surface reads (ADR-016): plain types, shared by
-// the server (report.ts) and the UI (ui.tsx, consoleView.tsx). Imports nothing
+// the server (report.ts) and the UI (ui.tsx; the console keeps its own view). Imports nothing
 // but the period kinds.
 
 import type { PeriodKind } from "./periods.js";

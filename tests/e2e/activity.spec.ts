@@ -1,7 +1,6 @@
 /**
  * Activity, the participation record (the analytics slice, 2026-10-27;
- * ADR-016), on the hub `localhost` resolves to, as its admin; and in the
- * console, as its operator.
+ * ADR-016), on the hub `localhost` resolves to, as its admin.
  *
  * 1. Admin → Activity: the tab, the period's totals, every kind, the three
  *    funder measures with how each is counted, Recount now and the CSV.
@@ -9,20 +8,17 @@
  *    a read with it logged on the page, revoked.
  * 3. Public numbers: switched on in Plugins, the About page shows "This hub
  *    in numbers" and /analytics answers; switched off, both are gone.
- * 4. The console's Dashboard: the Activity tile, its tab, and a hub's
- *    breakdown by kind.
+ *
+ * The console's Activity tile is the console's (Mosaic-Foundation/mosaic-console).
  *
  * Settings it changes are put back through the API.
  */
 
 import { test, expect, type APIRequestContext } from "@playwright/test";
 import { storedSetting } from "../fixtures/adminSession.js";
-import { mintConsoleSession } from "../fixtures/consoleCall.js";
 import { adminEmailFor, hubId, run, session, visitAs } from "./actors";
 import { E2E_API_BASE as API } from "./hubApi";
 
-const UI = new URL(process.env.CIVIC_E2E_UI_ORIGIN?.trim() || "http://localhost:5173");
-const CONSOLE_UI = `${UI.protocol}//console.localhost${UI.port ? `:${UI.port}` : ""}/console.html`;
 const DESKTOP = { width: 1280, height: 900 };
 const PUBLIC = "plugin.analytics.public_numbers";
 
@@ -131,18 +127,3 @@ test("3. Public numbers: on, the About page shows the hub in numbers; off, it is
   await visitor.close();
 });
 
-test("4. the console: the Activity tile, its tab, and one hub's numbers by kind", async ({ page, context }) => {
-  const cookie = await mintConsoleSession();
-  const [name, value] = cookie.split("=");
-  await context.addCookies([{ name, value: decodeURIComponent(value), domain: "console.localhost", path: "/" }]);
-  await page.setViewportSize(DESKTOP);
-  await page.goto(`${CONSOLE_UI}#/dashboard`);
-  await expect(page.getByText("active residents this month")).toBeVisible({ timeout: 40_000 });
-  await page.getByRole("link", { name: "Activity", exact: true }).first().click();
-  const table = page.getByTestId("dash-activity");
-  await expect(table.getByTestId(`dash-activity-${hub}`)).toBeVisible();
-  await page.getByRole("button", { name: "Since launch" }).click();
-  await table.getByTestId(`dash-activity-${hub}`).getByRole("button").click();
-  await expect(page.getByTestId(`dash-activity-types-${hub}`)).toContainText("Votes");
-  await expect(table.locator("tfoot")).toContainText("All hubs");
-});

@@ -4,7 +4,7 @@
 // The raw, service-role Supabase client. It sees every hub's rows. Request
 // code reaches tenant data through forHub(hubId) in ./forHub.ts, which wraps
 // this client with the hub filter and stamp. Legitimate importers: src/db/
-// (forHub itself, the hubs registry), src/control/, and scripts/ that run
+// (forHub itself, the hubs registry), src/operator/, and scripts/ that run
 // migrations or operator tasks. The `@civic-raw-client` tag above is what the
 // Phase 2b `no-restricted-imports` rule keys on; every other importer is a
 // module not yet converted (list in HANDOFF.md, Phase 2a entry).

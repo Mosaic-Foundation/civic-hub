@@ -6,8 +6,8 @@
 //
 // `layer` says who may read a setting:
 //   engine   the hub itself: anything in src/ through `env`.
-//   hosting  an outside service or the host: only src/hosting/, src/control/
-//            and api/ through `hostingEnv` (lint: civic/hosting-boundary).
+//   hosting  an outside service or the host: only src/hosting/ and api/
+//            through `hostingEnv` (lint: civic/hosting-boundary).
 //   dev      development switches, refused in production (./devFlags.ts).
 //
 // Adding a setting: declare it here, read it as env.X (or hostingEnv.X), and
@@ -53,7 +53,6 @@ export const SETTINGS = s({
 
   // --- The plugin catalog's signatures (plugin session 2, ADR-015) -----------
   CIVIC_CATALOG_SIGNING_KEY: { purpose: "The catalog signing key (an Ed25519 private key, PEM, or that PEM in base64): the console's, which signs an approval with it (src/control/catalogKey.ts). The hub reads only its public half, and only while CIVIC_CATALOG_PUBLIC_KEY is unset; once the console has its own deployment it lives only there.", type: "secret", layer: "engine" },
-  CIVIC_RELEASE_SECRET: { purpose: "Bearer token scripts/release.sh presents to approve first-party catalog entries CI proved (ADR-015 amendment); the console signs them with CIVIC_CATALOG_SIGNING_KEY. Unset: no release approves anything, and the release pauses for the operator as before.", type: "secret", layer: "engine" },
   CIVIC_CATALOG_PUBLIC_KEY: { purpose: "The console's catalog key, its public half (base64 DER, as the console's Plugins page shows it): what the hub verifies approvals with once the console is its own deployment. Unset: the public half of CIVIC_CATALOG_SIGNING_KEY, when this deployment has it.", type: "string", layer: "engine" },
   CIVIC_CATALOG_TRUSTED_KEYS: { purpose: "Retired catalog keys still trusted while the approvals are signed again: comma-separated public keys (base64 DER, as the console shows them).", type: "string", layer: "engine" },
   CIVIC_CATALOG_SIGNATURES: { purpose: "transition: an approved row without a signature still mounts on its hash, a signed one must verify; required: a row without a valid signature is unapproved.", type: "string", layer: "engine", default: "transition" },
@@ -62,13 +61,8 @@ export const SETTINGS = s({
   BASE_URL: { purpose: "The API's own origin outside a hub (scripts, local).", type: "url", layer: "engine", default: "http://localhost:3000" },
   CIVIC_UI_BASE_URL: { purpose: "The UI's origin when it differs from the API's (local preview, the start page's handoff).", type: "url", layer: "engine", default: "BASE_URL" },
   CIVIC_ALLOWED_ORIGINS: { purpose: "Extra CORS origins, comma-separated. Unset outside production allows any origin.", type: "urls", layer: "engine", required: "production" },
-  CIVIC_CONSOLE_HOSTNAME: { purpose: "The console's hostname. Unset: no console on this deployment.", type: "string", layer: "engine" },
-  CIVIC_CONSOLE_ADMIN_EMAIL: { purpose: "The console's one operator.", type: "email", layer: "engine", required: { when: "CIVIC_CONSOLE_HOSTNAME" } },
-  CIVIC_START_HOSTNAME: { purpose: "The start page's hostname. Unset: no start page.", type: "string", layer: "engine" },
-  CIVIC_PLATFORM_DOMAIN: { purpose: "The domain hubs live under (civic.social), whose reserved names no hub may take. Unset: the console hostname's parent, as before the console split.", type: "string", layer: "engine" },
-  CIVIC_CONSOLE_DATABASE_URL: { purpose: "The console's own database login (civic_console, rights on schema console only): a Postgres connection string, on Vercel Supabase's pooler on port 6543. Made by scripts/console-db-login.ts. Unset with a console hostname: the console and the start page answer that they cannot reach their data; the hubs are unaffected.", type: "secret", layer: "engine" },
-  CIVIC_OPERATOR_TOKEN: { purpose: "Bearer token the console presents to this hub deployment's operator API (/operator/*). Unset: the operator API answers 404; a console on the same deployment calls the hub in-process.", type: "secret", layer: "engine" },
-  CIVIC_OPERATOR_URL: { purpose: "Where the console calls the hub deployment's operator API, with CIVIC_OPERATOR_TOKEN: its API base (on Vercel https://<a hub's hostname>/api). Unset: the console calls the hub in-process (one deployment).", type: "url", layer: "engine" },
+  CIVIC_PLATFORM_DOMAIN: { purpose: "The domain hubs live under (civic.social), whose reserved names no hub may take. Unset: none are reserved (local development).", type: "string", layer: "engine" },
+  CIVIC_OPERATOR_TOKEN: { purpose: "Bearer token the console (Mosaic-Foundation/mosaic-console) presents to this hub deployment's operator API (/operator/*). Unset: the operator API answers 404.", type: "secret", layer: "engine" },
   CIVIC_DEV_HUB: { purpose: "Local development: the hub a bare localhost resolves to.", type: "string", layer: "dev", default: "athens" },
 
   // --- Deployment-wide identity fallbacks (a hub's own row wins) -------------
@@ -116,11 +110,6 @@ export const SETTINGS = s({
   CIVIC_ERROR_DSN: { purpose: "The errors adapter's Sentry DSN. Unset: errors go to the log only.", type: "secret", layer: "hosting" },
   CIVIC_ERROR_ENVIRONMENT: { purpose: "The environment tag on every error (\"production\" or \"dev\").", type: "string", layer: "hosting" },
   CIVIC_HEARTBEAT_PING_KEY: { purpose: "The heartbeat adapter's Healthchecks.io ping key. Unset: jobs ping nothing.", type: "secret", layer: "hosting" },
-  HEALTHCHECKS_READ_KEY: { purpose: "Console: Healthchecks.io read-only key (the backup card).", type: "secret", layer: "hosting" },
-  BETTERSTACK_API_TOKEN: { purpose: "Console: Better Stack token (the uptime card).", type: "secret", layer: "hosting" },
-  SENTRY_READ_TOKEN: { purpose: "Console: Sentry read token (the errors card).", type: "secret", layer: "hosting" },
-  SENTRY_ORG: { purpose: "Console: Sentry organization slug.", type: "string", layer: "hosting" },
-  SENTRY_PROJECT: { purpose: "Console: Sentry project slug.", type: "string", layer: "hosting" },
 
   // --- What is deployed ------------------------------------------------------
   GIT_COMMIT_SHA: { purpose: "The deployed commit (/health, error releases).", type: "string", layer: "engine", default: "unknown", hostNames: ["VERCEL_GIT_COMMIT_SHA"] },

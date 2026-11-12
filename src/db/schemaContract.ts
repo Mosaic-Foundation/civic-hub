@@ -40,11 +40,11 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   // one table where drift is worth catching in the deploy log rather than in
   // the first 404.
   { table: "hubs", columns: ["id", "protocol_hub_id", "hostname", "name", "space_did", "status", "custody_arrangement", "custodian", "assurance_level"], owner: "core/hubRegistry" },
-  // The super admin (src/control/, 20260926010000).
+  // The console's hub changes, through the operator API (20260926010000).
   { table: "hubs", columns: ["archived_at"], owner: "control" },
   // The console's own tables left the hub's contract at the console split
   // (step 3c): they are in schema console, the console's, read as its own
-  // login (src/control/db.ts).
+  // login (Mosaic-Foundation/mosaic-console).
   // Jurisdictions (20260927000000): the reference list and the hub's link to it.
   { table: "jurisdictions", columns: ["ocd_id", "census_geoid", "state", "type", "official_name", "display_name"], owner: "control" },
   { table: "hubs", columns: ["jurisdiction_ocd_id", "jurisdiction_custom"], owner: "control" },

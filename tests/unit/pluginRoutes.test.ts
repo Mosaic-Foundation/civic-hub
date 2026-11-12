@@ -28,6 +28,9 @@ const BEFORE: string[] = JSON.parse(readFileSync(join(here, "../fixtures/plugins
 
 /** Added on purpose since e92804c, each with why. */
 const ADDED: Record<string, string> = {
+  // The console split (2026-11-11): the front door that served it is gone, so
+  // the hub app mounts the browsers' error reports itself (it always answered them).
+  "POST /client-errors": "a browser's error report (src/http/clientErrors.ts), before hub resolution",
   // The console split (2026-11-10): the operator API, 404 unless CIVIC_OPERATOR_TOKEN is set.
   "POST /operator/rpc/:method": "the console's calls to the hub deployment (src/operator/api.ts)",
   // The layout session (2026-11-07; ADR-019): the three-column layout's right column.

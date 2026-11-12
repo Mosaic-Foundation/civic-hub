@@ -5,7 +5,7 @@
 //
 // Contract: BUILD-PLAN-multi-tenant.md → "Phase 7 — Sample content for new
 // hubs". Run inside the hub's scope by scripts/seed-sample-content.ts and by
-// the console's Create hub (src/control/router.ts).
+// the console's Create hub (the operator API's seedSamples).
 //
 // - Real paths: processes through createProcess (marked `isSample`), votes
 //   through the civic.vote module's lifecycle, proposals, projects and

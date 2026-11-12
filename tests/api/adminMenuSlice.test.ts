@@ -4,14 +4,14 @@
 //
 // Through the paths an operator and an admin use: hubs made by the console's
 // Create hub, Settings → Sample content (DELETE /admin/hub/sample-content/:id
-// and the coded removal), Settings → Admin log. Needs the console on
-// console.localhost (CI's env) and the local stack. Every hub this file
+// and the coded removal), Settings → Admin log. Needs the operator API
+// (CIVIC_OPERATOR_TOKEN, CI's env) and the local stack. Every hub this file
 // creates is archived in afterAll.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession, plantHubCode } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub as newHub, archiveHub } from "../fixtures/operator.js";
 import { STARTER_WORDCLOUD } from "../../src/services/starterWordcloud.js";
 
 const run = Date.now().toString(36);
@@ -21,17 +21,13 @@ const OFF = `amo-${run}`;
 const host = (slug: string) => `${slug}.localhost`;
 const ADMIN = `menu-admin-${run}@example.test`;
 const created: string[] = [];
-let cookie = "";
 
 type Row = Record<string, any>;
 
 const pid = (slug: string, key: string) => `proc_sample_${slug}_${key}`;
 
 async function createHub(slug: string, body: Row): Promise<Row> {
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { slug, hostname: host(slug), admin_email: ADMIN, ...body },
-  });
+  const res = await newHub({ slug, hostname: host(slug), admin_email: ADMIN, ...body });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   created.push(slug);
   return res.body;
@@ -56,7 +52,6 @@ async function processRow(id: string): Promise<Row | undefined> {
 }
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
   await createHub(DEMO, { ...placeHub("Menu Demo Civic Hub"), sample_content: true });
   await createHub(BETA, { ...placeHub("Menu Beta Civic Hub"), mode: "beta" });
   await createHub(OFF, { ...placeHub("Menu Off Civic Hub"), mode: "beta", plugins: { wordcloud: false } });
@@ -64,9 +59,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   for (const id of created) {
-    const code = String(100000 + Math.floor(Math.random() * 899999));
-    await plantCode("step_up", code);
-    const res = await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: code } });
+    const res = await archiveHub(id);
     if (res.status !== 200 && !/already archived/.test(res.body.error ?? "")) {
       throw new Error(`could not archive ${id}: ${JSON.stringify(res.body)}`);
     }

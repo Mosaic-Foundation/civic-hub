@@ -1,6 +1,6 @@
 // The one-time sign-in code's rules, in one place.
 //
-// A hub's sign-in (./index.ts) and the super admin's (src/control/auth.ts)
+// A hub's sign-in (./index.ts) and, before the console split, the console's
 // both prove a mailbox with an emailed six-digit code. They keep their codes
 // in different tables — a hub's are hub data, the super admin's are not — but
 // they enforce the SAME rules, so neither grows a weaker copy: how the code

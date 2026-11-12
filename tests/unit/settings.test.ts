@@ -45,9 +45,6 @@ describe("checkSettings", () => {
   it("requires a conditional setting only when its switch is on", () => {
     expect(checkSettings({ ...BASE, CIVIC_HUB_MINTED_TOKEN: "false" }).missing).toEqual([]);
     expect(checkSettings({ ...BASE, CIVIC_HUB_MINTED_TOKEN: "true" }).missing.map((m) => m.name)).toEqual(["CIVIC_HUB_SIGNING_KEY"]);
-    expect(checkSettings({ ...BASE, CIVIC_CONSOLE_HOSTNAME: "console.localhost" }).missing.map((m) => m.name)).toEqual([
-      "CIVIC_CONSOLE_ADMIN_EMAIL",
-    ]);
   });
 
   it("refuses a required setting of the wrong type by name, never quoting the value", () => {
@@ -66,8 +63,8 @@ describe("checkSettings", () => {
   });
 
   it("reports, never refuses, a production setting of the wrong type: only its absence stops the start", () => {
-    const r = checkSettings({ ...PROD, CIVIC_ALLOWED_ORIGINS: "floyd.example, https://ok.example", CIVIC_CONSOLE_HOSTNAME: "c.example", CIVIC_CONSOLE_ADMIN_EMAIL: "not-an-address" });
-    expect(r.invalid.map((i) => [i.name, i.required]).sort()).toEqual([["CIVIC_ALLOWED_ORIGINS", false], ["CIVIC_CONSOLE_ADMIN_EMAIL", false]]);
+    const r = checkSettings({ ...PROD, CIVIC_ALLOWED_ORIGINS: "floyd.example, https://ok.example", CIVIC_OPERATOR_MAIL_FROM: "", PORT: "not-a-port" });
+    expect(r.invalid.map((i) => [i.name, i.required]).sort()).toEqual([["CIVIC_ALLOWED_ORIGINS", false], ["PORT", false]]);
     expect(r.missing).toEqual([]);
     expect(settingsFailure(r)).toBeNull();
   });

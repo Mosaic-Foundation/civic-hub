@@ -34,6 +34,8 @@ const KIT = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 /** The test host's scheduler secret: the suite runs its close job with it. Local only. */
 const CRON = "conformance-only-cron-secret";
+/** The test host's operator token; ./src/support/operator.ts presents it (CIVIC_TEST_OPERATOR_TOKEN). */
+const OPERATOR_TOKEN = "conformance-only-operator-token";
 /** tsx, as this package resolves it: the test host's TypeScript runs through it. */
 const TSX = import.meta.resolve("tsx");
 
@@ -214,9 +216,8 @@ async function main(): Promise<void> {
       CIVIC_HUB_SIGNING_KEY: st.jwtSecret,
       NODE_ENV: "development",
       CIVIC_ADMIN_EMAILS: "admin@example.test",
-      CIVIC_CONSOLE_HOSTNAME: "console.localhost",
-      CIVIC_CONSOLE_DATABASE_URL: consoleDbUrl(st.dbUrl),
-      CIVIC_CONSOLE_ADMIN_EMAIL: "operator@example.test",
+      // The operator API (src/operator/router.ts): the suite's two hubs are made through it.
+      CIVIC_OPERATOR_TOKEN: OPERATOR_TOKEN,
       CIVIC_ANON_SECRET: "conformance-only-anon-secret",
       CRON_SECRET: CRON,
       DIGEST_UNSUBSCRIBE_SECRET: "conformance-only-digest-secret",
@@ -232,17 +233,14 @@ async function main(): Promise<void> {
     process.env.CIVIC_API_BASE = `http://localhost:${port}`;
     process.env.SUPABASE_URL = st.apiUrl;
     process.env.SUPABASE_SERVICE_ROLE_KEY = st.serviceRoleKey;
-    const { consoleCall, mintConsoleSession } = await import("./src/support/console.js");
-    const cookie = await mintConsoleSession();
+    process.env.CIVIC_TEST_OPERATOR_TOKEN = OPERATOR_TOKEN;
+    const { createHub } = await import("./src/support/operator.js");
     const run = Date.now().toString(36);
     const hubs: Record<"BETA" | "DEMO", string> = { BETA: "", DEMO: "" };
     for (const [key, mode] of [["BETA", "beta"], ["DEMO", "demo"]] as const) {
       const slugOf = `conformance-${run}-${mode}`;
       const admin = `admin+${slugOf}@example.test`;
-      const made = await consoleCall("POST", "/control/hubs", {
-        cookie,
-        body: { slug: slugOf, name: `Conformance ${mode}`, hostname: `${slugOf}.localhost`, admin_email: admin, hub_kind: "organization", mode },
-      });
+      const made = await createHub({ slug: slugOf, name: `Conformance ${mode}`, hostname: `${slugOf}.localhost`, admin_email: admin, hub_kind: "organization", mode });
       if (made.status !== 201) fail(`the test host would not make a ${mode} hub: ${made.status} ${JSON.stringify(made.body)}`);
       hubs[key] = `${slugOf} ${slugOf}.localhost ${admin}`;
     }
@@ -280,11 +278,3 @@ async function main(): Promise<void> {
 }
 
 await main();
-
-/** The local stack's database as the console's login (civic_console, local-only password). */
-function consoleDbUrl(dbUrl: string): string {
-  const u = new URL(dbUrl);
-  u.username = "civic_console";
-  u.password = "local-console-only";
-  return u.toString();
-}

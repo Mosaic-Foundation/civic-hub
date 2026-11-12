@@ -58,7 +58,7 @@ export const FUNCTION_CONTRACT: readonly FunctionRequirement[] = [
   { name: "take_sign_in_attempt", args: "p_hub_id text, p_email text, p_link_hash text, p_max integer", owner: "civic.auth" },
   // take_platform_sign_in_attempt left the hub's contract at the console split
   // (step 3b): the console calls console.take_platform_sign_in_attempt as its
-  // own login (src/control/platformCodes.ts), and the public wrapper goes with
+  // own login (Mosaic-Foundation/mosaic-console), and the public wrapper goes with
   // the stand-ins.
   {
     name: "take_member_invites",

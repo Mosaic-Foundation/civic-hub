@@ -1,14 +1,14 @@
 // scripts/purge-hub.ts (2026-09-27, Adam): freeing a never-used hub's slug.
 //
 //   1. A hub with one real resident is refused, and nothing changes.
-//   2. A hub created through the console with sample content, then archived
+//   2. A hub made through the operator API with sample content, then archived
 //      (one hub admin audit row planted, as a fresh-code action would write):
 //      without --confirm the script only prints its plan; with it, the bundle
 //      is written first and holds the admin audit row, every row with its
 //      hub_id is gone, its hubs row is gone, the hub.purge audit row holds the
 //      full hubs row (created_at included), and the slug can be created again.
 //
-// Needs the console on console.localhost (CI's env) and the local stack.
+// Needs the operator API (CIVIC_OPERATOR_TOKEN, CI's env) and the local stack.
 // LOCAL ONLY, like hubExportRoundTrip.test.ts.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -20,7 +20,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import pg from "pg";
 import { localStack } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub as newHub, archiveHub } from "../fixtures/operator.js";
 import { readBundleFiles } from "../../scripts/lib/hubImport.js";
 import { NO_OBJECT_STORAGE } from "../fixtures/helpers.js";
 
@@ -41,14 +41,8 @@ const ADMIN = `purge-admin-${tag}@example.test`;
 let db: pg.Client;
 let work: string;
 let envFile: string;
-let cookie = "";
 const toArchive: string[] = [];
 
-async function stepCode(): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  return code;
-}
 
 async function script(args: string[]): Promise<{ code: number; out: string }> {
   try {
@@ -76,23 +70,19 @@ async function hubIdRows(hub: string): Promise<number> {
 }
 
 async function createHub(slug: string, extra: Record<string, unknown> = {}): Promise<Record<string, any>> {
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { slug, name: `Purge Test ${slug}`, hostname: `${slug}.localhost`, admin_email: ADMIN, hub_kind: "other", ...extra },
-  });
+  const res = await newHub({ slug, name: `Purge Test ${slug}`, hostname: `${slug}.localhost`, admin_email: ADMIN, hub_kind: "other", ...extra });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   return res.body;
 }
 
 async function archive(slug: string): Promise<void> {
-  const res = await consoleCall("POST", `/control/hubs/${slug}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+  const res = await archiveHub(slug);
   expect(res.status, JSON.stringify(res.body)).toBe(200);
 }
 
 beforeAll(async () => {
   db = new pg.Client({ connectionString: DB_URL });
   await db.connect();
-  cookie = await mintConsoleSession();
   work = await mkdtemp(join(tmpdir(), "civic-purge-"));
   envFile = join(work, "purge.env");
   await writeFile(
@@ -103,7 +93,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   for (const id of toArchive) {
-    const res = await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+    const res = await archiveHub(id);
     if (res.status !== 200 && !/already archived/.test(res.body.error ?? "")) {
       throw new Error(`could not archive ${id}: ${JSON.stringify(res.body)}`);
     }
@@ -202,11 +192,11 @@ describe("purge-hub.ts", () => {
     expect(audit.rows[0].before).toEqual(hubRow);
     expect(audit.rows[0].before.created_at).toBeTruthy();
     expect(audit.rows[0].after.bundle).toBe(path);
-    // The earlier rows (hub.create, hub.archive) survive the purge.
+    // The console's log keeps the purge (its create and archive rows are the console's own, written there).
     const history = await db.query("select action from console.control_audit_log where target_hub_id = $1 order by id", [SAMPLE]);
-    expect(history.rows.map((x) => x.action)).toEqual(expect.arrayContaining(["hub.create", "hub.archive", "hub.purge"]));
+    expect(history.rows.map((x) => x.action)).toContain("hub.purge");
 
-    // The slug and hostname are free: the console creates the hub again.
+    // The slug and hostname are free: the hub can be made again.
     await createHub(SAMPLE);
     toArchive.push(SAMPLE);
   }, 180_000);

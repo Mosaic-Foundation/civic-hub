@@ -1,21 +1,20 @@
-// Phase 5 part two, step 4: "Export this hub" in the super admin, and the
-// hourly sweep that deletes export objects after 24 hours.
+// Phase 5 part two, step 4: "Export this hub", the hub's side of the
+// console's action (the operator API's exportHub), and the hourly sweep that
+// deletes export objects after 24 hours.
 //
-// The console route takes a fresh code, writes the archive to the private
-// hub-exports bucket, records `hub.export` in the audit log, and answers with
-// a signed link that downloads a real bundle. The sweep (a platform job) is
-// called like Vercel Cron calls it; an object is aged by moving its
-// storage.objects.created_at back, which only the local stack's Postgres
-// allows. LOCAL ONLY. Needs CIVIC_CONSOLE_HOSTNAME=console.localhost and
-// CIVIC_CONSOLE_ADMIN_EMAIL=operator@example.test on the server (CI sets
-// both) and the server's CRON_SECRET in CIVIC_TEST_CRON_SECRET (CI's value is
-// the default).
+// The export writes the archive to the private hub-exports bucket and answers
+// with a signed link that downloads a real bundle. (The console's fresh code
+// and its audit row are the console's, since the console split.) The sweep (a
+// platform job) is called like Vercel Cron calls it; an object is aged by
+// moving its storage.objects.created_at back, which only the local stack's
+// Postgres allows. LOCAL ONLY. Needs the server's CRON_SECRET in
+// CIVIC_TEST_CRON_SECRET (CI's value is the default).
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { gunzipSync } from "node:zlib";
 import pg from "pg";
 import { localStack } from "../fixtures/adminSession.js";
-import { auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { OPERATOR, operatorCall } from "../fixtures/operator.js";
 import { NO_OBJECT_STORAGE, api } from "../fixtures/helpers.js";
 import { unpackTarGz } from "../../src/operator/hubBundle/tar.js";
 
@@ -29,14 +28,8 @@ const OLD = `sweep-${run}/old.tar.gz`;
 const NEW = `sweep-${run}/new.tar.gz`;
 const auth = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` };
 
-let cookie = "";
 let exportedKey: string | null = null;
 
-async function stepCode(): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  return code;
-}
 
 async function objectsUnder(prefix: string): Promise<string[]> {
   const res = await fetch(`${SUPA_URL}/storage/v1/object/list/${BUCKET}`, {
@@ -66,31 +59,14 @@ async function remove(keys: string[]): Promise<void> {
   });
 }
 
-beforeAll(async () => {
-  cookie = await mintConsoleSession();
-});
-
 afterAll(async () => {
   if (NO_OBJECT_STORAGE) return;
   await remove([OLD, NEW, ...(exportedKey ? [exportedKey] : [])]);
 });
 
-describe.skipIf(NO_OBJECT_STORAGE)("Export this hub (console)", () => {
-  it("needs a fresh code, and stores nothing without one", async () => {
-    const before = await objectsUnder(HUB);
-    const res = await consoleCall("POST", `/control/hubs/${HUB}/export`, { cookie, body: {} });
-    expect(res.status).toBe(403);
-    expect(res.body.error).toBe("step_up_required");
-    expect(await objectsUnder(HUB)).toEqual(before);
-  });
-
-  it("is not reachable on a hub's hostname", async () => {
-    const res = await consoleCall("POST", `/control/hubs/${HUB}/export`, { cookie, host: "athens.localhost", body: {} });
-    expect(res.status).toBe(404);
-  });
-
-  it("writes the archive to the private bucket, audits it, and hands back a working link", async () => {
-    const res = await consoleCall("POST", `/control/hubs/${HUB}/export`, { cookie, body: { step_up_code: await stepCode() } });
+describe.skipIf(NO_OBJECT_STORAGE)("Export this hub", () => {
+  it("writes the archive to the private bucket and hands back a working link", async () => {
+    const res = await operatorCall("exportHub", HUB, OPERATOR);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     const out = res.body;
     exportedKey = out.object_key;
@@ -111,13 +87,9 @@ describe.skipIf(NO_OBJECT_STORAGE)("Export this hub (console)", () => {
     const manifest = JSON.parse(files.find((f) => f.path === `${root}/manifest.json`)!.data.toString("utf8"));
     expect(manifest.hub_id).toBe(HUB);
     expect(manifest.fingerprint).toBe(out.fingerprint);
-    expect(manifest.exported_by).toBe("console:operator@example.test");
+    expect(manifest.exported_by).toBe(`console:${OPERATOR}`);
     expect(files.some((f) => f.path === `${root}/README.md`)).toBe(true);
     expect(gunzipSync(bytes).length).toBeGreaterThan(bytes.length / 2);
-
-    const audit = (await auditFor(HUB)).filter((a) => a.action === "hub.export").pop()!;
-    expect(audit.actor_email).toBe("operator@example.test");
-    expect(audit.after).toMatchObject({ object_key: out.object_key, size: out.size, fingerprint: out.fingerprint });
   }, 60_000);
 });
 

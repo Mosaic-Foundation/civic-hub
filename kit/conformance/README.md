@@ -34,7 +34,7 @@ additive (refused); CI runs it too.
   are the local seed's, or the ones `CIVIC_CONFORMANCE_BETA` and `_DEMO` name.
 - `src/hostFacts.ts`: the hub's own lists that a descriptor is checked against.
 - `src/support/`: HTTP to the test host, the local stack's PostgREST and sessions,
-  the console, putting a run's hubs away. The repository's own tests share them.
+  the operator API (making hubs, as a console does), putting a run's hubs away. The repository's own tests share them.
 - `cli.ts`: the `civic-conformance` command; `src/fence.ts`, what a package may import.
 - `src/tokenScan.ts`: step 21's rules for colours, fonts and sizes of a package's own; the hub's
   token ratchet (`scripts/check-tokens.ts`) runs the same code.

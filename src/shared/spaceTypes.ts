@@ -4,9 +4,7 @@
 //
 // Where it lives, under the seam rule: here in src/shared, a pure module, not
 // a table (a table would be a new read across the console/hub seam). Hub code
-// (mail) reads it directly; the console's server code already imports
-// src/shared; the console's pages get the names through GET /control/config.
-// When the console moves to its own repository it carries its own copy.
+// (mail) reads it directly. The console (Mosaic-Foundation/mosaic-console) carries its own copy.
 //
 // The sending ADDRESSES stay the deployment's, because only a domain the
 // provider has verified can send (src/services/emailSender.ts): each sender
@@ -69,7 +67,7 @@ export function currentSpaceType(): SpaceType {
   return CIVIC_HUB;
 }
 
-/** What the console's pages need of it (GET /control/config). */
+/** Its names, as a page shows them. */
 export function spaceTypeView(t: SpaceType = currentSpaceType()): { id: string; display_name: string; noun: string; noun_plural: string } {
   return { id: t.id, display_name: t.displayName, noun: t.noun, noun_plural: t.nounPlural };
 }

@@ -9,24 +9,23 @@
  * 3. Admin → Feedback: the badge and Civic.Social's status; "Send to
  *    Civic.Social" for a misfiled item; a digest link lands on its row.
  * 4. Contact Civic.Social from the Admin group (More on a phone, the sidebar on a desktop).
- * 5. The console's inbox: likely duplicates together, the consent flag,
- *    a status that reaches the hub's badge, the GitHub issue link.
+ * 5. A status Civic.Social sets (through the operator API, as its console
+ *    does) reaches the hub's badge; the GitHub issue link does not.
  *
- * One beta hub made through the console's Create hub, visited on its own
- * address (<slug>.localhost on the UI's port), and archived after. Needs the
- * console's env on the API (CIVIC_CONSOLE_HOSTNAME=console.localhost).
+ * One beta hub made through the operator API, visited on its own address
+ * (<slug>.localhost on the UI's port), and archived after. The console's own
+ * inbox page is the console's (Mosaic-Foundation/mosaic-console).
  */
 
 import { test, expect, type Page } from "@playwright/test";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub, operator } from "../fixtures/operator.js";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 
 const UI = new URL(process.env.CIVIC_E2E_UI_ORIGIN?.trim() || "http://localhost:5173");
 const run = Date.now().toString(36);
 const SLUG = `route-${run}`;
 const HUB = `${UI.protocol}//${SLUG}.localhost${UI.port ? `:${UI.port}` : ""}`;
-const CONSOLE_UI = `${UI.protocol}//console.localhost${UI.port ? `:${UI.port}` : ""}/console.html`;
 const ADMIN = `route-admin-${run}@example.test`;
 const RESIDENT = `route-resident-${run}@example.test`;
 const PHONE = { width: 375, height: 812 };
@@ -35,7 +34,6 @@ const SHARED = "Reports about how the site works are also shared with Civic.Soci
 
 type Row = Record<string, any>;
 
-let consoleCookie = "";
 let adminToken = "";
 let residentToken = "";
 
@@ -84,10 +82,7 @@ async function noSidewaysScroll(page: Page): Promise<void> {
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async () => {
-  consoleCookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie: consoleCookie,
-    body: {
+  const res = await createHub({
       slug: SLUG,
       hostname: `${SLUG}.localhost`,
       admin_email: ADMIN,
@@ -96,17 +91,14 @@ test.beforeAll(async () => {
       jurisdiction_custom: true,
       jurisdiction_type: "county",
       mode: "beta",
-    },
-  });
+    });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   adminToken = await sessionFor(ADMIN);
   residentToken = await sessionFor(RESIDENT);
 });
 
 test.afterAll(async () => {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  await consoleCall("POST", `/control/hubs/${SLUG}/archive`, { cookie: consoleCookie, body: { step_up_code: code } });
+  await archiveHub(SLUG);
 });
 
 for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const) {
@@ -247,39 +239,19 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
 }
 
 for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const) {
-  test(`5. the console's inbox: duplicates together, consent, status back to the badge, the issue link (${name})`, async ({ page, context }) => {
-    await page.setViewportSize(viewport);
-    const page1 = `Map tiles stay blank on the projects map (${name}) ${run}`;
-    const page2 = `The projects map tiles stay blank (${name}) ${run}`;
-    for (const message of [page1, page2]) {
-      const res = await page.request.post(`${HUB}/api/feedback`, {
-        data: { category: "bug", message, page_path: `/projects/map-${name}-${run}` },
-      });
-      expect(res.ok()).toBe(true);
-    }
-    const hubId = (await hubRows(page1))[0].id as string;
-
-    const [cname, value] = consoleCookie.split("=");
-    await context.addCookies([{ name: cname, value: decodeURIComponent(value), domain: "console.localhost", path: "/" }]);
-    await page.goto(`${CONSOLE_UI}#/feedback`);
-    await expect(page.getByRole("heading", { name: "Feedback" })).toBeVisible();
-    await page.getByRole("button", { name: "Bugs" }).click();
-
-    const group = page.getByTestId("feedback-group").filter({ hasText: page1 });
-    await expect(group).toContainText("2 likely duplicates");
-    await expect(group).toContainText(page2);
-    await expect(group).toContainText("Routing Test Civic Hub");
-    // No consent: no address.
-    await expect(group.getByTestId("feedback-contact").first()).toHaveText("No consent to contact");
-    await noSidewaysScroll(page);
-
-    const card = group.getByTestId("feedback-item").filter({ hasText: page1 });
-    await card.getByLabel(/^Status of this bug/).selectOption("planned");
-    await expect.poll(async () => (await hubRows(page1))[0].mosaic_status).toBe("planned");
-    await card.getByLabel("GitHub issue").fill("https://github.com/Mosaic-Foundation/civic-hub/issues/4242");
-    await card.getByRole("button", { name: "Save link" }).click();
-    await expect(card.getByRole("status")).toHaveText("Issue link saved.");
-    await expect(card.getByRole("link", { name: "Open issue" })).toBeVisible();
+  test(`5. a status Civic.Social sets reaches the hub's badge, the issue link does not (${name})`, async ({ context }) => {
+    const message = `Map tiles stay blank on the projects map (${name}) ${run}`;
+    const sent = await (await context.request.post(`${HUB}/api/feedback`, {
+      data: { category: "bug", message, page_path: `/projects/map-${name}-${run}` },
+    })).json();
+    expect(sent.shared_with_civic_social).toBe(true);
+    const hubId = (await hubRows(message))[0].id as string;
+    const copy = (await copies(message))[0];
+    await operator("updateFeedback", copy.id, {
+      status: "planned",
+      github_issue_url: "https://github.com/Mosaic-Foundation/civic-hub/issues/4242",
+    });
+    expect((await hubRows(message))[0].mosaic_status).toBe("planned");
 
     // The hub's admin sees Planned on the badge, and not the issue link.
     const admin = await context.newPage();

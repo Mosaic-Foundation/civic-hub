@@ -1,7 +1,6 @@
 // The operator API over HTTP (./api.ts): POST /operator/rpc/<method> with
 // { "args": [...] }, answered { "result": ... } or, refused, { error, code }
-// with the refusal's status. For the console once it is its own deployment
-// (src/control/operatorClient.ts).
+// with the refusal's status. The console (Mosaic-Foundation/mosaic-console) calls it.
 //
 // The credential is CIVIC_OPERATOR_TOKEN as a bearer. Unset: every path
 // here answers 404, as if it did not exist; the console on the same

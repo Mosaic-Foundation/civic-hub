@@ -1,4 +1,4 @@
-// The sample-content seed (Phase 7), through the console's Create hub with
+// The sample-content seed (Phase 7), through the operator API's Create hub with
 // "Start with sample content" on — the path an operator uses.
 //
 // A county hub in Virginia gets all eleven templates, the governing body the
@@ -13,13 +13,13 @@
 // created with Conversations off still gets the sample conversation, hidden
 // until Conversations is turned on.
 //
-// Needs the console on console.localhost (CI's env) and the local stack.
+// Needs the operator API (CIVIC_OPERATOR_TOKEN, CI's env) and the local stack.
 // Every hub this file creates is archived in afterAll, like control.test.ts.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession, plantHubCode } from "../fixtures/adminSession.js";
-import { auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub, operator, updateHandover } from "../fixtures/operator.js";
 
 const run = Date.now().toString(36);
 const COUNTY = `smpc-${run}`;
@@ -28,21 +28,14 @@ const NOCONV = `smpn-${run}`;
 const host = (slug: string) => `${slug}.localhost`;
 const ADMIN = `sample-admin-${run}@example.test`;
 const created: string[] = [];
-let cookie = "";
 
-async function stepCode(): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  return code;
-}
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
 });
 
 afterAll(async () => {
   for (const id of created) {
-    const res = await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+    const res = await archiveHub(id);
     if (res.status !== 200 && !/already archived/.test(res.body.error ?? "")) {
       throw new Error(`could not archive ${id}: ${JSON.stringify(res.body)}`);
     }
@@ -55,9 +48,7 @@ describe("a county hub created with sample content", () => {
   let body: Row = {};
 
   beforeAll(async () => {
-    const res = await consoleCall("POST", "/control/hubs", {
-      cookie,
-      body: {
+    const res = await createHub({
         slug: COUNTY,
         name: "Sample Test Civic Hub",
         hostname: host(COUNTY),
@@ -68,8 +59,7 @@ describe("a county hub created with sample content", () => {
         jurisdiction_type: "county",
         admin_email: ADMIN,
         sample_content: true,
-      },
-    });
+      });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     created.push(COUNTY);
     body = res.body;
@@ -110,12 +100,12 @@ describe("a county hub created with sample content", () => {
   });
 
   it("edits the board label in the hub page's Handover panel, and the hub serves it", async () => {
-    const res = await consoleCall("PUT", `/control/hubs/${COUNTY}/handover`, { cookie, body: { values: { "copy.governing_body_short": "Board" } } });
+    const res = await updateHandover(COUNTY, { values: { "copy.governing_body_short": "Board" } });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.handover.values["copy.governing_body_short"]).toBe("Board");
     const config = await call("GET", "/hub-config", host(COUNTY));
     expect(config.body.settings["copy.governing_body_short"]).toBe("Board");
-    await consoleCall("PUT", `/control/hubs/${COUNTY}/handover`, { cookie, body: { values: { "copy.governing_body_short": "Supervisors" } } });
+    await updateHandover(COUNTY, { values: { "copy.governing_body_short": "Supervisors" } });
   });
 
   it("publishes the sample meeting summary, saying it is a sample, with times and no recording", async () => {
@@ -163,11 +153,6 @@ describe("a county hub created with sample content", () => {
     expect(feed.body.events.every((e: Row) => e.sample === true)).toBe(true);
   });
 
-  it("records the seed in the console's audit trail", async () => {
-    const audit = await auditFor(COUNTY);
-    expect(audit.map((a) => a.action)).toContain("hub.sample_seed");
-  });
-
   it("comes out in one audited action, leaving a hub that still serves", async () => {
     const admin = await mintSession(COUNTY, ADMIN);
     const code = String(100000 + Math.floor(Math.random() * 899999));
@@ -196,19 +181,16 @@ describe("a county hub created with sample content", () => {
     expect(feed.body.events.every((e: Row) => e.process_id === starter)).toBe(true);
     expect((await call("GET", "/process", host(COUNTY))).status).toBe(200);
 
-    const log = await consoleCall("GET", `/control/hubs/${COUNTY}/admin-audit`, { cookie });
-    expect(log.status).toBe(200);
+    const entries = await operator<Row[]>("hubAdminAudit", COUNTY, 100);
     // Newest first: the starter word cloud, then the removal that made way for it.
-    expect(log.body.entries.slice(0, 2).map((e: Row) => e.action)).toEqual(["wordcloud.starter", "sample_content.remove"]);
-    expect(log.body.entries[1]).toMatchObject({ action: "sample_content.remove", actor_email: ADMIN });
+    expect(entries.slice(0, 2).map((e: Row) => e.action)).toEqual(["wordcloud.starter", "sample_content.remove"]);
+    expect(entries[1]).toMatchObject({ action: "sample_content.remove", actor_email: ADMIN });
   });
 });
 
 describe("a school district hub", () => {
   it("gets only the templates that fit, and a School Board", async () => {
-    const res = await consoleCall("POST", "/control/hubs", {
-      cookie,
-      body: {
+    const res = await createHub({
         slug: SCHOOLS,
         name: "Sample Schools Civic Hub",
         hostname: host(SCHOOLS),
@@ -218,8 +200,7 @@ describe("a school district hub", () => {
         admin_email: ADMIN,
         sample_content: true,
         timezone: "America/New_York",
-      },
-    });
+      });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     created.push(SCHOOLS);
     // The create form's time zone (2026-10-06) is the hub's identity.timezone.
@@ -241,10 +222,7 @@ describe("a school district hub", () => {
 describe("a time zone that is not one", () => {
   it("is refused at create, and no hub is made", async () => {
     const slug = `smpt-${run}`;
-    const res = await consoleCall("POST", "/control/hubs", {
-      cookie,
-      body: { slug, name: "Bad Zone Hub", hostname: host(slug), hub_kind: "other", admin_email: ADMIN, timezone: "Mars/Olympus" },
-    });
+    const res = await createHub({ slug, name: "Bad Zone Hub", hostname: host(slug), hub_kind: "other", admin_email: ADMIN, timezone: "Mars/Olympus" });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/not a time zone/);
     expect((await localRest(`hubs?select=id&id=eq.${slug}`)) as Row[]).toHaveLength(0);
@@ -255,9 +233,7 @@ describe("a hub created with Conversations off", () => {
   const convId = `proc_sample_${NOCONV}_deliberation_rentals`;
 
   beforeAll(async () => {
-    const res = await consoleCall("POST", "/control/hubs", {
-      cookie,
-      body: {
+    const res = await createHub({
         slug: NOCONV,
         name: "Sample No-Conversation Civic Hub",
         hostname: host(NOCONV),
@@ -267,8 +243,7 @@ describe("a hub created with Conversations off", () => {
         admin_email: ADMIN,
         sample_content: true,
         plugins: { conversation: false },
-      },
-    });
+      });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     created.push(NOCONV);
     expect(res.body.plugins.find((p: Row) => p.id === "conversation")).toMatchObject({ enabled: false, source: "hub" });

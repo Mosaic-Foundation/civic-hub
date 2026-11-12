@@ -1,16 +1,15 @@
-// The super admin's pure rules (src/control/): the MEETING_* / FLOYD_NEWS_*
-// guard on creating a hub, the hostnames a hub may not take, and the
-// one-person operator setting.
+// The operator API's pure rules (src/operator/): the MEETING_* / FLOYD_NEWS_*
+// guard on creating a hub, the hostnames a hub may not take, and which
+// changes the console asks a fresh code for.
 
 import { afterEach, describe, expect, it } from "vitest";
-import { consoleAdminEmail, isConsoleHost } from "../../src/control/config.js";
 import { platformDomain } from "../../src/operator/platform.js";
 import { hostnameShapeProblem, hubSpecificEnvVars, productionCreateGuard } from "../../src/operator/hubs.js";
 import { configChangeNeedsStepUp } from "../../src/operator/hubs.js";
 
 const saved = { ...process.env };
 afterEach(() => {
-  for (const k of ["SUPABASE_URL", "CIVIC_CONSOLE_HOSTNAME", "CIVIC_CONSOLE_ADMIN_EMAIL", "CIVIC_PLATFORM_DOMAIN", "CIVIC_START_HOSTNAME"]) {
+  for (const k of ["SUPABASE_URL", "CIVIC_PLATFORM_DOMAIN"]) {
     if (saved[k] === undefined) delete process.env[k];
     else process.env[k] = saved[k];
   }
@@ -47,25 +46,23 @@ describe("the create guard (step 7)", () => {
 });
 
 describe("hostnames", () => {
-  it("refuses the console's own hostname and reserved names under the platform domain", () => {
-    process.env.CIVIC_CONSOLE_HOSTNAME = "console.civic.social";
+  it("refuses reserved names under the platform domain (CIVIC_PLATFORM_DOMAIN)", () => {
+    process.env.CIVIC_PLATFORM_DOMAIN = "civic.social";
     expect(platformDomain()).toBe("civic.social");
-    expect(hostnameShapeProblem("console.civic.social")).toContain("platform's own");
     expect(hostnameShapeProblem("polis.civic.social")).toContain("reserved");
     expect(hostnameShapeProblem("floyd.civic.social")).toContain("reserved");
+    expect(hostnameShapeProblem("console.civic.social")).toContain("reserved");
+    expect(hostnameShapeProblem("start.civic.social")).toContain("reserved");
     expect(hostnameShapeProblem("athens.civic.social")).toBeNull();
     expect(hostnameShapeProblem("polis.example.org")).toBeNull();
+    // The console lives at console.mosaic.social, outside the platform domain.
+    expect(hostnameShapeProblem("polis.mosaic.social")).toBeNull();
   });
 
-  it("takes the platform domain outright once the console lives elsewhere (the console split)", () => {
-    process.env.CIVIC_CONSOLE_HOSTNAME = "console.mosaic.social";
-    process.env.CIVIC_PLATFORM_DOMAIN = "civic.social";
-    process.env.CIVIC_START_HOSTNAME = "start.civic.social";
-    expect(platformDomain()).toBe("civic.social");
-    expect(hostnameShapeProblem("polis.civic.social")).toContain("reserved");
-    expect(hostnameShapeProblem("start.civic.social")).toContain("platform's own");
-    expect(hostnameShapeProblem("console.mosaic.social")).toContain("platform's own");
-    expect(hostnameShapeProblem("polis.mosaic.social")).toBeNull();
+  it("reserves nothing without a platform domain (local development)", () => {
+    delete process.env.CIVIC_PLATFORM_DOMAIN;
+    expect(platformDomain()).toBeNull();
+    expect(hostnameShapeProblem("polis.civic.social")).toBeNull();
   });
 
   it("refuses what is not a bare hostname", () => {
@@ -73,35 +70,10 @@ describe("hostnames", () => {
       expect(hostnameShapeProblem(bad), bad).toContain("not a hostname");
     }
   });
-
-  it("a dev console on vercel.app reserves nothing under vercel.app", () => {
-    process.env.CIVIC_CONSOLE_HOSTNAME = "console-civic-hub-dev.vercel.app";
-    expect(platformDomain()).toBe("vercel.app");
-    expect(hostnameShapeProblem("utopia-civic-hub-dev.vercel.app")).toBeNull();
-  });
-
-  it("matches the console host whatever the case or port", () => {
-    process.env.CIVIC_CONSOLE_HOSTNAME = "console.civic.social";
-    expect(isConsoleHost("Console.Civic.Social:443")).toBe(true);
-    expect(isConsoleHost("floyd.civic.social")).toBe(false);
-    delete process.env.CIVIC_CONSOLE_HOSTNAME;
-    expect(isConsoleHost("console.civic.social")).toBe(false);
-  });
 });
 
-describe("the operator", () => {
-  it("is exactly one address", () => {
-    process.env.CIVIC_CONSOLE_ADMIN_EMAIL = " Op@Example.test ";
-    expect(consoleAdminEmail()).toEqual({ ok: true, email: "op@example.test" });
-    process.env.CIVIC_CONSOLE_ADMIN_EMAIL = "a@example.test,b@example.test";
-    expect(consoleAdminEmail().ok).toBe(false);
-    process.env.CIVIC_CONSOLE_ADMIN_EMAIL = "";
-    expect(consoleAdminEmail().ok).toBe(false);
-  });
-});
-
-describe("step-up", () => {
-  it("is needed to move or pause a hub; not to rename it or resume it (its mode is its admins', session 4)", () => {
+describe("a fresh code", () => {
+  it("is asked to move or pause a hub; not to rename it or resume it (its mode is its admins', session 4)", () => {
     expect(configChangeNeedsStepUp({ hostname: "x.example.org" })).toBe(true);
     expect(configChangeNeedsStepUp({ status: "suspended" })).toBe(true);
     expect(configChangeNeedsStepUp({ name: "New" })).toBe(false);

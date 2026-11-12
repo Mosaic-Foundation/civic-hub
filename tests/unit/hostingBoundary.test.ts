@@ -33,12 +33,12 @@ describe("civic/hosting-boundary", () => {
     expect(await errors("src/modules/civic.assistant/x.ts", `import Anthropic from "@anthropic-ai/sdk";`)).toHaveLength(1);
   });
 
-  it("allows the hosting layer, the console, the composition roots, scripts and tests", async () => {
+  it("allows the hosting layer, the operator API, the composition roots, scripts and tests", async () => {
     const code = `import { installHosting } from "./hosting/index.js";\nimport { hostingEnv } from "./config/env.js";`;
     expect(await errors("src/app.ts", code)).toHaveLength(0);
     expect(await errors("src/index.ts", code)).toHaveLength(0);
     expect(await errors("src/hosting/x.ts", `import { hostingEnv } from "../config/env.js";`)).toHaveLength(0);
-    expect(await errors("src/control/x.ts", `import { supabaseObjectReader } from "../hosting/supabaseStorage.js";`)).toHaveLength(0);
+    expect(await errors("src/operator/x.ts", `import { supabaseObjectReader } from "../hosting/supabaseStorage.js";`)).toHaveLength(0);
     expect(await errors("api/x.ts", `import { hostingEnv } from "../src/config/env.js";`)).toHaveLength(0);
     expect(await errors("scripts/x.ts", `import { installHosting } from "../src/hosting/index.js";`)).toHaveLength(0);
   });

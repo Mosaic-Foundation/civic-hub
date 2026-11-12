@@ -7,27 +7,21 @@
 //   - the Feedback page's address is a public setting (docs item #6);
 //   - adding an admin in Settings → Admins emails them (review R38).
 //
-// Needs the console's env, like tests/api/control.test.ts
-// (CIVIC_CONSOLE_HOSTNAME=console.localhost, CIVIC_CONSOLE_ADMIN_EMAIL).
+// Needs the operator API, like tests/api/operatorHubs.test.ts
+// (CIVIC_OPERATOR_TOKEN).
 // The hub is archived in afterAll.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession, plantHubCode } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub, updateHub, hubDetail } from "../fixtures/operator.js";
 
 const run = Date.now().toString(36);
 const SLUG = `ho-${run}`;
 const HOST = `ho-${run}.localhost`;
 const ADMIN = `ho-admin-${run}@example.test`;
-let cookie = "";
 let token = "";
 
-async function stepCode(): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  return code;
-}
 
 /** A hub admin's step-up code, as the emailed one would have been stored. */
 async function hubCode(email: string): Promise<string> {
@@ -37,25 +31,21 @@ async function hubCode(email: string): Promise<string> {
 }
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: {
+  const res = await createHub({
       slug: SLUG,
       name: "Handover Side Hub",
       hostname: HOST,
       admin_email: ADMIN,
       hub_kind: "organization",
-      // An operator that reads the hub's name, as a hub made before 2026-11-02 has: it follows a rename.
+      
       ownership: { "legal.contact_email": `contact-${run}@example.test`, "legal.operator_name": "Handover Side Hub" },
-    },
-  });
+    });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   token = await mintSession(SLUG, ADMIN);
 });
 
 afterAll(async () => {
-  await consoleCall("POST", `/control/hubs/${SLUG}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+  await archiveHub(SLUG);
 });
 
 describe("hub Settings during a demo", () => {
@@ -74,7 +64,7 @@ describe("hub Settings during a demo", () => {
 
     const site = await call("GET", "/hub-config", HOST);
     expect(site.body.settings["legal.operator_name"]).toBe("Our Own Hub");
-    const detail = (await consoleCall("GET", `/control/hubs/${SLUG}`, { cookie })).body;
+    const detail = (await hubDetail(SLUG)).body;
     expect(detail.hub.name).toBe("Our Own Hub");
     expect(detail.handover.values["email.from_name"]).toBe("Our Own Hub");
   });
@@ -130,7 +120,7 @@ describe("after handover", () => {
     await localRest(`hubs?id=eq.${SLUG}`, { method: "PATCH", body: JSON.stringify({ mode: "beta" }) });
     // The resolver caches the registry for a minute; the console's write
     // path invalidates it, a direct row write does not, so ask the console to.
-    await consoleCall("PATCH", `/control/hubs/${SLUG}`, { cookie, body: { name: "Our Hub (beta)" } });
+    await updateHub(SLUG, { name: "Our Hub (beta)" });
     const res = await call("GET", "/admin/hub/settings", HOST, undefined, token);
     expect(res.body.console_may_edit).toBe(false);
   });

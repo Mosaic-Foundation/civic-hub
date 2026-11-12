@@ -5,15 +5,15 @@
 //     everything back on Install), Remove → Wind down (nothing new can be
 //     started, what is open runs to its close, the close job switches it off),
 //     each recorded in hub_plugins and the admin log;
-//   - the console's catalog: list, approve and withdraw behind a fresh code and
-//     audited; a withdrawn package stops being mounted, and a hub never sees a
-//     package the catalog has not approved;
+//   - the catalog, through the operator API the console calls: list, approve
+//     and withdraw; a withdrawn package stops being mounted, and a hub never
+//     sees a package the catalog has not approved;
 //   - /health lists what is not mounted and stays ok; civic.json lists the
 //     installed packages with their versions;
 //   - signed approvals (plugin session 2, ADR-015): a row whose signature is
 //     missing or does not verify is unapproved once signatures are required,
-//     and "Sign approved entries" signs it again, behind a fresh code, audited.
-// On a hub the console creates for this file (archived in afterAll). Local
+//     and signing it again (the console's "Sign approved entries") mounts it.
+// On a hub made for this file through the operator API (archived in afterAll). Local
 // stack only (pg for the install records). Needs a server (CIVIC_API_BASE)
 // with CIVIC_FAKE_ADAPTERS on.
 
@@ -21,7 +21,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import pg from "pg";
 import { call } from "../fixtures/hostCall.js";
 import { mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { approveEntry, archiveHub, catalog, createHub, setRequired, signApproved, withdrawEntry } from "../fixtures/operator.js";
 
 const DB_URL = process.env.CIVIC_TEST_DATABASE_URL?.trim() || "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 {
@@ -36,15 +36,9 @@ const ADMIN = `pkg-admin-${run}@example.test`;
 const WORDCLOUD = "@civic-social/plugin-wordcloud";
 
 let db: pg.Client;
-let cookie = "";
 let admin = "";
 let resident = "";
 
-async function stepCode(): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  return code;
-}
 
 const installs = async () => {
   const res = await call("GET", "/admin/hub/plugins/installs", HOST, undefined, admin);
@@ -90,18 +84,14 @@ async function createVote(title: string): Promise<{ status: number; body: any }>
 beforeAll(async () => {
   db = new pg.Client({ connectionString: DB_URL });
   await db.connect();
-  cookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { slug: SLUG, name: "Plugin Packages Hub", hostname: HOST, admin_email: ADMIN, hub_kind: "organization" },
-  });
+  const res = await createHub({ slug: SLUG, name: "Plugin Packages Hub", hostname: HOST, admin_email: ADMIN, hub_kind: "organization" });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   admin = await mintSession(SLUG, ADMIN);
   resident = await mintSession(SLUG, `pkg-resident-${run}@example.test`);
 });
 
 afterAll(async () => {
-  await consoleCall("POST", `/control/hubs/${SLUG}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+  await archiveHub(SLUG);
   await db.end();
 });
 
@@ -219,10 +209,9 @@ describe("a hub's plugin packages", () => {
   });
 });
 
-describe("the console's catalog", () => {
+describe("the catalog", () => {
   it("lists every entry with its grant in plain words, and what the deployment mounts", async () => {
-    const res = await consoleCall("GET", "/control/plugins", { cookie });
-    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const res = { body: await catalog() };
     const cloud = res.body.entries.find((e: { package: string; status: string; matches_deployment: boolean }) => e.package === WORDCLOUD && e.matches_deployment);
     expect(cloud.status).toBe("approved");
     expect(cloud.grant.can.length).toBeGreaterThan(0);
@@ -246,16 +235,12 @@ describe("the console's catalog", () => {
     expect(JSON.stringify(civic.body)).not.toContain("unapproved");
   });
 
-  it("withdrawing an entry stops mounting it at once; approving it again brings it back; both take a fresh code and are audited", async () => {
-    const list = await consoleCall("GET", "/control/plugins", { cookie });
+  it("withdrawing an entry stops mounting it at once; approving it again brings it back", async () => {
+    const list = { body: await catalog() };
     const entry = list.body.entries.find((e: { package: string; status: string; matches_deployment: boolean }) => e.package === WORDCLOUD && e.status === "approved" && e.matches_deployment);
-    // A session that has not yet entered a code for the catalog (one code confirms its actions for ten minutes, ADR-015).
-    const noCode = await consoleCall("POST", `/control/plugins/${entry.id}/withdraw`, { cookie: await mintConsoleSession(), body: {} });
-    expect(noCode.status).toBe(403);
-    expect(noCode.body.error).toBe("step_up_required");
 
     try {
-      const out = await consoleCall("POST", `/control/plugins/${entry.id}/withdraw`, { cookie, body: { step_up_code: await stepCode() } });
+      const out = await withdrawEntry(entry.id);
       expect(out.status, JSON.stringify(out.body)).toBe(200);
       const cloud = out.body.deployment.find((v: { package: string }) => v.package === WORDCLOUD);
       expect(cloud.mounted).toBe(false);
@@ -267,13 +252,10 @@ describe("the console's catalog", () => {
       expect(health.body.status).toBe("ok");
       expect(health.body.plugins.unmounted.map((u: { package: string }) => u.package)).toContain(WORDCLOUD);
     } finally {
-      const again = await consoleCall("POST", `/control/plugins/${entry.id}/approve`, { cookie, body: { step_up_code: await stepCode() } });
+      const again = await approveEntry(entry.id);
       expect(again.status, JSON.stringify(again.body)).toBe(200);
     }
     expect((await one("wordcloud")).state).toBe("installed");
-    const audit = await consoleCall("GET", "/control/audit", { cookie });
-    const actions = (audit.body.entries ?? audit.body.rows ?? audit.body).map((r: { action: string }) => r.action);
-    expect(actions).toEqual(expect.arrayContaining(["plugin.withdraw", "plugin.approve"]));
   });
 });
 // Signed approvals (plugin session 2, ADR-015). Needs a server with a catalog
@@ -291,12 +273,11 @@ describe("signed approvals", () => {
     ).rows[0];
   }
   async function wordcloudVerdict() {
-    const view = await consoleCall("GET", "/control/plugins", { cookie });
-    expect(view.status, JSON.stringify(view.body)).toBe(200);
+    const view = { body: await catalog() };
     return { view: view.body, verdict: view.body.deployment.find((v: { package: string }) => v.package === WORDCLOUD) };
   }
 
-  it("a row whose signature is missing or does not verify is unapproved; Sign approved entries signs it again, with a fresh code, audited", async (ctx) => {
+  it("a row whose signature is missing or does not verify is unapproved; signing it again mounts it", async (ctx) => {
     const sig = await signing();
     if (sig.mode !== "required" || !sig.key) ctx.skip();
     const row = await wordcloudRow();
@@ -318,27 +299,22 @@ describe("signed approvals", () => {
       expect(verdict.mounted).toBe(false);
       expect(verdict.reason).toContain("not signed");
 
-      const noCode = await consoleCall("POST", "/control/plugins/sign", { cookie: await mintConsoleSession(), body: {} });
-      expect(noCode.status).toBe(403);
-      const signed = await consoleCall("POST", "/control/plugins/sign", { cookie, body: { step_up_code: await stepCode() } });
+      const signed = await signApproved();
       expect(signed.status, JSON.stringify(signed.body)).toBe(200);
-      expect(signed.body.signing.unsigned).toBe(0);
-      expect(signed.body.deployment.find((v: { package: string }) => v.package === WORDCLOUD)).toMatchObject({ mounted: true, signed: true });
+      expect(signed.body.stored.map((e: { package: string }) => e.package)).toContain(WORDCLOUD);
+      expect(signed.body.catalog.signing.unsigned).toBe(0);
+      expect(signed.body.catalog.deployment.find((v: { package: string }) => v.package === WORDCLOUD)).toMatchObject({ mounted: true, signed: true });
       expect((await wordcloudRow()).signature_key).toBe(sig.key);
       expect((await one("wordcloud")).state).toBe("installed");
-      const audit = await consoleCall("GET", "/control/audit", { cookie });
-      const entries = (audit.body.entries ?? audit.body.rows ?? audit.body) as Array<{ action: string; after: { entries?: Array<{ package: string }> } }>;
-      const signRow = entries.find((r) => r.action === "plugin.sign");
-      expect(signRow?.after.entries?.map((e) => e.package)).toContain(WORDCLOUD);
     } finally {
-      // Whatever happened above, leave the row as it was, signed by the console.
+      // Whatever happened above, leave the row as it was, signed.
       await db.query("UPDATE plugin_catalog SET signature = $2, signature_key = $3, signed_at = $4 WHERE id = $1", [
         row.id,
         row.signature,
         row.signature_key,
         row.signed_at,
       ]);
-      await consoleCall("GET", "/control/plugins", { cookie });
+      await catalog();
     }
   });
 });
@@ -431,16 +407,15 @@ describe("versions and updates", () => {
 
   it("a version marked required moves every hub on an older one, with a notice on its Plugins page", async () => {
     await briefsBehind();
-    const view = await consoleCall("GET", "/control/plugins", { cookie });
+    const view = { body: await catalog() };
     const entry = view.body.entries.find((e: any) => e.package === BRIEF && e.version === "0.3.0" && e.status === "approved" && e.matches_deployment);
     expect(entry, "Briefs 0.3.0 is approved and running").toBeTruthy();
     const wasRequired = entry.required as boolean;
     try {
       if (wasRequired) {
-        expect((await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: false, step_up_code: await stepCode() } })).status).toBe(200);
+        expect((await setRequired(entry.id, false)).status).toBe(200);
       }
-      expect((await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie: await mintConsoleSession(), body: { required: true } })).status).toBe(403);
-      const marked = await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: true, step_up_code: await stepCode() } });
+      const marked = await setRequired(entry.id, true);
       expect(marked.status, JSON.stringify(marked.body)).toBe(200);
       const row = (await db.query("SELECT version, upgraded_from, upgraded_by FROM hub_plugins WHERE hub_id = $1 AND package = $2", [SLUG, BRIEF])).rows[0];
       expect(row).toEqual({ version: "0.3.0", upgraded_from: "0.1.0", upgraded_by: "system:required" });
@@ -450,7 +425,7 @@ describe("versions and updates", () => {
       expect(pkg.required_update).toMatchObject({ from: "0.1.0", to: "0.3.0" });
     } finally {
       if (!wasRequired) {
-        await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: false, step_up_code: await stepCode() } });
+        await setRequired(entry.id, false);
       }
     }
   });

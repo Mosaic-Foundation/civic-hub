@@ -1,5 +1,5 @@
 // The hub's sections of the console Dashboard (the dashboard slice,
-// 2026-10-17; split from src/control/dashboard/registry.ts at the console
+// 2026-10-17; split from the console's registry at the console
 // split): everything that reads hub data. The console asks for them through
 // the operator API (../api.ts → dashboard) and adds its own sections, the
 // ones that read outside services.

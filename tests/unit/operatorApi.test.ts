@@ -1,15 +1,14 @@
-// The operator API over HTTP (the console split): the console's client
-// (src/control/operatorClient.ts) against the hub's router
-// (src/operator/router.ts), with a stand-in implementation. A refusal
-// crosses with its status, code and words; the credential is required; the
-// whole thing is absent without CIVIC_OPERATOR_TOKEN.
+// The operator API over HTTP (the console split): the hub's router
+// (src/operator/router.ts), called as the console calls it, with a stand-in
+// implementation. A refusal crosses with its status, code and words; the
+// credential is required; the whole thing is absent without
+// CIVIC_OPERATOR_TOKEN.
 
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import express from "express";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { operatorRouter } from "../../src/operator/router.js";
-import { httpOperator } from "../../src/control/operatorClient.js";
 import { ALL_METHODS_LISTED, OPERATOR_METHODS, type OperatorApi } from "../../src/operator/api.js";
 import { CivicError } from "../../src/errors/index.js";
 
@@ -48,6 +47,16 @@ beforeAll(async () => {
 
 afterAll(() => new Promise<void>((ok) => server.close(() => ok())));
 
+/** One call as the console makes it: POST /operator/rpc/<method> { args }, the token as a bearer. */
+async function rpc(token: string, method: string, ...args: unknown[]): Promise<{ status: number; body: any }> {
+  const res = await fetch(`${base}/operator/rpc/${method}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ args }),
+  });
+  return { status: res.status, body: await res.json() };
+}
+
 afterEach(() => {
   calls.length = 0;
   if (saved === undefined) delete process.env.CIVIC_OPERATOR_TOKEN;
@@ -62,10 +71,9 @@ describe("the operator API over HTTP", () => {
 
   it("calls the hub's implementation with the arguments and returns its result", async () => {
     process.env.CIVIC_OPERATOR_TOKEN = TOKEN;
-    const op = httpOperator(base, TOKEN);
-    expect(await op.getHub("floyd")).toEqual({ id: "floyd", name: "Floyd" });
-    expect(await op.getHub("nowhere")).toBeNull();
-    await op.setAdmins("floyd", ["a@example.test"], "op@example.test");
+    expect(await rpc(TOKEN, "getHub", "floyd")).toEqual({ status: 200, body: { result: { id: "floyd", name: "Floyd" } } });
+    expect(await rpc(TOKEN, "getHub", "nowhere")).toEqual({ status: 200, body: { result: null } });
+    expect((await rpc(TOKEN, "setAdmins", "floyd", ["a@example.test"], "op@example.test")).status).toBe(200);
     expect(calls).toEqual([
       { method: "getHub", args: ["floyd"] },
       { method: "getHub", args: ["nowhere"] },
@@ -73,41 +81,36 @@ describe("the operator API over HTTP", () => {
     ]);
   });
 
-  it("brings a refusal back as the same CivicError", async () => {
+  it("answers a refusal with its status, code and words", async () => {
     process.env.CIVIC_OPERATOR_TOKEN = TOKEN;
-    const err = await httpOperator(base, TOKEN).archive("floyd").catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(CivicError);
-    expect(err).toMatchObject({ status: 400, code: "invalid_request", message: "This hub is already archived." });
+    expect(await rpc(TOKEN, "archive", "floyd")).toEqual({
+      status: 400,
+      body: { error: "This hub is already archived.", code: "invalid_request" },
+    });
   });
 
   it("keeps an unexpected failure's details on the hub", async () => {
     process.env.CIVIC_OPERATOR_TOKEN = TOKEN;
-    const err = (await httpOperator(base, TOKEN).listHubs().catch((e: unknown) => e)) as CivicError;
-    expect(err.status).toBe(500);
-    expect(err.message).not.toContain("secrets");
+    const res = await rpc(TOKEN, "listHubs");
+    expect(res.status).toBe(500);
+    expect(res.body.ref).toEqual(expect.any(String));
+    expect(JSON.stringify(res.body)).not.toContain("secrets");
   });
 
   it("refuses a caller without the token", async () => {
     process.env.CIVIC_OPERATOR_TOKEN = TOKEN;
-    const err = (await httpOperator(base, "wrong-token").getHub("floyd").catch((e: unknown) => e)) as CivicError;
-    expect(err.status).toBe(401);
+    expect((await rpc("wrong-token", "getHub", "floyd")).status).toBe(401);
     expect(calls).toEqual([]);
   });
 
   it("does not exist without CIVIC_OPERATOR_TOKEN", async () => {
     delete process.env.CIVIC_OPERATOR_TOKEN;
-    const err = (await httpOperator(base, "").getHub("floyd").catch((e: unknown) => e)) as CivicError;
-    expect(err.status).toBe(404);
+    expect((await rpc("", "getHub", "floyd")).status).toBe(404);
     expect(calls).toEqual([]);
   });
 
   it("answers 404 for a method the interface does not have", async () => {
     process.env.CIVIC_OPERATOR_TOKEN = TOKEN;
-    const res = await fetch(`${base}/operator/rpc/dropEverything`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
-      body: JSON.stringify({ args: [] }),
-    });
-    expect(res.status).toBe(404);
+    expect((await rpc(TOKEN, "dropEverything")).status).toBe(404);
   });
 });

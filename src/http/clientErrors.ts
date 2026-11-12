@@ -10,8 +10,8 @@
 // No body, cookie, header or address is forwarded. The hub is read from the
 // hostname, never from the body.
 //
-// Mounted by the front door (src/control/index.ts) for every hostname, ahead
-// of the hub app, so a page that failed before its hub resolved can still
+// Mounted by the hub app (src/app.ts) for every hostname, ahead of hub
+// resolution, so a page that failed before its hub resolved can still
 // report. Answers 204 whatever happens: a page must not retry or show this.
 
 import express, { Router, type Request, type Response } from "express";

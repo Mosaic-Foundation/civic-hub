@@ -26,13 +26,10 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      // Three pages: the hub app, the super admin's console (src/console/,
-      // served on the console hostname by vercel.json), and the start page
-      // (src/start/, on the start hostname; session 4b).
+      // One page, the hub app. (The console and the start page left with
+      // the console split: Mosaic-Foundation/mosaic-console.)
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
-        console: resolve(import.meta.dirname, 'console.html'),
-        start: resolve(import.meta.dirname, 'start.html'),
       },
       // Named chunks (frontend pass, 2026-10-24): the hub's stylesheets as
       // one file in their old order, React and the router in one, and the
@@ -42,13 +39,11 @@ export default defineConfig({
           groups: [
             // Every hub stylesheet in one file, in the order styles/hubStyles.ts
             // imports them: the cascade resolves as it did in one bundle. Not
-            // the console's or the start page's, and not Modal.css, which the
-            // console also loads.
+            // Modal.css, which loads with the pages that open a modal.
             {
               name: 'styles',
               test: (id: string) =>
                 /[\\/]ui[\\/]src[\\/].*\.css$/.test(id) &&
-                !/[\\/]ui[\\/]src[\\/](console|start)[\\/]/.test(id) &&
                 !/[\\/]components[\\/]Modal\.css$/.test(id),
               priority: 4,
             },
@@ -60,13 +55,9 @@ export default defineConfig({
     },
   },
   server: {
-    // The console calls /api/control/* on its own origin. Locally that is
-    // http://console.localhost:5173/console.html, proxied to the API with the
-    // Host header kept, so the API sees the console hostname
-    // (CIVIC_CONSOLE_HOSTNAME=console.localhost). The start page likewise:
-    // http://start.localhost:5173/start.html with
-    // CIVIC_START_HOSTNAME=start.localhost. The hub app calls
-    // http://localhost:3000 directly and does not use this.
+    // /api, proxied to the API with the Host header kept, so a hub visited at
+    // <slug>.localhost:5173 resolves as that hub. The hub app on bare
+    // localhost calls http://localhost:3000 directly and does not use this.
     proxy: {
       '/api': {
         target: 'http://localhost:3000',

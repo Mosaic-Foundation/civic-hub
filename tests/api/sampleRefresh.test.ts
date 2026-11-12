@@ -6,7 +6,7 @@
 // console's "Refresh samples", a visitor's proposal draft submitted on demo,
 // beta and live hubs, and the hub admin's sample removal.
 //
-// Needs the console on console.localhost (CI's env) and the local stack, and
+// Needs the operator API (CIVIC_OPERATOR_TOKEN, CI's env) and the local stack, and
 // a server that runs crons (the cron secret as in crons.test.ts). Every hub
 // this file creates is archived in afterAll.
 
@@ -15,7 +15,7 @@ import { call } from "../fixtures/hostCall.js";
 import { checkedHashFor, COC_DOWN, COC_FLAG } from "../fixtures/codeOfConduct.js";
 import { api } from "../fixtures/helpers.js";
 import { localRest, mintSession, plantHubCode } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub as newHub, archiveHub, refreshSamples, hubDetail } from "../fixtures/operator.js";
 
 const run = Date.now().toString(36);
 const DEMO = `srd-${run}`;
@@ -29,24 +29,15 @@ const host = (slug: string) => `${slug}.localhost`;
 const ADMIN = `refresh-admin-${run}@example.test`;
 const VISITOR = `refresh-visitor-${run}@example.test`;
 const created: string[] = [];
-let cookie = "";
 
 const CRON_SECRET = process.env.CIVIC_TEST_CRON_SECRET ?? "ci-only-cron-secret";
 const DAY = 24 * 60 * 60 * 1000;
 
 type Row = Record<string, any>;
 
-async function stepCode(): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  return code;
-}
 
 async function createHub(slug: string, body: Row): Promise<Row> {
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { slug, hostname: host(slug), admin_email: ADMIN, ...body },
-  });
+  const res = await newHub({ slug, hostname: host(slug), admin_email: ADMIN, ...body });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   created.push(slug);
   return res.body;
@@ -77,7 +68,6 @@ async function processRow(id: string): Promise<Row | undefined> {
 let cronsEnabled = true;
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
   await createHub(DEMO, { ...placeHub("Refresh Demo Civic Hub"), sample_content: true });
   await createHub(BETA, { ...placeHub("Refresh Beta Civic Hub"), sample_content: true, mode: "beta" });
   await createHub(LIVE, { ...placeHub("Refresh Live Civic Hub"), mode: "live" });
@@ -88,7 +78,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   for (const id of created) {
-    const res = await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+    const res = await archiveHub(id);
     if (res.status !== 200 && !/already archived/.test(res.body.error ?? "")) {
       throw new Error(`could not archive ${id}: ${JSON.stringify(res.body)}`);
     }
@@ -287,10 +277,10 @@ describe("the console's Refresh samples", () => {
     expect((await localRest(`processes?select=type,is_sample&hub_id=eq.${EMPTY}`)) as Row[]).toEqual([
       { type: "civic.wordcloud", is_sample: false },
     ]);
-    const res = await consoleCall("POST", `/control/hubs/${EMPTY}/samples/refresh`, { cookie, body: {} });
+    const res = await refreshSamples(EMPTY);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.refresh.added).toHaveLength(11);
-    const again = await consoleCall("POST", `/control/hubs/${EMPTY}/samples/refresh`, { cookie, body: {} });
+    const again = await refreshSamples(EMPTY);
     expect(again.body.refresh).toMatchObject({ replaced: [], added: [], minutes_added: [] });
 
     // A summary seeded before it had minutes (agora's).
@@ -298,7 +288,7 @@ describe("the console's Refresh samples", () => {
     const row = await processRow(id);
     const { sample_minutes: _gone, ...state } = row!.state;
     await localRest(`processes?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ state }) });
-    const third = await consoleCall("POST", `/control/hubs/${EMPTY}/samples/refresh`, { cookie, body: {} });
+    const third = await refreshSamples(EMPTY);
     expect(third.body.refresh.minutes_added).toEqual(["meeting_summary_regular"]);
     expect((await processRow(id))?.state.sample_minutes).toMatch(/Call to order/);
     // Recorded like the job's run.
@@ -307,7 +297,7 @@ describe("the console's Refresh samples", () => {
   });
 
   it("refuses a live hub", async () => {
-    const res = await consoleCall("POST", `/control/hubs/${LIVE}/samples/refresh`, { cookie, body: {} });
+    const res = await refreshSamples(LIVE);
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/demo and beta hubs only/);
     expect((await localRest(`processes?select=id&hub_id=eq.${LIVE}&is_sample=eq.true`)) as Row[]).toHaveLength(0);
@@ -380,7 +370,7 @@ describe("the hub admin's Refresh samples (2026-11-05)", () => {
       expect(await processRow(endorsing)).toBeUndefined();
     }
     // The operator can still put them back.
-    const console = await consoleCall("POST", `/control/hubs/${ADMIN_BETA}/samples/refresh`, { cookie, body: {} });
+    const console = await refreshSamples(ADMIN_BETA);
     expect([...console.body.refresh.added].sort()).toEqual(["vote_fire_rescue", "wordcloud_value"]);
   });
 
@@ -396,7 +386,7 @@ describe("the hub admin's Refresh samples (2026-11-05)", () => {
     )) as Row[];
     expect(log).toMatchObject({ before: { on: true }, after: { on: false } });
     // The console's card shows it.
-    const detail = await consoleCall("GET", `/control/hubs/${ADMIN_BETA}`, { cookie });
+    const detail = await hubDetail(ADMIN_BETA);
     expect(detail.body.samples).toEqual({ auto_refresh: false });
 
     if (cronsEnabled) {

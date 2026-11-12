@@ -1,6 +1,6 @@
 // Audit 2, A6 (2026-10-11): limits on the paid AI calls a hub's people make.
 //
-// On a demo hub the console creates for this file (archived in afterAll):
+// On a demo hub made through the operator API for this file (archived in afterAll):
 // the console shows and sets the limits; the message cap; the per-person
 // hourly count; the hub's daily token budget; and a hub admin cannot set the
 // limits from the hub's own Settings.
@@ -12,19 +12,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession, storedSetting } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub, hubDetail, updateAiLimits } from "../fixtures/operator.js";
 
 const run = Date.now().toString(36);
 const SLUG = `ail-${run}`;
 const HOST = `${SLUG}.localhost`;
 const ADMIN = `ail-admin-${run}@example.test`;
-let cookie = "";
 
-async function stepCode(): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  return code;
-}
 
 async function resident(name: string): Promise<{ token: string; draft: string }> {
   const token = await mintSession(SLUG, `${name}-${run}@example.test`);
@@ -36,44 +30,34 @@ async function resident(name: string): Promise<{ token: string; draft: string }>
 const message = (draft: string) => `/assistant/civic.vote/drafts/${draft}/message`;
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { slug: SLUG, name: "AI Limits Hub", hostname: HOST, admin_email: ADMIN, hub_kind: "organization" },
-  });
+  const res = await createHub({ slug: SLUG, name: "AI Limits Hub", hostname: HOST, admin_email: ADMIN, hub_kind: "organization" });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
 });
 
 afterAll(async () => {
-  await consoleCall("POST", `/control/hubs/${SLUG}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+  await archiveHub(SLUG);
 });
 
 describe("the console sets a hub's AI limits", () => {
   it("shows a demo hub's defaults: a smaller budget and no web search", async () => {
-    const res = await consoleCall("GET", `/control/hubs/${SLUG}`, { cookie });
+    const res = await hubDetail(SLUG);
     expect(res.status).toBe(200);
     expect(res.body.ai_limits.defaults).toMatchObject({ daily_tokens: 300_000, job_daily_tokens: 500_000, web_search: false, user_per_hour: 20, max_message_chars: 4000 });
     expect(res.body.ai_limits.overrides).toEqual({});
   });
 
   it("stores only what differs, refuses nonsense, and puts a field back with null", async () => {
-    const bad = await consoleCall("PUT", `/control/hubs/${SLUG}/ai-limits`, { cookie, body: { user_per_hour: -1 } });
+    const bad = await updateAiLimits(SLUG, { user_per_hour: -1 });
     expect(bad.status).toBe(400);
-    expect((await consoleCall("PUT", `/control/hubs/${SLUG}/ai-limits`, { cookie, body: { surprise: 3 } })).status).toBe(400);
+    expect((await updateAiLimits(SLUG, { surprise: 3 })).status).toBe(400);
 
-    const set = await consoleCall("PUT", `/control/hubs/${SLUG}/ai-limits`, {
-      cookie,
-      body: { user_per_hour: 2, web_search: true, daily_tokens: 300_000 },
-    });
+    const set = await updateAiLimits(SLUG, { user_per_hour: 2, web_search: true, daily_tokens: 300_000 });
     expect(set.status, JSON.stringify(set.body)).toBe(200);
     expect(set.body.ai_limits.overrides).toEqual({ user_per_hour: 2, web_search: true });
     expect(set.body.ai_limits.effective.user_per_hour).toBe(2);
 
-    const back = await consoleCall("PUT", `/control/hubs/${SLUG}/ai-limits`, { cookie, body: { web_search: null } });
+    const back = await updateAiLimits(SLUG, { web_search: null });
     expect(back.body.ai_limits.overrides).toEqual({ user_per_hour: 2 });
-
-    const audit = await consoleCall("GET", `/control/audit?hub=${SLUG}`, { cookie });
-    expect(JSON.stringify(audit.body)).toContain("hub.ai_limits");
   });
 
   it("a hub admin cannot set them from the hub's Settings", async () => {

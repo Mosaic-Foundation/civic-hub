@@ -68,7 +68,7 @@ export const env = reader(ALL.filter((n) => SETTINGS[n].layer !== "hosting") as 
 
 /**
  * The hosting layer's settings: outside services' keys, the host's own names.
- * Only src/hosting/, src/control/ and api/ may import this (lint:
+ * Only src/hosting/ and api/ may import this (lint:
  * civic/hosting-boundary); the engine asks an adapter instead.
  */
 export const hostingEnv = reader(ALL.filter((n) => SETTINGS[n].layer === "hosting") as HostingSettingName[]);

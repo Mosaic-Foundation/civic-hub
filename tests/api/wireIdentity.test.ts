@@ -1,6 +1,6 @@
 // Wire identity across a hub move (Architecture-1, ADR-008).
 //
-// On a hub the console creates (Athens and Floyd are untouched): an admin
+// On a hub made through the operator API (Athens and Floyd are untouched): an admin
 // opens a vote, the console moves the hub to a new hostname, and then
 //   - every activity it published is served from the new address with the
 //     same bytes, ids still on the old address;
@@ -12,13 +12,13 @@
 //     carry a Link to the tombstone;
 //   - the new address serves no DID document (its DID names the old one).
 //
-// Needs the console's env, like tests/api/control.test.ts. The hub is
+// Needs the operator API, like tests/api/operatorHubs.test.ts. The hub is
 // archived in afterAll.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub, updateHub } from "../fixtures/operator.js";
 
 const run = Date.now().toString(36);
 const SLUG = `wi-${run}`;
@@ -27,16 +27,10 @@ const NEW = `wi-new-${run}.localhost`;
 const ADMIN = `wi-admin-${run}@example.test`;
 const MOVED_REL = "https://www.civic.social/ns/civic-hub#moved";
 
-let cookie = "";
 let token = "";
 let voteId = "";
 let before: Array<Record<string, any>> = [];
 
-async function stepCode(): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  return code;
-}
 
 /** Every activity the hub serves an admin, oldest first. */
 async function activities(host: string): Promise<Array<Record<string, any>>> {
@@ -63,11 +57,7 @@ async function openVote(title: string): Promise<string> {
 }
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { slug: SLUG, name: "Wire Identity Hub", hostname: OLD, admin_email: ADMIN, hub_kind: "organization" },
-  });
+  const res = await createHub({ slug: SLUG, name: "Wire Identity Hub", hostname: OLD, admin_email: ADMIN, hub_kind: "organization" });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   token = await mintSession(SLUG, ADMIN);
   voteId = await openVote(`Before the move ${run}`);
@@ -76,7 +66,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await consoleCall("POST", `/control/hubs/${SLUG}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+  await archiveHub(SLUG);
 });
 
 describe("before the move", () => {
@@ -106,10 +96,7 @@ describe("after the console moves the hub", () => {
   let after: Array<Record<string, any>> = [];
 
   beforeAll(async () => {
-    const res = await consoleCall("PATCH", `/control/hubs/${SLUG}`, {
-      cookie,
-      body: { hostname: NEW, step_up_code: await stepCode() },
-    });
+    const res = await updateHub(SLUG, { hostname: NEW });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.hub.hostname).toBe(NEW);
     after = await activities(NEW);

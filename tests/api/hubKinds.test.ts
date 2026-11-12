@@ -14,13 +14,13 @@
 //     CIVIC_JURISDICTION (CI and the local launch configs set it to Floyd's,
 //     as production had it), and a hub without a code publishes no place.
 //
-// Needs the console on console.localhost, the local stack, and the
+// Needs the operator API (CIVIC_OPERATOR_TOKEN), the local stack, and the
 // jurisdiction list loaded (CI loads it; locally `scripts/load-jurisdictions.ts`).
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub, updateHub } from "../fixtures/operator.js";
 
 type Row = Record<string, any>;
 const run = Date.now().toString(36);
@@ -29,19 +29,10 @@ const ISSUE = `kind-iss-${run}`;
 const ADMIN = `kinds-${run}@example.test`;
 const host = (slug: string) => `${slug}.localhost`;
 const created: string[] = [];
-let cookie = "";
 
-async function stepCode(): Promise<string> {
-  const code = String(100000 + Math.floor(Math.random() * 899999));
-  await plantCode("step_up", code);
-  return code;
-}
 
 async function create(body: Record<string, unknown>) {
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { name: `Kinds ${body.slug}`, hostname: `${body.slug}.localhost`, admin_email: ADMIN, ...body },
-  });
+  const res = await createHub({ name: `Kinds ${body.slug}`, hostname: `${body.slug}.localhost`, admin_email: ADMIN, ...body });
   if (res.status === 201) created.push(String(body.slug));
   return res;
 }
@@ -63,14 +54,13 @@ async function newVote(hostName: string, token: string, title: string): Promise<
 }
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
   const list = (await localRest("jurisdictions?select=ocd_id&ocd_id=eq.ocd-division/country:us/state:va")) as Row[];
   if (list.length === 0) throw new Error("hubKinds.test: load the jurisdiction list first (scripts/load-jurisdictions.ts).");
 });
 
 afterAll(async () => {
   for (const id of created) {
-    await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+    await archiveHub(id);
   }
 });
 
@@ -193,13 +183,10 @@ describe("an issue hub linked to a state", () => {
   });
 
   it("may drop its related place; a place hub may not", async () => {
-    const drop = await consoleCall("PATCH", `/control/hubs/${ISSUE}`, {
-      cookie,
-      body: { jurisdiction_ocd_id: null, jurisdiction_custom: false, jurisdiction_name: "" },
-    });
+    const drop = await updateHub(ISSUE, { jurisdiction_ocd_id: null, jurisdiction_custom: false, jurisdiction_name: "" });
     expect(drop.status, JSON.stringify(drop.body)).toBe(200);
     expect(drop.body.config).toMatchObject({ jurisdiction_ocd_id: null, jurisdiction_name: null });
-    const toPlace = await consoleCall("PATCH", `/control/hubs/${ISSUE}`, { cookie, body: { hub_kind: "place" } });
+    const toPlace = await updateHub(ISSUE, { hub_kind: "place" });
     expect(toPlace.status).toBe(400);
   });
 });

@@ -37,7 +37,7 @@ import {
   isPluginId,
   type PluginId,
 } from "../models/hubSettings.js";
-import { isProductionDatabase, platformDomain, platformHostnames } from "./platform.js";
+import { isProductionDatabase, platformDomain } from "./platform.js";
 import { defaultGoverningBody, defaultGoverningBodyShort, isJurisdictionType, stateOfOcdId, type JurisdictionType } from "../shared/jurisdictionType.js";
 import { suggestedTimeZone } from "../shared/stateTimeZones.js";
 import { getJurisdiction, type Jurisdiction } from "./jurisdictions.js";
@@ -204,8 +204,7 @@ export async function hubJurisdictionType(hubId: string): Promise<JurisdictionTy
  * current hostname is caught by the unique constraint, and one it moved from
  * is in hubs.previous_hostnames (20261008000000). A hostname changed before
  * that column existed is only in the console's audit log, which the console
- * checks itself (src/control/hostnameHistory.ts; the console split): the hub
- * does not read the console's data.
+ * checks itself (the console split): the hub does not read the console's data.
  */
 export async function hostnameTakenBy(hostname: string, exceptHubId?: string): Promise<string | null> {
   const db = getDb();
@@ -228,7 +227,6 @@ export function hostnameShapeProblem(hostname: string): string | null {
   if (!HOSTNAME_RE.test(hostname)) {
     return `"${hostname}" is not a hostname. Lowercase letters, digits, hyphens and dots, with no scheme, port or path.`;
   }
-  if (platformHostnames().includes(hostname)) return `"${hostname}" is one of the platform's own hostnames (the console or the start page).`;
   const domain = platformDomain();
   if (domain && hostname.endsWith(`.${domain}`)) {
     const label = hostname.slice(0, -domain.length - 1);

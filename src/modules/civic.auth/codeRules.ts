@@ -94,7 +94,7 @@ export interface Realm {
   /**
    * Where this realm's attempts are counted. Unset: the hubs' counters (the
    * auth store). The console and the start page count in their own
-   * (src/control/rateLimits.ts; the console split, step 3b).
+   * (now in Mosaic-Foundation/mosaic-console).
    */
   rateLimits?: RateLimiter;
 }

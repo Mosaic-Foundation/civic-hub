@@ -4,17 +4,17 @@
 //
 // Through the paths people use: POST /feedback (the form), Admin → Feedback
 // (GET /admin/feedback, POST /admin/feedback/:id/forward), Contact
-// Civic.Social (POST /admin/contact-civic-social), and the console's inbox
-// (GET and PATCH /control/feedback). Hubs are made by the console's Create
-// hub and archived in afterAll. Needs the console on console.localhost and
-// the local stack.
+// Civic.Social (POST /admin/contact-civic-social), and the hub deployment's
+// side of the console's inbox (the operator API's feedbackInbox and
+// updateFeedback; the console itself is its own deployment since the console
+// split). Hubs are made through the operator API and archived in afterAll.
+// Needs the local stack.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { consoleSql } from "../fixtures/consoleDb.js";
 import { call } from "../fixtures/hostCall.js";
 import { freshTestIp } from "../fixtures/helpers.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub as newHub, archiveHub, operator, operatorCall, type OperatorResponse } from "../fixtures/operator.js";
 
 const run = Date.now().toString(36);
 const HUB = `fbr-${run}`;
@@ -23,16 +23,13 @@ const host = (slug: string) => `${slug}.localhost`;
 const ADMIN = `fb-admin-${run}@example.test`;
 const RESIDENT = `fb-resident-${run}@example.test`;
 const created: string[] = [];
-let cookie = "";
 let admin = "";
 let resident = "";
 
 type Row = Record<string, any>;
 
 async function createHub(slug: string, body: Row): Promise<void> {
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: {
+  const res = await newHub({
       slug,
       hostname: host(slug),
       admin_email: ADMIN,
@@ -41,8 +38,7 @@ async function createHub(slug: string, body: Row): Promise<void> {
       jurisdiction_type: "county",
       mode: "beta",
       ...body,
-    },
-  });
+    });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   created.push(slug);
 }
@@ -59,10 +55,16 @@ async function hubRow(id: string): Promise<Row> {
   return ((await localRest(`feedback_submissions?select=*&id=eq.${id}`)) as Row[])[0];
 }
 
-async function inbox(query = ""): Promise<Row[]> {
-  const res = await consoleCall("GET", `/control/feedback${query}`, { cookie });
+async function inbox(filter: { stream?: string } = {}): Promise<Row[]> {
+  const res = await operatorCall("feedbackInbox", filter);
   expect(res.status, JSON.stringify(res.body)).toBe(200);
   return (res.body.groups as Row[][]).flat();
+}
+
+/** The console's status and issue-link change, on the hub's side: 404 when there is no such item. */
+async function updateFeedback(id: string, body: Row): Promise<OperatorResponse> {
+  const res = await operatorCall("updateFeedback", id, body);
+  return res.status === 200 && res.body === null ? { status: 404, body: { error: "No such feedback." } } : res;
 }
 
 async function copyOf(sourceId: string): Promise<Row | undefined> {
@@ -70,7 +72,6 @@ async function copyOf(sourceId: string): Promise<Row | undefined> {
 }
 
 beforeAll(async () => {
-  cookie = await mintConsoleSession();
   await createHub(HUB, { name: "Routing Test Civic Hub" });
   await createHub(OFF, { name: "Routing Off Civic Hub", plugins: { feedback: false } });
   admin = await mintSession(HUB, ADMIN);
@@ -79,9 +80,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   for (const id of created) {
-    const code = String(100000 + Math.floor(Math.random() * 899999));
-    await plantCode("step_up", code);
-    const res = await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: code } });
+    const res = await archiveHub(id);
     if (res.status !== 200 && !/already archived/.test(res.body.error ?? "")) {
       throw new Error(`could not archive ${id}: ${JSON.stringify(res.body)}`);
     }
@@ -236,10 +235,7 @@ describe("Civic.Social's status flows back", () => {
   });
 
   it("planned shows on the hub's badge; the issue link stays in the console", async () => {
-    const res = await consoleCall("PATCH", `/control/feedback/${copyId}`, {
-      cookie,
-      body: { status: "planned", github_issue_url: "https://github.com/Mosaic-Foundation/civic-hub/issues/1" },
-    });
+    const res = await updateFeedback(copyId, { status: "planned", github_issue_url: "https://github.com/Mosaic-Foundation/civic-hub/issues/1" });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect((await hubRow(id)).mosaic_status).toBe("planned");
     const admins = await call("GET", "/admin/feedback", host(HUB), undefined, admin);
@@ -248,32 +244,23 @@ describe("Civic.Social's status flows back", () => {
     expect(JSON.stringify(item)).not.toContain("github.com");
   });
 
-  it("fixed tells a consenting sender once (held back on a beta hub), and is audited without their address", async () => {
-    const first = await consoleCall("PATCH", `/control/feedback/${copyId}`, { cookie, body: { status: "fixed" } });
+  it("fixed tells a consenting sender once (held back on a beta hub)", async () => {
+    const first = await updateFeedback(copyId, { status: "fixed" });
     expect(first.status).toBe(200);
     expect(first.body.sender_told).toBeDefined();
     expect((await hubRow(id)).mosaic_status).toBe("fixed");
     const stored = ((await localRest(`platform_feedback?select=fixed_notified_at&id=eq.${copyId}`)) as Row[])[0];
     expect(stored.fixed_notified_at).toBeTruthy();
 
-    await consoleCall("PATCH", `/control/feedback/${copyId}`, { cookie, body: { status: "planned" } });
-    const second = await consoleCall("PATCH", `/control/feedback/${copyId}`, { cookie, body: { status: "fixed" } });
+    await updateFeedback(copyId, { status: "planned" });
+    const second = await updateFeedback(copyId, { status: "fixed" });
     expect(second.body.sender_told).toBeUndefined();
-
-    const audit = (await consoleSql(
-      "select action, after from console.control_audit_log where target_hub_id = $1 and action = 'feedback.update'",
-      [HUB],
-    )) as Row[];
-    expect(audit.length).toBeGreaterThanOrEqual(3);
-    expect(JSON.stringify(audit)).not.toContain(RESIDENT);
   });
 
   it("refuses a bad status or a link that is not GitHub's", async () => {
-    expect((await consoleCall("PATCH", `/control/feedback/${copyId}`, { cookie, body: { status: "closed" } })).status).toBe(400);
-    expect(
-      (await consoleCall("PATCH", `/control/feedback/${copyId}`, { cookie, body: { github_issue_url: "https://example.com/1" } })).status,
-    ).toBe(400);
-    expect((await consoleCall("PATCH", `/control/feedback/pf_nope_${run}`, { cookie, body: { status: "fixed" } })).status).toBe(404);
+    expect((await updateFeedback(copyId, { status: "closed" })).status).toBe(400);
+    expect((await updateFeedback(copyId, { github_issue_url: "https://example.com/1" })).status).toBe(400);
+    expect((await updateFeedback(`pf_nope_${run}`, { status: "fixed" })).status).toBe(404);
   });
 });
 
@@ -281,14 +268,10 @@ describe("the inbox", () => {
   it("groups likely duplicates: same page, similar text", async () => {
     const a = await send({ category: "bug", message: `Map tiles stay blank on the projects map ${run}`, page_path: "/projects/map" });
     const b = await send({ category: "bug", message: `The projects map tiles stay blank ${run}`, page_path: "/projects/map" });
-    const res = await consoleCall("GET", "/control/feedback?stream=bug", { cookie });
+    const res = { body: await operator<Row>("feedbackInbox", { stream: "bug" }) };
     const group = (res.body.groups as Row[][]).find((g) => g.some((i) => i.source_feedback_id === a.submission_id))!;
     expect(group.map((i) => i.source_feedback_id)).toEqual(expect.arrayContaining([a.submission_id, b.submission_id]));
     expect(res.body.received).toBeGreaterThan(0);
-  });
-
-  it("needs the console's session", async () => {
-    expect((await consoleCall("GET", "/control/feedback")).status).toBe(401);
   });
 });
 
@@ -296,7 +279,7 @@ describe("Contact Civic.Social", () => {
   it("an admin writes to Civic.Social directly, with their address; it is not on the hub's Feedback tab", async () => {
     const res = await call("POST", "/admin/contact-civic-social", host(HUB), { message: `Can we move our hub's address? ${run}` }, admin);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    const copy = (await inbox("?stream=admin")).find((i) => i.id === res.body.id);
+    const copy = (await inbox({ stream: "admin" })).find((i) => i.id === res.body.id);
     expect(copy).toMatchObject({ stream: "admin", origin: "admin", contact_ok: true, contact_email: ADMIN, source_feedback_id: null });
     const tab = await call("GET", "/admin/feedback", host(HUB), undefined, admin);
     expect(JSON.stringify(tab.body)).not.toContain("move our hub's address");

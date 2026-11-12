@@ -11,17 +11,16 @@
  *   5. A new admin's first sign-in lands on "Next: set up your hub".
  *   6. The Mode page at 375 and 1280 px in both navigation layouts.
  *
- * Every hub is made fresh through the console API (slug `e2e-ld-<run id>-x`),
+ * Every hub is made fresh through the operator API (slug `e2e-ld-<run id>-x`),
  * reached at http://<slug>.localhost:<the preview's port>, and suspended
  * afterwards. Codes are planted in the LOCAL stack only. The API runs with the
- * console's env (CIVIC_CONSOLE_HOSTNAME=console.localhost,
- * CIVIC_CONSOLE_ADMIN_EMAIL=operator@example.test).
+ * operator API (CIVIC_OPERATOR_TOKEN).
  */
 
 import { createHash } from "node:crypto";
 import { test, expect, type Page } from "@playwright/test";
 import { localRest, plantHubCode } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession } from "../fixtures/consoleCall.js";
+import { createHub } from "../fixtures/operator.js";
 import { call } from "../fixtures/hostCall.js";
 import { run, session, visitAs } from "./actors";
 
@@ -38,10 +37,7 @@ const tokens: Record<string, string> = {};
 const created: string[] = [];
 
 async function createDemoHub(slug: string): Promise<void> {
-  const cookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: {
+  const res = await createHub({
       slug,
       name: `Leaving Demo ${slug}`,
       hostname: hostOf(slug),
@@ -50,12 +46,11 @@ async function createDemoHub(slug: string): Promise<void> {
       jurisdiction_name: "Test Township",
       jurisdiction_type: "town",
       jurisdiction_custom: true,
-      // A custom place gets no suggested time zone, so readiness blocks on it.
+      
       timezone: "",
       mode: "demo",
       sample_content: true,
-    },
-  });
+    });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   created.push(slug);
   tokens[slug] = (await session(slug, adminEmail(slug))).token;

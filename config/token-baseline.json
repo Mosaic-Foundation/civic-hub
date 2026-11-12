@@ -1,12 +1,1 @@
-{
-  "ui/src/console/console.css": {
-    "colour": 34,
-    "font": 3,
-    "length": 293
-  },
-  "ui/src/start/start.css": {
-    "colour": 0,
-    "font": 0,
-    "length": 26
-  }
-}
+{}

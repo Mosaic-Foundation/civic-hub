@@ -1,6 +1,6 @@
 // One async route wrapper and one error answer for the hub (Audit 4, F2).
 //
-// Copied from the control plane's route()/fail() (src/control/router.ts) and
+// Copied from the console's route()/fail() (before the console split) and
 // widened: every hub handler is wrapped by route(), every error reaches
 // sendError(), and the terminal error handler in app.ts calls sendError() too.
 //

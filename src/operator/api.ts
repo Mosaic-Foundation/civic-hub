@@ -1,18 +1,11 @@
 // The operator API: everything the console asks of a hub deployment (the
 // console split, 2026-11-10; Seam-Audit-2026-11-10.md).
 //
-// The console (src/control/) holds the operator's identity: sign-in, fresh
-// codes, its own audit log, invite codes, and (after split step 2) the
-// catalog signing key. Everything about hubs and their data is the hub's,
-// and the console reaches it only through this interface. Two
-// implementations, one contract:
-//
-//   localOperator()  (./local.ts)  in-process, while the console and the
-//                    hubs share a deployment;
-//   httpOperator()   (src/control/operatorClient.ts)  over HTTPS to
-//                    /operator/rpc/<method> (./router.ts), with
-//                    CIVIC_OPERATOR_TOKEN; what the console uses once it is
-//                    its own deployment.
+// The console (Mosaic-Foundation/mosaic-console) holds the operator's identity: sign-in,
+// fresh codes, its own audit log, invite codes and the catalog signing key.
+// Everything about hubs and their data is the hub's, and the console reaches
+// it only through this interface: localOperator() (./local.ts), served over
+// HTTPS at /operator/rpc/<method> (./router.ts) with CIVIC_OPERATOR_TOKEN.
 //
 // Rules for a method here: arguments and results are plain JSON (no Dates,
 // Maps, class instances); a refusal is a CivicError (status, code, message),
@@ -20,9 +13,8 @@
 // console decides policy that is about the operator (fresh codes, audit
 // rows); the hub decides everything about the hub (validation, writes).
 //
-// This file is the only hub file the console may import (types only), along
-// with src/shared/ (lint: civic/console-seam). At the extraction it is copied
-// into the console with its types inlined.
+// The console keeps a copy of this contract with its types inlined: a change
+// here is a change to the console's client too.
 
 import type { ControlHub, CreateHubInput, FollowOn, HandoverResult, HandoverView, HubAiLimitsView, HubConfigView, PluginState } from "./hubs.js";
 import type { JurisdictionMatch, Jurisdiction, SlugSuggestion } from "./jurisdictions.js";
@@ -148,7 +140,7 @@ export interface OperatorApi {
   dashboard(opts: { fresh: boolean; now: string }): Promise<SectionResult[]>;
 
   // --- Plugin catalog (ADR-014, ADR-015) ---
-  // The console signs (src/control/catalogKey.ts); the hub stores a signature
+  // The console signs; the hub stores a signature
   // only if it verifies against a key the deployment trusts.
   catalog(): Promise<CatalogView>;
   /** Approve with the console's signature over the row (null: the console has no key; refused once signatures are required). */

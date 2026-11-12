@@ -9,7 +9,7 @@
 import { test, expect } from "@playwright/test";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+import { createHub, archiveHub } from "../fixtures/operator.js";
 
 const UI = new URL(process.env.CIVIC_E2E_UI_ORIGIN?.trim() || "http://localhost:5173");
 const run = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
@@ -18,10 +18,7 @@ const created: string[] = [];
 async function newHub(browserName: string) {
   const slug = `edit-${browserName.slice(0, 2)}${created.length}-${run}`;
   const admin = `${slug}@example.test`;
-  const cookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: {
+  const res = await createHub({
       slug,
       name: "Editor Test Hub",
       hostname: `${slug}.localhost`,
@@ -31,8 +28,7 @@ async function newHub(browserName: string) {
       jurisdiction_name: "Jefferson County, Colorado",
       jurisdiction_ocd_id: "ocd-division/country:us/state:co/county:jefferson",
       ownership: { "legal.contact_email": `contact-${slug}@example.test` },
-    },
-  });
+    });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   created.push(slug);
   const token = await mintSession(slug, admin);
@@ -44,11 +40,8 @@ async function newHub(browserName: string) {
 }
 
 test.afterAll(async () => {
-  const cookie = await mintConsoleSession();
   for (const id of created) {
-    const code = String(100000 + Math.floor(Math.random() * 899999));
-    await plantCode("step_up", code);
-    await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: code } });
+    await archiveHub(id);
   }
 });
 

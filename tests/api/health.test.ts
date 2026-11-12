@@ -136,10 +136,10 @@ describe("Health checks the database functions", () => {
 });
 
 // Operations shell: uptime monitoring reads the status code of /health on
-// every hub and on the console, and the browser's error reports post here.
+// every hub, and the browser's error reports post here.
 describe("Health for monitors, and the browser's error reports", () => {
-  it("answers on the console's hostname too, and is never cached", async () => {
-    for (const host of ["floyd.civic.social", "console.localhost"]) {
+  it("answers on a hostname with no hub too, and is never cached", async () => {
+    for (const host of ["floyd.civic.social", "nohub.localhost"]) {
       const res = await call("GET", "/health", host);
       expect(res.status, host).toBe(200);
       expect(res.body.status).toBe("ok");
@@ -151,7 +151,7 @@ describe("Health for monitors, and the browser's error reports", () => {
   it("POST /client-errors answers 204 for a report, for nonsense and for a body too large", async () => {
     const report = { name: "TypeError", message: "x is undefined", stack: "TypeError: x\n    at f (a.js:1:1)", path: "/", surface: "hub" };
     expect((await call("POST", "/client-errors", "floyd.civic.social", report)).status).toBe(204);
-    expect((await call("POST", "/client-errors", "console.localhost", { ...report, surface: "console" })).status).toBe(204);
+    expect((await call("POST", "/client-errors", "nohub.localhost", report)).status).toBe(204);
     expect((await call("POST", "/client-errors", "floyd.civic.social", { nonsense: true })).status).toBe(204);
     expect((await call("POST", "/client-errors", "floyd.civic.social", { message: "x".repeat(40_000) })).status).toBe(204);
   });

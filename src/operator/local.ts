@@ -1,6 +1,5 @@
-// The operator API, in-process (./api.ts): the hub's side of every console
-// action, called directly while the console shares the hub deployment, and
-// behind the HTTP router (./router.ts) once it does not.
+// The operator API's implementation (./api.ts): the hub's side of every
+// console action, behind the HTTP router (./router.ts).
 //
 // The hub's rules live here, not in the console: an archived hub refuses
 // edits, samples refresh only on demo and beta hubs, a catalog entry's state

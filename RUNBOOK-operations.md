@@ -258,20 +258,14 @@ refused in production (`src/config/devFlags.ts`).
 | `CIVIC_HUB_MINTED_TOKEN` | engine | boolean | no | `false` | On: hub queries run as `authenticated` under a minted hub token, so forced RLS is live. |
 | `CIVIC_HUB_SIGNING_KEY` | engine | secret | when CIVIC_HUB_MINTED_TOKEN is on |  | The key hub tokens are signed with (PostgREST's JWT secret or a private JWK). |
 | `CIVIC_CATALOG_SIGNING_KEY` | engine | secret | no |  | The catalog signing key (an Ed25519 private key, PEM, or that PEM in base64): the console's, which signs an approval with it (src/control/catalogKey.ts). The hub reads only its public half, and only while CIVIC_CATALOG_PUBLIC_KEY is unset; once the console has its own deployment it lives only there. |
-| `CIVIC_RELEASE_SECRET` | engine | secret | no |  | Bearer token scripts/release.sh presents to approve first-party catalog entries CI proved (ADR-015 amendment); the console signs them with CIVIC_CATALOG_SIGNING_KEY. Unset: no release approves anything, and the release pauses for the operator as before. |
 | `CIVIC_CATALOG_PUBLIC_KEY` | engine | string | no |  | The console's catalog key, its public half (base64 DER, as the console's Plugins page shows it): what the hub verifies approvals with once the console is its own deployment. Unset: the public half of CIVIC_CATALOG_SIGNING_KEY, when this deployment has it. |
 | `CIVIC_CATALOG_TRUSTED_KEYS` | engine | string | no |  | Retired catalog keys still trusted while the approvals are signed again: comma-separated public keys (base64 DER, as the console shows them). |
 | `CIVIC_CATALOG_SIGNATURES` | engine | string | no | `transition` | transition: an approved row without a signature still mounts on its hash, a signed one must verify; required: a row without a valid signature is unapproved. |
 | `BASE_URL` | engine | url | no | `http://localhost:3000` | The API's own origin outside a hub (scripts, local). |
 | `CIVIC_UI_BASE_URL` | engine | url | no | `BASE_URL` | The UI's origin when it differs from the API's (local preview, the start page's handoff). |
 | `CIVIC_ALLOWED_ORIGINS` | engine | urls | **in production** |  | Extra CORS origins, comma-separated. Unset outside production allows any origin. |
-| `CIVIC_CONSOLE_HOSTNAME` | engine | string | no |  | The console's hostname. Unset: no console on this deployment. |
-| `CIVIC_CONSOLE_ADMIN_EMAIL` | engine | email | when CIVIC_CONSOLE_HOSTNAME is set |  | The console's one operator. |
-| `CIVIC_START_HOSTNAME` | engine | string | no |  | The start page's hostname. Unset: no start page. |
-| `CIVIC_PLATFORM_DOMAIN` | engine | string | no |  | The domain hubs live under (civic.social), whose reserved names no hub may take. Unset: the console hostname's parent, as before the console split. |
-| `CIVIC_CONSOLE_DATABASE_URL` | engine | secret | no |  | The console's own database login (civic_console, rights on schema console only): a Postgres connection string, on Vercel Supabase's pooler on port 6543. Made by scripts/console-db-login.ts. Unset with a console hostname: the console and the start page answer that they cannot reach their data; the hubs are unaffected. |
-| `CIVIC_OPERATOR_TOKEN` | engine | secret | no |  | Bearer token the console presents to this hub deployment's operator API (/operator/*). Unset: the operator API answers 404; a console on the same deployment calls the hub in-process. |
-| `CIVIC_OPERATOR_URL` | engine | url | no |  | Where the console calls the hub deployment's operator API, with CIVIC_OPERATOR_TOKEN: its API base (on Vercel https://<a hub's hostname>/api). Unset: the console calls the hub in-process (one deployment). |
+| `CIVIC_PLATFORM_DOMAIN` | engine | string | no |  | The domain hubs live under (civic.social), whose reserved names no hub may take. Unset: none are reserved (local development). |
+| `CIVIC_OPERATOR_TOKEN` | engine | secret | no |  | Bearer token the console (Mosaic-Foundation/mosaic-console) presents to this hub deployment's operator API (/operator/*). Unset: the operator API answers 404. |
 | `CIVIC_DEV_HUB` | dev | string | no | `athens` | Local development: the hub a bare localhost resolves to. |
 | `CIVIC_HUB_ID` | engine | string | no |  | Fallback hub id for code with no hub in scope. |
 | `HUB_NAME` | engine | string | no |  | Fallback hub name (also a hub-setting fallback). |
@@ -309,11 +303,6 @@ refused in production (`src/config/devFlags.ts`).
 | `CIVIC_ERROR_DSN` | hosting | secret | no |  | The errors adapter's Sentry DSN. Unset: errors go to the log only. |
 | `CIVIC_ERROR_ENVIRONMENT` | hosting | string | no |  | The environment tag on every error ("production" or "dev"). |
 | `CIVIC_HEARTBEAT_PING_KEY` | hosting | secret | no |  | The heartbeat adapter's Healthchecks.io ping key. Unset: jobs ping nothing. |
-| `HEALTHCHECKS_READ_KEY` | hosting | secret | no |  | Console: Healthchecks.io read-only key (the backup card). |
-| `BETTERSTACK_API_TOKEN` | hosting | secret | no |  | Console: Better Stack token (the uptime card). |
-| `SENTRY_READ_TOKEN` | hosting | secret | no |  | Console: Sentry read token (the errors card). |
-| `SENTRY_ORG` | hosting | string | no |  | Console: Sentry organization slug. |
-| `SENTRY_PROJECT` | hosting | string | no |  | Console: Sentry project slug. |
 | `GIT_COMMIT_SHA`<br>`VERCEL_GIT_COMMIT_SHA` (host, read first) | engine | string | no | `unknown` | The deployed commit (/health, error releases). |
 | `DEPLOYMENT_ID`<br>`VERCEL_DEPLOYMENT_ID` (host, read first) | engine | string | no |  | The deployment's id (/health). |
 

@@ -1,6 +1,6 @@
 // The catalog signature itself (ADR-015), shared by both sides of the
 // console split: the console signs an approval with the Mosaic catalog key
-// (src/control/catalogKey.ts); the hub verifies with the public half only
+// (Mosaic-Foundation/mosaic-console); the hub verifies with the public half only
 // (src/plugins/signature.ts). Ed25519, Node's own crypto, no settings read
 // here.
 //

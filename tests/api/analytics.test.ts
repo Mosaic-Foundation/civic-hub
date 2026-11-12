@@ -24,7 +24,7 @@ import { randomBytes } from "node:crypto";
 import pg from "pg";
 import { call } from "../fixtures/hostCall.js";
 import { mintSession } from "../fixtures/adminSession.js";
-import { consoleCall, mintConsoleSession } from "../fixtures/consoleCall.js";
+import { createHub } from "../fixtures/operator.js";
 import { buildPlan } from "../../features/analytics/plan.js";
 import type { ProcessTypeSummary } from "../../src/plugins/feature.js";
 
@@ -83,11 +83,7 @@ function namesNoOne(body: unknown): void {
 beforeAll(async () => {
   db = new pg.Client({ connectionString: DB_URL });
   await db.connect();
-  const cookie = await mintConsoleSession();
-  const made = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: { slug: SLUG, name: `Analytics Test ${tag}`, hostname: HOST, admin_email: ADMIN, hub_kind: "other" },
-  });
+  const made = await createHub({ slug: SLUG, name: `Analytics Test ${tag}`, hostname: HOST, admin_email: ADMIN, hub_kind: "other" });
   expect(made.status, JSON.stringify(made.body)).toBe(201);
   admin = await mintSession(SLUG, ADMIN);
 
