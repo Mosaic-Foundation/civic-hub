@@ -32,6 +32,17 @@ import {
 const RESULT_PUBLISHED = "civic.process.result_published";
 /** Activities per request to /events (its maximum is 200). */
 const WIRE_PAGE = 100;
+/**
+ * Requests to /events one page of cards may make once it has a card
+ * (2026-11-12). A hub whose newest activity is mostly not cards (hidden,
+ * archived or plugin-off processes) used to be read to the end before the
+ * first card showed: the dev smoke hub took 30 requests, about 13 seconds,
+ * for 2 cards. Now a page answers with what it has after this many, and the
+ * feed's load-as-you-scroll fetches the rest. The same cap as /api/feed's
+ * MAX_SCAN (src/services/feedPage.ts), counted in requests. A page with no
+ * card yet keeps reading, so the feed never shows "empty" with more to come.
+ */
+const MAX_READS_PER_PAGE = 3;
 
 export interface FeedPage {
   events: CivicEvent[];
@@ -65,7 +76,15 @@ export class WireFeedReader {
   }
 
   async page(size = FEED_PAGE_SIZE): Promise<FeedPage> {
-    while (this.buffer.length < size && !this.exhausted) await this.readMore();
+    let reads = 0;
+    while (
+      this.buffer.length < size &&
+      !this.exhausted &&
+      (reads < MAX_READS_PER_PAGE || this.buffer.length === 0)
+    ) {
+      await this.readMore();
+      reads++;
+    }
     const events = this.buffer.splice(0, size);
     const processMeta: Record<string, FeedProcessMeta> = {};
     for (const e of events) if (this.meta[e.process_id]) processMeta[e.process_id] = this.meta[e.process_id]!;
