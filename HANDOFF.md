@@ -4,6 +4,22 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The home feed stops reading after three requests once it has a card — 2026-11-12
+
+- **Measured first** (Adam asked whether the 11-06 home-feed prompt was needed). A hub with sample content reads its
+  feed from `/api/feed`, already one bounded request: Floyd production 1 request, ~0.85 s, 25 cards; Athens on dev the
+  same. Only a hub with no sample content reads the public stream (`WireFeedReader`, `/events` 100 at a time): the dev
+  smoke hub made 30 sequential requests (~3,000 events, ~350 ms each), ~13 s before any card, for 2 cards. Floyd's
+  wire (629 events) has its newest cards in the newest ~50, so it stays at 1–2 requests once its samples go. The cost
+  follows how few recent events are cards, not the log's length.
+- **Change:** `ui/src/services/wireFeed.ts` `MAX_READS_PER_PAGE = 3`: a page answers with what it has after three
+  requests once it holds a card, and load-as-you-scroll fetches the rest (the "Load more" row stays on screen for a
+  short page, so it keeps going). A page with no card yet keeps reading, so the feed never says "empty" with more to
+  come. The client-side counterpart of `/api/feed`'s `MAX_SCAN`. Same cards, same order; nothing visible changes on a
+  hub whose cards are dense.
+- **Not done (by choice):** the prompt's full server-shaped feed. Smoke's 20 s waits are upper bounds, not delays, so
+  they stay. **Tests:** TESTING.md, 2026-11-12 (home feed).
+
 ## The operator command for self-hosters — 2026-11-12
 
 - **What:** `npm run operator -- <command>` (`scripts/operator.ts`, logic in `scripts/lib/operatorCli.ts`): what the

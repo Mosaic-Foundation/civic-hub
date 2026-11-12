@@ -87,6 +87,15 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## The home feed's request cap (2026-11-12)
+
+- `tests/unit/wireFeedReader.test.ts` (new, 5): the stream reader against a fake `/events` (100 per page) — dense
+  cards are one request for 25; a smoke-like log (3,000 events, cards at 5, 150 and 2,500) gives its first page after
+  3 requests and every card, newest first, once, after paging on (30 requests in all); a page with no card keeps
+  reading to the first one; a log with no cards reads to the end and says done. Two of the five fail without the cap.
+- Results: `npm test` unit files all pass (the `tests/api` files need the local stack's API, as always); `ui` build
+  clean; Playwright `feed.spec.ts` + `feedStream.spec.ts` 9 passed, 1 skipped, against the local stack.
+
 ## The operator command for self-hosters (2026-11-12)
 
 - **Unit** (`tests/unit/operatorCli.test.ts`, 18, no server): the command's settings (https only, except localhost;
