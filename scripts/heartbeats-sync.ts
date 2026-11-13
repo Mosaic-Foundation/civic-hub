@@ -51,13 +51,15 @@ export function checks(): Check[] {
   //
   // A period check, not the cron schedule (Adam, 2026-10-19): GitHub starts
   // the scheduled dumps 2½ to 4½ hours late, so a cron check with an hour's
-  // grace alerted on dumps that came. Every 6 hours with 6 hours' grace
-  // alerts only when no dump has arrived for 12 hours, which is two missed.
+  // grace alerted on dumps that came. GitHub also skips about half of the four
+  // daily runs, so twice a day is what we get, and Adam accepted that
+  // (2026-11-13): a 12-hour period with 6 hours' grace alerts only when no
+  // dump has arrived for 18 hours.
   const backup: Check = {
     slug: "backup-dump",
     name: "Backup: database dump",
     desc: "civic-hub-backups dump.yml pings after an encrypted dump is uploaded.",
-    timeout: 6 * HOUR,
+    timeout: 12 * HOUR,
     grace: 6 * HOUR,
   };
   return [...jobs, backup];
