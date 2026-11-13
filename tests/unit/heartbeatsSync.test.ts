@@ -7,9 +7,9 @@ import { describe, expect, it } from "vitest";
 import { checks } from "../../scripts/heartbeats-sync.js";
 
 describe("heartbeats-sync's checks", () => {
-  it("the backup dump: every 6 hours, 6 hours' grace, no cron schedule", () => {
+  it("the backup dump: every 12 hours, 6 hours' grace, no cron schedule", () => {
     const backup = checks().find((c) => c.slug === "backup-dump")!;
-    expect(backup).toMatchObject({ timeout: 6 * 3600, grace: 6 * 3600 });
+    expect(backup).toMatchObject({ timeout: 12 * 3600, grace: 6 * 3600 });
     expect(backup.schedule).toBeUndefined();
   });
 
