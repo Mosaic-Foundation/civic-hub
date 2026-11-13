@@ -2,14 +2,12 @@
   "admin.setup_guide": {
     "text": "The guide to setting up this hub, step by step: its name and look, its words, its legal pages, who runs it, and when to leave demo.",
     "page": "/start/setup",
-    "anchor": "admin-setup-guide",
-    "pending": true
+    "anchor": "admin-setup-guide"
   },
   "settings.getting-started": {
     "text": "The setup checklist: each step with its tick, filled from the hub's own state, a link to the setting and a link to its page here.",
     "page": "/start/setup",
-    "anchor": "settings-getting-started",
-    "pending": true
+    "anchor": "settings-getting-started"
   },
   "settings.identity": {
     "text": "What this hub is called and how it looks: the header, the browser tab and the card a shared link shows.",
@@ -99,8 +97,7 @@
   "plugins.events": {
     "text": "A calendar. People propose events, which go through review like proposals, and say they're going. Anyone can subscribe to the calendar in their own calendar app. Off hides the Events pages; nothing is deleted.",
     "page": "/reference/plugins",
-    "anchor": "plugins-events",
-    "pending": true
+    "anchor": "plugins-events"
   },
   "plugins.brief": {
     "text": "The published record of what people decided, sent to officials. The hub drafts each brief and an admin approves it before it is published and emailed.",
@@ -155,8 +152,7 @@
   "plugins.analytics": {
     "text": "Activity: how many residents took part, of what kind, by week, month and quarter, counted from the hub's record in numbers that never name anyone. Admins see it under Admin → Activity, with a CSV.",
     "page": "/reference/plugins",
-    "anchor": "plugins-analytics",
-    "pending": true
+    "anchor": "plugins-analytics"
   },
   "plugins.install": {
     "text": "Install adds the plugin to this hub. Before you confirm, the hub shows what it will be able to do and what it will not.",
@@ -361,14 +357,12 @@
   "nav.aside_cards": {
     "text": "The cards in the right column of the Three columns layout, and their order: Coming up, Announcements and About. Turn one off to hide it; an empty card hides itself.",
     "page": "/reference/settings/theme",
-    "anchor": "nav-aside-cards",
-    "pending": true
+    "anchor": "nav-aside-cards"
   },
   "feed.closing_reminder_hours": {
     "text": "How long before a vote, proposal or conversation closes a \"Closes tomorrow at 5:00 PM\" card shows in the feed. One value for every kind, 48 hours unless set; 0 turns the cards off.",
     "page": "/reference/settings/theme",
-    "anchor": "feed-closing-reminder-hours",
-    "pending": true
+    "anchor": "feed-closing-reminder-hours"
   },
   "nav.section_order": {
     "text": "The order of the hub's sections everywhere they appear. Feed is always first; the first four are the tabs on a phone's bottom bar, and the rest are under More.",
@@ -478,8 +472,7 @@
   "plugin.analytics.public_numbers": {
     "text": "Off by default. On, anyone can read this hub's Activity numbers at /analytics, and the About page shows them. Numbers from 1 to 4 read \"fewer than 5\". Organisations you give a reporting key can read them either way.",
     "page": "/reference/plugins",
-    "anchor": "plugin-analytics-public-numbers",
-    "pending": true
+    "anchor": "plugin-analytics-public-numbers"
   },
   "admin.feedback_forward": {
     "text": "Shares this item with Civic.Social, which maintains the software, as a bug or an idea. The sender's name and address stay here. Their status then shows on the item.",
@@ -524,19 +517,16 @@
   "plugin.meeting_summary.record_grace_days": {
     "text": "How many days a listed meeting may wait for its minutes or transcript before the admins are told something may be wrong. Empty means 14.",
     "page": "/reference/plugins",
-    "anchor": "plugin-meeting-summary-record-grace-days",
-    "pending": true
+    "anchor": "plugin-meeting-summary-record-grace-days"
   },
   "plugin.meeting_summary.source_quiet_days": {
     "text": "How many days without a new meeting before the run asks an admin to check the source still works. Empty means 45; set it longer for a body that meets less often.",
     "page": "/reference/plugins",
-    "anchor": "plugin-meeting-summary-source-quiet-days",
-    "pending": true
+    "anchor": "plugin-meeting-summary-source-quiet-days"
   },
   "plugin.meeting_summary.wix_fields": {
     "text": "For a Wix site only: which collection columns hold the date, type, agenda, minutes and recordings, as role=column pairs. Empty uses the usual columns.",
     "page": "/reference/plugins",
-    "anchor": "plugin-meeting-summary-wix-fields",
-    "pending": true
+    "anchor": "plugin-meeting-summary-wix-fields"
   }
 }
