@@ -23,7 +23,8 @@ organization mosaic.social, us-east1). `<target>` is `prod` or `dev`.
 | `monthly/<target>/…` | the same file | 00:17 on the 1st | 400 days |
 | `hubs/<target>/<slug>/civic-hub-export-<slug>-<stamp>.tar.gz.age` | one hub's export bundle | 07:37 UTC, every `active` hub | 7 days |
 
-**A dump holds:** schemas `public` and `supabase_migrations`: every table,
+**A dump holds:** schemas `public`, `supabase_migrations` and `console` (the
+Mosaic Console's tables, since 2026-11-13): every table,
 row, function, trigger, policy and grant there, and the migration history.
 Format: `pg_dump -Fc` (restore with `pg_restore`), encrypted with age.
 
@@ -105,8 +106,11 @@ docker exec supabase_db_civic-hub psql -U postgres -c "create database restore_s
 docker exec supabase_db_civic-hub pg_restore -U postgres -d restore_scratch --no-owner /tmp/restore.dump
 ```
 
-**Expected:** one error, `schema "public" already exists`, and
-`errors ignored on restore: 1`. Anything else, stop and read it.
+**Expected:** `schema "public" already exists`, then one error per grant to
+a role your Mac doesn't have (`role "backup_reader" does not exist`) and a few
+`permission denied to change default privileges` for `supabase_admin`: about
+76 in all on 2026-11-13, every one a GRANT, none about data. Anything that
+isn't a grant or `schema "public"`, stop and read it.
 
 Then:
 - **Look:** `docker exec -it supabase_db_civic-hub psql -U postgres -d restore_scratch`.
@@ -225,6 +229,15 @@ a second key holder (a community admin). Either key alone opens every backup.
 | Download + decrypt utopia's nightly bundle with the **recovery** key | `civic-hub-export-utopia-20261005T175702Z` |
 | `restore-hub.ts --dry-run` on dev | every check passed: clear 12, load 12 rows |
 | `restore-hub.ts` on dev (Adam) | `fingerprint b04e7da5… (matches the bundle)` — the same fingerprint the nightly job logged — and the `hub.restore` audit row by adam@mosaic.social |
+
+**2026-11-13, production dump, primary key** (the monitoring check, Adam).
+
+| Step | Result |
+|---|---|
+| Manual `dump.yml` run, target prod, after adding `console` | 2,185,438 bytes, 59 tables with data, `civic-db-prod-20261113T193039Z` |
+| Decrypt with the **primary** key | `PGDMP` |
+| Restore into `restore_scratch` (§3) | 76 errors, all grants to roles missing locally (see §3) |
+| Counts | 9 hubs (all of production), 1,355 events, 96 `console.control_audit_log` rows |
 
 Gotchas found: the browser prefixes downloads with the folder names; age
 reads the key from the clipboard, so paste the command first and copy the key
