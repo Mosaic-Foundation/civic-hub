@@ -74,6 +74,12 @@ export interface CreateInfo {
   plugin_ids: readonly string[];
   /** What each plugin is called, by id. */
   plugin_names: Record<string, string>;
+  /**
+   * Whether each plugin starts on when the form leaves it alone (all on but
+   * the Fediverse account, src/shared/hubFeatures.ts). A console that reads
+   * it ticks its boxes to match; one that doesn't ticks them all.
+   */
+  plugin_defaults?: Record<string, boolean>;
   sample_kinds: string[];
   production_database: boolean;
   hub_specific_env_vars: string[];

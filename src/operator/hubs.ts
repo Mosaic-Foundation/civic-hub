@@ -11,6 +11,7 @@ import { envVar, processEnv } from "../config/env.js";
 import { CivicError, codeForStatus } from "../errors/index.js";
 import { DEFAULT_HUB_BANNER } from "../shared/platform.js";
 import { PLUGIN_NAMES } from "../shared/pluginNames.js";
+import { pluginDefaultOn } from "../shared/hubFeatures.js";
 import { getDb } from "../db/client.js";
 import { eventToRow } from "../events/eventStore.js";
 import { buildEvent } from "../events/eventEmitter.js";
@@ -549,9 +550,12 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
   // demo until a zone is set either way.
   const timezone = input.timezone || suggestedTimeZone(stateOfOcdId(input.jurisdictionOcdId)) || "";
   if (timezone) settings[KEYS.IDENTITY_TIMEZONE] = timezone;
-  // Every plugin gets its own row: what the operator ticked, on by default.
+  // Every plugin gets its own row: what the operator ticked, else its
+  // default (on, but for the few a hub switches on itself: the Fediverse
+  // account, src/shared/hubFeatures.ts).
   for (const id of PLUGIN_IDS) {
-    settings[`plugin.${id}.enabled`] = input.plugins?.[id] === false ? "false" : "true";
+    const ticked = input.plugins?.[id];
+    settings[`plugin.${id}.enabled`] = (ticked ?? pluginDefaultOn(id)) ? "true" : "false";
   }
   // A new hub's resident-created votes open without endorsements (Adam,
   // 2026-10-13); admins raise it in Settings → Participation. Written here,
