@@ -12,7 +12,7 @@ import { describe, it, expect } from "vitest";
 import { sendsImmediateEmail } from "../../src/modules/civic.feedback/index.js";
 import { digestLineText, renderAdminDigestEmail, shownLines } from "../../src/modules/civic.admin_digest/index.js";
 import type { AdminDigestPayload, DigestLine } from "../../src/modules/civic.admin_digest/index.js";
-import { jobProblemText } from "../../src/modules/civic.admin_digest/service.js";
+import { jobProblemText, problemUrl } from "../../src/modules/civic.admin_digest/service.js";
 import { problemQueue } from "../../src/jobs/describe.js";
 import { adminAnchorPath, jobPath } from "../../src/shared/adminAnchors.js";
 
@@ -155,6 +155,16 @@ describe("admin digest — scheduled job problems", () => {
     expect(problemQueue("meeting_summary", "2026-11-10 Board of Supervisors: thin summary. Held for review.")).toBe("meeting_summaries");
     expect(problemQueue("meeting_summary", "No new meetings found since 2026-10-01 (43 days). Check that the meeting source still works.")).toBeNull();
     expect(problemQueue("vote_close", "The run ended with status 500")).toBeNull();
+  });
+
+  it("links a revision that has waited to the meeting summaries' Revision waiting tab", () => {
+    const ui = "https://hub.example";
+    expect(problemUrl(ui, "meeting_summary", "2 revisions have waited more than two weeks for review.")).toBe(
+      "https://hub.example/admin/meeting-summaries?show=revision",
+    );
+    expect(problemUrl(ui, "meeting_summary", "Held for review. No video timestamps.")).toBe(
+      "https://hub.example/admin/meeting-summaries",
+    );
   });
 
   it("links a hub job to the hub's own jobs, and a plugin's to its panel", () => {

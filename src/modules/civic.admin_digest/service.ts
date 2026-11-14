@@ -191,8 +191,12 @@ export const JOB_PROBLEMS_LISTED = 5;
  * summary revision), else where its job's runs are shown and what the job
  * depends on is set.
  */
-function problemUrl(ui: string, jobId: string, problem: string): string {
-  if (problemQueue(jobId, problem) === "meeting_summaries") return `${ui}/admin/meeting-summaries`;
+export function problemUrl(ui: string, jobId: string, problem: string): string {
+  if (problemQueue(jobId, problem) === "meeting_summaries") {
+    // A revision that has waited opens on the list's "Revision waiting" tab.
+    const tab = /revisions? (has|have) waited/.test(problem) ? "?show=revision" : "";
+    return `${ui}/admin/meeting-summaries${tab}`;
+  }
   const job = jobById(jobId);
   const plugin = job && "plugin" in job ? ((job.plugin ?? null) as PluginId | null) : null;
   return `${ui}${jobPath(plugin)}`;

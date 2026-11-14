@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { StatusChip } from "../components/AdminPublicationReview";
-import { useNavigate, useParams } from "react-router-dom";
+import { AdminBackButton, AdminStickyBar } from "../components/AdminSticky";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   adminMarkQueueSeen,
   notifyAdminQueuesChanged,
@@ -26,18 +27,31 @@ import { localShortDateOfDay, localDateAtTime } from "../utils/dates";
 // is never persisted. The status stays in the model because the lifecycle and
 // its events distinguish the outcome-recorded step from publication — but a
 // filter for a state no record can hold is just a tab that is always empty.
-const STATUS_FILTERS: Array<{
-  id: "all" | MeetingSummaryApprovalStatus;
-  label: string;
-}> = [
+//
+// "Revision waiting" (Adam, 2026-11-13): published summaries with a revision
+// to accept or discard (built once the minutes are posted). Not a status of
+// its own: the published version stays live until the revision is decided.
+type SummaryFilter = "all" | MeetingSummaryApprovalStatus | "revision";
+const STATUS_FILTERS: Array<{ id: SummaryFilter; label: string }> = [
   { id: "all", label: "All" },
   { id: "pending", label: "Pending" },
   { id: "published", label: "Published" },
+  { id: "revision", label: "Revision waiting" },
 ];
+
+const hasRevisionWaiting = (s: MeetingSummarySummary) =>
+  s.approval_status === "published" && s.pending_revision != null;
+
+/** ?show=revision opens the list on that tab (the admin digest links there). */
+function filterFromSearch(search: string): SummaryFilter {
+  const show = new URLSearchParams(search).get("show");
+  return STATUS_FILTERS.some((f) => f.id === show) ? (show as SummaryFilter) : "all";
+}
 
 export default function AdminMeetingSummaries() {
   const hub = useHub();
   const navigate = useNavigate();
+  const location = useLocation();
   const { id: routeId } = useParams<{ id?: string }>();
   const view: "list" | "review" = routeId ? "review" : "list";
 
@@ -48,8 +62,9 @@ export default function AdminMeetingSummaries() {
     adminMarkQueueSeen("meeting_summaries").then(notifyAdminQueuesChanged).catch(() => {});
   }, []);
   const [selected, setSelected] = useState<MeetingSummaryDetail | null>(null);
-  const [statusFilter, setStatusFilter] =
-    useState<"all" | MeetingSummaryApprovalStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<SummaryFilter>(() =>
+    filterFromSearch(location.search),
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -118,6 +133,7 @@ export default function AdminMeetingSummaries() {
 
   const filtered = useMemo(() => {
     if (statusFilter === "all") return summaries;
+    if (statusFilter === "revision") return summaries.filter(hasRevisionWaiting);
     return summaries.filter((s) => s.approval_status === statusFilter);
   }, [summaries, statusFilter]);
 
@@ -133,6 +149,14 @@ export default function AdminMeetingSummaries() {
       else next.add(id);
       return next;
     });
+  }
+
+  /** A tab: the selection is for the rows that were in view, so it clears. */
+  function pickFilter(id: SummaryFilter) {
+    setStatusFilter(id);
+    setCheckedIds(new Set());
+    setConfirmBatchAction(null);
+    navigate({ search: id === "all" ? "" : `?show=${id}` }, { replace: true });
   }
 
   function toggleAllVisible() {
@@ -189,7 +213,8 @@ export default function AdminMeetingSummaries() {
     setConfirmingApprove(false);
     setActionMessage(null);
     setError(null);
-    navigate("/admin/meeting-summaries");
+    // Back to the tab the summary was opened from.
+    navigate(`/admin/meeting-summaries${statusFilter === "all" ? "" : `?show=${statusFilter}`}`);
   }
 
   useEffect(() => {
@@ -307,13 +332,7 @@ export default function AdminMeetingSummaries() {
     return (
       <div className="page admin-meeting-summaries-page">
         <div className="admin-meeting-summaries-body">
-          <button
-            className="admin-back-link"
-            onClick={backToList}
-            type="button"
-          >
-            &larr; Back to Meeting summaries
-          </button>
+          <AdminBackButton label="Back to Meeting summaries" onClick={backToList} />
           <h1 className="kit-page-title">
             Review: {selected.meeting_title} — {localShortDateOfDay(selected.meeting_date)}
           </h1>
@@ -794,18 +813,6 @@ export default function AdminMeetingSummaries() {
             </p>
           )}
 
-          {/* Foot-of-page back link — review forms can run long, and
-              scrolling all the way back to the top to leave the page is
-              friction admins don't need. */}
-          <div style={{ marginTop: "var(--space-8)" }}>
-            <button
-              className="admin-back-link"
-              onClick={backToList}
-              type="button"
-            >
-              &larr; Back to Meeting summaries
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -820,6 +827,13 @@ export default function AdminMeetingSummaries() {
           Review topic blocks and approve to publish to the public feed.
         </p>
 
+        {loading && <p>Loading…</p>}
+        {error && <p className="form-error">{error}</p>}
+        {actionMessage && (
+          <p className="admin-action-message">{actionMessage}</p>
+        )}
+
+        <AdminStickyBar label="Filter and act on summaries">
         <div className="admin-brief-filters kit-chips">
           {STATUS_FILTERS.map((f) => (
             <button
@@ -828,18 +842,13 @@ export default function AdminMeetingSummaries() {
               className={`admin-brief-filter kit-chip${
                 statusFilter === f.id ? " is-active is-on" : ""
               }`}
-              onClick={() => setStatusFilter(f.id)}
+              onClick={() => pickFilter(f.id)}
             >
               {f.label}
+              {f.id === "revision" && ` (${summaries.filter(hasRevisionWaiting).length})`}
             </button>
           ))}
         </div>
-
-        {loading && <p>Loading…</p>}
-        {error && <p className="form-error">{error}</p>}
-        {actionMessage && (
-          <p className="admin-action-message">{actionMessage}</p>
-        )}
 
         {filtered.length > 0 && (
           <div className="batch-bar">
@@ -922,12 +931,15 @@ export default function AdminMeetingSummaries() {
             )}
           </div>
         )}
+        </AdminStickyBar>
 
         {!loading && !error && filtered.length === 0 && (
           <p className="empty-state-inline">
             {statusFilter === "all"
               ? "No meeting summaries yet. Summaries are created daily by the cron job."
-              : `No ${statusFilter} summaries.`}
+              : statusFilter === "revision"
+                ? "No published summaries have a revision waiting."
+                : `No ${statusFilter} summaries.`}
           </p>
         )}
 
