@@ -16,7 +16,8 @@
     "digest",
     "admin_digest",
     "members",
-    "analytics"
+    "analytics",
+    "fediverse"
   ],
   "PROCESS_TYPE_PLUGINS": {
     "civic.vote": "vote",
@@ -435,7 +436,8 @@
     "digest",
     "admin_digest",
     "members",
-    "analytics"
+    "analytics",
+    "fediverse"
   ],
   "plugins_section": [
     {
@@ -504,6 +506,10 @@
     },
     {
       "key": "plugin.analytics.enabled",
+      "kind": "boolean"
+    },
+    {
+      "key": "plugin.fediverse.enabled",
       "kind": "boolean"
     },
     {

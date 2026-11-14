@@ -19,11 +19,13 @@ import {
 import { adminGetSettingTemplate, type HubSettings } from "../../services/api";
 import { useBriefMessage, useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
 import { HANDOVER_KEYS, SETTING_LABELS } from "../../../../src/shared/settingOwners";
+import { pluginDefaultOn } from "../../../../src/shared/hubFeatures";
 
 /** Values in the form for keys the hub has not set: what the site uses today. */
 const FORM_DEFAULTS: Readonly<Record<string, string>> = {
-  // Every plugin is on until a hub switches it off.
-  ...Object.fromEntries(PLUGIN_SECTION_ORDER.map((id) => [`plugin.${id}.enabled`, "true"])),
+  // Every plugin is on until a hub switches it off, but for the few a hub
+  // must switch on itself (src/shared/hubFeatures.ts defaultOn).
+  ...Object.fromEntries(PLUGIN_SECTION_ORDER.map((id) => [`plugin.${id}.enabled`, pluginDefaultOn(id) ? "true" : "false"])),
   "plugin.meeting_summary.auto_publish": "false",
   // DEFAULT_DIGEST_SEND_HOUR in src/controllers/digestController.ts.
   "plugin.digest.send_hour": "13",

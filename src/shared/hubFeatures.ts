@@ -19,6 +19,12 @@ export interface HubFeature {
   what: string;
   /** Its settings beyond `plugin.<id>.enabled`. */
   fields: readonly SettingFieldSpec[];
+  /**
+   * False for a feature a hub must switch on itself (the Fediverse account,
+   * 2026-11-13: it speaks to other servers in the hub's name). Every other
+   * plugin and feature is on until a hub switches it off.
+   */
+  defaultOn?: boolean;
 }
 
 export const HUB_FEATURES = [
@@ -60,8 +66,25 @@ export const HUB_FEATURES = [
     what: "Counts of participation by period and kind, for admins; optionally public, and for outside organisations you give a reporting key.",
     fields: [{ key: "plugin.analytics.public_numbers", kind: "boolean" }],
   },
+  // Following the hub from Mastodon and the rest of the fediverse (plan of
+  // 2026-11-12; features/fediverse/). Off until the hub switches it on: once
+  // on, other servers hold the hub's account and its followers.
+  {
+    id: "fediverse",
+    order: 170,
+    name: "Fediverse",
+    what: "An account people can follow from Mastodon and other fediverse apps, and a Share on Mastodon button on each page.",
+    fields: [],
+    defaultOn: false,
+  },
 ] as const satisfies readonly HubFeature[];
 
 export type HubFeatureId = (typeof HUB_FEATURES)[number]["id"];
 
 export const HUB_FEATURE_IDS: readonly HubFeatureId[] = HUB_FEATURES.map((f) => f.id);
+
+/** Whether a plugin or feature is on for a hub that never set its switch. */
+export function pluginDefaultOn(id: string): boolean {
+  const feature = (HUB_FEATURES as readonly HubFeature[]).find((f) => f.id === id);
+  return feature?.defaultOn ?? true;
+}

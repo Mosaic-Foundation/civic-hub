@@ -42,6 +42,8 @@
  * HUB_TABLES, the export (exported) and TABLE_KEYS; civic.event.announced is
  * mapped; the requirements gain that table and calendar_events' image_url,
  * image_alt, time_zone and capacity. Only those (diffed before writing).
+ * And (2026-11-13, the fediverse feature): its plugin id (fediverse, last in
+ * the Plugins section, off by default) and its switch. Only those.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

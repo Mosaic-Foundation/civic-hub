@@ -106,6 +106,7 @@ export const SEARCH_WORDS: Readonly<Record<string, SearchWords>> = {
   "plugins.digest": { words: ["digest", "newsletter", "summary email", "weekly email", "daily email"] },
   "plugins.admin_digest": { words: ["admin email", "daily email", "admin summary", "notifications"] },
   "plugins.members": { words: ["members", "member count", "faces", "avatars", "directory", "residents list"] },
+  "plugins.fediverse": { words: ["fediverse", "mastodon", "activitypub", "follow", "followers", "social media", "bluesky"] },
   "plugins.analytics": { words: ["activity", "analytics", "statistics", "stats", "metrics", "numbers", "reporting", "participation counts"] },
 
   // Parts of sections.
