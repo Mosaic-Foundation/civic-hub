@@ -198,6 +198,20 @@ function describeSampleRefresh(b: Body): JobRunDescription | null {
   return { status: "ok", summary: summary.charAt(0).toUpperCase() + summary.slice(1), problems: [] };
 }
 
+/**
+ * Where an admin deals with one problem line this file wrote: a queue on the
+ * admin panel when the fix is a review there, else the job's own place on
+ * Settings → Plugins (its plugin's panel, or the hub's own jobs). Read by the
+ * admin digest, so each problem it lists links to where it is fixed (Adam,
+ * 2026-11-13). Matches the meeting-summary lines above that ask for a review.
+ */
+export function problemQueue(jobId: string, problem: string): "meeting_summaries" | null {
+  if (jobId !== "meeting_summary") return null;
+  return /Held for review\.|revisions? (has|have) waited|written before the meeting took place/.test(problem)
+    ? "meeting_summaries"
+    : null;
+}
+
 const DESCRIBERS: Readonly<Record<string, (b: Body) => JobRunDescription | null>> = {
   meeting_summary: describeMeetingSummary,
   news_sync: describeNewsSync,

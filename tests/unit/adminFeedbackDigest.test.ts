@@ -12,6 +12,9 @@ import { describe, it, expect } from "vitest";
 import { sendsImmediateEmail } from "../../src/modules/civic.feedback/index.js";
 import { digestLineText, renderAdminDigestEmail, shownLines } from "../../src/modules/civic.admin_digest/index.js";
 import type { AdminDigestPayload, DigestLine } from "../../src/modules/civic.admin_digest/index.js";
+import { jobProblemText } from "../../src/modules/civic.admin_digest/service.js";
+import { problemQueue } from "../../src/jobs/describe.js";
+import { adminAnchorPath, jobPath } from "../../src/shared/adminAnchors.js";
 
 function line(over: Partial<DigestLine> & Pick<DigestLine, "id">): DigestLine {
   return {
@@ -117,5 +120,64 @@ describe("admin digest — the email", () => {
       expect(out).not.toMatch(/open proposals/i);
       expect(out).not.toMatch(/vote results/i);
     }
+  });
+});
+
+// A count alone gave an admin nothing to act on: Floyd's digest of 2026-11-13
+// said "1 new scheduled job problem" and linked to a page that did not show
+// it (the job, closing at deadlines, belongs to no plugin). The job line now
+// names each problem, says whether the job has run cleanly since, and links
+// each to where it is shown.
+describe("admin digest — scheduled job problems", () => {
+  const failed = {
+    job_id: "vote_close",
+    started_at: "2026-11-11T02:05:00.000Z",
+    finished_at: "2026-11-11T02:05:09.000Z",
+    status: "failed" as const,
+    summary: "The run did not complete",
+    problems: ["fetch failed"],
+  };
+
+  it("names the job, the time in the hub's clock, and what went wrong", () => {
+    expect(jobProblemText(failed, "fetch failed", null, "America/New_York")).toBe(
+      "Closing at deadlines, Nov 10, 9:05 PM EST: failed. fetch failed",
+    );
+  });
+
+  it("says when the job has run without a problem since", () => {
+    const ok = { ...failed, status: "ok" as const, finished_at: "2026-11-11T03:05:00.000Z", problems: [] };
+    expect(jobProblemText(failed, "fetch failed", ok, "UTC")).toContain("It has run without a problem since (Nov 11, 3:05 AM UTC).");
+  });
+
+  it("sends a meeting summary revision waiting for review to the review queue", () => {
+    expect(problemQueue("meeting_summary", "2 revisions have waited more than two weeks for review.")).toBe("meeting_summaries");
+    expect(problemQueue("meeting_summary", "1 revision has waited more than two weeks for review.")).toBe("meeting_summaries");
+    expect(problemQueue("meeting_summary", "2026-11-10 Board of Supervisors: thin summary. Held for review.")).toBe("meeting_summaries");
+    expect(problemQueue("meeting_summary", "No new meetings found since 2026-10-01 (43 days). Check that the meeting source still works.")).toBeNull();
+    expect(problemQueue("vote_close", "The run ended with status 500")).toBeNull();
+  });
+
+  it("links a hub job to the hub's own jobs, and a plugin's to its panel", () => {
+    expect(jobPath(null)).toBe("/admin/settings/plugins#hub-jobs");
+    expect(jobPath("meeting_summary")).toBe("/admin/settings/plugins#meeting-summary");
+    expect(adminAnchorPath("#hub-jobs", "settings")).toBe("/admin/settings/plugins#hub-jobs");
+  });
+
+  it("lists each problem under its line, with its link, in both bodies", () => {
+    const url = "https://hub.example/admin/settings/plugins#hub-jobs";
+    const p = payload([
+      line({
+        id: "job_problems",
+        noun: { one: "scheduled job problem", many: "scheduled job problems" },
+        new_count: 1,
+        url,
+        details: [{ text: "Closing at deadlines, Nov 10, 9:05 PM EST: failed. fetch failed", url }],
+      }),
+    ]);
+    const { html, text } = renderAdminDigestEmail(p);
+    expect(text).toContain("- 1 new scheduled job problem");
+    expect(text).toContain("    * Closing at deadlines, Nov 10, 9:05 PM EST: failed. fetch failed");
+    expect(html).toContain("Closing at deadlines, Nov 10, 9:05 PM EST: failed. fetch failed");
+    expect(html.match(/plugins#hub-jobs/g)?.length).toBe(2);
   });
 });

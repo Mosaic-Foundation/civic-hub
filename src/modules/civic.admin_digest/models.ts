@@ -39,6 +39,19 @@ export interface DigestLine {
   flagged_by?: string;
   /** Absolute URL of the queue on the hub. */
   url: string;
+  /**
+   * The new items themselves, when the count alone gives an admin nothing to
+   * act on: each scheduled job problem, what went wrong, and a link to where
+   * it is dealt with (Adam, 2026-11-13). Absent on the queue lines.
+   */
+  details?: DigestDetail[];
+}
+
+export interface DigestDetail {
+  /** "Closing at deadlines, Nov 10, 9:05 PM EST: failed. Could not close …" */
+  text: string;
+  /** Absolute URL of where the admin sees it and fixes it. */
+  url: string;
 }
 
 export interface AdminDigestPayload {

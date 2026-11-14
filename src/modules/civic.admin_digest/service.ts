@@ -42,8 +42,12 @@ import { uiBaseUrl } from "../../utils/baseUrl.js";
 import { getSettingSync, hubDisplayNameSync, hubModeSync, isPluginEnabledSync } from "../../services/hubSettings.js";
 import { KEYS, asEmailList } from "../../models/hubSettings.js";
 import { isSubstantiveEdit } from "../../services/processEdits.js";
-import { jobProblemsSince } from "../../services/jobRuns.js";
-import type { AdminDigestPayload, DigestLine } from "./models.js";
+import { jobProblemsSince, latestJobRuns, type JobRunRecord } from "../../services/jobRuns.js";
+import { hubTimeZone } from "../../services/hubTimeZone.js";
+import { jobById } from "../../jobs/registry.js";
+import { problemQueue } from "../../jobs/describe.js";
+import { jobPath, type PluginId } from "../../shared/adminAnchors.js";
+import type { AdminDigestPayload, DigestDetail, DigestLine } from "./models.js";
 import { featureDigestLines } from "../../plugins/features.js";
 
 /** A hub's first digest looks back this far. */
@@ -179,25 +183,96 @@ async function waitlistLine(since: string, until: string, ui: string): Promise<D
   };
 }
 
-async function jobsLine(since: string, until: string, ui: string): Promise<DigestLine> {
-  let n = 0;
+/** Problems listed one by one in the email; the rest are counted. */
+export const JOB_PROBLEMS_LISTED = 5;
+
+/**
+ * Where one problem is dealt with: the review queue it asks for (a meeting
+ * summary revision), else where its job's runs are shown and what the job
+ * depends on is set.
+ */
+function problemUrl(ui: string, jobId: string, problem: string): string {
+  if (problemQueue(jobId, problem) === "meeting_summaries") return `${ui}/admin/meeting-summaries`;
+  const job = jobById(jobId);
+  const plugin = job && "plugin" in job ? ((job.plugin ?? null) as PluginId | null) : null;
+  return `${ui}${jobPath(plugin)}`;
+}
+
+/** "Nov 10, 9:05 PM EST" in the hub's own clock. */
+function runTime(iso: string, timeZone: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
   try {
-    n = (await jobProblemsSince(since)).filter(
-      (r) => (r.status === "failed" || r.status === "flagged") && r.finished_at <= until,
-    ).length;
-  } catch (err) {
-    // Not being able to read the log is itself worth an admin's look.
-    console.warn(`[admin-digest] Job run log unavailable: ${err instanceof Error ? err.message : String(err)}`);
-    n = 1;
+    return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone, timeZoneName: "short" });
+  } catch {
+    return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" });
   }
-  return {
-    id: "job_problems",
+}
+
+/**
+ * One problem of a run, in words an admin can act on: which job, when, what
+ * went wrong, and whether the job has run cleanly since. Pure.
+ */
+export function jobProblemText(r: JobRunRecord, problem: string, laterOk: JobRunRecord | null, timeZone: string): string {
+  const name = JOB_NAMES[r.job_id] ?? r.job_id;
+  const what = r.status === "failed" ? "failed" : "needs a check";
+  const since = laterOk ? ` It has run without a problem since (${runTime(laterOk.finished_at, timeZone)}).` : "";
+  return `${name}, ${runTime(r.finished_at, timeZone)}: ${what}.${problem.trim() ? ` ${problem.trim()}` : ""}${since}`;
+}
+
+/** Each problem a run recorded; a run that recorded none is one, by its summary. */
+function problemsOf(r: JobRunRecord): string[] {
+  return r.problems.length > 0 ? r.problems : [r.summary];
+}
+
+async function jobsLine(since: string, until: string, ui: string): Promise<DigestLine> {
+  const base = {
+    id: "job_problems" as const,
     noun: { one: "scheduled job problem", many: "scheduled job problems" },
-    new_count: n,
     waiting: null,
     flagged: 0,
-    url: `${ui}/admin/settings/plugins`,
   };
+  let runs: JobRunRecord[];
+  try {
+    runs = (await jobProblemsSince(since)).filter(
+      (r) => (r.status === "failed" || r.status === "flagged") && within(r.finished_at, since, until),
+    );
+  } catch (err) {
+    // Not being able to read the log is itself worth an admin's look.
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[admin-digest] Job run log unavailable: ${message}`);
+    const url = `${ui}${jobPath(null)}`;
+    return { ...base, new_count: 1, url, details: [{ text: `The hub's job run log could not be read: ${message}`, url }] };
+  }
+  if (runs.length === 0) return { ...base, new_count: 0, url: `${ui}${jobPath(null)}` };
+
+  // Whether each job has run cleanly since its problem. Best-effort: without
+  // it the email still names the problem.
+  let latest: Awaited<ReturnType<typeof latestJobRuns>> = {};
+  try {
+    latest = await latestJobRuns();
+  } catch {
+    /* the problems alone */
+  }
+  const zone = hubTimeZone();
+  // One item per problem, so the count and the list agree.
+  const all: DigestDetail[] = runs.flatMap((r) => {
+    const last = latest[r.job_id]?.last ?? null;
+    const laterOk = last && last.status === "ok" && Date.parse(last.finished_at) > Date.parse(r.finished_at) ? last : null;
+    return problemsOf(r).map((problem) => ({
+      text: jobProblemText(r, problem, laterOk, zone),
+      url: problemUrl(ui, r.job_id, problem),
+    }));
+  });
+  const details = all.slice(0, JOB_PROBLEMS_LISTED);
+  if (all.length > JOB_PROBLEMS_LISTED) {
+    const more = all.length - JOB_PROBLEMS_LISTED;
+    details.push({ text: `${more} more ${more === 1 ? "problem" : "problems"}; every job's runs are on the Plugins page.`, url: `${ui}/admin/settings/plugins` });
+  }
+  // The line's own link: the one place, when every problem is in one place.
+  const urls = new Set(details.map((d) => d.url));
+  const url = urls.size === 1 ? details[0].url : `${ui}/admin/settings/plugins`;
+  return { ...base, new_count: all.length, url, details };
 }
 
 /**
@@ -266,6 +341,18 @@ async function featureNotes(now: Date): Promise<string[]> {
   return out;
 }
 
+/** A line's items, each with a link to where it is dealt with. */
+function detailsHtml(l: DigestLine): string {
+  if (!l.details || l.details.length === 0) return "";
+  const items = l.details
+    .map(
+      (d) =>
+        `<li style="margin:6px 0 0;line-height:1.4;">${escapeHtml(d.text)} <a href="${escapeHtml(d.url)}" style="color:#1e3a5f;">Open it</a></li>`,
+    )
+    .join("");
+  return `<ul style="list-style:circle;padding-left:18px;margin:4px 0 0;font-size:14px;color:#374151;">${items}</ul>`;
+}
+
 export function renderAdminDigestEmail(p: AdminDigestPayload): { subject: string; html: string; text: string } {
   const newParts = p.lines.filter((l) => l.new_count > 0).map((l) => `${l.new_count} ${noun(l, l.new_count)}`);
   const subject =
@@ -277,7 +364,7 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): { subject: string
       (l) =>
         `<li style="margin:0 0 10px;line-height:1.4;"><a href="${escapeHtml(l.url)}" style="color:#1e3a5f;${
           l.new_count > 0 ? "font-weight:600;" : ""
-        }">${escapeHtml(digestLineText(l))}</a></li>`,
+        }">${escapeHtml(digestLineText(l))}</a>${detailsHtml(l)}</li>`,
     )
     .join("");
   const html = `
@@ -295,7 +382,11 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): { subject: string
   const text = [
     `${p.hub_name}: what's new for admins (since the last one of these emails)`,
     "",
-    ...lines.flatMap((l) => [`- ${digestLineText(l)}`, `  ${l.url}`]),
+    ...lines.flatMap((l) => [
+      `- ${digestLineText(l)}`,
+      `  ${l.url}`,
+      ...(l.details ?? []).flatMap((d) => [`    * ${d.text}`, `      ${d.url}`]),
+    ]),
     ...notes.flatMap((n) => ["", n]),
     "",
     `You receive this because you are an admin of ${p.hub_name}. It counts only what arrived since the last one, and nothing is sent when nothing is new.`,

@@ -69,6 +69,22 @@ export function pluginAnchor(id: PluginId): string {
 
 export const PLUGIN_ANCHORS: readonly string[] = PLUGIN_SECTION_ORDER.map(pluginAnchor);
 
+/**
+ * The hub's own scheduled jobs on Settings → Plugins: the ones no plugin owns
+ * (closing at deadlines, the sample refresh). Before 2026-11-13 they were
+ * shown nowhere, so a digest that counted one of their failures led to a page
+ * without it.
+ */
+export const HUB_JOBS_ANCHOR = "hub-jobs";
+
+/**
+ * Where an admin sees a scheduled job's runs and problems, and changes what
+ * the job depends on: its plugin's panel, opened, or the hub's own jobs.
+ */
+export function jobPath(plugin: PluginId | null): string {
+  return `/admin/settings/plugins#${plugin ? pluginAnchor(plugin) : HUB_JOBS_ANCHOR}`;
+}
+
 export function isSettingsNavId(value: string): value is SettingsNavId {
   return SETTINGS_NAV.some((s) => s.id === value);
 }
@@ -86,7 +102,7 @@ export function adminAnchorPath(anchor: string, on: "admin" | "settings"): strin
     if (tab) return tab.path;
   }
   if (isSettingsNavId(a)) return `/admin/settings/${a}`;
-  if (PLUGIN_ANCHORS.includes(a)) return `/admin/settings/plugins#${a}`;
+  if (PLUGIN_ANCHORS.includes(a) || a === HUB_JOBS_ANCHOR) return `/admin/settings/plugins#${a}`;
   for (const [section, parts] of Object.entries(SETTINGS_SUBSECTIONS)) {
     if (parts?.includes(a)) return `/admin/settings/${section}#${a}`;
   }
