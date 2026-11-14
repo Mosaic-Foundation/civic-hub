@@ -23,6 +23,7 @@ import { useAuth } from "../context/authState";
 import { adminListFeedback, adminMarkQueueSeen, notifyAdminQueuesChanged } from "../services/api";
 import type { FeedbackCategory, FeedbackSubmission } from "../services/api";
 import HelpButton from "../components/HelpButton";
+import { AdminStickyBar } from "../components/AdminSticky";
 import { ForwardButton, MosaicBadge } from "../components/ForwardToCivicSocial";
 import "./AdminFeedback.css";
 import { localTimestamp } from "../utils/dates";
@@ -119,25 +120,27 @@ export default function AdminFeedback() {
         <HelpButton k="admin.contact_civic_social" label="Contact Civic.Social" />
       </p>
 
-      <div
-        className="admin-feedback-filters kit-chips"
-        role="group"
-        aria-label="Filter by category"
-      >
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            className={`admin-feedback-filter kit-chip${
-              filter === f.value ? " is-active is-on" : ""
-            }`}
-            aria-pressed={filter === f.value}
-            onClick={() => setFilter(f.value)}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      <AdminStickyBar>
+        <div
+          className="admin-feedback-filters kit-chips"
+          role="group"
+          aria-label="Filter by category"
+        >
+          {FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              className={`admin-feedback-filter kit-chip${
+                filter === f.value ? " is-active is-on" : ""
+              }`}
+              aria-pressed={filter === f.value}
+              onClick={() => setFilter(f.value)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </AdminStickyBar>
 
       {error && <p className="form-error">{error.message}</p>}
 

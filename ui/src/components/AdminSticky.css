@@ -46,6 +46,11 @@
   transition: background var(--duration-fast) var(--ease-default);
 }
 
+/* A resident page also has the section tabs pinned under the header. */
+.admin-back-button--under-tabs {
+  top: calc(var(--nav-h) + var(--tabs-h) + var(--space-2));
+}
+
 .admin-back-button:hover {
   background: var(--color-primary-hover);
 }

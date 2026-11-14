@@ -17,6 +17,7 @@ import "./MySubmissions.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import SubmissionPreview from "../components/SubmissionPreview";
 import SharePrompt from "../components/SharePrompt";
+import { AdminBackButton } from "../components/AdminSticky";
 import { formatShortDateTime } from "../utils/dates";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -206,9 +207,7 @@ export default function MySubmissions() {
 
     return (
       <div className="my-submissions-page">
-        <button className="admin-back-link" onClick={backToList}>
-          ← Back to my submissions
-        </button>
+        <AdminBackButton label="Back to my submissions" onClick={backToList} underTabs />
 
         {loading && <p>Loading…</p>}
         {error && <p className="error-text">{error}</p>}

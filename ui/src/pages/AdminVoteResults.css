@@ -56,22 +56,6 @@
   outline-offset: var(--border-width-strong);
 }
 
-.admin-back-link {
-  display: inline-block;
-  background: none;
-  border: none;
-  padding: 0;
-  margin-bottom: var(--space-4);
-  color: var(--color-text-muted);
-  font-family: inherit;
-  font-size: var(--text-small-size);
-  cursor: pointer;
-}
-
-.admin-back-link:hover {
-  color: var(--color-text);
-}
-
 .brief-positions-list {
   margin: 0;
   padding-left: var(--space-5);

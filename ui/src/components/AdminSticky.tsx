@@ -6,7 +6,8 @@
  *                    and acted on without scrolling back up.
  *   AdminBackButton  a review page's way back to its list, a filled button
  *                    in the hub's primary (the admin rail's "Back to the hub"
- *                    shape) that floats under the hub header.
+ *                    shape) that floats under the hub header. Also on My
+                    submissions, a resident's review page (Adam, 2026-11-14).
  */
 
 import type { ReactNode } from "react";
@@ -21,9 +22,18 @@ export function AdminStickyBar({ children, label }: { children: ReactNode; label
   );
 }
 
-export function AdminBackButton({ label, onClick }: { label: string; onClick: () => void }) {
+export function AdminBackButton({
+  label,
+  onClick,
+  underTabs = false,
+}: {
+  label: string;
+  onClick: () => void;
+  /** On a resident page: floats under the section tabs too (--tabs-h, 0 where they're hidden). */
+  underTabs?: boolean;
+}) {
   return (
-    <button type="button" className="admin-back-button" onClick={onClick}>
+    <button type="button" className={`admin-back-button${underTabs ? " admin-back-button--under-tabs" : ""}`} onClick={onClick}>
       <NavIcon name="back" size={18} />
       <span>{label}</span>
     </button>

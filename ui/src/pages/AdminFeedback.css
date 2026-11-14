@@ -24,6 +24,8 @@
 
 .admin-feedback-item {
   /* the kit's card (kit-card on the li) supplies the surface */
+  /* The digest's #id link lands below the pinned header and filters. */
+  scroll-margin-top: calc(var(--nav-h) + var(--tap-target) + var(--space-8));
 }
 
 /* Deep links from the daily digest land on a row — make it obvious which. */
