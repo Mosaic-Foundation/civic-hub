@@ -276,6 +276,7 @@ refused in production (`src/config/devFlags.ts`).
 | `VITE_HUB_BANNER_URL` | hosting | string | no |  | Share-card fallback image (api/og.ts; also a hub-setting fallback). |
 | `CIVIC_ANON_SECRET` | engine | secret | **in production** |  | Keys the per-process anonymous tokens on the public wire. Unset: every resident reads as one shared "anonymous". |
 | `CRON_SECRET` | engine | secret | **in production** |  | Bearer token for /internal/* job routes. Unset: no job route accepts a call. |
+| `CIVIC_FEDIVERSE_SECRET` | engine | secret | no |  | Seals each hub's fediverse signing keys in the database (32 characters or more; features/fediverse). Unset in production: no hub's Fediverse account answers. Outside production a fixed development key is used. |
 | `DIGEST_UNSUBSCRIBE_SECRET` | engine | secret | **in production** |  | Signs digest unsubscribe links (16 characters or more). Unset: the digest job fails. |
 | `ANTHROPIC_API_KEY` | hosting | secret | no |  | The AI adapter's Anthropic key. Unset: AI features answer "not set up". |
 | `ANTHROPIC_MODEL` | hosting | string | no | `claude-sonnet-4-6` | The model the AI adapter asks. |

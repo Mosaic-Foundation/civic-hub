@@ -149,6 +149,8 @@ export { namesFor } from "../services/disclosedNames.js";
 export { notify } from "../services/notices.js";
 export type { Notice, NoticeReport } from "../services/notices.js";
 export { hubContext } from "../services/pluginHubContext.js";
+export { seal, open as openSealed, sealingAvailable } from "../services/sealedSecrets.js";
+export { privateFetchAllowed } from "../config/devFlags.js";
 export type { HubContext } from "../services/pluginHubContext.js";
 
 // --- src/controllers/processController.ts ------------------------------------------------

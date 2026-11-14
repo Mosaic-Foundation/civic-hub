@@ -77,6 +77,7 @@ export const SETTINGS = s({
   // --- Secrets ---------------------------------------------------------------
   CIVIC_ANON_SECRET: { purpose: "Keys the per-process anonymous tokens on the public wire. Unset: every resident reads as one shared \"anonymous\".", type: "secret", layer: "engine", required: "production" },
   CRON_SECRET: { purpose: "Bearer token for /internal/* job routes. Unset: no job route accepts a call.", type: "secret", layer: "engine", required: "production" },
+  CIVIC_FEDIVERSE_SECRET: { purpose: "Seals each hub's fediverse signing keys in the database (32 characters or more; features/fediverse). Unset in production: no hub's Fediverse account answers. Outside production a fixed development key is used.", type: "secret", layer: "engine" },
   DIGEST_UNSUBSCRIBE_SECRET: { purpose: "Signs digest unsubscribe links (16 characters or more). Unset: the digest job fails.", type: "secret", layer: "engine", required: "production" },
 
   // --- Outside services (src/hosting/) ---------------------------------------
