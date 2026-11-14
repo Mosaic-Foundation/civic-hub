@@ -10,6 +10,7 @@ interface Status {
   handle: string;
   actor_url: string;
   followers: number;
+  posts: number;
   ready: boolean;
 }
 
@@ -60,8 +61,9 @@ export default function FediverseStatus({ on }: { on: boolean }) {
         </button>
       </p>
       <p className="form-hint">
-        {s.followers === 1 ? "1 account follows it." : `${s.followers.toLocaleString()} accounts follow it.`} Nothing is
-        posted yet: posts of what opens and what is decided come next.
+        {s.followers === 1 ? "1 account follows it" : `${s.followers.toLocaleString()} accounts follow it`}, and it has
+        made {s.posts === 1 ? "1 post" : `${s.posts.toLocaleString()} posts`}. It posts what opens and what is decided,
+        starting from when it was switched on.
       </p>
     </div>
   );

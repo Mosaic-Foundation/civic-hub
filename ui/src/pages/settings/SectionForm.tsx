@@ -27,6 +27,8 @@ const FORM_DEFAULTS: Readonly<Record<string, string>> = {
   // must switch on itself (src/shared/hubFeatures.ts defaultOn).
   ...Object.fromEntries(PLUGIN_SECTION_ORDER.map((id) => [`plugin.${id}.enabled`, pluginDefaultOn(id) ? "true" : "false"])),
   "plugin.meeting_summary.auto_publish": "false",
+  // features/fediverse/posts.ts postMode(): unset posts each item.
+  "plugin.fediverse.post_mode": "each",
   // DEFAULT_DIGEST_SEND_HOUR in src/controllers/digestController.ts.
   "plugin.digest.send_hour": "13",
 };
