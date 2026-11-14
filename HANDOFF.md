@@ -4,6 +4,28 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The admin digest names each scheduled job problem and links to its fix — 2026-11-13
+
+- **Why:** Floyd's digest said "1 new scheduled job problem" and linked to Settings → Plugins, which showed nothing.
+  The problem (production `job_runs`, read by Adam): `meeting_summary` flagged daily since Nov 7, "2 revisions have
+  waited more than two weeks for review", fixed in the Meeting summaries tab. Also one `vote_close` failure on
+  2026-11-11 02:05 UTC (status 500, the console-split release window), clean since. Two gaps: the email gave only a
+  count, and the hub's own jobs (`plugin: null`: closing at deadlines, sample refresh) were shown nowhere; plugin
+  cards are also folded shut unless a link names them.
+- **Email** (`src/modules/civic.admin_digest/service.ts`): the job line lists each problem (job name, time in the
+  hub's zone, status, the problem, "It has run without a problem since (…)" when a later run was OK), up to 5, then
+  "N more". Each links to where it is dealt with; the line's link is that place when all share one. The count is
+  now problems, not runs, so count and list agree. `DigestLine.details` (models.ts) carries them; text and HTML both.
+- **Where a problem is fixed:** `problemQueue()` in `src/jobs/describe.ts` (beside the strings it matches) sends
+  meeting-summary review asks (held for review, revisions waiting, written before the meeting) to
+  `/admin/meeting-summaries`; everything else goes to `jobPath()` (`src/shared/adminAnchors.ts`): the job's plugin
+  panel, opened, or `#hub-jobs`. A new problem string that asks for a review elsewhere needs a case there.
+- **Plugins page:** a "The hub's own scheduled jobs" block (`#hub-jobs`, always open) after the plugin cards, with
+  each hub job's last run and last problem. `adminAnchorPath("hub-jobs")` resolves.
+- **Not done:** the same standing flag (the two revisions) is "new" every day it recurs, so the digest repeats it
+  daily until the revisions are reviewed. **Tests:** `tests/unit/adminFeedbackDigest.test.ts` (scheduled job
+  problems); checked locally: the Plugins page at `#hub-jobs`, and a keyless digest run printed the new lines.
+
 ## The home feed stops reading after three requests once it has a card — 2026-11-12
 
 - **Measured first** (Adam asked whether the 11-06 home-feed prompt was needed). A hub with sample content reads its
