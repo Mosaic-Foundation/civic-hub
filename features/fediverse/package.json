@@ -1,0 +1,13 @@
+{
+  "name": "@civic-social/feature-fediverse",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Fediverse: an account for the hub that people follow from Mastodon and other ActivityPub apps (plan of 2026-11-12). A hub feature built as a plugin package is, with the outside network calls a package's grant refuses.",
+  "peerDependencies": {
+    "express": "^4.22.3",
+    "@fedify/fedify": "2.4.5",
+    "@fedify/express": "2.4.5",
+    "@fedify/vocab": "2.4.5"
+  }
+}

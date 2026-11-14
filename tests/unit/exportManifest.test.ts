@@ -70,7 +70,7 @@ const schema = schemaFromMigrations();
 const manifest = EXPORT_MANIFEST.map((e) => e.table);
 
 describe("export manifest", () => {
-  it("reads the schema it is checked against (57 tables, 44 with hub_id)", () => {
+  it("reads the schema it is checked against (59 tables, 46 with hub_id)", () => {
     // If this moves, a table was added or dropped: expected, but look at the
     // manifest in the same change. 35 since 2026-09-26: Phase 7's
     // hub_admin_audit_log (hub data, exported), after the super admin's
@@ -107,8 +107,11 @@ describe("export manifest", () => {
     // 58 since 20261102120000 (pilot readiness 2): entitlement_links (platform,
     // not in a hub's export). 57 since 20261110150000 (console slice):
     // active_vote_keys dropped.
-    expect(schema.tables.size).toBe(57);
-    expect(schema.withHubId.size).toBe(44);
+    // 59 since 20261114000000 (the fediverse feature): fediverse_keys (hub
+    // data, omitted: sealed with the deployment's secret) and
+    // fediverse_followers (hub data, exported).
+    expect(schema.tables.size).toBe(59);
+    expect(schema.withHubId.size).toBe(46);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);
   });

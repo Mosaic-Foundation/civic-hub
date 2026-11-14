@@ -34,6 +34,8 @@ describe("what leaves", () => {
       // Derived from the events by the Activity job; the next host recomputes them (ADR-016).
       "analytics_daily",
       "analytics_period",
+      // Sealed with the deployment's secret, so useless elsewhere; the next host makes new keys.
+      "fediverse_keys",
       // Derived by trigger from the settings and accounts the bundle carries;
       // the import re-derives it (20261023000000, ADR-011).
       "hub_plugins",

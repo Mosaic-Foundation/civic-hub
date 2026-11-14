@@ -43,7 +43,9 @@
  * mapped; the requirements gain that table and calendar_events' image_url,
  * image_alt, time_zone and capacity. Only those (diffed before writing).
  * And (2026-11-13, the fediverse feature): its plugin id (fediverse, last in
- * the Plugins section, off by default) and its switch. Only those.
+ * the Plugins section, off by default) and its switch; then its two tables
+ * (fediverse_keys omitted from the export, fediverse_followers exported) and
+ * their schema requirements. Only those (diffed before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

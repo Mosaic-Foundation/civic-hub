@@ -4,5 +4,6 @@
 // features themselves (their code) are config/features.ts.
 
 import { ANALYTICS_MANIFEST } from "../features/analytics/manifest.js";
+import { FEDIVERSE_MANIFEST } from "../features/fediverse/manifest.js";
 
-export const FEATURE_PACKAGE_MANIFESTS = [ANALYTICS_MANIFEST] as const;
+export const FEATURE_PACKAGE_MANIFESTS = [ANALYTICS_MANIFEST, FEDIVERSE_MANIFEST] as const;

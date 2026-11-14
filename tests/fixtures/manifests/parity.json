@@ -47,6 +47,8 @@
     "deliberation_submissions",
     "deliberation_votes",
     "events",
+    "fediverse_followers",
+    "fediverse_keys",
     "feedback_submissions",
     "hub_admin_audit_log",
     "hub_invites",
@@ -144,6 +146,15 @@
     {
       "table": "events",
       "rows": "export"
+    },
+    {
+      "table": "fediverse_followers",
+      "rows": "export"
+    },
+    {
+      "table": "fediverse_keys",
+      "rows": "omit",
+      "reason": "secret: sealed with this deployment's secret, so useless elsewhere; the next host makes the hub new keys"
     },
     {
       "table": "feedback_submissions",
@@ -306,6 +317,10 @@
     ],
     "events": [
       "id"
+    ],
+    "fediverse_followers": [
+      "hub_id",
+      "actor_uri"
     ],
     "feedback_submissions": [
       "id"
@@ -865,6 +880,31 @@
         "is_sample"
       ],
       "owner": "core/eventStore, digest, core/activitySerializer, core/sampleContent"
+    },
+    {
+      "table": "fediverse_followers",
+      "columns": [
+        "hub_id",
+        "actor_uri",
+        "inbox_url",
+        "shared_inbox_url",
+        "handle",
+        "follow_id",
+        "followed_at"
+      ],
+      "owner": "features/fediverse"
+    },
+    {
+      "table": "fediverse_keys",
+      "columns": [
+        "hub_id",
+        "rsa_public",
+        "rsa_private_sealed",
+        "ed25519_public",
+        "ed25519_private_sealed",
+        "created_at"
+      ],
+      "owner": "features/fediverse"
     },
     {
       "table": "feedback_submissions",
