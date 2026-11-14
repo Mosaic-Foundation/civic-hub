@@ -13,7 +13,7 @@
 //   features/<dir>/ui.tsx        its UI module (ui/src/features.ts)
 //   config/features.ts           the host's list of feature packages
 
-import type { Router } from "express";
+import type { RequestHandler, Router } from "express";
 import type { FeatureManifest } from "../processes/manifest.js";
 import type { JobRunner } from "../jobs/types.js";
 import type { GrantedDb, PluginMount } from "./package.js";
@@ -99,6 +99,16 @@ export interface FeatureServer {
   routes?: readonly PluginMount[];
   /** Its admin routes, under /admin, behind the admin check and its switch. */
   adminRoutes?: readonly PluginMount[];
+  /**
+   * Handlers at paths a protocol fixes at the root of the hub's address
+   * (/.well-known/webfinger, /nodeinfo/2.1), which a mount under a path of
+   * the feature's own cannot serve. Each sees only requests whose path starts
+   * with one of its prefixes, and only while the feature is on; otherwise the
+   * request goes on as if it were not there. Mounted before the JSON body
+   * parser, so a handler that verifies a signature over the body reads it
+   * as it came.
+   */
+  rootHandlers?: readonly { prefixes: readonly string[]; handler: RequestHandler }[];
   /** A runner for each job its manifest declares, by job id. */
   jobs?: Readonly<Record<string, JobRunner>>;
   consoleSections?: readonly FeatureConsoleSection[];

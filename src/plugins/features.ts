@@ -15,7 +15,8 @@ import { LEGACY_TYPES, MANIFEST_LIST } from "../shared/processManifests.js";
 import type { ParticipationDeclaration } from "../shared/participation.js";
 import type { PluginId } from "../models/hubSettings.js";
 import type { JobRunner } from "../jobs/types.js";
-import type { Router } from "express";
+import type { RequestHandler, Router } from "express";
+import { isPluginEnabledSync } from "../services/hubSettings.js";
 import type {
   ActorCountPlan,
   DayCount,
@@ -139,6 +140,27 @@ export function loadedFeatures(): readonly LoadedFeature[] {
 export function mountFeatureRoutes(on: Pick<Router, "use">, which: "routes" | "adminRoutes"): void {
   for (const f of load()) {
     for (const m of f.server[which] ?? []) on.use(m.path, requirePlugin(f.pkg.manifest.feature as PluginId), m.router);
+  }
+}
+
+/**
+ * Every feature's root handlers (FeatureServer.rootHandlers), each seeing
+ * only its own path prefixes and only while its switch is on. A prefix
+ * matches the path itself or the path followed by "/" or "?" (so "/ap" is
+ * not "/apples").
+ */
+export function mountFeatureRootHandlers(on: Pick<Router, "use">): void {
+  for (const f of load()) {
+    const feature = f.pkg.manifest.feature;
+    for (const { prefixes, handler } of f.server.rootHandlers ?? []) {
+      const gated: RequestHandler = (req, res, next) => {
+        const path = req.path;
+        const hit = prefixes.some((p) => path === p || path.startsWith(p.endsWith("/") ? p : `${p}/`));
+        if (!hit || !isPluginEnabledSync(feature)) return next();
+        return handler(req, res, next);
+      };
+      on.use(gated);
+    }
   }
 }
 

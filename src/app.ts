@@ -56,7 +56,7 @@ import { installHosting } from "./hosting/index.js";
 import { installStores } from "./stores/index.js";
 import { getAllHandlers } from "./processes/registry.js";
 import { awaitPackages, mountPackageRoutes } from "./plugins/mount.js";
-import { mountFeatureRoutes } from "./plugins/features.js";
+import { mountFeatureRootHandlers, mountFeatureRoutes } from "./plugins/features.js";
 import { API_SECURITY_HEADERS } from "./shared/securityHeaders.js";
 import { operatorRouter } from "./operator/router.js";
 import { localOperator } from "./operator/local.js";
@@ -150,6 +150,12 @@ app.use(clientErrorsRouter());
 app.use(resolveHub as express.RequestHandler);
 // Which plugin packages are mounted, decided before anything reads it (ADR-014).
 app.use(awaitPackages);
+
+// Feature packages' handlers at protocol-fixed root paths (the fediverse
+// feature's WebFinger, NodeInfo and ActivityPub routes), each behind its
+// switch, BEFORE the JSON parser: an inbox verifies a signature over the
+// body exactly as it arrived.
+mountFeatureRootHandlers(app);
 
 app.use(express.json());
 
