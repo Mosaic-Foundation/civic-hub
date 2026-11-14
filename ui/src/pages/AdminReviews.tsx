@@ -22,6 +22,7 @@ import "./AdminReviews.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import SubmissionPreview from "../components/SubmissionPreview";
 import { formatShortDateTime } from "../utils/dates";
+import { AdminBackButton, AdminStickyBar } from "../components/AdminSticky";
 
 const STATUS_FILTERS: Array<{ id: "all" | ReviewStatus; label: string }> = [
   { id: "all", label: "All" },
@@ -245,9 +246,7 @@ export default function AdminReviews() {
     return (
       <div className="admin-reviews-page">
         <div className="admin-reviews-body">
-          <button className="admin-back-link" onClick={backToList}>
-            ← Back to reviews
-          </button>
+          <AdminBackButton label="Back to Processes" onClick={backToList} />
 
           {loading && <p>Loading…</p>}
           {error && <p className="error-text">{error}</p>}
@@ -478,36 +477,38 @@ export default function AdminReviews() {
           </p>
         )}
 
-        <div className="admin-review-filters kit-chips">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.id}
-              className={`admin-review-filter kit-chip${
-                statusFilter === f.id ? " is-active is-on" : ""
-              }`}
-              onClick={() => setStatusFilter(f.id)}
-            >
-              {f.label}
-              {f.id !== "all" &&
-                ` (${reviews.filter((r) => r.status === f.id).length})`}
-            </button>
-          ))}
-          <label className="admin-review-type-filter">
-            <span className="admin-review-type-filter-label">Type</span>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              aria-label="Filter by process type"
-            >
-              <option value="all">All types</option>
-              {typeOptions.map((o) => (
-                <option key={o.type} value={o.type}>
-                  {o.label} ({o.count})
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <AdminStickyBar label="Filter submissions">
+          <div className="admin-review-filters kit-chips">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                className={`admin-review-filter kit-chip${
+                  statusFilter === f.id ? " is-active is-on" : ""
+                }`}
+                onClick={() => setStatusFilter(f.id)}
+              >
+                {f.label}
+                {f.id !== "all" &&
+                  ` (${reviews.filter((r) => r.status === f.id).length})`}
+              </button>
+            ))}
+            <label className="admin-review-type-filter">
+              <span className="admin-review-type-filter-label">Type</span>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                aria-label="Filter by process type"
+              >
+                <option value="all">All types</option>
+                {typeOptions.map((o) => (
+                  <option key={o.type} value={o.type}>
+                    {o.label} ({o.count})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </AdminStickyBar>
 
         {loading && <p>Loading…</p>}
         {error && <p className="error-text">{error}</p>}

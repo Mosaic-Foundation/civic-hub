@@ -1,0 +1,60 @@
+/* AdminSticky.tsx: the list toolbar and the review page's back button, both
+   pinned under the hub header (.civic-nav, sticky at the top, --nav-h tall)
+   while the page scrolls. Tokens only. */
+
+/* A band of the page's own colour, so the cards scroll under it, not
+   through it. Its children keep their own margins inside it. */
+.admin-sticky-bar {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 20;
+  margin: 0 calc(-1 * var(--space-2));
+  padding: var(--space-2) var(--space-2) 0;
+  background: var(--color-bg);
+  border-bottom: var(--border-width) solid transparent;
+}
+
+/* The filters' own bottom margin is the gap to the bulk bar; the bulk bar's
+   is the gap to the list. */
+.admin-sticky-bar > :first-child {
+  margin-top: 0;
+}
+
+/* The rail's "Back to the hub" shape, in the hub's primary: dark, so it
+   reads as the way out of the review. Only as wide as its words, so it
+   floats over the page's left edge rather than a band across it. */
+.admin-back-button {
+  position: sticky;
+  top: calc(var(--nav-h) + var(--space-2));
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  min-height: var(--tap-target);
+  margin: 0 0 var(--space-4);
+  padding: 0 var(--space-4) 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  box-shadow: var(--shadow-md);
+  font-family: inherit;
+  font-size: var(--text-body-size);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
+}
+
+.admin-back-button:hover {
+  background: var(--color-primary-hover);
+}
+
+.admin-back-button:active {
+  background: var(--color-primary-active);
+}
+
+.admin-back-button:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: var(--space-0-5);
+}

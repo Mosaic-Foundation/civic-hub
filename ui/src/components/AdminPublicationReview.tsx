@@ -12,6 +12,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { HeldBackNote } from "./HeldBackNote";
+import { AdminBackButton, AdminStickyBar } from "./AdminSticky";
 import type { HeldBackRecipient } from "../services/api";
 
 export type PublicationStatus = "pending" | "approved" | "published";
@@ -65,21 +66,23 @@ export function PublicationList<R extends { id: string; publication_status: Publ
         <h1 className="kit-page-title">{heading}</h1>
         <p className="admin-subtitle kit-page-lede">{intro}</p>
 
-        <div className="admin-brief-filters kit-chips">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`admin-brief-filter kit-chip${statusFilter === f.id ? " is-active is-on" : ""}`}
-              onClick={() => setStatusFilter(f.id)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
         {loading && <p>Loading…</p>}
         {error && <p className="form-error">{error}</p>}
+
+        <AdminStickyBar label={`Filter ${emptyNoun}`}>
+          <div className="admin-brief-filters kit-chips">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={`admin-brief-filter kit-chip${statusFilter === f.id ? " is-active is-on" : ""}`}
+                onClick={() => setStatusFilter(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </AdminStickyBar>
 
         {!loading && !error && filtered.length === 0 && (
           <p className="empty-state-inline">
@@ -126,9 +129,7 @@ export function PublicationReview({
   return (
     <div className="page admin-briefs-page">
       <div className="admin-briefs-body">
-        <button className="admin-back-link" onClick={onBack} type="button">
-          &larr; {backLabel}
-        </button>
+        <AdminBackButton label={backLabel} onClick={onBack} />
         <h1 className="kit-page-title">Review: {title}</h1>
         <p className="admin-subtitle kit-page-lede">{subtitle}</p>
 
