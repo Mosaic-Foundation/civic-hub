@@ -55,6 +55,7 @@ import "../pages/VoteResults.css";
 import "../components/AdminRail.css";
 import "../components/AdminDrawer.css";
 import "../pages/AdminVoteResults.css";
+import "../components/AdminSticky.css";
 import "../pages/Outcomes.css";
 import "../components/FeedFilter.css";
 import "../pages/Brief.css";

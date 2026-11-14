@@ -7,12 +7,16 @@
  * returns to it. The filter tabs and the bulk-action bar stay under the hub
  * header at the foot of a long list; the review's back button floats there too.
  *
- * Rows are written straight into the local stack and archived afterwards.
+ * Rows are written straight into the local stack and archived afterwards. The
+ * plugin is switched on for the run (CI's hub, Athens, has it off) and put back.
  */
 
-import { test, expect, type Page } from "@playwright/test";
-import { localRest } from "../fixtures/adminSession.js";
+import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
+import { localRest, storedSetting } from "../fixtures/adminSession.js";
 import { adminEmailFor, hubId, run, session, visitAs } from "./actors";
+import { E2E_API_BASE as API } from "./hubApi";
+
+const PLUGIN = "plugin.meeting_summary.enabled";
 
 function summary(title: string, approval_status: "pending" | "published", revision: boolean) {
   const now = new Date().toISOString();
@@ -61,6 +65,13 @@ function summary(title: string, approval_status: "pending" | "published", revisi
   };
 }
 
+function putPlugin(request: APIRequestContext, admin: string, value: string) {
+  return request.put(`${API}/admin/hub/settings`, {
+    headers: { Authorization: `Bearer ${admin}` },
+    data: { section: "plugins", values: { [PLUGIN]: value } },
+  });
+}
+
 /** The element's top sits just under the hub header: pinned, in view. */
 async function pinnedUnderHeader(page: Page, selector: string) {
   const header = await page.locator(".civic-nav").boundingBox();
@@ -75,6 +86,13 @@ for (const width of [1280, 375]) {
     test.use({ viewport: { width, height: 800 } });
 
     const inserted: string[] = [];
+    // The plugin as it was, put back after the test (with that test's admin).
+    let restore: { admin: string; value: string } | null = null;
+    test.afterEach(async ({ request }) => {
+      if (!restore) return;
+      await putPlugin(request, restore.admin, restore.value);
+      restore = null;
+    });
     test.afterAll(async () => {
       if (inserted.length > 0) {
         await localRest(`processes?id=in.(${inserted.join(",")})`, {
@@ -87,6 +105,9 @@ for (const width of [1280, 375]) {
     test("Revision waiting tab; tabs, bulk bar and back button stay in view", async ({ page, request }) => {
       const hub = await hubId(request);
       const admin = (await session(hub, adminEmailFor(hub))).token;
+      const before = (await storedSetting(hub, PLUGIN)) ?? "true";
+      expect((await putPlugin(request, admin, "true")).ok()).toBeTruthy();
+      restore = { admin, value: before };
       const tag = `${run}-${width}`;
       const rows = [
         { title: `Revised ${tag}`, status: "published" as const, revision: true },
