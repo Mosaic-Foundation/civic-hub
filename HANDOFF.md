@@ -4,6 +4,36 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Fediverse phase 2: posting, delivery with retries, the audit's limits, the Activity card — 2026-11-14
+
+On dev branch, unpushed (ebf58e6..8321275, after f133b94 the handle). **Migration 20261115000000 first** (release.sh dev).
+
+- **What posts** (`features/fediverse/posts.ts`): the public feed's items (`publicActivity` on the feature host,
+  `src/services/publicActivity.ts`: feed classifier, no sample, no restricted, no non-public process, no removed
+  announcement). Opening kinds (vote-open, proposal, project-created, wordcloud, conversation, announcement(-author),
+  event) and decided kinds (vote-closed, vote-results, conversation-results, brief). Not meeting summaries, project
+  updates, brief responses. Text: "<strong>New vote:</strong> title", link, hashtags (#CivicHub, the hub name without
+  "Civic Hub", `plugin.fediverse.hashtags`). No names, no numbers.
+- **How often** (`plugin.fediverse.post_mode`): each (default) | daily | weekly (Monday) roundup at 8 local, only
+  with something new; roundup lists 5 and links to `/fediverse/roundups/:id` (UI page, data from public
+  `GET /fediverse/posts/:id`). The first job run after switching on only sets the cursor.
+- **Delivery** (`job.ts`, `deliver.ts`): job `fediverse` every 10 min (vercel.json). Posts → `fediverse_posts`,
+  one `fediverse_deliveries` row per unique inbox (shared inbox preferred, blocked servers skipped). Signed
+  draft-cavage with the RSA key, sent with `guardedFetch` (manual redirects, 15 s, 64 KB), 300 per run, 10 at once.
+  Backoff 1m,5m,30m,2h,6h,12h,24h,24h then give up; 404/410 give up at once. Outbox `/ap/hub/outbox` pages posts;
+  `/ap/hub/posts/:id` is the Note.
+- **Audit M2**: `kv.ts` (Fedify KvStore in `fediverse_kv`, hex keys, expired rows swept by the job); `limits.ts`:
+  `plugin.fediverse.blocked_servers` (domain blocks subdomains; checked on the signing key before Fedify, and on
+  Follow), rate limits per signing server (120/10 min) and per hub (2,000/10 min) via `rate_limit_take`, follower
+  ceiling 50,000 (Reject), https-only inboxes (http only with CIVIC_SSRF_ALLOW_PRIVATE outside production).
+- **Activity card**: `FeatureUi.activitySection` (new extension point, drawn after "By kind");
+  `GET /admin/fediverse/followers?from&to` → total and new in the period.
+- **Tests**: `tests/unit/fediverse.test.ts` 22 (posting, signed delivery verified by a stand-in Fedify server,
+  retries, roundups, hashtags, limits, kv keys); `tests/api/fediverse.test.ts` 11. Unit suite 2,733 passed.
+  Locally the leak harness's sample-content routes 500 because local Athens has >1,000 processes (not CI).
+- **Not done / next**: phase 3 (replies kept as text, likes and boosts on the Activity card); a per-item account;
+  Bluesky via Bridgy Fed untested; the console's Create hub form still ticks Fediverse on.
+
 ## Fediverse phase 1: a hub account people follow from Mastodon, and Share on Mastodon — 2026-11-13
 
 Plan: `~/Documents/Mosaic/0 Management/Civic Social/Future Tasks/mastodon-follow-civic-hubs-plan-2026-11-12.md`.
