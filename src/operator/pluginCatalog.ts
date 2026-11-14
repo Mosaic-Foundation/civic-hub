@@ -243,7 +243,8 @@ export async function withdrawEntry(id: string, by: string, notes: string | null
 /**
  * The dashboard's Plugins section: each package this deployment loads but
  * does not mount, with why and the hubs that have it installed (they are
- * without it until the operator acts).
+ * without it until the operator acts), and how many catalog versions of the
+ * packages it loads wait for approval.
  */
 export async function loadPluginGaps(): Promise<{
   mounted: number;
@@ -265,6 +266,10 @@ export async function loadPluginGaps(): Promise<{
     if (error) throw new Error(`hub_plugins: ${error.message}`);
     out.push({ package: v.package, version: v.version, reason: v.reason ?? "", hubs: (data ?? []).map((r) => String(r.hub_id)) });
   }
-  const pending = (await readCatalog()).filter((r) => r.status === "pending").length;
+  // Only versions of packages this deployment loads: a sample or a retired
+  // package waiting in the catalog would run nothing if approved, so it is
+  // not "waiting" here (2026-11-13, Adam).
+  const loaded = new Set(verdicts.map((v) => v.package));
+  const pending = (await readCatalog()).filter((r) => r.status === "pending" && loaded.has(r.package)).length;
   return { mounted: verdicts.length - gaps.length, unmounted: out, pending };
 }
