@@ -6,7 +6,7 @@
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createFederation, MemoryKvStore, type Federation } from "@fedify/fedify";
-import { Accept, Follow, Person, Undo, Endpoints, Delete } from "@fedify/vocab";
+import { Accept, Create, Follow, Note, Person, Undo, Endpoints, Delete } from "@fedify/vocab";
 import { federationFor, profileSummary, acceptedUsernames, hubHandle, type FediverseData, type HubFacts } from "../../features/fediverse/federation.js";
 import { memoryStore } from "../../features/fediverse/store.js";
 import { open as openSealed, seal } from "../../src/services/sealedSecrets.js";
@@ -23,7 +23,8 @@ const facts: HubFacts = {
   bannerUrl: null,
 };
 const store = memoryStore();
-const data: FediverseData = { facts, store };
+const blocked: string[] = [];
+const data: FediverseData = { facts, store, blocked };
 
 // The stand-in Mastodon: one account, alice, which records what reaches her inbox.
 const received: unknown[] = [];
@@ -46,15 +47,21 @@ social
     aliceKeys ??= await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
     return [aliceKeys];
   });
-social.setInboxListeners("/users/{identifier}/inbox", "/inbox").on(Accept, (_ctx, accept) => {
-  received.push(accept);
-});
+const created: Create[] = [];
+social
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Accept, (_ctx, accept) => {
+    received.push(accept);
+  })
+  .on(Create, (_ctx, create) => {
+    created.push(create);
+  });
 
 let hub: Federation<FediverseData>;
 const realFetch = globalThis.fetch;
 
 beforeAll(async () => {
-  hub = await federationFor(HUB, { allowPrivateAddress: true });
+  hub = await federationFor(HUB, { kv: new MemoryKvStore(), allowPrivateAddress: true });
   vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
     const host = new URL(request.url).origin;
@@ -177,5 +184,194 @@ describe("the hub's fediverse account", () => {
     });
     expect(res.status).toBe(401);
     expect(store.followers.has(alice.href)).toBe(false);
+  });
+});
+
+// --- Phase 2: posting, delivery, limits ------------------------------------
+
+import { deliverDue, postNew, type JobDeps } from "../../features/fediverse/job.js";
+import { hashtag, hubHashtags, roundupDue, POSTED_KINDS, itemContent } from "../../features/fediverse/posts.js";
+import { blockedServers, isBlocked, serverOf, signingServer, deliverable } from "../../features/fediverse/limits.js";
+import { BACKOFF_MINUTES, nextAttempt } from "../../features/fediverse/deliver.js";
+import { decodeKey, encodeKey } from "../../features/fediverse/kv.js";
+import type { PublicActivityItem, PublicActivityPage } from "../../src/sdk/index.js";
+
+function item(n: number, kind = "vote-open", pill = "Vote"): PublicActivityItem {
+  return {
+    event_id: `evt_${n}`,
+    recorded_at: new Date(Date.UTC(2026, 10, 14, 12, n)).toISOString(),
+    event_type: "civic.process.started",
+    kind,
+    pill,
+    process_id: `proc_${n}`,
+    process_type: "civic.vote",
+    title: `Skate park <${n}>`,
+    url: `${HUB}/process/proc_${n}`,
+  };
+}
+
+/** A host whose public activity is `feed`, after `since`. */
+function hostWith(feed: PublicActivityItem[]): JobDeps["host"] {
+  return {
+    async publicActivity(since, options): Promise<PublicActivityPage> {
+      const after = feed.filter((i) => i.recorded_at > since && (!options?.kinds || options.kinds.has(i.kind)));
+      return { items: after, cursor: after.length ? after[after.length - 1]!.recorded_at : null };
+    },
+  };
+}
+
+function deps(feed: PublicActivityItem[], extra: Partial<JobDeps> = {}): JobDeps {
+  return {
+    host: hostWith(feed),
+    store,
+    facts,
+    federation: hub,
+    send: (request) => fetch(request),
+    timeZone: "America/New_York",
+    blocked,
+    mode: "each",
+    ...extra,
+  };
+}
+
+describe("the hub's posts", () => {
+  it("starts from the moment it is switched on: nothing from before is posted", async () => {
+    // alice follows again, for deliveries.
+    await asAlice(new Follow({ id: new URL(`${SOCIAL}/follows/9`), actor: alice, object: hubActor }));
+    const before = [item(1)];
+    const first = await postNew(deps(before), new Date("2026-11-14T12:30:00Z"));
+    expect(first).toEqual({ posted: 0, started: true });
+    expect(store.allPosts).toHaveLength(0);
+  });
+
+  it("posts each new item that opens or is decided, once, and nothing else", async () => {
+    const feed = [item(40), item(41, "brief", "Brief"), item(42, "meeting", "Meeting summary")];
+    const now = new Date("2026-11-14T13:00:00Z");
+    expect((await postNew(deps(feed), now)).posted).toBe(2);
+    expect((await postNew(deps(feed), now)).posted).toBe(0);
+    expect(store.allPosts.map((p) => p.event_id).sort()).toEqual(["evt_40", "evt_41"]);
+    const post = store.allPosts.find((p) => p.event_id === "evt_40")!;
+    expect(post.content).toContain("<strong>New vote:</strong> Skate park &lt;40&gt;");
+    expect(post.content).toContain("#<span>CivicHub</span>");
+    expect(post.content).toContain("#<span>Floyd</span>");
+    // Queued once, to alice's server's shared inbox.
+    expect([...store.deliveries.values()].filter((d) => d.post_id === post.id).map((d) => d.inbox_url)).toEqual([`${SOCIAL}/inbox`]);
+  });
+
+  it("delivers a post signed, and the follower's server reads it as the hub's", async () => {
+    const result = await deliverDue(deps([]), new Date("2026-11-14T13:01:00Z"));
+    expect(result).toEqual({ delivered: 2, failed: 0, gave_up: 0 });
+    expect(created).toHaveLength(2);
+    const note = (await created[0]!.getObject()) as Note;
+    expect(created[0]!.actorId?.href).toBe(hubActor.href);
+    expect(note.content?.toString()).toMatch(/Skate park/);
+    expect(note.toIds.map(String)).toContain("https://www.w3.org/ns/activitystreams#Public");
+    // Nothing left to deliver.
+    expect((await deliverDue(deps([]), new Date("2026-11-14T13:02:00Z"))).delivered).toBe(0);
+  });
+
+  it("serves each post at its own address, and lists them in the outbox", async () => {
+    const post = store.allPosts[0]!;
+    const res = await fetch(`${HUB}/ap/hub/posts/${post.id}`, { headers: { Accept: "application/activity+json" } });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { type: string }).type).toBe("Note");
+    const outbox = (await (await fetch(`${HUB}/ap/hub/outbox`, { headers: { Accept: "application/activity+json" } })).json()) as { totalItems: number };
+    expect(outbox.totalItems).toBe(2);
+  });
+
+  it("retries a server that fails, and gives up on an inbox that is gone", async () => {
+    const now = new Date("2026-11-14T14:00:00Z");
+    await postNew(deps([item(50)]), now);
+    const down = await deliverDue(deps([], { send: async () => new Response("", { status: 503 }) }), now);
+    expect(down).toEqual({ delivered: 0, failed: 1, gave_up: 0 });
+    const row = [...store.deliveries.values()].find((d) => !d.delivered_at && !d.gave_up_at)!;
+    expect(row.attempts).toBe(1);
+    expect(row.next_attempt_at).toBe(new Date(now.getTime() + 60_000).toISOString());
+    // Not due again until then.
+    expect((await deliverDue(deps([], { send: async () => new Response("", { status: 410 }) }), now)).gave_up).toBe(0);
+    const gone = await deliverDue(deps([], { send: async () => new Response("", { status: 410 }) }), new Date(now.getTime() + 61_000));
+    expect(gone.gave_up).toBe(1);
+    expect(nextAttempt(1, now, 500)).toBe(new Date(now.getTime() + 60_000).toISOString());
+    expect(nextAttempt(BACKOFF_MINUTES.length + 1, now, 500)).toBeNull();
+  });
+
+  it("rounds up a day's items in one post, on a day with something new, after 8 in the morning", async () => {
+    const quiet = memoryStore();
+    await quiet.setState("cursor", "2026-11-14T00:00:00Z");
+    const feed = [1, 2, 3, 4, 5, 6, 7].map((n) => item(n));
+    const daily = (at: string, s = quiet, f = feed) => postNew(deps(f, { store: s, mode: "daily" }), new Date(at));
+    // 7 AM in New York: not yet.
+    expect((await daily("2026-11-14T12:00:00Z")).posted).toBe(0);
+    expect((await daily("2026-11-14T13:30:00Z")).posted).toBe(1);
+    const [roundup] = quiet.allPosts;
+    expect(roundup!.kind).toBe("roundup");
+    expect(roundup!.items).toHaveLength(7);
+    expect(roundup!.content).toContain("7 new items");
+    expect(roundup!.content).toContain("and 2 more");
+    expect(roundup!.url).toBe(`${HUB}/fediverse/roundups/${roundup!.id}`);
+    // Once a day.
+    expect((await daily("2026-11-14T20:00:00Z")).posted).toBe(0);
+    // A day with nothing new posts nothing.
+    expect((await daily("2026-11-15T13:30:00Z")).posted).toBe(0);
+    expect(roundupDue("weekly", new Date("2026-11-16T14:00:00Z"), "America/New_York", null).due).toBe(true); // a Monday
+    expect(roundupDue("weekly", new Date("2026-11-17T14:00:00Z"), "America/New_York", null).due).toBe(false);
+  });
+
+  it("makes hashtags from the hub's name and its admins' list", () => {
+    expect(hashtag("Floyd County")).toBe("FloydCounty");
+    expect(hashtag("!!")).toBeNull();
+    expect(hubHashtags("Floyd Civic Hub", "#FloydVA, floyd county")).toEqual(["CivicHub", "Floyd", "FloydVA", "FloydCounty"]);
+    expect(POSTED_KINDS.has("vote-open")).toBe(true);
+    expect(POSTED_KINDS.has("meeting")).toBe(false);
+  });
+
+  it("never names anyone, and escapes the title", () => {
+    const html = itemContent({ ...item(60), title: `<img src=x onerror=alert(1)>` }, ["CivicHub"], HUB);
+    expect(html).not.toContain("<img");
+  });
+});
+
+describe("the hub's limits", () => {
+  it("reads a server from what an admin types, and blocks it and everything under it", () => {
+    expect(serverOf("Mastodon.Social")).toBe("mastodon.social");
+    expect(serverOf("@spam@bad.example")).toBe("bad.example");
+    expect(serverOf("https://bad.example/about")).toBe("bad.example");
+    expect(serverOf("# a note")).toBeNull();
+    expect(isBlocked("a.bad.example", ["bad.example"])).toBe(true);
+    expect(isBlocked("notbad.example", ["bad.example"])).toBe(false);
+    expect(blockedServers()).toEqual([]);
+  });
+
+  it("names the server that signed a request", () => {
+    const h = (o: Record<string, string>) => ({ get: (n: string) => o[n.toLowerCase()] ?? null });
+    expect(signingServer(h({ signature: 'keyId="https://Social.Example/users/a#main-key",headers="(request-target)"' }))).toBe("social.example");
+    expect(signingServer(h({ "signature-input": 'sig1=("@method");keyid="https://x.example/k"' }))).toBe("x.example");
+    expect(signingServer(h({}))).toBeNull();
+  });
+
+  it("delivers only to https", () => {
+    expect(deliverable("https://social.example/inbox")).toBe(true);
+    expect(deliverable("http://social.example/inbox")).toBe(false);
+    expect(deliverable("not a url")).toBe(false);
+  });
+
+  it("ignores a follow from a blocked server", async () => {
+    await asAlice(new Undo({ id: new URL(`${SOCIAL}/follows/9/undo`), actor: alice, object: new Follow({ id: new URL(`${SOCIAL}/follows/9`), actor: alice, object: hubActor }) }));
+    expect(store.followers.has(alice.href)).toBe(false);
+    blocked.push("social.example");
+    try {
+      await asAlice(new Follow({ id: new URL(`${SOCIAL}/follows/10`), actor: alice, object: hubActor }));
+      expect(store.followers.has(alice.href)).toBe(false);
+    } finally {
+      blocked.length = 0;
+    }
+  });
+
+  it("keeps Fedify's memory under keys a LIKE can list by prefix", () => {
+    const key = ["_fedify", "activityIdempotence", "https://x.example/a_b%c"] as const;
+    const encoded = encodeKey(key);
+    expect(encoded).toMatch(/^[0-9a-f.]+$/);
+    expect(decodeKey(encoded)).toEqual(key);
+    expect(encoded.startsWith(`${encodeKey(["_fedify"])}.`)).toBe(true);
   });
 });

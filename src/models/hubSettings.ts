@@ -221,6 +221,11 @@ export const KEYS = {
   PLUGIN_MEMBERS_PAGE_BEFORE_THRESHOLD: "plugin.members.page_before_threshold",
   // Activity (ADR-016): whether /analytics and the About page's numbers are public. Off by default.
   PLUGIN_ANALYTICS_PUBLIC_NUMBERS: "plugin.analytics.public_numbers",
+  // Fediverse phase 2 (2026-11-14): how often the hub posts (each | daily |
+  // weekly), the hashtags added to each post, the servers it ignores. Admin-only.
+  PLUGIN_FEDIVERSE_POST_MODE: "plugin.fediverse.post_mode",
+  PLUGIN_FEDIVERSE_HASHTAGS: "plugin.fediverse.hashtags",
+  PLUGIN_FEDIVERSE_BLOCKED_SERVERS: "plugin.fediverse.blocked_servers",
 } as const;
 
 export type SettingKey = (typeof KEYS)[keyof typeof KEYS] | string;

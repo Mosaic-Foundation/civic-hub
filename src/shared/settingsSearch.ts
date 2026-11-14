@@ -225,6 +225,9 @@ export const SEARCH_WORDS: Readonly<Record<string, SearchWords>> = {
   "plugin.feedback.contact_email": { label: "Address on the Feedback page", words: ["feedback email", "contact email", "support address"] },
   "plugin.members.min_count": { label: "Show members from", words: ["member threshold", "minimum members", "member count"] },
   "plugin.members.page_before_threshold": { label: "Show the Members page before then", words: ["members page", "early"] },
+  "plugin.fediverse.post_mode": { label: "How often to post", words: ["mastodon posts", "roundup", "daily", "weekly", "fediverse posts"] },
+  "plugin.fediverse.hashtags": { label: "Hashtags", words: ["hashtag", "tags", "mastodon tags"] },
+  "plugin.fediverse.blocked_servers": { label: "Blocked servers", words: ["block", "blocklist", "instances", "mastodon servers", "defederate"] },
   "plugin.analytics.public_numbers": { label: "Public numbers", words: ["public stats", "public analytics", "transparency", "open data"] },
 };
 

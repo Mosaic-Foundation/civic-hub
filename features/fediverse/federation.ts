@@ -14,7 +14,7 @@
 //   /nodeinfo/2.1
 //   /ap/hub                  the profile: name, logo, banner, about, website
 //   /ap/hub/inbox, /ap/inbox Follow, Undo(Follow), Delete(the follower's account)
-//   /ap/hub/outbox           empty until phase 2 posts
+//   /ap/hub/outbox           its posts, newest first; /ap/hub/posts/<id> one post
 //   /ap/hub/followers        the count only, never who
 //
 // A Follow is accepted at once and the follower stored; an Undo removes them.
@@ -25,21 +25,28 @@
 // `origin` option), so every address it makes is the hub's own and nothing
 // is read from forwarded headers. Built lazily and kept per instance.
 
-import { createFederationBuilder, MemoryKvStore, type Context, type Federation } from "@fedify/fedify";
+import { createFederationBuilder, type Context, type Federation, type KvStore } from "@fedify/fedify";
 import {
   Accept,
+  Create,
   Delete,
   Endpoints,
   Follow,
+  Hashtag,
   Image,
   isActor,
+  Note,
   PropertyValue,
+  PUBLIC_COLLECTION,
+  Reject,
   Service,
   Undo,
   type Actor,
 } from "@fedify/vocab";
+import { Temporal } from "temporal-polyfill";
 import { hubKeyPairs } from "./keys.js";
-import type { FediverseStore } from "./store.js";
+import { deliverable, FOLLOWER_CEILING, isBlocked } from "./limits.js";
+import type { FediverseStore, Post } from "./store.js";
 
 /** The one actor's identifier in its addresses. */
 export const HUB_ACTOR = "hub";
@@ -58,6 +65,8 @@ export interface HubFacts {
 
 /** What each request hands the federation. */
 export interface FediverseData {
+  /** Servers the hub's admins blocked (limits.ts). */
+  blocked: readonly string[];
   facts: HubFacts;
   store: FediverseStore;
 }
@@ -157,12 +166,60 @@ builder
   )
   .setCounter((ctx, identifier) => (identifier === HUB_ACTOR ? ctx.data.store.followerCount() : null));
 
+/** How many posts one page of the outbox holds. */
+const OUTBOX_PAGE = 20;
+
 builder
-  .setOutboxDispatcher("/ap/{identifier}/outbox", (_ctx, identifier) =>
-    // Phase 2 posts here.
-    identifier === HUB_ACTOR ? { items: [] } : null,
-  )
-  .setCounter((_ctx, identifier) => (identifier === HUB_ACTOR ? 0 : null));
+  .setOutboxDispatcher("/ap/{identifier}/outbox", async (ctx, identifier, cursor) => {
+    if (identifier !== HUB_ACTOR) return null;
+    const posts = await ctx.data.store.posts(OUTBOX_PAGE + 1, cursor);
+    const page = posts.slice(0, OUTBOX_PAGE);
+    return {
+      items: page.map((p) => createFor(ctx, p, ctx.data.facts)),
+      nextCursor: posts.length > OUTBOX_PAGE ? page[page.length - 1]!.published_at : null,
+    };
+  })
+  .setFirstCursor(() => "")
+  .setCounter((ctx, identifier) => (identifier === HUB_ACTOR ? ctx.data.store.postCount() : null));
+
+builder.setObjectDispatcher(Note, "/ap/{identifier}/posts/{id}", async (ctx, values) => {
+  if (values.identifier !== HUB_ACTOR) return null;
+  const post = await ctx.data.store.post(values.id);
+  return post ? noteFor(ctx, post, ctx.data.facts) : null;
+});
+
+/** The hashtags in a post's text (posts.ts writes them as "#<span>Tag</span>"). */
+function tagsIn(content: string): string[] {
+  return [...content.matchAll(/#<span>([A-Za-z0-9]+)<\/span>/g)].map((m) => m[1]!);
+}
+
+/** A post as the Note fediverse apps show. */
+export function noteFor(ctx: Context<FediverseData>, post: Post, facts: HubFacts): Note {
+  const actor = ctx.getActorUri(HUB_ACTOR);
+  return new Note({
+    id: ctx.getObjectUri(Note, { identifier: HUB_ACTOR, id: post.id }),
+    attribution: actor,
+    to: PUBLIC_COLLECTION,
+    cc: ctx.getFollowersUri(HUB_ACTOR),
+    content: post.content,
+    url: new URL(post.url),
+    published: Temporal.Instant.from(new Date(post.published_at).toISOString()),
+    tags: tagsIn(post.content).map((t) => new Hashtag({ name: `#${t}`, href: new URL(`${facts.origin}/`) })),
+  });
+}
+
+/** The Create activity that delivers a post. */
+export function createFor(ctx: Context<FediverseData>, post: Post, facts: HubFacts): Create {
+  const note = noteFor(ctx, post, facts);
+  return new Create({
+    id: new URL(`${note.id!.href}#create`),
+    actor: ctx.getActorUri(HUB_ACTOR),
+    to: PUBLIC_COLLECTION,
+    cc: ctx.getFollowersUri(HUB_ACTOR),
+    object: note,
+    published: note.published,
+  });
+}
 
 builder.setNodeInfoDispatcher("/nodeinfo/2.1", () => ({
   software: { name: "civic-hub", version: "0.1.0", homepage: new URL("https://civic.social/") },
@@ -182,14 +239,30 @@ builder
   .setInboxListeners("/ap/{identifier}/inbox", "/ap/inbox")
   .on(Follow, async (ctx, follow) => {
     if (!follow.id || !follow.actorId || !isHub(ctx, follow.objectId)) return;
+    if (isBlocked(follow.actorId.hostname, ctx.data.blocked)) return;
     const follower = await follow.getActor(ctx);
     if (!isActor(follower) || !follower.id || follower.id.href !== follow.actorId.href) return;
     const inbox = follower.inboxId;
-    if (!inbox) return;
-    await ctx.data.store.addFollower({
+    const shared = follower.endpoints?.sharedInbox ?? null;
+    // Delivered to later from the job: https only (limits.ts).
+    if (!inbox || !deliverable(inbox.href) || (shared && !deliverable(shared.href))) return;
+    const store = ctx.data.store;
+    if (!(await store.isFollower(follower.id.href)) && (await store.followerCount()) >= FOLLOWER_CEILING) {
+      await ctx.sendActivity(
+        { identifier: HUB_ACTOR },
+        follower,
+        new Reject({
+          id: new URL(`#rejects/${crypto.randomUUID()}`, ctx.getActorUri(HUB_ACTOR)),
+          actor: ctx.getActorUri(HUB_ACTOR),
+          object: follow,
+        }),
+      );
+      return;
+    }
+    await store.addFollower({
       actor_uri: follower.id.href,
       inbox_url: inbox.href,
-      shared_inbox_url: follower.endpoints?.sharedInbox?.href ?? null,
+      shared_inbox_url: shared?.href ?? null,
       handle: followerHandle(follower),
       follow_id: follow.id.href,
     });
@@ -228,20 +301,24 @@ function followerHandle(actor: Actor): string | null {
 
 /** Options that differ between production and tests. */
 export interface FederationSettings {
+  /**
+   * Fedify's working memory: the hub's database (kv.ts), which reads the hub
+   * in scope at each call, so one store serves every hub.
+   */
+  kv: KvStore;
   /** Tests only: reach servers on private and loopback addresses. */
   allowPrivateAddress?: boolean;
 }
 
-const kv = new MemoryKvStore();
 const built = new Map<string, Promise<Federation<FediverseData>>>();
 
 /** The hub at `origin`'s federation, built once per instance. */
-export function federationFor(origin: string, settings: FederationSettings = {}): Promise<Federation<FediverseData>> {
+export function federationFor(origin: string, settings: FederationSettings): Promise<Federation<FediverseData>> {
   const key = `${origin}|${settings.allowPrivateAddress ? "private" : "public"}`;
   let f = built.get(key);
   if (!f) {
     f = builder.build({
-      kv,
+      kv: settings.kv,
       // Handles name the hostname alone, even where a development origin has a port.
       origin: { handleHost: hubHost(origin), webOrigin: origin },
       allowPrivateAddress: settings.allowPrivateAddress === true,

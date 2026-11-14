@@ -161,6 +161,24 @@
     "anchor": "plugins-fediverse",
     "pending": true
   },
+  "plugin.fediverse.post_mode": {
+    "text": "How often the hub posts to its followers: each item as it opens or is decided, or one roundup a day or a week (only when there is something new), linking to a page with all of them.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-fediverse-post-mode",
+    "pending": true
+  },
+  "plugin.fediverse.hashtags": {
+    "text": "Hashtags added to every post, besides #CivicHub and one from the hub's name. People can follow a hashtag in Mastodon.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-fediverse-hashtags",
+    "pending": true
+  },
+  "plugin.fediverse.blocked_servers": {
+    "text": "Fediverse servers the hub ignores: their accounts can't follow, and nothing is delivered to them. One per line; a domain blocks every server under it.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-fediverse-blocked-servers",
+    "pending": true
+  },
   "plugins.install": {
     "text": "Install adds the plugin to this hub. Before you confirm, the hub shows what it will be able to do and what it will not.",
     "page": "/reference/plugins",

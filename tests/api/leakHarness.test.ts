@@ -483,6 +483,9 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /admin/analytics/csv": { query: ["", "?period=all"] },
   "GET /admin/analytics/keys": {},
   "GET /admin/fediverse/": {},
+  "GET /admin/fediverse/followers": { query: ["", "?from=2026-01-01&to=2026-12-31"] },
+  // Off on Athens and Floyd here, so 404; tests/api/fediverse walks it on.
+  "GET /fediverse/posts/:id": {},
   "GET /\\.well-known/civic.json": {},
   "GET /\\.well-known/did.json": {},
 
@@ -494,6 +497,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /internal/sample-refresh/run": { skip: "cron: demo and beta hubs only, replaces the calling hub's own samples; tests/api/sampleRefresh" },
   "GET /internal/vote-close/run": { skip: "cron: returns ids of the calling hub's own votes it closed; per-hub scope is tests/unit/jobsPerHub, the close in tests/api/pluginToggles" },
   "GET /internal/analytics/run": { skip: "cron: returns counts only, of the calling hub; tests/api/analytics" },
+  "GET /internal/fediverse/run": { skip: "cron: returns counts only (posted, delivered), of the hub it ran for; tests/api/fediverse" },
   "GET /internal/hub-exports-sweep/run": { skip: "platform cron: deletes aged objects in the private hub-exports bucket, returns their keys (hub id + file name); tests/api/hubExportConsole" },
 };
 

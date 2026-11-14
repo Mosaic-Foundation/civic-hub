@@ -8,27 +8,45 @@
 // package's grant refuses. Built on Fedify, which does the protocol's fiddly
 // parts (signatures, WebFinger, NodeInfo).
 //
-// Phase 1 (this): the account, follows and unfollows, the Share on Mastodon
-// button (ui/src/components/MastodonShare.tsx), the handle and follower count
-// for admins. Phase 2: posting what opens and what is decided. Phase 3:
-// replies kept as text, likes and boosts counted.
+// Phase 1: the account, follows and unfollows, the Share on Mastodon button
+// (ui/src/components/MastodonShare.tsx), the handle and follower count for
+// admins. Phase 2: posts of what opens and what is decided (posts.ts), each
+// item or a daily or weekly roundup, delivered by the job (job.ts) with
+// retries; the security audit's limits (limits.ts) and shared working memory
+// (kv.ts); the followers card in Admin → Activity. Phase 3: replies kept as
+// text, likes and boosts counted.
 
-import { Router, type RequestHandler } from "express";
+import { Router, type Request as ExpressRequest, type RequestHandler } from "express";
 import { integrateFederation } from "@fedify/express";
 import {
   currentHubId,
   getSettingSync,
   hubContext,
   KEYS,
+  NotFoundError,
   privateFetchAllowed,
   route,
   sealingAvailable,
+  ValidationError,
   type FeatureHost,
   type FeaturePackage,
 } from "../../src/sdk/index.js";
+import type { KvStore } from "@fedify/fedify";
 import { FEDIVERSE_MANIFEST } from "./manifest.js";
 import { dbStore, type FediverseStore } from "./store.js";
 import { federationFor, hubHandle, HUB_ACTOR, type FediverseData, type HubFacts } from "./federation.js";
+import { dbKv, sweepKv } from "./kv.js";
+import {
+  blockedServers,
+  isBlocked,
+  LIMIT_WINDOW_MS,
+  PER_HUB_LIMIT,
+  PER_SERVER_LIMIT,
+  signingServer,
+} from "./limits.js";
+import { guardedSender } from "./deliver.js";
+import { runFediverseJob } from "./job.js";
+import { postMode } from "./posts.js";
 
 /** The paths the account answers on, at the root of the hub's address. */
 export const FEDIVERSE_PATHS = ["/.well-known/webfinger", "/.well-known/nodeinfo", "/nodeinfo", "/ap"] as const;
@@ -51,7 +69,29 @@ export function hubFacts(): HubFacts {
   };
 }
 
-function federationHandler(store: FediverseStore): RequestHandler {
+function federation(facts: HubFacts, kv: KvStore) {
+  return federationFor(facts.origin, { kv, allowPrivateAddress: privateFetchAllowed() });
+}
+
+/**
+ * Before Fedify reads a delivery to the inbox: refuse a blocked server (403)
+ * and a server over its rate limit, or an inbox over its own (429). The
+ * sender is the server whose key signed the request; Fedify then checks that
+ * key and that the message's account is its owner.
+ */
+async function inboxGate(host: FeatureHost, req: ExpressRequest, blocked: readonly string[]): Promise<{ status: number; message: string } | null> {
+  const server = signingServer({ get: (name) => req.get(name) ?? null });
+  if (!server) return null;
+  if (isBlocked(server, blocked)) return { status: 403, message: "This server is blocked by the hub." };
+  const hub = currentHubId();
+  const over = await host.rateLimit([
+    { scope: "fediverse.inbox", by: "server", value: `${hub}:${server}`, limit: PER_SERVER_LIMIT, windowMs: LIMIT_WINDOW_MS },
+    { scope: "fediverse.inbox", by: "hub", value: hub, limit: PER_HUB_LIMIT, windowMs: LIMIT_WINDOW_MS },
+  ]);
+  return over ? { status: 429, message: "Too many messages; try again later." } : null;
+}
+
+function federationHandler(host: FeatureHost, store: FediverseStore, kv: KvStore): RequestHandler {
   const browse = Router();
   // A person who opens the account's address in a browser goes to the hub.
   browse.get(/^\/ap(\/.*)?$/, (_req, res) => res.redirect(302, "/"));
@@ -62,21 +102,43 @@ function federationHandler(store: FediverseStore): RequestHandler {
     if (!sealingAvailable()) return next();
     const facts = hubFacts();
     const origin = new URL(facts.origin);
+    const blocked = blockedServers();
     // Fedify reads the request's address from req.protocol and req.host. On
     // Vercel the function sees plain http behind the proxy; the hub's origin
     // is what the sender signed, so the request is read at that origin.
     Object.defineProperty(req, "protocol", { value: origin.protocol.replace(/:$/, ""), configurable: true });
     Object.defineProperty(req, "host", { value: origin.host, configurable: true });
-    federationFor(facts.origin, { allowPrivateAddress: privateFetchAllowed() })
-      .then((federation) => {
-        const data: FediverseData = { facts, store };
-        integrateFederation(federation, () => data)(req, res, (err?: unknown) => {
+    const gate = req.method === "POST" && /\/inbox$/.test(req.path) ? inboxGate(host, req, blocked) : Promise.resolve(null);
+    gate
+      .then(async (refused) => {
+        if (refused) {
+          res.status(refused.status).json({ error: refused.message });
+          return;
+        }
+        const data: FediverseData = { facts, store, blocked };
+        integrateFederation(await federation(facts, kv), () => data)(req, res, (err?: unknown) => {
           if (err) return next(err);
           browse(req, res, next);
         });
       })
       .catch(next);
   };
+}
+
+/** GET /fediverse/posts/:id: a post as the hub's roundup page shows it. Public, like the post itself. */
+function publicRouter(store: FediverseStore): Router {
+  const r = Router();
+  r.get(
+    "/posts/:id",
+    route(async (req, res) => {
+      const id = String(req.params.id ?? "");
+      if (!/^[a-z0-9_-]{6,64}$/.test(id)) throw new ValidationError("Not a post id");
+      const post = await store.post(id);
+      if (!post) throw new NotFoundError("No such post");
+      res.json({ id: post.id, kind: post.kind, published_at: post.published_at, url: post.url, items: post.items ?? [] });
+    }),
+  );
+  return r;
 }
 
 function adminRouter(store: FediverseStore): Router {
@@ -90,7 +152,25 @@ function adminRouter(store: FediverseStore): Router {
         handle: hubHandle(facts.origin),
         actor_url: `${facts.origin}/ap/${HUB_ACTOR}`,
         followers: await store.followerCount(),
+        posts: await store.postCount(),
+        post_mode: postMode(),
         ready: sealingAvailable(),
+      });
+    }),
+  );
+  // GET /admin/fediverse/followers?from=&to=: Admin → Activity's card.
+  r.get(
+    "/followers",
+    route(async (req, res) => {
+      const from = String(req.query.from ?? "");
+      const to = String(req.query.to ?? "");
+      const day = /^\d{4}-\d{2}-\d{2}$/;
+      if (!day.test(from) || !day.test(to) || from > to) throw new ValidationError("from and to are days, YYYY-MM-DD, from first");
+      const end = new Date(`${to}T00:00:00Z`);
+      end.setUTCDate(end.getUTCDate() + 1);
+      res.json({
+        total: await store.followerCount(),
+        new_in_period: await store.followersSince(`${from}T00:00:00Z`, end.toISOString()),
       });
     }),
   );
@@ -99,14 +179,36 @@ function adminRouter(store: FediverseStore): Router {
 
 const fediverse: FeaturePackage = {
   name: "@civic-social/feature-fediverse",
-  version: "0.1.0",
+  version: "0.2.0",
   displayName: "Fediverse",
   manifest: FEDIVERSE_MANIFEST,
   server(host: FeatureHost) {
     const store = dbStore(host);
+    const kv = dbKv(host);
     return {
-      rootHandlers: [{ prefixes: FEDIVERSE_PATHS, handler: federationHandler(store) }],
+      rootHandlers: [{ prefixes: FEDIVERSE_PATHS, handler: federationHandler(host, store, kv) }],
+      routes: [{ path: "/fediverse", router: publicRouter(store) }],
       adminRoutes: [{ path: "/fediverse", router: adminRouter(store) }],
+      jobs: {
+        fediverse: async ({ now }) => {
+          if (!sealingAvailable()) return { status: 200, body: { skipped: true, reason: "CIVIC_FEDIVERSE_SECRET is not set" } };
+          const facts = hubFacts();
+          const result = await runFediverseJob(
+            {
+              host,
+              store,
+              facts,
+              federation: await federation(facts, kv),
+              send: guardedSender,
+              timeZone: hubContext().timeZone,
+              blocked: blockedServers(),
+              sweep: (at) => sweepKv(host, at),
+            },
+            now,
+          );
+          return { status: 200, body: { ...result } };
+        },
+      },
     };
   },
 };

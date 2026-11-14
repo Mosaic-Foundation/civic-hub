@@ -74,7 +74,11 @@ export const HUB_FEATURES = [
     order: 170,
     name: "Fediverse",
     what: "An account people can follow from Mastodon and other fediverse apps, and a Share on Mastodon button on each page.",
-    fields: [],
+    fields: [
+      { key: "plugin.fediverse.post_mode", kind: "choice", options: ["each", "daily", "weekly"] },
+      { key: "plugin.fediverse.hashtags", kind: "text", maxLength: 200 },
+      { key: "plugin.fediverse.blocked_servers", kind: "textarea", maxLength: 5000 },
+    ],
     defaultOn: false,
   },
 ] as const satisfies readonly HubFeature[];

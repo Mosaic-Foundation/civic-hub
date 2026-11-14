@@ -65,6 +65,9 @@ const ADDED: Record<string, string> = {
   // The Fediverse feature (2026-11-13): its Plugins panel. Its account answers
   // on root paths (WebFinger, NodeInfo, /ap) through a root handler, not a route.
   "GET /admin/fediverse": "the Fediverse panel's handle and follower count",
+  "GET /admin/fediverse/followers": "Admin → Activity's Fediverse card: followers, and new in a period",
+  "GET /fediverse/posts/:id": "a fediverse post's roundup list, for its page on the hub",
+  "GET /internal/fediverse/run": "the Fediverse job",
   // Plugin Events (2026-10-27): its drafts, through the hub's drafts routes, and its calendar.
   "POST /calendar/drafts": "Events: a new event draft (the hub's drafts routes)",
   "GET /calendar/drafts": "Events: a resident's event drafts",

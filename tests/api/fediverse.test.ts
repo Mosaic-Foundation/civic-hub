@@ -18,6 +18,13 @@ const SLUG = `fd-${tag}`;
 const HOST = `${SLUG}.localhost`;
 const ADMIN = `fediverse-admin-${tag}@example.test`;
 const AP = { Accept: "application/activity+json" };
+const CRON = process.env.CIVIC_TEST_CRON_SECRET?.trim() || "ci-only-cron-secret";
+
+async function runJob(): Promise<Record<string, any>> {
+  const res = await call("GET", `/internal/fediverse/run?hub=${SLUG}`, HOST, undefined, undefined, undefined, { Authorization: `Bearer ${CRON}` });
+  expect(res.status, JSON.stringify(res.body)).toBe(200);
+  return res.body.hubs[SLUG];
+}
 
 let admin = "";
 let origin = "";
@@ -99,6 +106,46 @@ describe("the hub's fediverse account", () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ handle: `@${SLUG}@${HOST}`, actor_url: `${origin}/ap/hub`, followers: 0, ready: true });
     expect((await call("GET", "/admin/fediverse", HOST)).status).toBe(401);
+  });
+
+  it("refuses a delivery signed by a blocked server, before reading it", async () => {
+    const set = await call("PUT", "/admin/hub/settings", HOST, { section: "plugins", values: { "plugin.fediverse.blocked_servers": "spam.example\n@x@bad.example" } }, admin);
+    expect(set.status, JSON.stringify(set.body)).toBe(200);
+    const res = await call(
+      "POST",
+      "/ap/hub/inbox",
+      HOST,
+      { type: "Follow" },
+      undefined,
+      undefined,
+      { "Content-Type": "application/activity+json", Signature: 'keyId="https://a.spam.example/users/x#main-key",headers="(request-target) host date",signature="x"' },
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("takes how often to post, and refuses a value it doesn't know", async () => {
+    const ok = await call("PUT", "/admin/hub/settings", HOST, { section: "plugins", values: { "plugin.fediverse.post_mode": "weekly" } }, admin);
+    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+    const bad = await call("PUT", "/admin/hub/settings", HOST, { section: "plugins", values: { "plugin.fediverse.post_mode": "hourly" } }, admin);
+    expect(bad.status).toBe(400);
+    expect((await call("GET", "/admin/fediverse", HOST, undefined, admin)).body).toMatchObject({ post_mode: "weekly", posts: 0 });
+  });
+
+  it("starts posting from the moment the job first runs, and posts nothing from before", async () => {
+    expect(await runJob()).toMatchObject({ posted: 0, started: true });
+    expect(await runJob()).toMatchObject({ posted: 0, delivered: 0 });
+  });
+
+  it("answers the Activity card's follower counts, for admins only", async () => {
+    const res = await call("GET", "/admin/fediverse/followers?from=2026-01-01&to=2026-12-31", HOST, undefined, admin);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ total: 0, new_in_period: 0 });
+    expect((await call("GET", "/admin/fediverse/followers?from=2026-12-31&to=2026-01-01", HOST, undefined, admin)).status).toBe(400);
+    expect((await call("GET", "/admin/fediverse/followers?from=2026-01-01&to=2026-12-31", HOST)).status).toBe(401);
+  });
+
+  it("answers 404 for a post that isn't there", async () => {
+    expect((await call("GET", "/fediverse/posts/nope-000000", HOST)).status).toBe(404);
   });
 
   it("goes quiet again when switched off", async () => {
