@@ -35,7 +35,10 @@ describe("what leaves", () => {
       "analytics_daily",
       "analytics_period",
       // Sealed with the deployment's secret, so useless elsewhere; the next host makes new keys.
+      "fediverse_deliveries",
       "fediverse_keys",
+      // The fediverse library's working memory; the next host starts empty.
+      "fediverse_kv",
       // Derived by trigger from the settings and accounts the bundle carries;
       // the import re-derives it (20261023000000, ADR-011).
       "hub_plugins",

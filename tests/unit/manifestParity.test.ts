@@ -46,6 +46,10 @@
  * the Plugins section, off by default) and its switch; then its two tables
  * (fediverse_keys omitted from the export, fediverse_followers exported) and
  * their schema requirements. Only those (diffed before writing).
+ * And (2026-11-14, Fediverse phase 2): three tables (fediverse_kv and
+ * fediverse_deliveries omitted from the export, fediverse_posts exported),
+ * their requirements, the fediverse job and three settings in its Plugins
+ * panel. Only additions (diffed before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

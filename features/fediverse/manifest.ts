@@ -20,6 +20,26 @@ export const FEDIVERSE_MANIFEST = defineFeatureManifest({
       key: ["hub_id", "actor_uri"],
       holds: "the fediverse accounts following the hub, and where to deliver to them",
     },
+    {
+      name: "fediverse_kv",
+      rows: "omit",
+      reason: "a cache and duplicate-message marks for this deployment; the next host starts empty",
+      key: ["hub_id", "key"],
+      holds: "the fediverse library's working memory: messages already seen, other servers' documents",
+    },
+    {
+      name: "fediverse_posts",
+      rows: "export",
+      key: ["hub_id", "id"],
+      holds: "what the hub posted to the fediverse",
+    },
+    {
+      name: "fediverse_deliveries",
+      rows: "omit",
+      reason: "the delivery log of posts already sent; the next host does not resend them",
+      key: ["hub_id", "post_id", "inbox_url"],
+      holds: "each post's delivery to each follower's server, and its retries",
+    },
   ],
   requiredSchema: [
     {
@@ -32,6 +52,27 @@ export const FEDIVERSE_MANIFEST = defineFeatureManifest({
       columns: ["hub_id", "actor_uri", "inbox_url", "shared_inbox_url", "handle", "follow_id", "followed_at"],
       owner: "features/fediverse",
     },
+    { table: "fediverse_kv", columns: ["hub_id", "key", "value", "expires_at"], owner: "features/fediverse" },
+    {
+      table: "fediverse_posts",
+      columns: ["hub_id", "id", "kind", "activity_kind", "event_id", "process_id", "url", "content", "items", "published_at"],
+      owner: "features/fediverse",
+    },
+    {
+      table: "fediverse_deliveries",
+      columns: ["hub_id", "post_id", "inbox_url", "attempts", "next_attempt_at", "delivered_at", "gave_up_at", "last_status", "last_error"],
+      owner: "features/fediverse",
+    },
   ],
-  jobs: [],
+  jobs: [
+    {
+      id: "fediverse",
+      plugin: "fediverse",
+      path: "/fediverse/run",
+      // Every ten minutes: a new item reaches followers within ten minutes,
+      // and a server that was down gets its retry soon after it is back.
+      schedule: "*/10 * * * *",
+      description: "Fediverse: post what opened and what was decided, deliver posts to followers' servers, retry failures",
+    },
+  ],
 });
