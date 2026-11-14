@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mastodonServerFrom, mastodonShareUrl } from "./MastodonShare";
+import { mastodonServerFrom, mastodonShareUrl } from "./mastodonShareUrl";
 
 describe("Share on Mastodon", () => {
   it("takes the server from whatever a person types", () => {

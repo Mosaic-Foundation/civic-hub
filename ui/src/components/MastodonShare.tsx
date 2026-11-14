@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { pluginEnabled } from "../config/plugins";
+import { useHub } from "../config/hub";
+import { mastodonServerFrom, mastodonShareUrl } from "./mastodonShareUrl";
 
 /**
  * Share on Mastodon (the fediverse plan, 2026-11-12, item 1). Mastodon has no
@@ -16,24 +17,6 @@ import { pluginEnabled } from "../config/plugins";
 const STORAGE_KEY = "civic.mastodon_server";
 /** How long "Opened on … · Change server" stays. */
 const NOTE_MS = 6000;
-
-/**
- * The server's hostname from what a person types: "mastodon.social",
- * "https://mastodon.social/home", "@adam@mastodon.social" or
- * "adam@mastodon.social". Null when it isn't a hostname.
- */
-export function mastodonServerFrom(input: string): string | null {
-  let s = input.trim().toLowerCase();
-  if (s.includes("@")) s = s.slice(s.lastIndexOf("@") + 1);
-  s = s.replace(/^[a-z]+:\/\//, "").replace(/[/?#].*$/, "");
-  if (!/^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(s)) return null;
-  return s;
-}
-
-/** The compose page on `server` with `text` filled in. */
-export function mastodonShareUrl(server: string, text: string): string {
-  return `https://${server}/share?text=${encodeURIComponent(text)}`;
-}
 
 function rememberedServer(): string | null {
   try {
@@ -53,6 +36,7 @@ function remember(server: string | null) {
 }
 
 export default function MastodonShare({ title, url }: { title: string; url: string }) {
+  const hub = useHub();
   const inputId = useId();
   const [asking, setAsking] = useState(false);
   const [value, setValue] = useState("");
@@ -66,7 +50,7 @@ export default function MastodonShare({ title, url }: { title: string; url: stri
     if (asking) inputRef.current?.focus();
   }, [asking]);
 
-  if (!pluginEnabled("fediverse")) return null;
+  if (!hub.plugins.enabled("fediverse")) return null;
 
   const text = `${title} ${url}`;
 
