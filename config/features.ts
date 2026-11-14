@@ -4,5 +4,6 @@
 
 import type { FeaturePackage } from "../src/plugins/feature.js";
 import analytics from "../features/analytics/index.js";
+import fediverse from "../features/fediverse/index.js";
 
-export const FEATURE_PACKAGES: readonly FeaturePackage[] = [analytics];
+export const FEATURE_PACKAGES: readonly FeaturePackage[] = [analytics, fediverse];

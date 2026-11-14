@@ -62,6 +62,9 @@ const ADDED: Record<string, string> = {
   "POST /admin/analytics/keys": "issue a reporting key",
   "POST /admin/analytics/keys/:id/revoke": "revoke a reporting key",
   "GET /internal/analytics/run": "the Activity job",
+  // The Fediverse feature (2026-11-13): its Plugins panel. Its account answers
+  // on root paths (WebFinger, NodeInfo, /ap) through a root handler, not a route.
+  "GET /admin/fediverse": "the Fediverse panel's handle and follower count",
   // Plugin Events (2026-10-27): its drafts, through the hub's drafts routes, and its calendar.
   "POST /calendar/drafts": "Events: a new event draft (the hub's drafts routes)",
   "GET /calendar/drafts": "Events: a resident's event drafts",
