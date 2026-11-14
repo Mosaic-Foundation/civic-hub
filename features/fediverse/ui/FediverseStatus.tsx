@@ -1,7 +1,7 @@
 // The Fediverse panel's status line on the Plugins page: the hub's handle,
 // which people search for in Mastodon, and how many accounts follow it.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApi } from "../../../ui/src/hooks/useApi";
 import { request } from "../../../ui/src/services/http";
 import "./fediverse.css";
@@ -16,6 +16,21 @@ interface Status {
 export default function FediverseStatus({ on }: { on: boolean }) {
   const status = useApi(on ? "fediverse/status" : null, () => request<Status>("GET", "/admin/fediverse"));
   const [copied, setCopied] = useState(false);
+  // The count changes while the page is open (someone follows from their
+  // phone): read it again whenever the admin comes back to this tab.
+  const { reload } = status;
+  useEffect(() => {
+    if (!on) return;
+    const again = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+    window.addEventListener("focus", again);
+    document.addEventListener("visibilitychange", again);
+    return () => {
+      window.removeEventListener("focus", again);
+      document.removeEventListener("visibilitychange", again);
+    };
+  }, [on, reload]);
   if (!on) return <p className="form-hint">Once it's on and saved, this shows the hub's handle and how many follow it.</p>;
   if (status.error) return <p className="form-hint">Save to switch it on; the handle shows here after.</p>;
   if (!status.data) return null;
