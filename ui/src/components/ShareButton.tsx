@@ -6,6 +6,7 @@ import {
   subscribeShareMoments,
   type ShareMoment,
 } from "./shareMomentBus";
+import MastodonShare from "./MastodonShare";
 import "./ShareButton.css";
 
 /** A one-off "consider sharing this" callout pointed at the bar. Passed on
@@ -240,6 +241,9 @@ export default function ShareButton({ title, url, nudge, processId }: ShareButto
         </svg>
       </a>
       )}
+
+      {/* Share on Mastodon: on hubs with the Fediverse feature on. */}
+      <MastodonShare title={title} url={fullUrl} />
 
       {isTouchDevice && (
       <a
