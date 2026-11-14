@@ -17,8 +17,11 @@ Updated after every Claude Code session. Records what was built, what's incomple
   review; the foot-of-page back link is gone), Briefs (`AdminPublicationReview`, list + review) and Processes
   (`AdminReviews`, list + detail; its back label is now "Back to Processes", the list's heading). `.admin-back-link`
   stays for My submissions.
-- **Not done:** other admin pages with filters or a back link wait for Adam's pick (suggested in the thread). On a
-  phone, the meeting summaries bar with rows ticked stacks its two buttons, so it takes about a quarter of the screen.
+- **Added 2026-11-14 (Adam's OK):** the Feedback inbox's category tabs are pinned (`AdminStickyBar`; its items get a
+  `scroll-margin-top` so the digest's `#id` link lands below the bar), and My submissions' back link is the floating
+  button (`underTabs`: it also clears the section tabs, `--tabs-h`). `.admin-back-link` is gone. No other page has
+  filter tabs or a back link.
+- **Not done:** on a phone, the meeting summaries bar with rows ticked stacks its two buttons, so it takes about a quarter of the screen.
 - **Tests:** `tests/e2e/adminStickyList.spec.ts` (1280 and 375 px: the tab from the URL, back to the tab, the tabs,
   bulk bar and back button in view at the foot of the page); `adminFeedbackDigest.test.ts` (the digest link);
   `publicationReview.spec.ts` and `reviewQueue.spec.ts` pass. Run the CI way (preview build); against the Vite dev
