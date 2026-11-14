@@ -158,7 +158,8 @@
   "plugins.fediverse": {
     "text": "Fediverse: an account for this hub that people can follow from Mastodon and other fediverse apps, and a Share on Mastodon button on each page. Off until you switch it on.",
     "page": "/reference/plugins",
-    "anchor": "plugins-fediverse"
+    "anchor": "plugins-fediverse",
+    "pending": true
   },
   "plugins.install": {
     "text": "Install adds the plugin to this hub. Before you confirm, the hub shows what it will be able to do and what it will not.",
