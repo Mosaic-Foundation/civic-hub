@@ -3,10 +3,10 @@
 // ONE ACCOUNT PER HUB. Its address is fixed, /ap/hub on the hub's own origin
 // (https://floyd.civic.social/ap/hub), so the name people type can change
 // without breaking a single follow: servers remember the address, not the
-// name. The name is the hub's hostname as the username
-// (@floyd.civic.social@floyd.civic.social, Ben's suggestion, to be tested
-// against the short form before a hub goes live); the short form
-// (@floyd@floyd.civic.social) finds the same account.
+// name. The username is the first part of the hub's hostname
+// (@floyd@floyd.civic.social; Adam's pick, 2026-11-14, of four forms tested
+// on dev). The whole hostname as the username, Ben's first suggestion
+// (@floyd.civic.social@floyd.civic.social), still finds the same account.
 //
 // WHAT IT ANSWERS (phase 1):
 //   /.well-known/webfinger   finding the account by its handle
@@ -67,12 +67,12 @@ export function hubHost(origin: string): string {
   return new URL(origin).hostname;
 }
 
-/** The username shown: the hub's hostname (floyd.civic.social). */
+/** The username shown: the first part of the hub's hostname (floyd). */
 export function hubUsername(origin: string): string {
-  return hubHost(origin);
+  return hubHost(origin).split(".")[0];
 }
 
-/** The handle people type to find the hub: @floyd.civic.social@floyd.civic.social. */
+/** The handle people type to find the hub: @floyd@floyd.civic.social. */
 export function hubHandle(origin: string): string {
   const host = hubHost(origin);
   return `@${hubUsername(origin)}@${host}`;

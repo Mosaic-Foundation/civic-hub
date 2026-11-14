@@ -78,7 +78,8 @@ async function asAlice(activity: Follow | Undo | Delete) {
 
 describe("the hub's fediverse account", () => {
   it("is found by its handle, long or short", async () => {
-    expect(hubHandle(HUB)).toBe("@hub.example@hub.example");
+    expect(hubHandle(HUB)).toBe("@hub@hub.example");
+    expect(hubHandle("https://floyd.civic.social")).toBe("@floyd@floyd.civic.social");
     for (const name of ["hub.example", "hub"]) {
       const res = await fetch(`${HUB}/.well-known/webfinger?resource=acct:${name}@hub.example`);
       expect(res.status).toBe(200);
@@ -95,7 +96,7 @@ describe("the hub's fediverse account", () => {
     expect(res.status).toBe(200);
     const actor = (await res.json()) as Record<string, unknown>;
     expect(actor.type).toBe("Service");
-    expect(actor.preferredUsername).toBe("hub.example");
+    expect(actor.preferredUsername).toBe("hub");
     expect(actor.name).toBe("Floyd Civic Hub");
     expect(actor.url).toBe(`${HUB}/`);
     expect(actor.manuallyApprovesFollowers).toBe(false);

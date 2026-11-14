@@ -16,7 +16,7 @@ Phase 1 of three; phase 1 awaits Adam's OK of its scope (asked in the project th
 - **Share on Mastodon** (`ui/src/components/MastodonShare.tsx`) in every share bar while the switch is on: asks for the
   server once (or a whole handle), remembers it in localStorage, opens `https://<server>/share?text=`.
 - **The account** (`features/fediverse/`, a feature package on Fedify 2.4.5): `/ap/hub` (a `Service`), WebFinger for
-  `@<hostname>@<hostname>` and the short `@<slug>@<hostname>`, NodeInfo 2.1, an inbox that accepts Follow (stored,
+  `@<slug>@<hostname>` (Adam's pick, 2026-11-14) and the long `@<hostname>@<hostname>`, NodeInfo 2.1, an inbox that accepts Follow (stored,
   Accept sent at once), Undo and an account's own Delete; outbox empty; followers collection is a count only. A
   browser at `/ap/...` is sent to `/`. One Federation per hub origin (`origin` option, handle host without port);
   the request is read at the hub's origin (Vercel's function sees http). `MemoryKvStore` per instance, no queue yet
@@ -34,7 +34,7 @@ Phase 1 of three; phase 1 awaits Adam's OK of its scope (asked in the project th
   profile, NodeInfo, admin panel), `ui/src/components/MastodonShare.test.ts`. Unit suite 2,720 passed.
 - **Before it works on dev:** CIVIC_FEDIVERSE_SECRET on civic-hub-dev, redeploy, migration (release.sh dev), switch on
   for a hub, then follow it from a real Mastodon account and one other app; pick the handle form after that.
-- **Open:** the handle form (long vs short); phase 2 (posting, roundups, hashtags, delivery job) and phase 3 (replies,
+- **Open:** phase 2 (posting, roundups, hashtags, delivery job) and phase 3 (replies,
   likes/boosts) wait for Adam.
 
 ## Admin lists: a "Revision waiting" tab, sticky toolbars and a floating back button — 2026-11-13

@@ -52,7 +52,7 @@ describe("the hub's fediverse account", () => {
     origin = self.replace(/\/ap\/hub$/, "");
     expect(new URL(origin).hostname).toBe(HOST);
 
-    // The short form finds the same account.
+    // The handle shown (@slug@host) finds the same account.
     const short = await call("GET", `/.well-known/webfinger?resource=acct:${SLUG}@${HOST}`, HOST);
     expect(short.status).toBe(200);
 
@@ -60,7 +60,7 @@ describe("the hub's fediverse account", () => {
     expect(actor.status).toBe(200);
     expect(actor.body.type).toBe("Service");
     expect(actor.body.id).toBe(self);
-    expect(actor.body.preferredUsername).toBe(HOST);
+    expect(actor.body.preferredUsername).toBe(SLUG);
     expect(actor.body.name).toBe(`Fediverse Test ${tag}`);
     expect(actor.body.inbox).toBe(`${origin}/ap/hub/inbox`);
     expect(actor.body.publicKey.publicKeyPem).toContain("BEGIN PUBLIC KEY");
@@ -97,7 +97,7 @@ describe("the hub's fediverse account", () => {
   it("shows the admin the handle and follower count", async () => {
     const res = await call("GET", "/admin/fediverse", HOST, undefined, admin);
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ handle: `@${HOST}@${HOST}`, actor_url: `${origin}/ap/hub`, followers: 0, ready: true });
+    expect(res.body).toMatchObject({ handle: `@${SLUG}@${HOST}`, actor_url: `${origin}/ap/hub`, followers: 0, ready: true });
     expect((await call("GET", "/admin/fediverse", HOST)).status).toBe(401);
   });
 
