@@ -22,8 +22,8 @@ describe("Share on Mastodon", () => {
   });
 
   it("opens the server's compose page with the title and link filled in", () => {
-    expect(mastodonShareUrl("mastodon.social", "Skate park vote https://floyd.civic.social/process/p1")).toBe(
-      "https://mastodon.social/share?text=Skate%20park%20vote%20https%3A%2F%2Ffloyd.civic.social%2Fprocess%2Fp1",
+    expect(mastodonShareUrl("mastodon.social", "Skate park vote https://hub.example/process/p1")).toBe(
+      "https://mastodon.social/share?text=Skate%20park%20vote%20https%3A%2F%2Fhub.example%2Fprocess%2Fp1",
     );
   });
 });

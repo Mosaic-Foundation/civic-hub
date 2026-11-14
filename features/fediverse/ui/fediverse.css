@@ -1,0 +1,30 @@
+/* The Fediverse feature's UI (features/fediverse/ui.tsx). */
+
+.fediverse-status p {
+  margin: var(--space-1-5) 0;
+}
+
+.fediverse-copy {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: var(--space-1-5);
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.fediverse-copy:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.about-follow {
+  margin: var(--space-8) 0 var(--space-6);
+}
+
+.about-follow h2 {
+  font-size: var(--text-title-size);
+}
