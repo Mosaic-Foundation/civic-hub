@@ -4,6 +4,26 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Admin lists: a "Revision waiting" tab, sticky toolbars and a floating back button — 2026-11-13
+
+- **Revision waiting** (`ui/src/pages/AdminMeetingSummaries.tsx`): a fourth tab after All / Pending / Published, for
+  published summaries with a `pending_revision`, with its count. Not a status: the published version stays live. The
+  tab is in the URL (`?show=revision`, `pending`, `published`), the review's back button returns to the tab it came
+  from, and changing tab clears the ticked rows. The digest's "revisions have waited" problem links to
+  `?show=revision` (`problemUrl()`, now exported for its test); other meeting-summary asks still link to the list.
+- **Sticky** (`ui/src/components/AdminSticky.tsx` + `.css`): `AdminStickyBar` pins a list's filter tabs and bulk bar
+  under the hub header (`top: var(--nav-h)`, a band of `--color-bg`); `AdminBackButton` is the rail's "Back to the
+  hub" shape in `--color-primary` (dark blue on Floyd), floating under the header. Used on Meeting summaries (list +
+  review; the foot-of-page back link is gone), Briefs (`AdminPublicationReview`, list + review) and Processes
+  (`AdminReviews`, list + detail; its back label is now "Back to Processes", the list's heading). `.admin-back-link`
+  stays for My submissions.
+- **Not done:** other admin pages with filters or a back link wait for Adam's pick (suggested in the thread). On a
+  phone, the meeting summaries bar with rows ticked stacks its two buttons, so it takes about a quarter of the screen.
+- **Tests:** `tests/e2e/adminStickyList.spec.ts` (1280 and 375 px: the tab from the URL, back to the tab, the tabs,
+  bulk bar and back button in view at the foot of the page); `adminFeedbackDigest.test.ts` (the digest link);
+  `publicationReview.spec.ts` and `reviewQueue.spec.ts` pass. Run the CI way (preview build); against the Vite dev
+  server the admin sign-in doesn't take.
+
 ## The admin digest names each scheduled job problem and links to its fix — 2026-11-13
 
 - **Why:** Floyd's digest said "1 new scheduled job problem" and linked to Settings → Plugins, which showed nothing.
