@@ -247,7 +247,9 @@ describe("a hub created with Conversations off", () => {
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     created.push(NOCONV);
     expect(res.body.plugins.find((p: Row) => p.id === "conversation")).toMatchObject({ enabled: false, source: "hub" });
-    expect(res.body.plugins.filter((p: Row) => p.enabled)).toHaveLength(res.body.plugins.length - 1);
+    // All on but Conversations, and the Fediverse account, which starts off on every hub (2026-11-13).
+    expect(res.body.plugins.find((p: Row) => p.id === "fediverse")).toMatchObject({ enabled: false });
+    expect(res.body.plugins.filter((p: Row) => p.enabled)).toHaveLength(res.body.plugins.length - 2);
     expect(res.body.sample_content.created).toContain("deliberation_rentals");
   });
 

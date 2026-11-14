@@ -482,6 +482,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /admin/analytics/": { query: ["", "?period=all"] },
   "GET /admin/analytics/csv": { query: ["", "?period=all"] },
   "GET /admin/analytics/keys": {},
+  "GET /admin/fediverse/": {},
   "GET /\\.well-known/civic.json": {},
   "GET /\\.well-known/did.json": {},
 
