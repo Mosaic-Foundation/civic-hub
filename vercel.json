@@ -83,6 +83,26 @@
       "destination": "/api"
     },
     {
+      "source": "/.well-known/webfinger",
+      "destination": "/api"
+    },
+    {
+      "source": "/.well-known/nodeinfo",
+      "destination": "/api"
+    },
+    {
+      "source": "/nodeinfo/:path*",
+      "destination": "/api"
+    },
+    {
+      "source": "/ap/:path*",
+      "destination": "/api"
+    },
+    {
+      "source": "/ap",
+      "destination": "/api"
+    },
+    {
       "source": "/ns",
       "destination": "/api"
     },
