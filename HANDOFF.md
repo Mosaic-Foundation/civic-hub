@@ -4,6 +4,39 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Fediverse phase 1: a hub account people follow from Mastodon, and Share on Mastodon — 2026-11-13
+
+Plan: `~/Documents/Mosaic/0 Management/Civic Social/Future Tasks/mastodon-follow-civic-hubs-plan-2026-11-12.md`.
+Phase 1 of three; phase 1 awaits Adam's OK of its scope (asked in the project thread). Nothing posts yet.
+
+- **Switch** `plugin.fediverse.enabled`, the first feature that is **off by default** (`HubFeature.defaultOn`,
+  `pluginDefaultOn()`: the server's checks, the public config, the settings form and new-hub creation all read it).
+  The operator's create info carries `plugin_defaults`; **the console's Create hub form still ticks every box**, so an
+  operator must untick Fediverse there until `mosaic-console` reads it.
+- **Share on Mastodon** (`ui/src/components/MastodonShare.tsx`) in every share bar while the switch is on: asks for the
+  server once (or a whole handle), remembers it in localStorage, opens `https://<server>/share?text=`.
+- **The account** (`features/fediverse/`, a feature package on Fedify 2.4.5): `/ap/hub` (a `Service`), WebFinger for
+  `@<hostname>@<hostname>` and the short `@<slug>@<hostname>`, NodeInfo 2.1, an inbox that accepts Follow (stored,
+  Accept sent at once), Undo and an account's own Delete; outbox empty; followers collection is a count only. A
+  browser at `/ap/...` is sent to `/`. One Federation per hub origin (`origin` option, handle host without port);
+  the request is read at the hub's origin (Vercel's function sees http). `MemoryKvStore` per instance, no queue yet
+  (phase 2 brings the outbox table and delivery job).
+- **Feature contract:** `FeatureServer.rootHandlers` (prefix-gated, behind the switch, before `express.json`).
+- **Keys:** `fediverse_keys` (RSA + Ed25519), private halves sealed by `src/services/sealedSecrets.ts` (AES-256-GCM,
+  hub id as AAD) with **`CIVIC_FEDIVERSE_SECRET`** (new setting; a fixed development key outside production; unset in
+  production = the account does not answer and the panel says so). Not exported. `fediverse_followers` exported.
+- **Migration** `20261114000000_fediverse.sql`: two tables, additive. `vercel.json` rewrites `/.well-known/webfinger`,
+  `/.well-known/nodeinfo`, `/nodeinfo/*`, `/ap/*` to the function.
+- **UI:** the Plugins panel shows the handle (copy) and follower count (`GET /admin/fediverse`); About gets "Follow on
+  Mastodon" (handle from `window.location.hostname`).
+- **Tests:** `tests/unit/fediverse.test.ts` (a stand-in Mastodon federation follows, unfollows and is deleted, signed
+  both ways through a stubbed fetch; unsigned delivery 401), `tests/api/fediverse.test.ts` (off by default, on/off,
+  profile, NodeInfo, admin panel), `ui/src/components/MastodonShare.test.ts`. Unit suite 2,720 passed.
+- **Before it works on dev:** CIVIC_FEDIVERSE_SECRET on civic-hub-dev, redeploy, migration (release.sh dev), switch on
+  for a hub, then follow it from a real Mastodon account and one other app; pick the handle form after that.
+- **Open:** the handle form (long vs short); phase 2 (posting, roundups, hashtags, delivery job) and phase 3 (replies,
+  likes/boosts) wait for Adam.
+
 ## Admin lists: a "Revision waiting" tab, sticky toolbars and a floating back button — 2026-11-13
 
 - **Revision waiting** (`ui/src/pages/AdminMeetingSummaries.tsx`): a fourth tab after All / Pending / Published, for
