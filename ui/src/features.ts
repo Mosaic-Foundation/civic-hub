@@ -19,6 +19,13 @@ export interface FeatureUi {
   settingsPanel?: (f: FormApi) => ReactNode;
   /** Drawn at the foot of the About page. */
   aboutBlock?: ComponentType;
+  /**
+   * A section of Admin → Activity, drawn after "By kind" for the period the
+   * admin is looking at (YYYY-MM-DD, inclusive). For numbers that are not
+   * residents taking part (the fediverse feature's followers), so they sit
+   * apart from the participation counts.
+   */
+  activitySection?: ComponentType<{ start: string; end: string; label: string }>;
 }
 
 export const FEATURE_UI: readonly FeatureUi[] = FEATURE_UI_MODULES;
@@ -26,4 +33,9 @@ export const FEATURE_UI: readonly FeatureUi[] = FEATURE_UI_MODULES;
 /** A feature's panel on the Plugins page, or null. */
 export function featureSettingsPanel(id: string, f: FormApi): ReactNode | null {
   return FEATURE_UI.find((u) => u.feature === id)?.settingsPanel?.(f) ?? null;
+}
+
+/** The Activity sections of the features that are on. */
+export function featureActivitySections(enabled: (id: PluginId) => boolean): ReadonlyArray<{ feature: PluginId; Section: NonNullable<FeatureUi["activitySection"]> }> {
+  return FEATURE_UI.flatMap((u) => (u.activitySection && enabled(u.feature) ? [{ feature: u.feature, Section: u.activitySection }] : []));
 }

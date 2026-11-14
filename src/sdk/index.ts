@@ -151,6 +151,7 @@ export type { Notice, NoticeReport } from "../services/notices.js";
 export { hubContext } from "../services/pluginHubContext.js";
 export { seal, open as openSealed, sealingAvailable } from "../services/sealedSecrets.js";
 export { privateFetchAllowed } from "../config/devFlags.js";
+export { guardedFetch } from "../utils/ssrfGuard.js";
 export type { HubContext } from "../services/pluginHubContext.js";
 
 // --- src/controllers/processController.ts ------------------------------------------------
@@ -242,8 +243,11 @@ export type {
   FeatureDigestLine,
   FeatureHost,
   FeaturePackage,
+  FeatureRateLimit,
   FeatureServer,
   ProcessTypeSummary,
+  PublicActivityItem,
+  PublicActivityPage,
 } from "../plugins/feature.js";
 
 // --- The conversation's (packages/civic.polis_deliberation/) -------------------------------

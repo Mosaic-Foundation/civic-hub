@@ -77,6 +77,7 @@ export {
   getUser,
   getVoteLog,
   getVoteResultsRecipients,
+  guardedFetch,
   hasUserVoted,
   hubContext,
   hubDisplayNameSync,

@@ -19,6 +19,8 @@ import type { JobRunner } from "../jobs/types.js";
 import type { GrantedDb, PluginMount } from "./package.js";
 export type { FeatureManifest };
 import type { ParticipationDeclaration } from "../shared/participation.js";
+import type { PublicActivityPage } from "../services/publicActivity.js";
+export type { PublicActivityItem, PublicActivityPage } from "../services/publicActivity.js";
 
 /** One process type as a feature reads it: what it is called and what it counts as participation. */
 export interface ProcessTypeSummary {
@@ -128,6 +130,26 @@ export interface FeatureHost {
    * was created. ISO.
    */
   launchedAt(): Promise<string>;
+  /**
+   * What anyone may see happen on the hub in scope, recorded after `since`:
+   * the public feed's items (title, kind, page; never who acted), without
+   * sample content or anything not public (src/services/publicActivity.ts).
+   */
+  publicActivity(since: string, options?: { limit?: number; kinds?: ReadonlySet<string> }): Promise<PublicActivityPage>;
+  /**
+   * Take one attempt against each limit, shared by every server instance
+   * (src/db/rateLimit.ts); the first limit already reached, or null.
+   */
+  rateLimit(checks: readonly FeatureRateLimit[]): Promise<FeatureRateLimit | null>;
+}
+
+/** One limit a feature counts against: `limit` attempts per `windowMs` for `value`. */
+export interface FeatureRateLimit {
+  scope: string;
+  by: string;
+  value: string;
+  limit: number;
+  windowMs: number;
 }
 
 export interface FeaturePackage {

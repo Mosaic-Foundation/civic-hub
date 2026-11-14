@@ -70,6 +70,7 @@ export const getSupportThreshold = e.getSupportThreshold;
 export const getUser = e.getUser;
 export const getVoteLog = e.getVoteLog;
 export const getVoteResultsRecipients = e.getVoteResultsRecipients;
+export const guardedFetch = e.guardedFetch;
 export const hasUserVoted = e.hasUserVoted;
 export const hubContext = e.hubContext;
 export const hubDisplayNameSync = e.hubDisplayNameSync;

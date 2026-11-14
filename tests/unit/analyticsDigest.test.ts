@@ -18,6 +18,12 @@ const untouchable: FeatureHost = {
   launchedAt: () => {
     throw new Error("the line read the hub's launch on a day it says nothing");
   },
+  publicActivity: () => {
+    throw new Error("the line read the public activity on a day it says nothing");
+  },
+  rateLimit: () => {
+    throw new Error("the line took a rate limit on a day it says nothing");
+  },
 };
 
 describe("the digest's Activity line", () => {

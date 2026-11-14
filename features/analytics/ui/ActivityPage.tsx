@@ -17,6 +17,7 @@ import { refreshHubConfig } from "../../../ui/src/config/hubConfig";
 import { addDays, type PeriodKind } from "../periods";
 import type { Count, Report } from "../types";
 import { downloadCsv, getActivity, issueKey, listKeys, recount, revokeKey, type ReportKey } from "./api";
+import { featureActivitySections } from "../../../ui/src/features";
 import "./activity.css";
 
 const KINDS: Array<{ id: PeriodKind; label: string }> = [
@@ -55,6 +56,7 @@ function stepped(r: Report, by: -1 | 1): string {
 export default function ActivityPage() {
   const { isAdmin, loading: authLoading } = useAuth();
   const hub = useHub();
+  const extraSections = featureActivitySections((id) => hub.plugins.enabled(id));
   const [kind, setKind] = useState<PeriodKind>("month");
   const [at, setAt] = useState<string | null>(null);
   const report = useApi(!authLoading && isAdmin ? `admin/analytics/${kind}/${at ?? "now"}` : null, () => getActivity(kind, at));
@@ -188,6 +190,10 @@ export default function ActivityPage() {
               </tbody>
             </table>
           </div>
+
+          {extraSections.map(({ feature, Section }) => (
+            <Section key={feature} start={r.period.start} end={r.period.end} label={r.period.label} />
+          ))}
 
           <h2 className="kit-section-title">For funders</h2>
           <p className="admin-page-description">

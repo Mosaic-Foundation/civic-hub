@@ -17,6 +17,8 @@ import type { PluginId } from "../models/hubSettings.js";
 import type { JobRunner } from "../jobs/types.js";
 import type { RequestHandler, Router } from "express";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
+import { publicActivitySince } from "../services/publicActivity.js";
+import { takeRateLimit } from "../db/rateLimit.js";
 import type {
   ActorCountPlan,
   DayCount,
@@ -125,7 +127,14 @@ let loaded: LoadedFeature[] | null = null;
 function load(): LoadedFeature[] {
   if (!loaded) {
     loaded = FEATURE_PACKAGES.map((pkg) => {
-      const host: FeatureHost = { featureId: pkg.manifest.feature, db: () => featureDb(pkg), eventLog: () => eventLogReader, launchedAt };
+      const host: FeatureHost = {
+        featureId: pkg.manifest.feature,
+        db: () => featureDb(pkg),
+        eventLog: () => eventLogReader,
+        launchedAt,
+        publicActivity: publicActivitySince,
+        rateLimit: (checks) => takeRateLimit(checks),
+      };
       return { pkg, server: pkg.server(host) };
     });
   }
