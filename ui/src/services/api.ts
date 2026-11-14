@@ -1668,8 +1668,8 @@ export interface JobRunRecord {
 export interface JobRunsEntry {
   job_id: string;
   job_name: string;
-  /** The plugin that owns the job. */
-  plugin: string;
+  /** The plugin that owns the job; null for the hub's own jobs (closing at deadlines). */
+  plugin: string | null;
   last: JobRunRecord | null;
   /** The newest failed or flagged run, when it is not the last run. */
   last_problem: JobRunRecord | null;

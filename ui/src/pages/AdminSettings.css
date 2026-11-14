@@ -1173,6 +1173,17 @@
 }
 
 /* A scheduled job's last run, under its plugin's switch (job_runs). */
+.hub-jobs {
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width) solid var(--color-border-subtle);
+}
+
+.hub-jobs-title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+}
+
 .job-runs {
   margin: 0 0 var(--space-2) calc(var(--space-5) + var(--space-2));
 }

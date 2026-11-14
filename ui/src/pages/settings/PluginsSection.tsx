@@ -41,7 +41,7 @@ import {
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
 import { useHub, type Hub } from "../../config/hub";
 import { feedbackContactEmail } from "../../../../src/shared/platform";
-import { pluginAnchor } from "../../../../src/shared/adminAnchors";
+import { HUB_JOBS_ANCHOR, pluginAnchor } from "../../../../src/shared/adminAnchors";
 import { pluginPanelAnchors } from "../../../../src/shared/settingsSearch";
 import { anchorForKey } from "../../../../src/shared/helpRegistry";
 
@@ -154,6 +154,7 @@ export default function PluginsSection() {
               onInstallChange={afterInstallChange}
             />
           ))}
+          <HubJobs jobs={jobs === "error" || jobs === null ? jobs : jobs.filter((j) => j.plugin === null)} />
         </div>
       )}
     </SectionForm>
@@ -290,6 +291,40 @@ function JobRunLines({ jobs, plugin }: { jobs: JobRunsEntry[] | "error" | null; 
         <JobRunLine key={j.job_id} entry={j} labelled={shown.length > 1 || j.job_id !== plugin} />
       ))}
     </div>
+  );
+}
+
+/**
+ * The hub's own scheduled jobs, which no plugin owns: closing at deadlines and
+ * the sample refresh. Always open, so a digest's link to #hub-jobs lands on
+ * them (before 2026-11-13 they were shown nowhere).
+ */
+function HubJobs({ jobs }: { jobs: JobRunsEntry[] | "error" | null }) {
+  return (
+    <section id={HUB_JOBS_ANCHOR} data-anchor="" className="hub-jobs" aria-labelledby="hub-jobs-title">
+      <h3 id="hub-jobs-title" className="hub-jobs-title">
+        The hub's own scheduled jobs
+      </h3>
+      <p className="form-hint">
+        These run on every hub, whatever plugins are on. Each records a run only
+        when it did something or something went wrong.
+      </p>
+      {jobs === null ? null : jobs === "error" ? (
+        <p className="form-hint job-run-line">Last run: could not be loaded.</p>
+      ) : (
+        <div className="job-runs">
+          {jobs.map((j) =>
+            j.last ? (
+              <JobRunLine key={j.job_id} entry={j} labelled />
+            ) : (
+              <p key={j.job_id} className="form-hint job-run-line">
+                {j.job_name}: nothing to report yet.
+              </p>
+            ),
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
