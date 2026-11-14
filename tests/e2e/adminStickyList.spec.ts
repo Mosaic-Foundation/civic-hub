@@ -142,8 +142,16 @@ for (const width of [1280, 375]) {
       // Opened from the tab, the review's back button returns to it.
       await page.locator(".admin-proposal-item", { hasText: `Revised ${tag}` }).locator("h3").click();
       await expect(page).toHaveURL(/\/admin\/meeting-summaries\/proc_sticky/);
-      await page.mouse.wheel(0, 3000);
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+      // The review is loaded (its last block on the page) before scrolling to its foot.
+      await expect
+        .poll(() => page.locator("input").evaluateAll((els) => els.some((e) => (e as HTMLInputElement).value === "Topic 12")))
+        .toBe(true);
+      await expect
+        .poll(async () => {
+          await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+          return page.evaluate(() => window.scrollY);
+        })
+        .toBeGreaterThan(500);
       const back = page.getByRole("button", { name: "Back to Meeting summaries" });
       await expect(back).toBeInViewport();
       await pinnedUnderHeader(page, ".admin-back-button");
@@ -155,8 +163,12 @@ for (const width of [1280, 375]) {
       await page.getByRole("button", { name: "All", exact: true }).click();
       await expect(page).toHaveURL(/\/admin\/meeting-summaries$/);
       await expect(page.locator(".admin-proposal-item", { hasText: `Waiting 13 ${tag}` })).toBeVisible();
-      await page.locator(".admin-proposal-item").last().scrollIntoViewIfNeeded();
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+      await expect
+        .poll(async () => {
+          await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+          return page.evaluate(() => window.scrollY);
+        })
+        .toBeGreaterThan(500);
       await expect(tab).toBeInViewport();
       await expect(page.locator(".batch-bar")).toBeInViewport();
       await pinnedUnderHeader(page, ".admin-sticky-bar");
