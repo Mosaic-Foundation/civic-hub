@@ -55,7 +55,7 @@ export const FEDIVERSE_MANIFEST = defineFeatureManifest({
     { table: "fediverse_kv", columns: ["hub_id", "key", "value", "expires_at"], owner: "features/fediverse" },
     {
       table: "fediverse_posts",
-      columns: ["hub_id", "id", "kind", "activity_kind", "event_id", "process_id", "url", "content", "items", "published_at"],
+      columns: ["hub_id", "id", "kind", "activity_kind", "event_id", "process_id", "url", "content", "items", "published_at", "process_iri", "activity_iri"],
       owner: "features/fediverse",
     },
     {

@@ -990,7 +990,9 @@
         "url",
         "content",
         "items",
-        "published_at"
+        "published_at",
+        "process_iri",
+        "activity_iri"
       ],
       "owner": "features/fediverse"
     },
