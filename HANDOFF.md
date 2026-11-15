@@ -4,6 +4,26 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Fediverse follow-ups: Post now, River de-duplication, descriptions and images, profile updates — 2026-11-15
+
+On dev, unpushed: f21318b..80c1f3f. **Migrations 20261115010000 and 20261115020000 first** (release.sh dev).
+
+- **Dev runs no scheduled jobs** (HUB_CRON_ENABLED off; last job_run Oct 8), so the fediverse job never ran there.
+  `POST /admin/fediverse/run` (the panel's **Post now**, 30 an hour) runs it for the hub at once. The first run
+  starts from when `plugin.fediverse.enabled` was saved on (`FeatureHost.switchedOnAt`, at most a week back).
+  Adam's test of Post now worked (an announcement reached mastodon.social, 202).
+- **Following a hub both ways** (Mosaic River): each item Note has `context` = the process IRI (as on the civic
+  stream) and `url` = [page text/html, civic activity id application/activity+json rel=alternate]; civic.json
+  names the account under `features.fediverse` (new `FeatureServer.discovery` hook). Contract: `docs/FEDIVERSE.md`.
+  River prompt: Future Tasks/river-dedupe-civic-hub-fediverse-prompt-2026-11-15.md.
+- **Descriptions and images:** `publicActivity` items carry the link preview's description (shareMeta, ~200
+  characters, "…" when cut) and image (absolute, with `*image_alt`). Posts add the description and "Read more:"
+  when cut; the image is a Note attachment with mediaType from the extension.
+- **Profile updates:** the job sends followers an `Update` of the account when the profile's fingerprint
+  (username, name, about, logo, banner) changes; once per change, best effort. Athens has no logo set, so its
+  Mastodon profile has no avatar until one is added in Settings → Identity.
+- Tests: unit fediverse 24, API fediverse 12; unit suite 2,735.
+
 ## Fediverse phase 2: posting, delivery with retries, the audit's limits, the Activity card — 2026-11-14
 
 On dev branch, unpushed (ebf58e6..8321275, after f133b94 the handle). **Migration 20261115000000 first** (release.sh dev).
