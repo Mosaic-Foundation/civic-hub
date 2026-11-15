@@ -17,6 +17,10 @@ describe("isSocialCrawler", () => {
     "Twitterbot/1.0",
     "LinkedInBot/1.0",
     "WhatsApp/2.23.20.0",
+    // Share on Mastodon's link card (2026-11-15), and other card makers.
+    "http.rb/5.2.0 (Mastodon/4.4.0; +https://mastodon.social/) Bot",
+    "Mozilla/5.0 (compatible; Bluesky Cardyb/1.1; +mailto:support@bsky.app)",
+    "Iframely/1.3.1 (+https://iframely.com/docs/about)",
   ])("recognises %s", (ua) => {
     expect(isSocialCrawler(ua)).toBe(true);
   });

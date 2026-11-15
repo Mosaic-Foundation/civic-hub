@@ -21,8 +21,15 @@ import { resolve } from "path";
 // the composer got the plain SPA page and showed a bare "civic.social" chip
 // while the published post, scraped by the listed agent, had the full
 // preview (Adam, 2026-09-06; confirmed with curl -A "meta-externalfetcher/1.1").
+//
+// Mastodon and Bluesky were routed here but missing from this list, so their
+// link cards showed the generic hub page instead of the item: a post shared
+// with Share on Mastodon read "Civic Hub" where it should have read the
+// announcement (Adam, 2026-11-15). Mastodon's fetcher says "Mastodon/<v>",
+// Bluesky's card service "Bluesky Cardyb"; iframely, Reddit and Skype make
+// cards too.
 const CRAWLER_RE =
-  /facebookexternalhit|Facebot|meta-external(agent|fetcher)|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Discordbot|TelegramBot|Applebot|Pinterest|Embedly|Quora|vkShare|W3C_Validator/i;
+  /facebookexternalhit|Facebot|meta-external(agent|fetcher)|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Discordbot|TelegramBot|Applebot|Pinterest|Embedly|Quora|vkShare|W3C_Validator|Mastodon|Bluesky|Iframely|redditbot|SkypeUriPreview/i;
 
 /** Exported for the unit test that pins the crawler list. */
 export function isSocialCrawler(userAgent: string): boolean {
