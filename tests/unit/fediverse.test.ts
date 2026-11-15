@@ -7,7 +7,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createFederation, MemoryKvStore, type Federation } from "@fedify/fedify";
 import { Accept, Create, Follow, Note, Person, Undo, Endpoints, Delete, Update } from "@fedify/vocab";
-import { federationFor, profileSummary, acceptedUsernames, hubHandle, type FediverseData, type HubFacts } from "../../features/fediverse/federation.js";
+import { avatarUrl, federationFor, profileSummary, acceptedUsernames, hubHandle, type FediverseData, type HubFacts } from "../../features/fediverse/federation.js";
 import { memoryStore } from "../../features/fediverse/store.js";
 import { open as openSealed, seal } from "../../src/services/sealedSecrets.js";
 
@@ -112,6 +112,10 @@ describe("the hub's fediverse account", () => {
     expect(actor.url).toBe(`${HUB}/`);
     expect(actor.manuallyApprovesFollowers).toBe(false);
     expect((actor.icon as { url: string }).url).toBe(`${HUB}/logo.png`);
+    // No logo: a letter picture of the hub's name.
+    expect(avatarUrl({ ...facts, logoUrl: null })?.href).toBe(`${HUB}/fediverse-avatars/F.png`);
+    expect(avatarUrl({ ...facts, logoUrl: null, name: "4H Club" })?.href).toBe(`${HUB}/fediverse-avatars/H.png`);
+    expect(avatarUrl({ ...facts, logoUrl: null, name: "123" })?.href).toBe(`${HUB}/fediverse-avatars/C.png`);
     expect(String(actor.summary)).toContain("An independent Civic Hub");
     expect((actor.publicKey as { publicKeyPem: string }).publicKeyPem).toContain("BEGIN PUBLIC KEY");
   });

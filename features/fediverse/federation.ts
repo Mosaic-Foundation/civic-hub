@@ -122,13 +122,26 @@ function absolute(url: string | null, origin: string): URL | null {
 
 const builder = createFederationBuilder<FediverseData>();
 
+/**
+ * The hub's profile picture: its logo, else a letter picture of its name's
+ * first letter (ui/public/fediverse-avatars/A.png … Z.png, navy with a white
+ * letter; Mastodon shows no SVG, so they are PNGs made once). "C" for a
+ * name that starts with no letter A–Z.
+ */
+export function avatarUrl(facts: HubFacts): URL | null {
+  const logo = absolute(facts.logoUrl, facts.origin);
+  if (logo) return logo;
+  const letter = /[a-z]/i.exec(facts.name.normalize("NFKD"))?.[0]?.toUpperCase() ?? "C";
+  return absolute(`/fediverse-avatars/${letter}.png`, facts.origin);
+}
+
 /** What the profile shows, for telling when it changed (profileFingerprint). */
 export function profileFacts(facts: HubFacts): Record<string, string | null> {
   return {
     username: hubUsername(facts.origin),
     name: facts.name,
     summary: profileSummary(facts),
-    icon: absolute(facts.logoUrl, facts.origin)?.href ?? null,
+    icon: avatarUrl(facts)?.href ?? null,
     image: absolute(facts.bannerUrl, facts.origin)?.href ?? null,
   };
 }
@@ -137,7 +150,7 @@ export function profileFacts(facts: HubFacts): Record<string, string | null> {
 export async function hubActor(ctx: Context<FediverseData>): Promise<Service> {
   const { facts } = ctx.data;
   const keys = await ctx.getActorKeyPairs(HUB_ACTOR);
-  const logo = absolute(facts.logoUrl, facts.origin);
+  const logo = avatarUrl(facts);
   const banner = absolute(facts.bannerUrl, facts.origin);
   const site = `${facts.origin}/`;
   return new Service({
