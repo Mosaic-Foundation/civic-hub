@@ -210,9 +210,10 @@ function item(n: number, kind = "vote-open", pill = "Vote"): PublicActivityItem 
   };
 }
 
-/** A host whose public activity is `feed`, after `since`. */
-function hostWith(feed: PublicActivityItem[]): JobDeps["host"] {
+/** A host whose public activity is `feed`, after `since`, and whose switch went on at `on`. */
+function hostWith(feed: PublicActivityItem[], on: string | null = "2026-11-14T12:20:00Z"): JobDeps["host"] {
   return {
+    switchedOnAt: async () => on,
     async publicActivity(since, options): Promise<PublicActivityPage> {
       const after = feed.filter((i) => i.recorded_at > since && (!options?.kinds || options.kinds.has(i.kind)));
       return { items: after, cursor: after.length ? after[after.length - 1]!.recorded_at : null };
@@ -235,13 +236,25 @@ function deps(feed: PublicActivityItem[], extra: Partial<JobDeps> = {}): JobDeps
 }
 
 describe("the hub's posts", () => {
-  it("starts from the moment it is switched on: nothing from before is posted", async () => {
+  it("starts from the moment it is switched on: nothing from before is posted, what came after is", async () => {
     // alice follows again, for deliveries.
     await asAlice(new Follow({ id: new URL(`${SOCIAL}/follows/9`), actor: alice, object: hubActor }));
-    const before = [item(1)];
-    const first = await postNew(deps(before), new Date("2026-11-14T12:30:00Z"));
-    expect(first).toEqual({ posted: 0, started: true });
-    expect(store.allPosts).toHaveLength(0);
+    // item(1) is at 12:01, before the switch (12:20); item(25) at 12:25, after it, before the first run.
+    const first = await postNew(deps([item(1), item(25)]), new Date("2026-11-14T12:30:00Z"));
+    expect(first).toEqual({ posted: 1, started: true });
+    expect(store.allPosts.map((p) => p.event_id)).toEqual(["evt_25"]);
+    // Delivered now, so the counts below are this test's own.
+    await deliverDue(deps([]), new Date("2026-11-14T12:30:00Z"));
+    created.length = 0;
+  });
+
+  it("never reaches back more than a week, and starts now when the switch time is unknown", async () => {
+    const fresh = memoryStore();
+    await postNew(deps([], { store: fresh, host: hostWith([], "2026-01-01T00:00:00Z") }), new Date("2026-11-14T12:00:00Z"));
+    expect(await fresh.getState("cursor")).toBe("2026-11-07T12:00:00.000Z");
+    const none = memoryStore();
+    await postNew(deps([], { store: none, host: hostWith([], null) }), new Date("2026-11-14T12:00:00Z"));
+    expect(await none.getState("cursor")).toBe("2026-11-14T12:00:00.000Z");
   });
 
   it("posts each new item that opens or is decided, once, and nothing else", async () => {
@@ -249,7 +262,7 @@ describe("the hub's posts", () => {
     const now = new Date("2026-11-14T13:00:00Z");
     expect((await postNew(deps(feed), now)).posted).toBe(2);
     expect((await postNew(deps(feed), now)).posted).toBe(0);
-    expect(store.allPosts.map((p) => p.event_id).sort()).toEqual(["evt_40", "evt_41"]);
+    expect(store.allPosts.map((p) => p.event_id).sort()).toEqual(["evt_25", "evt_40", "evt_41"]);
     const post = store.allPosts.find((p) => p.event_id === "evt_40")!;
     expect(post.content).toContain("<strong>New vote:</strong> Skate park &lt;40&gt;");
     expect(post.content).toContain("#<span>CivicHub</span>");
@@ -276,7 +289,7 @@ describe("the hub's posts", () => {
     expect(res.status).toBe(200);
     expect(((await res.json()) as { type: string }).type).toBe("Note");
     const outbox = (await (await fetch(`${HUB}/ap/hub/outbox`, { headers: { Accept: "application/activity+json" } })).json()) as { totalItems: number };
-    expect(outbox.totalItems).toBe(2);
+    expect(outbox.totalItems).toBe(3);
   });
 
   it("retries a server that fails, and gives up on an inbox that is gone", async () => {

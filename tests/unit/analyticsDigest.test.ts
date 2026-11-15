@@ -24,6 +24,9 @@ const untouchable: FeatureHost = {
   rateLimit: () => {
     throw new Error("the line took a rate limit on a day it says nothing");
   },
+  switchedOnAt: () => {
+    throw new Error("the line read the switch on a day it says nothing");
+  },
 };
 
 describe("the digest's Activity line", () => {

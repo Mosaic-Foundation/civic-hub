@@ -141,6 +141,12 @@ export interface FeatureHost {
    * (src/db/rateLimit.ts); the first limit already reached, or null.
    */
   rateLimit(checks: readonly FeatureRateLimit[]): Promise<FeatureRateLimit | null>;
+  /**
+   * When the hub in scope's switch for this feature was last saved on, ISO;
+   * null when it is off or was never set (on by default). A save of the
+   * Plugins section that leaves it on may move it later, never earlier.
+   */
+  switchedOnAt(): Promise<string | null>;
 }
 
 /** One limit a feature counts against: `limit` attempts per `windowMs` for `value`. */

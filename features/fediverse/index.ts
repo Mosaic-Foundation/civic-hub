@@ -141,8 +141,39 @@ function publicRouter(store: FediverseStore): Router {
   return r;
 }
 
-function adminRouter(store: FediverseStore): Router {
+/** One run of the job for the hub in scope: the scheduled job's, and the panel's "Post now". */
+async function runForHub(host: FeatureHost, store: FediverseStore, kv: KvStore, now: Date) {
+  const facts = hubFacts();
+  return runFediverseJob(
+    {
+      host,
+      store,
+      facts,
+      federation: await federation(facts, kv),
+      send: guardedSender,
+      timeZone: hubContext().timeZone,
+      blocked: blockedServers(),
+      sweep: (at) => sweepKv(host, at),
+    },
+    now,
+  );
+}
+
+function adminRouter(host: FeatureHost, store: FediverseStore, kv: KvStore): Router {
   const r = Router();
+  // POST /admin/fediverse/run: "Post now". What the ten-minute job would do,
+  // for this hub, at once (and on a deployment whose scheduled jobs are off).
+  r.post(
+    "/run",
+    route(async (_req, res) => {
+      if (!sealingAvailable()) throw new ValidationError("CIVIC_FEDIVERSE_SECRET is not set, so the hub cannot sign posts");
+      const limited = await host.rateLimit([
+        { scope: "fediverse.run", by: "hub", value: currentHubId(), limit: 30, windowMs: 60 * 60 * 1000 },
+      ]);
+      if (limited) throw new ValidationError("That's a lot of runs this hour; the job runs every ten minutes anyway.");
+      res.json(await runForHub(host, store, kv, new Date()));
+    }),
+  );
   // GET /admin/fediverse: what the Plugins panel shows.
   r.get(
     "/",
@@ -188,25 +219,11 @@ const fediverse: FeaturePackage = {
     return {
       rootHandlers: [{ prefixes: FEDIVERSE_PATHS, handler: federationHandler(host, store, kv) }],
       routes: [{ path: "/fediverse", router: publicRouter(store) }],
-      adminRoutes: [{ path: "/fediverse", router: adminRouter(store) }],
+      adminRoutes: [{ path: "/fediverse", router: adminRouter(host, store, kv) }],
       jobs: {
         fediverse: async ({ now }) => {
           if (!sealingAvailable()) return { status: 200, body: { skipped: true, reason: "CIVIC_FEDIVERSE_SECRET is not set" } };
-          const facts = hubFacts();
-          const result = await runFediverseJob(
-            {
-              host,
-              store,
-              facts,
-              federation: await federation(facts, kv),
-              send: guardedSender,
-              timeZone: hubContext().timeZone,
-              blocked: blockedServers(),
-              sweep: (at) => sweepKv(host, at),
-            },
-            now,
-          );
-          return { status: 200, body: { ...result } };
+          return { status: 200, body: { ...(await runForHub(host, store, kv, now)) } };
         },
       },
     };

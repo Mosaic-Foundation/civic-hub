@@ -2,9 +2,9 @@
 // what opened and what was decided since the last run, then deliver every
 // post that is due to its followers' servers.
 //
-// WHERE IT STARTS. The first run after a hub switches the feature on only
-// marks the moment: nothing from before is posted, so turning it on never
-// floods followers with the hub's history.
+// WHERE IT STARTS. From when the hub switched the feature on (its first run
+// finds the moment; at most a week back): nothing from before is posted, so
+// turning it on never floods followers with the hub's history.
 //
 // EACH ITEM (the default): every new item becomes a post at once. DAILY or
 // WEEKLY: the items wait (the cursor does not move) until the roundup is due,
@@ -43,7 +43,7 @@ export const DELIVERIES_PER_RUN = 300;
 const AT_ONCE = 10;
 
 export interface JobDeps {
-  host: Pick<FeatureHost, "publicActivity">;
+  host: Pick<FeatureHost, "publicActivity" | "switchedOnAt">;
   store: FediverseStore;
   facts: HubFacts;
   federation: Federation<FediverseData>;
@@ -81,10 +81,17 @@ async function newItems(deps: JobDeps, since: string): Promise<{ items: PublicAc
 /** Make this run's posts. */
 export async function postNew(deps: JobDeps, now: Date): Promise<{ posted: number; started: boolean }> {
   const { store, facts } = deps;
-  const since = await store.getState("cursor");
+  let since = await store.getState("cursor");
+  let started = false;
   if (!since) {
-    await store.setState("cursor", now.toISOString());
-    return { posted: 0, started: true };
+    // The first run starts from when the feature was switched on, so what was
+    // made after that and before the job first ran still posts; never more
+    // than a week back, and never anything from before.
+    const on = await deps.host.switchedOnAt();
+    const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+    since = on && on < now.toISOString() ? (on > weekAgo ? on : weekAgo) : now.toISOString();
+    await store.setState("cursor", since);
+    started = true;
   }
   const mode = deps.mode ?? postMode();
   const tags = deps.tags ?? hubHashtags(facts.name);
@@ -98,10 +105,10 @@ export async function postNew(deps: JobDeps, now: Date): Promise<{ posted: numbe
       }
     }
     if (cursor) await store.setState("cursor", cursor);
-    return { posted, started: false };
+    return { posted, started };
   }
   const due = roundupDue(mode, now, deps.timeZone, await store.getState("last_roundup"));
-  if (!due.due) return { posted: 0, started: false };
+  if (!due.due) return { posted: 0, started };
   const { items, cursor } = await newItems(deps, since);
   if (items.length > 0) {
     const post = roundupPost(items, mode === "daily" ? "today" : "this week", facts.name, tags, facts.origin, now);
@@ -109,7 +116,7 @@ export async function postNew(deps: JobDeps, now: Date): Promise<{ posted: numbe
   }
   if (cursor) await store.setState("cursor", cursor);
   await store.setState("last_roundup", due.today);
-  return { posted, started: false };
+  return { posted, started };
 }
 
 /** Attempt the deliveries that are due. */

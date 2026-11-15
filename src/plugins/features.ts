@@ -16,7 +16,7 @@ import type { ParticipationDeclaration } from "../shared/participation.js";
 import type { PluginId } from "../models/hubSettings.js";
 import type { JobRunner } from "../jobs/types.js";
 import type { RequestHandler, Router } from "express";
-import { isPluginEnabledSync } from "../services/hubSettings.js";
+import { getAllSettings, isPluginEnabledSync } from "../services/hubSettings.js";
 import { publicActivitySince } from "../services/publicActivity.js";
 import { takeRateLimit } from "../db/rateLimit.js";
 import type {
@@ -134,6 +134,10 @@ function load(): LoadedFeature[] {
         launchedAt,
         publicActivity: publicActivitySince,
         rateLimit: (checks) => takeRateLimit(checks),
+        switchedOnAt: async () => {
+          const row = (await getAllSettings(currentHubId()))[`plugin.${pkg.manifest.feature}.enabled`];
+          return row && row.value === "true" ? row.updated_at : null;
+        },
       };
       return { pkg, server: pkg.server(host) };
     });

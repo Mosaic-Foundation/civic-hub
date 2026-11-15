@@ -136,6 +136,13 @@ describe("the hub's fediverse account", () => {
     expect(await runJob()).toMatchObject({ posted: 0, delivered: 0 });
   });
 
+  it("runs at once from the panel's Post now, for admins only", async () => {
+    const res = await call("POST", "/admin/fediverse/run", HOST, {}, admin);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toMatchObject({ posted: 0, delivered: 0, failed: 0, gave_up: 0 });
+    expect((await call("POST", "/admin/fediverse/run", HOST, {})).status).toBe(401);
+  });
+
   it("answers the Activity card's follower counts, for admins only", async () => {
     const res = await call("GET", "/admin/fediverse/followers?from=2026-01-01&to=2026-12-31", HOST, undefined, admin);
     expect(res.status).toBe(200);

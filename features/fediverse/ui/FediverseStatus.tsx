@@ -17,6 +17,8 @@ interface Status {
 export default function FediverseStatus({ on }: { on: boolean }) {
   const status = useApi(on ? "fediverse/status" : null, () => request<Status>("GET", "/admin/fediverse"));
   const [copied, setCopied] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [ran, setRan] = useState<string | null>(null);
   // The count changes while the page is open (someone follows from their
   // phone): read it again whenever the admin comes back to this tab.
   const { reload } = status;
@@ -52,6 +54,22 @@ export default function FediverseStatus({ on }: { on: boolean }) {
       // The handle is on screen to copy by hand.
     }
   }
+  async function postNow() {
+    setRunning(true);
+    setRan(null);
+    try {
+      const r = await request<{ posted: number; delivered: number; failed: number; gave_up: number }>("POST", "/admin/fediverse/run");
+      const posts = r.posted === 1 ? "1 new post" : `${r.posted} new posts`;
+      const sent = r.delivered === 1 ? "1 delivery" : `${r.delivered} deliveries`;
+      const retry = r.failed > 0 ? `, ${r.failed} to try again` : "";
+      setRan(`Done: ${posts}, ${sent}${retry}.`);
+      void status.reload();
+    } catch (err) {
+      setRan(err instanceof Error ? err.message : "It couldn't run just now.");
+    } finally {
+      setRunning(false);
+    }
+  }
   return (
     <div className="fediverse-status" data-testid="fediverse-status">
       <p>
@@ -64,6 +82,14 @@ export default function FediverseStatus({ on }: { on: boolean }) {
         {s.followers === 1 ? "1 account follows it" : `${s.followers.toLocaleString()} accounts follow it`}, and it has
         made {s.posts === 1 ? "1 post" : `${s.posts.toLocaleString()} posts`}. It posts what opens and what is decided,
         starting from when it was switched on.
+      </p>
+      <p>
+        <button type="button" className="btn-secondary btn-sm" onClick={postNow} disabled={running} data-testid="fediverse-post-now">
+          {running ? "Posting…" : "Post now"}
+        </button>{" "}
+        <span className="form-hint" role="status">
+          {ran ?? "Posts and delivers anything waiting now, instead of at the next ten-minute run."}
+        </span>
       </p>
     </div>
   );

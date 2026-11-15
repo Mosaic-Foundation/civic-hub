@@ -68,6 +68,7 @@ const ADDED: Record<string, string> = {
   "GET /admin/fediverse/followers": "Admin → Activity's Fediverse card: followers, and new in a period",
   "GET /fediverse/posts/:id": "a fediverse post's roundup list, for its page on the hub",
   "GET /internal/fediverse/run": "the Fediverse job",
+  "POST /admin/fediverse/run": "the Fediverse panel's Post now: the job's run for this hub, at once",
   // Plugin Events (2026-10-27): its drafts, through the hub's drafts routes, and its calendar.
   "POST /calendar/drafts": "Events: a new event draft (the hub's drafts routes)",
   "GET /calendar/drafts": "Events: a resident's event drafts",
