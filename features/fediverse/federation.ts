@@ -122,36 +122,49 @@ function absolute(url: string | null, origin: string): URL | null {
 
 const builder = createFederationBuilder<FediverseData>();
 
+/** What the profile shows, for telling when it changed (profileFingerprint). */
+export function profileFacts(facts: HubFacts): Record<string, string | null> {
+  return {
+    username: hubUsername(facts.origin),
+    name: facts.name,
+    summary: profileSummary(facts),
+    icon: absolute(facts.logoUrl, facts.origin)?.href ?? null,
+    image: absolute(facts.bannerUrl, facts.origin)?.href ?? null,
+  };
+}
+
+/** The hub's account, as its address answers and as an Update announces it. */
+export async function hubActor(ctx: Context<FediverseData>): Promise<Service> {
+  const { facts } = ctx.data;
+  const keys = await ctx.getActorKeyPairs(HUB_ACTOR);
+  const logo = absolute(facts.logoUrl, facts.origin);
+  const banner = absolute(facts.bannerUrl, facts.origin);
+  const site = `${facts.origin}/`;
+  return new Service({
+    id: ctx.getActorUri(HUB_ACTOR),
+    preferredUsername: hubUsername(facts.origin),
+    name: facts.name,
+    summary: profileSummary(facts),
+    url: new URL(site),
+    inbox: ctx.getInboxUri(HUB_ACTOR),
+    outbox: ctx.getOutboxUri(HUB_ACTOR),
+    followers: ctx.getFollowersUri(HUB_ACTOR),
+    endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
+    publicKey: keys[0]?.cryptographicKey,
+    assertionMethods: keys.map((k) => k.multikey),
+    icon: logo ? new Image({ url: logo, mediaType: imageType(logo.href) }) : null,
+    image: banner ? new Image({ url: banner, mediaType: imageType(banner.href) }) : null,
+    attachments: [
+      new PropertyValue({ name: "Website", value: `<a href="${escapeHtml(site)}">${escapeHtml(hubHost(facts.origin))}</a>` }),
+    ],
+    manuallyApprovesFollowers: false,
+    discoverable: true,
+    indexable: true,
+  });
+}
+
 builder
-  .setActorDispatcher("/ap/{identifier}", async (ctx, identifier) => {
-    if (identifier !== HUB_ACTOR) return null;
-    const { facts } = ctx.data;
-    const keys = await ctx.getActorKeyPairs(identifier);
-    const logo = absolute(facts.logoUrl, facts.origin);
-    const banner = absolute(facts.bannerUrl, facts.origin);
-    const site = `${facts.origin}/`;
-    return new Service({
-      id: ctx.getActorUri(identifier),
-      preferredUsername: hubUsername(facts.origin),
-      name: facts.name,
-      summary: profileSummary(facts),
-      url: new URL(site),
-      inbox: ctx.getInboxUri(identifier),
-      outbox: ctx.getOutboxUri(identifier),
-      followers: ctx.getFollowersUri(identifier),
-      endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
-      publicKey: keys[0]?.cryptographicKey,
-      assertionMethods: keys.map((k) => k.multikey),
-      icon: logo ? new Image({ url: logo }) : null,
-      image: banner ? new Image({ url: banner }) : null,
-      attachments: [
-        new PropertyValue({ name: "Website", value: `<a href="${escapeHtml(site)}">${escapeHtml(hubHost(facts.origin))}</a>` }),
-      ],
-      manuallyApprovesFollowers: false,
-      discoverable: true,
-      indexable: true,
-    });
-  })
+  .setActorDispatcher("/ap/{identifier}", async (ctx, identifier) => (identifier === HUB_ACTOR ? hubActor(ctx) : null))
   .setKeyPairsDispatcher(async (ctx, identifier) => {
     if (identifier !== HUB_ACTOR) return [];
     return hubKeyPairs(ctx.data.store, ctx.data.facts.hubId);
@@ -212,11 +225,22 @@ export function noteFor(ctx: Context<FediverseData>, post: Post, facts: HubFacts
         ? [new Link({ href: new URL(post.activity_iri), mediaType: "application/activity+json", rel: "alternate" })]
         : []),
     ],
+    // The item's picture, by address (followers' servers fetch it).
+    attachments: post.image_url
+      ? [new Image({ url: new URL(post.image_url), mediaType: imageType(post.image_url), name: post.image_alt ?? null })]
+      : [],
     // The process IRI every civic activity about this item names as its context.
     contexts: post.process_iri ? [new URL(post.process_iri)] : [],
     published: Temporal.Instant.from(new Date(post.published_at).toISOString()),
     tags: tagsIn(post.content).map((t) => new Hashtag({ name: `#${t}`, href: new URL(`${facts.origin}/`) })),
   });
+}
+
+/** An image's media type from its address, which Mastodon reads to show it; null when unknown. */
+export function imageType(url: string): string | null {
+  const ext = /\.([a-z0-9]+)(?:$|[?#])/i.exec(new URL(url).pathname)?.[1]?.toLowerCase();
+  const types: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp", avif: "image/avif" };
+  return ext ? (types[ext] ?? null) : null;
 }
 
 /** The Create activity that delivers a post. */

@@ -6,8 +6,9 @@
 // items (the host's publicActivity: no sample content, nothing that is not
 // public), so a post never says more than the hub's own front page.
 //
-// WHAT A POST SAYS. The item's kind and title, a link to its page on the hub,
-// and hashtags. Never who started it or who took part, and never numbers: a
+// WHAT A POST SAYS. The item's kind and title, its description as its link
+// preview has it (cut with "Read more" when long), its image, a link to its
+// page on the hub, and hashtags. Never who started it or who took part, and never numbers: a
 // vote's totals are on the hub, after it closes.
 //
 // HOW OFTEN (plugin.fediverse.post_mode): each item as it happens (the
@@ -94,9 +95,15 @@ function tagsHtml(tags: readonly string[], origin: string): string {
 
 /** A post's text for one item. */
 export function itemContent(item: PublicActivityItem, tags: readonly string[], origin: string): string {
+  // The description as the item's link preview has it: a couple of
+  // sentences, cut with "…" when longer; then "Read more" leads to the rest.
+  const description = item.description?.trim() || null;
+  const cut = !!description && description.endsWith("…");
+  const link = `<a href="${esc(item.url)}">${esc(item.url.replace(/^https?:\/\//, ""))}</a>`;
   return [
     `<p><strong>${esc(headingFor(item))}:</strong> ${esc(item.title)}</p>`,
-    `<p><a href="${esc(item.url)}">${esc(item.url.replace(/^https?:\/\//, ""))}</a></p>`,
+    description ? `<p>${esc(description)}</p>` : "",
+    `<p>${cut ? `Read more: ${link}` : link}</p>`,
     tags.length ? `<p>${tagsHtml(tags, origin)}</p>` : "",
   ].join("");
 }
@@ -142,6 +149,8 @@ export function itemPost(item: PublicActivityItem, tags: readonly string[], orig
     published_at: now.toISOString(),
     process_iri: item.process_iri,
     activity_iri: item.activity_iri,
+    image_url: item.image?.url ?? null,
+    image_alt: item.image?.alt ?? null,
   };
 }
 
@@ -180,6 +189,8 @@ export function roundupPost(
     published_at: now.toISOString(),
     process_iri: null,
     activity_iri: null,
+    image_url: null,
+    image_alt: null,
   };
 }
 

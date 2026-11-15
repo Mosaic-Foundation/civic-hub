@@ -12,8 +12,10 @@
 
 import type { Federation } from "@fedify/fedify";
 import type { FeatureHost, PublicActivityItem } from "../../src/sdk/index.js";
-import { deliverOnce, type Sender } from "./deliver.js";
-import type { FediverseData, HubFacts } from "./federation.js";
+import { deliverOnce, sendSigned, type Sender } from "./deliver.js";
+import { createHash } from "node:crypto";
+import { PUBLIC_COLLECTION, Update } from "@fedify/vocab";
+import { hubActor, profileFacts, type FediverseData, type HubFacts } from "./federation.js";
 import { sweepKv } from "./kv.js";
 import {
   hubHashtags,
@@ -62,6 +64,8 @@ export interface JobResult {
   failed: number;
   gave_up: number;
   started?: boolean;
+  /** Servers sent an Update of the hub's profile because it changed. */
+  profile_updates?: number;
 }
 
 async function newItems(deps: JobDeps, since: string): Promise<{ items: PublicActivityItem[]; cursor: string | null }> {
@@ -145,11 +149,43 @@ export async function deliverDue(deps: JobDeps, now: Date): Promise<Omit<JobResu
   return out;
 }
 
+/**
+ * When the profile changed since it was last announced (its name, username,
+ * about text, logo or banner), send followers' servers an Update of the
+ * account, so Mastodon shows the change now rather than when it next
+ * refetches the account (it can keep an old handle for days). Best effort,
+ * once per change: a server that misses it catches up on its next refetch.
+ */
+export async function announceProfile(deps: JobDeps): Promise<number> {
+  const fingerprint = createHash("sha256").update(JSON.stringify(profileFacts(deps.facts))).digest("hex");
+  const last = await deps.store.getState("profile");
+  if (last === fingerprint) return 0;
+  const to = await inboxes(deps);
+  if (to.length > 0) {
+    const ctx = deps.federation.createContext(new URL(`${deps.facts.origin}/`), { facts: deps.facts, store: deps.store, blocked: deps.blocked });
+    const actor = await hubActor(ctx);
+    const update = new Update({
+      id: new URL(`#updates/${crypto.randomUUID()}`, actor.id!),
+      actor: actor.id,
+      to: PUBLIC_COLLECTION,
+      object: actor,
+    });
+    for (let i = 0; i < Math.min(to.length, DELIVERIES_PER_RUN); i += AT_ONCE) {
+      await Promise.all(
+        to.slice(i, i + AT_ONCE).map((inbox) => sendSigned(ctx, update, inbox, deps.send).catch(() => null)),
+      );
+    }
+  }
+  await deps.store.setState("profile", fingerprint);
+  return to.length;
+}
+
 export async function runFediverseJob(deps: JobDeps, now: Date): Promise<JobResult> {
   await deps.sweep?.(now);
+  const profile_updates = await announceProfile(deps);
   const { posted, started } = await postNew(deps, now);
   const delivery = await deliverDue(deps, now);
-  return { posted, ...delivery, ...(started ? { started } : {}) };
+  return { posted, ...delivery, ...(profile_updates ? { profile_updates } : {}), ...(started ? { started } : {}) };
 }
 
 export { sweepKv };

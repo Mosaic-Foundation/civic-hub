@@ -15,6 +15,28 @@ import { processDetailPath } from "../processes/registry.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { classifyActivity, type ActivityKind, type ClassifierEvent } from "../shared/feedActivity.js";
 import { activityIdOf, processIriOf } from "../events/activitySerializer.js";
+import { buildShareMeta } from "./shareMeta.js";
+
+/** The first `*image_alt` the process carries, beside its image. */
+function imageAlt(state: unknown): string | null {
+  const bags = [state, (state as { content?: unknown } | null)?.content];
+  for (const bag of bags) {
+    if (!bag || typeof bag !== "object") continue;
+    for (const [k, v] of Object.entries(bag as Record<string, unknown>)) {
+      if (/image_alt$/.test(k) && typeof v === "string" && v.trim()) return v.trim().slice(0, 1500);
+    }
+  }
+  return null;
+}
+
+function absolute(url: string): string | null {
+  try {
+    const u = new URL(url, `${uiBaseUrl()}/`);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface PublicActivityItem {
   event_id: string;
@@ -36,6 +58,14 @@ export interface PublicActivityItem {
    */
   activity_iri: string;
   process_iri: string;
+  /**
+   * What the item's page says about it in a link preview
+   * (src/services/shareMeta.ts): its description, plain text, a couple of
+   * sentences at most and ending "…" when cut; and its image, absolute, with
+   * its description when the item has one. Null when there is none.
+   */
+  description: string | null;
+  image: { url: string; alt: string | null } | null;
 }
 
 export interface PublicActivityPage {
@@ -66,6 +96,8 @@ export async function publicActivitySince(
     const moderation = (process.state as { moderation?: { removed?: unknown } } | null | undefined)?.moderation;
     if (moderation?.removed) continue;
     const type = process.definition.type;
+    const share = buildShareMeta(processDetailPath(type, process.id), process);
+    const imageUrl = share?.image ? absolute(share.image) : null;
     items.push({
       event_id: e.id,
       recorded_at: e.recorded_at,
@@ -78,6 +110,8 @@ export async function publicActivitySince(
       url: `${uiBaseUrl()}${processDetailPath(type, process.id)}`,
       activity_iri: activityIdOf(e),
       process_iri: processIriOf(e) ?? `${uiBaseUrl()}/process/${process.id}`,
+      description: share && share.description !== share.title ? share.description : null,
+      image: imageUrl ? { url: imageUrl, alt: imageAlt(process.state) } : null,
     });
   }
   return { items, cursor: events[events.length - 1]!.recorded_at };

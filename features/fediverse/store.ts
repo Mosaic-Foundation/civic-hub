@@ -47,6 +47,9 @@ export interface Post {
   /** An item post's process IRI (the Note's context) and civic activity id; null on a roundup. */
   process_iri: string | null;
   activity_iri: string | null;
+  /** The item's image (absolute) and its description; null on a roundup or an item without one. */
+  image_url: string | null;
+  image_alt: string | null;
 }
 
 /** One post on its way to one inbox. */
@@ -99,7 +102,7 @@ export interface FediverseStore {
 }
 
 const KEY_COLUMNS = "rsa_public, rsa_private_sealed, ed25519_public, ed25519_private_sealed";
-const POST_COLUMNS = "id, kind, activity_kind, event_id, process_id, url, content, items, published_at, process_iri, activity_iri";
+const POST_COLUMNS = "id, kind, activity_kind, event_id, process_id, url, content, items, published_at, process_iri, activity_iri, image_url, image_alt";
 const stateKey = (name: string) => encodeKey(["civic", "state", name]);
 
 function uniqueInboxes(rows: readonly { inbox_url: string; shared_inbox_url: string | null }[]): string[] {

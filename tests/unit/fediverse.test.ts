@@ -6,7 +6,7 @@
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createFederation, MemoryKvStore, type Federation } from "@fedify/fedify";
-import { Accept, Create, Follow, Note, Person, Undo, Endpoints, Delete } from "@fedify/vocab";
+import { Accept, Create, Follow, Note, Person, Undo, Endpoints, Delete, Update } from "@fedify/vocab";
 import { federationFor, profileSummary, acceptedUsernames, hubHandle, type FediverseData, type HubFacts } from "../../features/fediverse/federation.js";
 import { memoryStore } from "../../features/fediverse/store.js";
 import { open as openSealed, seal } from "../../src/services/sealedSecrets.js";
@@ -48,6 +48,7 @@ social
     return [aliceKeys];
   });
 const created: Create[] = [];
+const updated: Update[] = [];
 social
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
   .on(Accept, (_ctx, accept) => {
@@ -55,6 +56,9 @@ social
   })
   .on(Create, (_ctx, create) => {
     created.push(create);
+  })
+  .on(Update, (_ctx, update) => {
+    updated.push(update);
   });
 
 let hub: Federation<FediverseData>;
@@ -189,7 +193,7 @@ describe("the hub's fediverse account", () => {
 
 // --- Phase 2: posting, delivery, limits ------------------------------------
 
-import { deliverDue, postNew, type JobDeps } from "../../features/fediverse/job.js";
+import { announceProfile, deliverDue, postNew, type JobDeps } from "../../features/fediverse/job.js";
 import { hashtag, hubHashtags, roundupDue, POSTED_KINDS, itemContent } from "../../features/fediverse/posts.js";
 import { blockedServers, isBlocked, serverOf, signingServer, deliverable } from "../../features/fediverse/limits.js";
 import { BACKOFF_MINUTES, nextAttempt } from "../../features/fediverse/deliver.js";
@@ -209,6 +213,8 @@ function item(n: number, kind = "vote-open", pill = "Vote"): PublicActivityItem 
     url: `${HUB}/process/proc_${n}`,
     activity_iri: `${HUB}/activities/evt_${n}`,
     process_iri: `${HUB}/process/proc_${n}`,
+    description: n === 40 ? "Where should the new skate park go? Three sites are on the table…" : null,
+    image: n === 40 ? { url: `${HUB}/images/park.jpg`, alt: "The old tennis courts" } : null,
   };
 }
 
@@ -267,6 +273,13 @@ describe("the hub's posts", () => {
     expect(store.allPosts.map((p) => p.event_id).sort()).toEqual(["evt_25", "evt_40", "evt_41"]);
     const post = store.allPosts.find((p) => p.event_id === "evt_40")!;
     expect(post.content).toContain("<strong>New vote:</strong> Skate park &lt;40&gt;");
+    // The description as the page's link preview has it; cut, so "Read more".
+    expect(post.content).toContain("<p>Where should the new skate park go? Three sites are on the table…</p>");
+    expect(post.content).toContain(`Read more: <a href="${HUB}/process/proc_40">`);
+    expect(post.image_url).toBe(`${HUB}/images/park.jpg`);
+    // An item with no description: no paragraph for it, and no "Read more".
+    const plain = store.allPosts.find((p) => p.event_id === "evt_41")!;
+    expect(plain.content).not.toContain("Read more");
     expect(post.content).toContain("#<span>CivicHub</span>");
     expect(post.content).toContain("#<span>Floyd</span>");
     // Queued once, to alice's server's shared inbox.
@@ -290,6 +303,13 @@ describe("the hub's posts", () => {
     const urls = JSON.stringify(((await vote.toJsonLd({ format: "compact" })) as Record<string, unknown>).url);
     expect(urls).toContain(`${HUB}/activities/evt_40`);
     expect(urls).toContain(`${HUB}/process/proc_40`);
+    // Its picture, attached by address, with its description and type.
+    const pics: unknown[] = [];
+    for await (const a of vote.getAttachments()) pics.push(a);
+    expect(pics).toHaveLength(1);
+    expect(String((pics[0] as { url: URL }).url)).toBe(`${HUB}/images/park.jpg`);
+    expect(String((pics[0] as { mediaType: string }).mediaType)).toBe("image/jpeg");
+    expect(String((pics[0] as { name: unknown }).name)).toBe("The old tennis courts");
     // Nothing left to deliver.
     expect((await deliverDue(deps([]), new Date("2026-11-14T13:02:00Z"))).delivered).toBe(0);
   });
@@ -352,6 +372,23 @@ describe("the hub's posts", () => {
   it("never names anyone, and escapes the title", () => {
     const html = itemContent({ ...item(60), title: `<img src=x onerror=alert(1)>` }, ["CivicHub"], HUB);
     expect(html).not.toContain("<img");
+  });
+});
+
+describe("the hub's profile", () => {
+  it("tells followers' servers once when it changes, so Mastodon shows the new handle or logo now", async () => {
+    // alice follows (again) for this.
+    await asAlice(new Follow({ id: new URL(`${SOCIAL}/follows/20`), actor: alice, object: hubActor }));
+    updated.length = 0;
+    expect(await announceProfile(deps([]))).toBe(1);
+    expect(updated).toHaveLength(1);
+    const actor = await updated[0]!.getObject();
+    expect(String((actor as unknown as { preferredUsername: unknown }).preferredUsername)).toBe("hub");
+    // Unchanged: nothing sent.
+    expect(await announceProfile(deps([]))).toBe(0);
+    // A new logo: sent again.
+    expect(await announceProfile(deps([], { facts: { ...facts, logoUrl: "/new-logo.png" } }))).toBe(1);
+    expect(updated).toHaveLength(2);
   });
 });
 

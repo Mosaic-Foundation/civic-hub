@@ -6,6 +6,7 @@
 // tried again.
 
 import { signRequest, type Context } from "@fedify/fedify";
+import type { Activity } from "@fedify/vocab";
 import { guardedFetch } from "../../src/sdk/index.js";
 import { createFor, HUB_ACTOR, type FediverseData } from "./federation.js";
 import { deliverable } from "./limits.js";
@@ -34,6 +35,25 @@ export function nextAttempt(attempts: number, now: Date, status: number | null):
   return wait === undefined ? null : new Date(now.getTime() + wait * 60_000).toISOString();
 }
 
+/** Sign `activity` with the hub's RSA key and POST it to `inbox`, once; the response's status. */
+export async function sendSigned(
+  ctx: Context<FediverseData>,
+  activity: Activity,
+  inbox: string,
+  send: Sender,
+): Promise<number> {
+  const body = JSON.stringify(await activity.toJsonLd({ contextLoader: ctx.contextLoader }));
+  const [rsa] = await ctx.getActorKeyPairs(HUB_ACTOR);
+  if (!rsa) throw new Error("the hub has no signing key");
+  const unsigned = new Request(inbox, {
+    method: "POST",
+    headers: { "Content-Type": "application/activity+json", Accept: "application/activity+json" },
+    body,
+  });
+  const signed = await signRequest(unsigned, rsa.privateKey, rsa.keyId, { spec: "draft-cavage-http-signatures-12" });
+  return (await send(signed)).status;
+}
+
 /** Deliver `post` to `delivery.inbox_url` once. */
 export async function deliverOnce(
   ctx: Context<FediverseData>,
@@ -50,19 +70,9 @@ export async function deliverOnce(
   });
   if (!deliverable(delivery.inbox_url)) return { delivered: false, status: null, error: "not an https address", next_attempt_at: null };
   try {
-    const activity = createFor(ctx, post, ctx.data.facts);
-    const body = JSON.stringify(await activity.toJsonLd({ contextLoader: ctx.contextLoader }));
-    const [rsa] = await ctx.getActorKeyPairs(HUB_ACTOR);
-    if (!rsa) return fail(null, "the hub has no signing key");
-    const unsigned = new Request(delivery.inbox_url, {
-      method: "POST",
-      headers: { "Content-Type": "application/activity+json", Accept: "application/activity+json" },
-      body,
-    });
-    const signed = await signRequest(unsigned, rsa.privateKey, rsa.keyId, { spec: "draft-cavage-http-signatures-12" });
-    const res = await send(signed);
-    if (res.status >= 200 && res.status < 300) return { delivered: true, status: res.status };
-    return fail(res.status, `HTTP ${res.status}`);
+    const status = await sendSigned(ctx, createFor(ctx, post, ctx.data.facts), delivery.inbox_url, send);
+    if (status >= 200 && status < 300) return { delivered: true, status };
+    return fail(status, `HTTP ${status}`);
   } catch (err) {
     return fail(null, err instanceof Error ? err.message : String(err));
   }
