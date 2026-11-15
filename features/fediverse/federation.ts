@@ -288,6 +288,21 @@ function isHub(ctx: Context<FediverseData>, uri: URL | null): boolean {
 
 builder
   .setInboxListeners("/ap/{identifier}/inbox", "/ap/inbox")
+  // A delivery to the shared inbox (where Mastodon sends replies, likes and
+  // boosts) names no recipient, so Fedify fetches the sender's key unsigned;
+  // a server in authorized-fetch mode (mastodon.social) answers that with
+  // 401, and every such delivery failed verification on dev (2026-11-15).
+  // Signing the key fetch as the hub's account, as the personal inbox does,
+  // lets those servers answer.
+  .setSharedKeyDispatcher(() => ({ identifier: HUB_ACTOR }))
+  // Why a delivery was refused, in the function's log: the only trace of a
+  // failure the sending server sees as a bare 401.
+  .onUnverifiedActivity((_ctx, activity, reason) => {
+    console.warn(`[fediverse] unverified ${activity.constructor.name} ${activity.id?.href ?? ""}: ${reason.type}`);
+  })
+  .onError((_ctx, error) => {
+    console.error(`[fediverse] inbox listener failed: ${error.message}`);
+  })
   .on(Follow, async (ctx, follow) => {
     if (!follow.id || !follow.actorId || !isHub(ctx, follow.objectId)) return;
     if (isBlocked(follow.actorId.hostname, ctx.data.blocked)) return;
