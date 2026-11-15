@@ -6,6 +6,7 @@
 // process types it can run. Deliberately minimal — an indexer needs to know
 // who this space is, where its stream is, and what it can do.
 
+import { featureDiscovery } from "../plugins/features.js";
 import { route } from "../http/route.js";
 import { currentHub } from "../config/hubContext.js";
 import { isProcessTypeEnabled } from "../services/pluginGate.js";
@@ -69,6 +70,12 @@ export const handleDiscoveryManifest = route((_req, res) => {
   // Level 2 adds ActivityPub delivery and is deliberately not implemented;
   // claiming it here would be the kind of overstatement the levels exist to
   // prevent.
+  // Switched-on hub features' public facts (src/plugins/feature.ts
+  // discovery): the fediverse account, so a reader that follows this hub
+  // both directly and on the fediverse can recognise its posts. Additive;
+  // omitted when no feature says anything.
+  const features = featureDiscovery();
+  if (Object.keys(features).length > 0) manifest.features = features;
   manifest.spec = {
     activity: "civic-activity-spec-v0.2",
     conformance: "level-1",

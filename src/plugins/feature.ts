@@ -111,6 +111,13 @@ export interface FeatureServer {
    * as it came.
    */
   rootHandlers?: readonly { prefixes: readonly string[]; handler: RequestHandler }[];
+  /**
+   * What /.well-known/civic.json says about the feature, under
+   * `features.<id>`, while it is on: public facts a reader of the hub needs
+   * (the fediverse feature: its account, so a reader that follows the hub
+   * both ways can recognise its posts). Null says nothing.
+   */
+  discovery?: () => Record<string, unknown> | null;
   /** A runner for each job its manifest declares, by job id. */
   jobs?: Readonly<Record<string, JobRunner>>;
   consoleSections?: readonly FeatureConsoleSection[];

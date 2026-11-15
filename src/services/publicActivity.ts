@@ -14,6 +14,7 @@ import { getHiddenProcessIds, getProcess } from "./processService.js";
 import { processDetailPath } from "../processes/registry.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { classifyActivity, type ActivityKind, type ClassifierEvent } from "../shared/feedActivity.js";
+import { activityIdOf, processIriOf } from "../events/activitySerializer.js";
 
 export interface PublicActivityItem {
   event_id: string;
@@ -28,6 +29,13 @@ export interface PublicActivityItem {
   title: string;
   /** The process's page on the hub, absolute. */
   url: string;
+  /**
+   * The same item's identities on the hub's civic activity stream (GET
+   * /events): the activity's id, and the process IRI every activity about it
+   * names as its `context`. For a reader that follows both to tell them apart.
+   */
+  activity_iri: string;
+  process_iri: string;
 }
 
 export interface PublicActivityPage {
@@ -68,6 +76,8 @@ export async function publicActivitySince(
       process_type: type,
       title: process.title,
       url: `${uiBaseUrl()}${processDetailPath(type, process.id)}`,
+      activity_iri: activityIdOf(e),
+      process_iri: processIriOf(e) ?? `${uiBaseUrl()}/process/${process.id}`,
     });
   }
   return { items, cursor: events[events.length - 1]!.recorded_at };

@@ -218,6 +218,18 @@ const fediverse: FeaturePackage = {
     const kv = dbKv(host);
     return {
       rootHandlers: [{ prefixes: FEDIVERSE_PATHS, handler: federationHandler(host, store, kv) }],
+      // In civic.json (docs/FEDIVERSE.md, "Following a hub both ways"): the
+      // account whose posts repeat what the hub's /events carries.
+      discovery: () => {
+        if (!sealingAvailable()) return null;
+        const facts = hubFacts();
+        return {
+          actor: `${facts.origin}/ap/${HUB_ACTOR}`,
+          handle: hubHandle(facts.origin),
+          outbox: `${facts.origin}/ap/${HUB_ACTOR}/outbox`,
+          repeats: `${facts.origin}/events`,
+        };
+      },
       routes: [{ path: "/fediverse", router: publicRouter(store) }],
       adminRoutes: [{ path: "/fediverse", router: adminRouter(host, store, kv) }],
       jobs: {

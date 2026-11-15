@@ -207,6 +207,8 @@ function item(n: number, kind = "vote-open", pill = "Vote"): PublicActivityItem 
     process_type: "civic.vote",
     title: `Skate park <${n}>`,
     url: `${HUB}/process/proc_${n}`,
+    activity_iri: `${HUB}/activities/evt_${n}`,
+    process_iri: `${HUB}/process/proc_${n}`,
   };
 }
 
@@ -279,6 +281,15 @@ describe("the hub's posts", () => {
     expect(created[0]!.actorId?.href).toBe(hubActor.href);
     expect(note.content?.toString()).toMatch(/Skate park/);
     expect(note.toIds.map(String)).toContain("https://www.w3.org/ns/activitystreams#Public");
+    // What a reader following the hub both ways matches on (docs/FEDIVERSE.md):
+    // the item's process IRI as the Note's context, its page and its civic
+    // activity as the Note's urls.
+    const notes = await Promise.all(created.map(async (c) => (await c.getObject()) as Note));
+    const vote = notes.find((x) => x.contextIds.map(String).includes(`${HUB}/process/proc_40`))!;
+    expect(vote).toBeDefined();
+    const urls = JSON.stringify(((await vote.toJsonLd({ format: "compact" })) as Record<string, unknown>).url);
+    expect(urls).toContain(`${HUB}/activities/evt_40`);
+    expect(urls).toContain(`${HUB}/process/proc_40`);
     // Nothing left to deliver.
     expect((await deliverDue(deps([]), new Date("2026-11-14T13:02:00Z"))).delivered).toBe(0);
   });

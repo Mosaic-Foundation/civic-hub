@@ -177,6 +177,18 @@ export function mountFeatureRootHandlers(on: Pick<Router, "use">): void {
   }
 }
 
+/** What each switched-on feature says in civic.json, by feature id; empty when none says anything. */
+export function featureDiscovery(): Record<string, Record<string, unknown>> {
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const f of load()) {
+    const id = f.pkg.manifest.feature;
+    if (!f.server.discovery || !isPluginEnabledSync(id)) continue;
+    const said = f.server.discovery();
+    if (said) out[id] = said;
+  }
+  return out;
+}
+
 /** Every feature's job runners, by job id. */
 export function featureJobRunners(): Readonly<Record<string, JobRunner>> {
   return Object.fromEntries(load().flatMap((f) => Object.entries(f.server.jobs ?? {})));

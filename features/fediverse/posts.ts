@@ -140,6 +140,8 @@ export function itemPost(item: PublicActivityItem, tags: readonly string[], orig
     content: itemContent(item, tags, origin),
     items: null,
     published_at: now.toISOString(),
+    process_iri: item.process_iri,
+    activity_iri: item.activity_iri,
   };
 }
 
@@ -158,7 +160,13 @@ export function roundupPost(
   now: Date,
 ): Post {
   const id = newPostId(now);
-  const listed: RoundupItem[] = items.map((i) => ({ title: i.title, pill: headingFor(i), url: i.url }));
+  const listed: RoundupItem[] = items.map((i) => ({
+    title: i.title,
+    pill: headingFor(i),
+    url: i.url,
+    process_iri: i.process_iri,
+    activity_iri: i.activity_iri,
+  }));
   const url = roundupPageUrl(origin, id);
   return {
     id,
@@ -170,6 +178,8 @@ export function roundupPost(
     content: roundupContent(listed, period, hubName, url, tags, origin),
     items: listed,
     published_at: now.toISOString(),
+    process_iri: null,
+    activity_iri: null,
   };
 }
 

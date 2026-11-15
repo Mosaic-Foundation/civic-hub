@@ -322,6 +322,16 @@ export function activityIdOf(event: CivicEvent): string {
   return `${wireOrigins(event).api}/activities/${event.id}`;
 }
 
+/**
+ * The IRI an activity names its process by (its `context`): the process's
+ * page on the origin its row froze. Null for an event with no process. A
+ * reader that sees the same process elsewhere (the hub's fediverse posts
+ * carry it too) can tell it is the same thing.
+ */
+export function processIriOf(event: CivicEvent): string | null {
+  return event.process_id ? `${wireOrigins(event).processUi}/process/${event.process_id}` : null;
+}
+
 function serializerEnv(event: CivicEvent): SerializerEnv {
   const o = wireOrigins(event);
   const env: SerializerEnv = { base: o.api, ui: o.ui, processUi: o.processUi, actorUi: o.actorUi, ns: o.ns };

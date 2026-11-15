@@ -42,6 +42,7 @@ beforeAll(async () => {
 
 describe("the hub's fediverse account", () => {
   it("is off until the hub switches it on", async () => {
+    expect((await call("GET", "/.well-known/civic.json", HOST)).body.features).toBeUndefined();
     const config = await call("GET", "/hub-config", HOST);
     expect(config.body.settings["plugin.fediverse.enabled"]).toBe("false");
     const wf = await call("GET", `/.well-known/webfinger?resource=acct:${HOST}@${HOST}`, HOST);
@@ -75,6 +76,10 @@ describe("the hub's fediverse account", () => {
     // The same key on the next read: made once, kept.
     const again = await call("GET", "/ap/hub", HOST, undefined, undefined, undefined, AP);
     expect(again.body.publicKey.publicKeyPem).toBe(actor.body.publicKey.publicKeyPem);
+
+    // civic.json names the account, for a reader that follows the hub both ways (docs/FEDIVERSE.md).
+    const civic = await call("GET", "/.well-known/civic.json", HOST);
+    expect(civic.body.features?.fediverse).toMatchObject({ actor: self, handle: `@${SLUG}@${HOST}` });
 
     const ni = await call("GET", "/nodeinfo/2.1", HOST);
     expect(ni.status).toBe(200);

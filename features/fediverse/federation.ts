@@ -35,6 +35,7 @@ import {
   Hashtag,
   Image,
   isActor,
+  Link,
   Note,
   PropertyValue,
   PUBLIC_COLLECTION,
@@ -202,7 +203,17 @@ export function noteFor(ctx: Context<FediverseData>, post: Post, facts: HubFacts
     to: PUBLIC_COLLECTION,
     cc: ctx.getFollowersUri(HUB_ACTOR),
     content: post.content,
-    url: new URL(post.url),
+    // The item's page, and (for a reader of the civic activity stream) the
+    // activity this post announces, as an alternate. Mastodon shows the
+    // text/html one. docs/FEDIVERSE.md says what a reader should match.
+    urls: [
+      new Link({ href: new URL(post.url), mediaType: "text/html" }),
+      ...(post.activity_iri
+        ? [new Link({ href: new URL(post.activity_iri), mediaType: "application/activity+json", rel: "alternate" })]
+        : []),
+    ],
+    // The process IRI every civic activity about this item names as its context.
+    contexts: post.process_iri ? [new URL(post.process_iri)] : [],
     published: Temporal.Instant.from(new Date(post.published_at).toISOString()),
     tags: tagsIn(post.content).map((t) => new Hashtag({ name: `#${t}`, href: new URL(`${facts.origin}/`) })),
   });
