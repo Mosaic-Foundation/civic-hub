@@ -80,6 +80,26 @@ export interface AnnouncementProcessState {
    * /announcement/:id page.
    */
   source?: AnnouncementSource | null;
+  /**
+   * Pinned to the right column's Announcements card (Adam, 2026-11-15; rules
+   * in src/shared/announcementBoard.ts). Admins only. Flat fields, so the
+   * card's read can filter on state->>pinned. Absent on older rows.
+   */
+  pinned?: boolean;
+  pinned_at?: string | null;
+  pinned_by?: string | null;
+  /** ISO 8601; null for no end date. */
+  pinned_until?: string | null;
+  /** The red Urgent label: anyone who may edit the announcement sets it. */
+  urgent?: boolean;
+  /** ISO 8601; required while urgent. */
+  urgent_until?: string | null;
+}
+
+/** An urgent label as the form sends it. */
+export interface UrgentInput {
+  urgent: boolean;
+  urgent_until?: string | null;
 }
 
 export interface AnnouncementSource {
@@ -181,6 +201,8 @@ export interface CreateAnnouncementInput {
    * announcements leave this undefined.
    */
   source?: AnnouncementSource | null;
+  /** The red Urgent label, with its end date (src/shared/announcementBoard.ts). */
+  urgent?: UrgentInput | null;
 }
 
 /** Partial update used by PATCH /announcement/:id. */

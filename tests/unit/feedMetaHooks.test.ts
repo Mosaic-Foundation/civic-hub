@@ -83,6 +83,7 @@ describe("feedMeta hooks", () => {
       editCount: 2,
       lastEditedAt: null,
       removed: true,
+      urgent: false,
     });
   });
 

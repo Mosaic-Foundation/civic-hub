@@ -69,6 +69,34 @@ export async function publishedBriefRows(): Promise<PublishedBriefRow[]> {
   );
 }
 
+/** An announcement marked pinned or urgent, as the right column reads it. */
+export interface AnnouncementBoardRow {
+  id: string;
+  title: string;
+  state: Record<string, unknown>;
+  created_at: string;
+  is_sample: boolean;
+  added_in_demo: boolean;
+}
+
+/**
+ * Every public announcement whose state says pinned or urgent (the right
+ * column's card; src/shared/announcementBoard.ts). End dates and removal are
+ * the caller's to read. Few rows: pins are capped, urgent labels expire.
+ */
+export async function announcementBoardRows(): Promise<AnnouncementBoardRow[]> {
+  return readAll((from, to) =>
+    db()
+      .from("processes")
+      .select<AnnouncementBoardRow>("id, title, state, created_at, is_sample, added_in_demo")
+      .eq("type", "civic.announcement")
+      .or("state->>pinned.eq.true,state->>urgent.eq.true")
+      .not("status", "in", `(${[...NON_PUBLIC_STATUSES].join(",")})`)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
+}
+
 /** The type and title of each of these processes, read in chunks of 200 ids. */
 export async function processTypesAndTitles(
   ids: string[],

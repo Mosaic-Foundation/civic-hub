@@ -28,6 +28,10 @@ const BEFORE: string[] = JSON.parse(readFileSync(join(here, "../fixtures/plugins
 
 /** Added on purpose since e92804c, each with why. */
 const ADDED: Record<string, string> = {
+  // Pinned and urgent announcements (2026-11-15): Admin → Announcements.
+  "GET /admin/announcements": "Admin → Announcements: what is pinned or urgent, and the newest others",
+  "POST /admin/announcements/:id/pin": "Pin an announcement to the right column's card",
+  "POST /admin/announcements/:id/unpin": "Unpin it",
   // The console split (2026-11-11): the front door that served it is gone, so
   // the hub app mounts the browsers' error reports itself (it always answered them).
   "POST /client-errors": "a browser's error report (src/http/clientErrors.ts), before hub resolution",

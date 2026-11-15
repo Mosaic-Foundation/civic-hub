@@ -109,9 +109,11 @@ describe("GET /api/aside", () => {
 
   it("serves the same to a signed-out reader, and no account or name", async () => {
     const res = await call("GET", "/api/aside", FLOYD);
-    expect(Object.keys(res.body).sort()).toEqual(["about", "announcements"]);
-    for (const a of res.body.announcements as Array<Record<string, unknown>>) {
-      expect(Object.keys(a).filter((k) => k !== "sample").sort()).toEqual(["process_id", "published_at", "title", "url"]);
+    expect(Object.keys(res.body).sort()).toEqual(["about", "announcements", "urgent"]);
+    // Pinned and urgent (2026-11-15) are marks on a row, no more.
+    const marks = new Set(["sample", "pinned", "urgent"]);
+    for (const a of [...(res.body.announcements as Array<Record<string, unknown>>), ...(res.body.urgent ? [res.body.urgent] : [])]) {
+      expect(Object.keys(a).filter((k) => !marks.has(k)).sort()).toEqual(["process_id", "published_at", "title", "url"]);
     }
     const count = (res.body.about as { member_count: number | null }).member_count;
     // The Members plugin's own rule: the count when GET /members/summary shows it, else null.

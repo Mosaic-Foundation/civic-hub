@@ -12,6 +12,7 @@ export type {
   AnnouncementSource,
   CreateAnnouncementInput,
   EmitEventFn,
+  UrgentInput,
 } from "./models.js";
 
 export {
@@ -29,17 +30,22 @@ export {
 export { canEdit } from "./lifecycle.js";
 
 export {
+  boardView,
   createAnnouncementState,
   emitPublicationEvents,
   getAdminReadModel,
   getPublicReadModel,
   getPublicSummary,
+  pinAnnouncement,
   removeAnnouncement,
   restoreAnnouncement,
+  setUrgent,
+  unpinAnnouncement,
   updateAnnouncement,
 } from "./service.js";
 
 export {
+  emitAnnouncementBoardChanged,
   emitAnnouncementCreated,
   emitAnnouncementResultPublished,
   emitAnnouncementUpdated,

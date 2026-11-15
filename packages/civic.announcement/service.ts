@@ -13,7 +13,15 @@ import type {
   AnnouncementProcessContext,
   AnnouncementProcessState,
   CreateAnnouncementInput,
+  UrgentInput,
 } from "./models.js";
+import {
+  PINNED_MAX,
+  URGENT_MAX_DAYS,
+  endDateProblem,
+  isPinnedNow,
+  isUrgentNow,
+} from "../../src/shared/announcementBoard.js";
 import {
   BODY_MAX,
   IMAGE_ALT_MAX,
@@ -26,6 +34,7 @@ import {
 } from "./models.js";
 import { canEdit } from "./lifecycle.js";
 import {
+  emitAnnouncementBoardChanged,
   emitAnnouncementCreated,
   emitAnnouncementResultPublished,
   emitAnnouncementUpdated,
@@ -60,6 +69,102 @@ export function createAnnouncementState(
     last_edited_at: null,
     edit_count: 0,
     source: input.source ?? null,
+    ...urgentFields(input.urgent ?? null),
+  };
+}
+
+// --- Pinned and urgent (src/shared/announcementBoard.ts) --------------------
+
+/** The urgent fields an input sets, checked. No input: not urgent. */
+function urgentFields(input: UrgentInput | null): Pick<AnnouncementProcessState, "urgent" | "urgent_until"> {
+  if (!input || input.urgent !== true) return { urgent: false, urgent_until: null };
+  const until = input.urgent_until ?? null;
+  const problem = endDateProblem(until, { required: true, maxDays: URGENT_MAX_DAYS });
+  if (problem) throw new ValidationError(problem, "urgent_until_invalid");
+  return { urgent: true, urgent_until: new Date(until!).toISOString() };
+}
+
+/**
+ * Set or clear the red Urgent label. Anyone who may edit the announcement
+ * may (its author, or an admin). Emits `updated` when it changed.
+ */
+export async function setUrgent(
+  state: AnnouncementProcessState,
+  editor: { id: string; role: "admin" | "author" },
+  input: UrgentInput,
+  ctx: AnnouncementProcessContext,
+): Promise<{ state: AnnouncementProcessState; changed: boolean }> {
+  if (!canEdit(state, editor.id, editor.role)) {
+    throw new ForbiddenError("Not authorized to edit this announcement.", "not_authorized");
+  }
+  const next = urgentFields(input);
+  const changed =
+    next.urgent !== isUrgentNow(state) ||
+    (next.urgent === true && next.urgent_until !== (state.urgent_until ?? null));
+  if (!changed) return { state, changed: false };
+  state.urgent = next.urgent;
+  state.urgent_until = next.urgent_until;
+  await emitAnnouncementBoardChanged(ctx, editor.id, state, next.urgent ? "urgent" : "not_urgent");
+  return { state, changed: true };
+}
+
+/**
+ * Pin to the right column's card. Admins only (the caller checks the role;
+ * the admin routes are behind the admin check). `pinnedNow` is how many
+ * OTHER announcements are pinned right now, for the cap. Re-pinning an
+ * already pinned one changes its end date. Emits `updated`.
+ */
+export async function pinAnnouncement(
+  state: AnnouncementProcessState,
+  adminId: string,
+  until: string | null,
+  pinnedNow: number,
+  ctx: AnnouncementProcessContext,
+): Promise<{ state: AnnouncementProcessState; changed: boolean }> {
+  if (state.moderation?.removed) {
+    throw new ValidationError("A removed announcement can't be pinned.", "announcement_removed");
+  }
+  const problem = endDateProblem(until, { required: false });
+  if (problem) throw new ValidationError(problem, "pinned_until_invalid");
+  const untilIso = until ? new Date(until).toISOString() : null;
+  const already = isPinnedNow(state);
+  if (already && (state.pinned_until ?? null) === untilIso) return { state, changed: false };
+  if (!already && pinnedNow >= PINNED_MAX) {
+    throw new ValidationError(
+      `${PINNED_MAX} announcements are pinned already. Unpin one first.`,
+      "pinned_limit",
+    );
+  }
+  state.pinned = true;
+  state.pinned_at = already ? state.pinned_at ?? new Date().toISOString() : new Date().toISOString();
+  state.pinned_by = adminId;
+  state.pinned_until = untilIso;
+  await emitAnnouncementBoardChanged(ctx, adminId, state, "pinned");
+  return { state, changed: true };
+}
+
+/** Unpin. Admins only. Emits `updated` when it was pinned. */
+export async function unpinAnnouncement(
+  state: AnnouncementProcessState,
+  adminId: string,
+  ctx: AnnouncementProcessContext,
+): Promise<{ state: AnnouncementProcessState; changed: boolean }> {
+  if (!state.pinned) return { state, changed: false };
+  state.pinned = false;
+  state.pinned_until = null;
+  await emitAnnouncementBoardChanged(ctx, adminId, state, "unpinned");
+  return { state, changed: true };
+}
+
+/** The marks as readers see them: an end date that has passed reads as off. */
+export function boardView(state: AnnouncementProcessState, now: number = Date.now()) {
+  const pinned = isPinnedNow(state, now);
+  const urgent = isUrgentNow(state, now);
+  return {
+    pinned,
+    pinned_until: pinned ? state.pinned_until ?? null : null,
+    urgent,
+    urgent_until: urgent ? state.urgent_until ?? null : null,
   };
 }
 
@@ -354,6 +459,7 @@ export function getPublicReadModel(
     created_at: state.created_at,
     last_edited_at: state.last_edited_at,
     edit_count: state.edit_count,
+    ...boardView(state),
     moderation: moderation
       ? {
           removed,
@@ -392,6 +498,7 @@ export function getAdminReadModel(
     created_at: state.created_at,
     last_edited_at: state.last_edited_at,
     edit_count: state.edit_count,
+    ...boardView(state),
     moderation,
   };
 }
@@ -413,5 +520,6 @@ export function getPublicSummary(
     created_at: state.created_at,
     last_edited_at: state.last_edited_at,
     edit_count: state.edit_count,
+    ...boardView(state),
   };
 }

@@ -5,9 +5,13 @@
 //   - Coming up is the calendar's events only (Events 4, Adam, 2026-11-09),
 //     read from GET /calendar/events; it has nothing here. Closing dates moved
 //     to the feed, as "closing soon" cards (services/closingSoon.ts).
-//   - announcements: the newest few announcement cards, as the feed's
-//     Announcements filter reads them (services/feedPage.ts), a removed one
-//     left out as the feed leaves it out.
+//   - announcements: the board (Adam, 2026-11-15; src/shared/
+//     announcementBoard.ts): every announcement pinned or urgent right now,
+//     urgent first, then pinned, newest first. When none is, the newest few
+//     announcement cards, as the feed's Announcements filter reads them
+//     (services/feedPage.ts), a removed one left out as the feed leaves it out.
+//   - urgent: the newest urgent announcement, for the line across the top of
+//     the hub's pages, or null.
 //   - about: the member count, when the Members plugin is on and its count is
 //     public (the same rule as GET /members/summary). The place and the About
 //     link are the hub's config, which the page already has.
@@ -21,6 +25,8 @@ import { readFeedPage } from "./feedPage.js";
 import { buildFeedProcessMeta } from "./feedMeta.js";
 import { memberVisibility } from "./members.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
+import { announcementBoardRows } from "./processRows.js";
+import { isPinnedNow, isUrgentNow, type BoardMarks } from "../shared/announcementBoard.js";
 
 /** Announcements in their card. */
 export const ASIDE_ANNOUNCEMENTS = 3;
@@ -31,16 +37,52 @@ export interface AsideAnnouncement {
   published_at: string;
   url: string;
   sample?: true;
+  /** On the board: pinned right now. */
+  pinned?: true;
+  /** On the board: marked urgent, its end date not passed. */
+  urgent?: true;
 }
 
 export interface AsideFacts {
   announcements: AsideAnnouncement[];
+  /** The newest urgent announcement, for the line across the top of the pages. */
+  urgent: AsideAnnouncement | null;
   about: { member_count: number | null };
 }
 
 export async function readAside(opts: { isAdmin: boolean }): Promise<AsideFacts> {
-  const [announcements, memberCount] = await Promise.all([readAnnouncements(opts.isAdmin), readMemberCount()]);
-  return { announcements, about: { member_count: memberCount } };
+  const [board, memberCount] = await Promise.all([readBoard(), readMemberCount()]);
+  const announcements = board.length > 0 ? board : await readAnnouncements(opts.isAdmin);
+  return {
+    announcements,
+    urgent: board.find((a) => a.urgent) ?? null,
+    about: { member_count: memberCount },
+  };
+}
+
+/** Pinned and urgent announcements, right now: urgent first, then pinned, newest first. */
+async function readBoard(): Promise<AsideAnnouncement[]> {
+  if (!isPluginEnabledSync("announcement")) return [];
+  const now = Date.now();
+  const rows = (await announcementBoardRows())
+    .map((r) => ({ r, marks: r.state as BoardMarks & { moderation?: { removed?: boolean } | null; created_at?: string } }))
+    .filter(({ marks }) => !marks.moderation?.removed)
+    .map(({ r, marks }) => ({ r, marks, pinned: isPinnedNow(marks, now), urgent: isUrgentNow(marks, now) }))
+    .filter((x) => x.pinned || x.urgent);
+  const at = (x: (typeof rows)[number]) => x.marks.created_at ?? x.r.created_at;
+  rows.sort((a, b) => Number(b.urgent) - Number(a.urgent) || at(b).localeCompare(at(a)));
+  return rows.map(({ r, marks, pinned, urgent }) => {
+    const content = (r.state as { content?: { title?: string } }).content;
+    return {
+      process_id: r.id,
+      title: content?.title || r.title,
+      published_at: marks.created_at ?? r.created_at,
+      url: detailUrl("civic.announcement", r.id),
+      ...(r.is_sample && !r.added_in_demo ? { sample: true as const } : {}),
+      ...(pinned ? { pinned: true as const } : {}),
+      ...(urgent ? { urgent: true as const } : {}),
+    };
+  });
 }
 
 function detailUrl(type: string, id: string): string {

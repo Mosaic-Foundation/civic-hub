@@ -457,6 +457,8 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /brief/:id": {},
   "GET /announcement/:id": {},
   "GET /announcements": {},
+  // Admin → Announcements (pinned and urgent, 2026-11-15): the caller's hub's announcements only.
+  "GET /admin/announcements": {},
   "GET /link-preview/": { query: [] /* filled in below: ?url=<floyd's cached url> */ },
   "GET /search/": { query: [`?q=${MARKER_B}`, "?q=Vote", "?q=Notice&sort=newest", `?q=${MARKER_A}`] },
   "GET /meeting-summary/:id": {},
@@ -722,6 +724,8 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /admin/moderation/comments/:commentId/restore": { body: {} },
   "POST /admin/moderation/announcements/:id/remove": { body: { reason: X.reason } },
   "POST /admin/moderation/announcements/:id/restore": { body: {} },
+  "POST /admin/announcements/:id/pin": { body: {} },
+  "POST /admin/announcements/:id/unpin": { body: {} },
   "POST /brief/:id/response": { body: { body: X.body } },
   "PATCH /announcement/:id": { body: { title: X.title, body: X.body } },
 };

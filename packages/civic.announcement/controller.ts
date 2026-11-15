@@ -7,6 +7,7 @@
 // GET /announcements            — public list
 
 import {
+  ForbiddenError,
   NotFoundError,
   ValidationError,
   route,
@@ -26,6 +27,7 @@ import {
   getUser,
   extractUrls,
   warmPreviewsInBackground,
+  type Process,
 } from "@civic-social/plugin-sdk/first-party";
 import { Request } from "express";
 import {
@@ -33,13 +35,18 @@ import {
   getAdminReadModel,
   getPublicReadModel,
   getPublicSummary,
+  pinAnnouncement,
+  setUrgent,
+  unpinAnnouncement,
   updateAnnouncement,
   type AnnouncementAuthorRole,
   type AnnouncementContentPatch,
   type AnnouncementLink,
   type AnnouncementProcessState,
+  type UrgentInput,
 } from "./api.js";
 import { sendAnnouncementReceipt } from "./receipt.js";
+import { isPinnedNow } from "../../src/shared/announcementBoard.js";
 
 function getState(record: { state: Record<string, unknown> }): AnnouncementProcessState {
   return record.state as unknown as AnnouncementProcessState;
@@ -69,6 +76,53 @@ function readLinks(body: unknown): AnnouncementLink[] | undefined {
         typeof (l as { url?: unknown }).url === "string",
     )
     .map((l) => ({ label: l.label, url: l.url }));
+}
+
+/** The Urgent label as a request body sets it; undefined when the body doesn't say. */
+export function readUrgent(body: unknown): UrgentInput | undefined {
+  const b = (body ?? {}) as { urgent?: unknown; urgent_until?: unknown };
+  if (b.urgent === undefined) return undefined;
+  if (typeof b.urgent !== "boolean") throw new ValidationError("urgent must be true or false.");
+  if (b.urgent_until !== undefined && b.urgent_until !== null && typeof b.urgent_until !== "string") {
+    throw new ValidationError("urgent_until must be a date.");
+  }
+  return { urgent: b.urgent, urgent_until: (b.urgent_until as string | null | undefined) ?? null };
+}
+
+/** Pinned as a request body sets it; undefined when the body doesn't say. */
+export function readPin(body: unknown): { pinned: boolean; until: string | null } | undefined {
+  const b = (body ?? {}) as { pinned?: unknown; pinned_until?: unknown };
+  if (b.pinned === undefined) return undefined;
+  if (typeof b.pinned !== "boolean") throw new ValidationError("pinned must be true or false.");
+  if (b.pinned_until !== undefined && b.pinned_until !== null && typeof b.pinned_until !== "string") {
+    throw new ValidationError("pinned_until must be a date.");
+  }
+  return { pinned: b.pinned, until: (b.pinned_until as string | null | undefined) || null };
+}
+
+/** How many announcements other than `exceptId` are pinned right now (for the cap). */
+export async function countPinnedNow(exceptId: string | null): Promise<number> {
+  const all = await getAllProcesses(["civic.announcement"]);
+  const now = Date.now();
+  return all.filter((p) => {
+    if (p.id === exceptId) return false;
+    const state = getState(p);
+    return !state.moderation?.removed && isPinnedNow(state, now);
+  }).length;
+}
+
+/** Pin or unpin as an admin asked (the caller has checked the role). */
+export async function applyPin(
+  record: Process,
+  adminId: string,
+  pin: { pinned: boolean; until: string | null },
+): Promise<boolean> {
+  const state = getState(record);
+  const ctx = ctxFor(record);
+  const out = pin.pinned
+    ? await pinAnnouncement(state, adminId, pin.until, await countPinnedNow(record.id), ctx)
+    : await unpinAnnouncement(state, adminId, ctx);
+  return out.changed;
 }
 
 export const handleCreateAnnouncement = route(async (req, res) => {
@@ -103,6 +157,13 @@ export const handleCreateAnnouncement = route(async (req, res) => {
   }
 
   const links = readLinks(req.body);
+  // Pinned and urgent (src/shared/announcementBoard.ts): any poster may mark
+  // it urgent; only an admin may pin. Checked before anything is created.
+  const urgent = readUrgent(req.body);
+  const pin = readPin(req.body);
+  if (pin?.pinned && res.locals.effectiveRole !== "admin") {
+    throw new ForbiddenError("Only admins can pin announcements.", "admin_required");
+  }
   const image_url =
     typeof body.image_url === "string" && body.image_url.trim().length > 0
       ? body.image_url.trim()
@@ -136,6 +197,8 @@ export const handleCreateAnnouncement = route(async (req, res) => {
       links: links ?? [],
       image_url,
       image_alt,
+      urgent: urgent?.urgent === true,
+      urgent_until: urgent?.urgent_until ?? null,
     },
   });
 
@@ -155,6 +218,10 @@ export const handleCreateAnnouncement = route(async (req, res) => {
   // title, which is enough for consumers that only look at core fields.
   const events = await import("./events.js");
   await events.emitAnnouncementResultPublished(ctx, user.id, state);
+
+  // Pinned as it was posted (an admin ticked Pin on the form): its own
+  // `updated` event, after the publication.
+  if (pin?.pinned) await applyPin(record, user.id, pin);
 
   // Auto-finalize the process status — announcements are instant-publish.
   record.status = "finalized";
@@ -255,6 +322,14 @@ export const handleUpdateAnnouncement = route(async (req, res) => {
     patch.image_alt = body.image_alt as string | null;
   }
 
+  // Pinned and urgent ride on the same save as the edit; each change has its
+  // own `updated` event. Only an admin may pin or unpin.
+  const urgent = readUrgent(req.body);
+  const pin = readPin(req.body);
+  if (pin && role !== "admin") {
+    throw new ForbiddenError("Only admins can pin announcements.", "admin_required");
+  }
+
   const state = getState(record);
   const outcome = await updateAnnouncement(
     state,
@@ -262,6 +337,8 @@ export const handleUpdateAnnouncement = route(async (req, res) => {
     patch,
     ctxFor(record),
   );
+  if (urgent) await setUrgent(state, { id: user.id, role }, urgent, ctxFor(record));
+  if (pin) await applyPin(record, user.id, pin);
   await saveProcessState(record);
 
   // Warm previews for whatever URLs are in the post-edit body. We
