@@ -24,7 +24,12 @@ It is off until you switch it on.
 - **Admin → Activity** has a Fediverse card: followers now, and new followers in the period. Followers are not
   residents and are not counted in the participation numbers.
 
-Voting and commenting happen only on the hub, by verified residents. Replies on Mastodon are not shown here (yet).
+**What comes back.** Replies to the hub's posts are kept as text, with links to any pictures or video (never the
+files), and are deleted when their author deletes them; they are not shown on the hub yet. Likes and boosts are
+counted once per account and post. Admin → Activity's Fediverse card shows replies, likes and boosts in the period.
+None of them counts as participation, and none is shown publicly. Blocked servers' replies and reactions are ignored.
+
+Voting and commenting happen only on the hub, by verified residents.
 
 ## Following a hub both ways
 

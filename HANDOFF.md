@@ -4,6 +4,22 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Fediverse phase 3: replies kept as text, likes and boosts counted — 2026-11-15
+
+On dev, unpushed: 502d537, fc61183 (+ this). **Migration 20261116000000 first** (release.sh dev). Already on dev
+before it: 393955d (letter avatar: `ui/public/fediverse-avatars/A–Z.png` when no logo).
+
+- `fediverse_replies` (exported): Create/Update of a Note whose inReplyTo is one of the hub's posts
+  (`/ap/hub/posts/:id`, existing post), attributedTo = the sending actor, not from a blocked server. Plain text
+  (`replyText`: markup out, entities decoded, 5,000 characters), up to 8 media links, the reply's page. Update
+  replaces the text (only the same author); Delete(id) by its author deletes it; Delete(actor) = `forgetActor`
+  (followers, replies, reactions). Stored, not shown anywhere yet (identity work first).
+- `fediverse_reactions` (exported): Like / Announce of a hub post, one per account+post+kind; Undo by id
+  (embedded or referenced) removes it.
+- Admin → Activity's Fediverse card: replies, likes, boosts in the period (`/admin/fediverse/followers` returns them).
+- Not done: no Code of Conduct (AI) check on replies; blocked servers and the inbox rate limits apply. Showing
+  replies on the hub waits for identity work. Unit fediverse 30, API fediverse 12, unit suite 2,741.
+
 ## Fediverse follow-ups: Post now, River de-duplication, descriptions and images, profile updates — 2026-11-15
 
 On dev, unpushed: f21318b..80c1f3f. **Migrations 20261115010000 and 20261115020000 first** (release.sh dev).
