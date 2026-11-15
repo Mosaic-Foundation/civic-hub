@@ -51,7 +51,7 @@
  * their requirements, the fediverse job and three settings in its Plugins
  * panel. Only additions (diffed before writing).
  * And (2026-11-15): fediverse_posts' requirements gain process_iri and
- * activity_iri. Only those.
+ * activity_iri. Only those. Then image_url and image_alt. Only those.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

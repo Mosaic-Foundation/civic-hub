@@ -992,7 +992,9 @@
         "items",
         "published_at",
         "process_iri",
-        "activity_iri"
+        "activity_iri",
+        "image_url",
+        "image_alt"
       ],
       "owner": "features/fediverse"
     },
