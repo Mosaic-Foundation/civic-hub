@@ -52,6 +52,8 @@
  * panel. Only additions (diffed before writing).
  * And (2026-11-15): fediverse_posts' requirements gain process_iri and
  * activity_iri. Only those. Then image_url and image_alt. Only those.
+ * And (2026-11-15, Fediverse phase 3): fediverse_replies and
+ * fediverse_reactions (both exported) and their requirements. Only those.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

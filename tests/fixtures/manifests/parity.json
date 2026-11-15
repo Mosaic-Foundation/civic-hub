@@ -52,6 +52,8 @@
     "fediverse_keys",
     "fediverse_kv",
     "fediverse_posts",
+    "fediverse_reactions",
+    "fediverse_replies",
     "feedback_submissions",
     "hub_admin_audit_log",
     "hub_invites",
@@ -171,6 +173,14 @@
     },
     {
       "table": "fediverse_posts",
+      "rows": "export"
+    },
+    {
+      "table": "fediverse_reactions",
+      "rows": "export"
+    },
+    {
+      "table": "fediverse_replies",
       "rows": "export"
     },
     {
@@ -340,6 +350,14 @@
       "actor_uri"
     ],
     "fediverse_posts": [
+      "hub_id",
+      "id"
+    ],
+    "fediverse_reactions": [
+      "hub_id",
+      "activity_id"
+    ],
+    "fediverse_replies": [
       "hub_id",
       "id"
     ],
@@ -995,6 +1013,35 @@
         "activity_iri",
         "image_url",
         "image_alt"
+      ],
+      "owner": "features/fediverse"
+    },
+    {
+      "table": "fediverse_reactions",
+      "columns": [
+        "hub_id",
+        "activity_id",
+        "kind",
+        "post_id",
+        "actor_uri",
+        "received_at"
+      ],
+      "owner": "features/fediverse"
+    },
+    {
+      "table": "fediverse_replies",
+      "columns": [
+        "hub_id",
+        "id",
+        "post_id",
+        "actor_uri",
+        "actor_handle",
+        "text",
+        "media_links",
+        "url",
+        "published_at",
+        "received_at",
+        "edited_at"
       ],
       "owner": "features/fediverse"
     },

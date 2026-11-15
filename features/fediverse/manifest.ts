@@ -40,6 +40,18 @@ export const FEDIVERSE_MANIFEST = defineFeatureManifest({
       key: ["hub_id", "post_id", "inbox_url"],
       holds: "each post's delivery to each follower's server, and its retries",
     },
+    {
+      name: "fediverse_replies",
+      rows: "export",
+      key: ["hub_id", "id"],
+      holds: "replies from the fediverse to the hub's posts, as text with links to any media",
+    },
+    {
+      name: "fediverse_reactions",
+      rows: "export",
+      key: ["hub_id", "activity_id"],
+      holds: "likes and boosts of the hub's posts, one per account and post",
+    },
   ],
   requiredSchema: [
     {
@@ -61,6 +73,16 @@ export const FEDIVERSE_MANIFEST = defineFeatureManifest({
     {
       table: "fediverse_deliveries",
       columns: ["hub_id", "post_id", "inbox_url", "attempts", "next_attempt_at", "delivered_at", "gave_up_at", "last_status", "last_error"],
+      owner: "features/fediverse",
+    },
+    {
+      table: "fediverse_replies",
+      columns: ["hub_id", "id", "post_id", "actor_uri", "actor_handle", "text", "media_links", "url", "published_at", "received_at", "edited_at"],
+      owner: "features/fediverse",
+    },
+    {
+      table: "fediverse_reactions",
+      columns: ["hub_id", "activity_id", "kind", "post_id", "actor_uri", "received_at"],
       owner: "features/fediverse",
     },
   ],

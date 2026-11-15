@@ -84,7 +84,7 @@ describe("forHub — construction", () => {
     expect(() => floyd.from("nope" as never)).toThrow(/not a hub-scoped table/);
   });
 
-  it("covers every tenant table: 49, and never hubs", () => {
+  it("covers every tenant table: 51, and never hubs", () => {
     // 32 since 2026-09-29: job_runs. 33 since 2026-10-11: ai_usage. 34 since
     // 2026-10-14: sign_in_codes. 35 since 2026-10-14: hub_invites. 36 since 2026-10-15: admin_digest_marks. 35 since 20261019100000: pending_verifications dropped.
     // 36 since 20261023000000 (Architecture 4): hub_roles.
@@ -95,7 +95,8 @@ describe("forHub — construction", () => {
     // 44 since the console slice (2026-11-10): active_vote_keys dropped.
     // 46 since 20261114000000 (the fediverse feature): fediverse_keys, fediverse_followers.
     // 49 since 20261115000000 (fediverse phase 2): fediverse_kv, fediverse_posts, fediverse_deliveries.
-    expect(HUB_TABLES).toHaveLength(49);
+    // 51 since 20261116000000 (fediverse phase 3): fediverse_replies, fediverse_reactions.
+    expect(HUB_TABLES).toHaveLength(51);
     expect(HUB_TABLES).not.toContain("hubs");
   });
 });

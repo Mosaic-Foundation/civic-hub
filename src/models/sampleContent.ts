@@ -72,6 +72,8 @@ export const NOT_PROCESS_CONTENT: Readonly<Record<string, string>> = {
   fediverse_kv: "the fediverse library's working memory; never seeded",
   fediverse_posts: "what the hub posted to the fediverse; sample content never posts",
   fediverse_deliveries: "the delivery log of the hub's fediverse posts; never seeded",
+  fediverse_reactions: "likes and boosts of the hub's fediverse posts; never seeded",
+  fediverse_replies: "replies from the fediverse to the hub's posts; never seeded",
   hub_admin_audit_log: "the record of admin actions, including the removal itself",
   hub_invites: "who a member invited; never seeded",
   hub_plugins: "which plugin packages the hub installed (ADR-014); never seeded",
