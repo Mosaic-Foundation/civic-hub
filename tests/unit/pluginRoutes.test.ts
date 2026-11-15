@@ -58,6 +58,7 @@ const ADDED: Record<string, string> = {
   "GET /unsubscribe/notices": "a notice's one-click link stops notices only",
   "PATCH /user/settings/notices": "Notices about things I take part in, on or off",
   "PATCH /user/settings/appearance": "Your look: light, dark or follow the device",
+  "PATCH /user/settings/mastodon": "Your Mastodon handle, for Share on Mastodon (2026-11-15)",
   "GET /admin/analytics/keys": "the reporting keys and their read log",
   "POST /admin/analytics/keys": "issue a reporting key",
   "POST /admin/analytics/keys/:id/revoke": "revoke a reporting key",

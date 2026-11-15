@@ -38,6 +38,11 @@ export interface User {
   /** The person's look: light (the default), dark, or the device's (decision 9). */
   appearance: Appearance;
   /**
+   * Their Mastodon handle (@name@server), or just their server, for Share on
+   * Mastodon (2026-11-15). Null until they give it. Never shown to anyone.
+   */
+  mastodon_handle: string | null;
+  /**
    * Cursor for the next digest's "since" window. null means "never
    * sent" — the cron uses the user's created_at as the since anchor,
    * capped to 30 days ago.

@@ -2,13 +2,14 @@
 //
 // Two mount points, each with different auth:
 //   /unsubscribe/digest, /unsubscribe/notices  — token-as-credential, no user auth
-//   /user/settings/digest, /notices, /appearance — requireAuth (session token)
+//   /user/settings/digest, /notices, /appearance, /mastodon — requireAuth (session token)
 //
 // The scheduled send is the "digest" job, mounted from src/jobs/registry.ts.
 
 import { Router } from "express";
 import {
   handlePatchAppearance,
+  handlePatchMastodon,
   handlePatchDigestSubscription,
   handlePatchNotices,
   handleUnsubscribeDigest,
@@ -24,3 +25,4 @@ export const userSettingsRouter = Router();
 userSettingsRouter.patch("/digest", requireAuth, handlePatchDigestSubscription);
 userSettingsRouter.patch("/notices", requireAuth, handlePatchNotices);
 userSettingsRouter.patch("/appearance", requireAuth, handlePatchAppearance);
+userSettingsRouter.patch("/mastodon", requireAuth, handlePatchMastodon);

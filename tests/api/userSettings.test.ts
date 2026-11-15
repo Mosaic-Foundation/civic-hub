@@ -59,3 +59,27 @@ describe("PATCH /user/settings/appearance", () => {
     expect((await call("PATCH", "/user/settings/appearance", ATHENS, { appearance: "dark" })).status).toBe(401);
   });
 });
+
+describe("PATCH /user/settings/mastodon", () => {
+  it("is empty until given, keeps a handle tidied, and clears with an empty one", async () => {
+    expect((await me()).user as unknown as { mastodon_handle: string | null }).toMatchObject({ mastodon_handle: null });
+    const cases: Array<[string, string | null]> = [
+      ["adam@Mastodon.Social", "@adam@mastodon.social"],
+      ["https://hachyderm.io/@adam", "@adam@hachyderm.io"],
+      ["Fosstodon.org", "fosstodon.org"],
+      ["", null],
+    ];
+    for (const [given, kept] of cases) {
+      const res = await call("PATCH", "/user/settings/mastodon", ATHENS, { mastodon_handle: given }, person);
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      expect(res.body).toEqual({ mastodon_handle: kept });
+      expect(((await me()).user as unknown as { mastodon_handle: string | null }).mastodon_handle).toBe(kept);
+    }
+  });
+
+  it("refuses what isn't a handle, and a signed-out caller", async () => {
+    expect((await call("PATCH", "/user/settings/mastodon", ATHENS, { mastodon_handle: "not a handle" }, person)).status).toBe(400);
+    expect((await call("PATCH", "/user/settings/mastodon", ATHENS, { mastodon_handle: 42 }, person)).status).toBe(400);
+    expect((await call("PATCH", "/user/settings/mastodon", ATHENS, { mastodon_handle: "@a@b.example" })).status).toBe(401);
+  });
+});

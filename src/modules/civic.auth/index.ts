@@ -118,6 +118,7 @@ function rowToUser(row: Record<string, unknown>): User {
     // Rows read before the design pass's migration: notices on, light.
     notices_email: row.notices_email === undefined || row.notices_email === null ? true : Boolean(row.notices_email),
     appearance: APPEARANCES.includes(row.appearance as Appearance) ? (row.appearance as Appearance) : "light",
+    mastodon_handle: typeof row.mastodon_handle === "string" && row.mastodon_handle ? row.mastodon_handle : null,
     tos_version_accepted: row.tos_version_accepted
       ? String(row.tos_version_accepted)
       : null,
@@ -816,6 +817,32 @@ export async function setNoticesEmail(userId: string, on: boolean): Promise<User
 /** Set a person's look: light, dark or the device's (design pass, decision 9). */
 export async function setAppearance(userId: string, appearance: Appearance): Promise<User> {
   const data = await authStore.get().updateUser(userId, { appearance });
+  if (!data) throw new NotFoundError("User not found", "user_not_found");
+  return rowToUser(data);
+}
+
+/**
+ * A Mastodon handle as a person typed it ("@adam@mastodon.social",
+ * "adam@Mastodon.Social", "mastodon.social", "https://mastodon.social/@adam"),
+ * normalized: "@name@server", or the bare server; null for "" (clear it).
+ * Throws on anything else.
+ */
+export function normalizeMastodonHandle(input: unknown): string | null {
+  if (input === null || input === undefined) return null;
+  if (typeof input !== "string") throw new ValidationError("A Mastodon handle is text, like @name@mastodon.social");
+  let s = input.trim();
+  if (!s) return null;
+  const fromUrl = /^https?:\/\/([^/]+)\/@([A-Za-z0-9_.-]+)\/?$/i.exec(s);
+  if (fromUrl) s = `@${fromUrl[2]}@${fromUrl[1]}`;
+  s = s.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+  const m = /^@?([A-Za-z0-9_.-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,63})$/.exec(s);
+  if (m) return `@${m[1]}@${m[2]!.toLowerCase()}`.slice(0, 320);
+  if (/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(s)) return s.toLowerCase();
+  throw new ValidationError("That doesn't look like a Mastodon handle. Try @name@mastodon.social, or just your server.");
+}
+
+export async function setMastodonHandle(userId: string, handle: unknown): Promise<User> {
+  const data = await authStore.get().updateUser(userId, { mastodon_handle: normalizeMastodonHandle(handle) });
   if (!data) throw new NotFoundError("User not found", "user_not_found");
   return rowToUser(data);
 }

@@ -12,6 +12,7 @@ import AuthModal from "../components/AuthModal";
 import { setAppearance as saveAppearance, setDigestFrequency, setNoticesEmail } from "../services/api";
 import { RadioCards } from "../kit";
 import { applyAppearance, type Appearance } from "../config/appearance";
+import MastodonHandleSetting from "../components/MastodonHandleSetting";
 import { useHub } from "../config/hub";
 import {
   deleteAccount as deleteAccountApi,
@@ -386,6 +387,8 @@ export default function Settings() {
           />
           {appearanceError && <p className="form-error">{appearanceError}</p>}
         </section>
+
+        <MastodonHandleSetting />
 
         <section className="settings-panel" id="notices" data-anchor="">
           <h3>Notices</h3>

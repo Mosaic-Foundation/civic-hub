@@ -1932,6 +1932,11 @@ export function setAppearance(
   return request("PATCH", "/user/settings/appearance", { appearance });
 }
 
+/** Save (or with "" clear) the person's Mastodon handle, for Share on Mastodon. */
+export function setMastodonHandle(mastodon_handle: string): Promise<{ mastodon_handle: string | null }> {
+  return request("PATCH", "/user/settings/mastodon", { mastodon_handle });
+}
+
 // --- Slice 9: image upload + link previews ---
 
 export interface UploadedImage {

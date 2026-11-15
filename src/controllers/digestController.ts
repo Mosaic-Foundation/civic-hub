@@ -22,7 +22,7 @@ import { env } from "../config/env.js";
 import { ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { verifyUnsubscribeToken } from "../modules/civic.digest/index.js";
-import { setAppearance, setDigestFrequency, setNoticesEmail, getUser } from "../modules/civic.auth/index.js";
+import { setAppearance, setDigestFrequency, setMastodonHandle, setNoticesEmail, getUser } from "../modules/civic.auth/index.js";
 import { APPEARANCES, type Appearance } from "../modules/civic.auth/models.js";
 import type { UnsubscribePurpose } from "../modules/civic.digest/unsubscribe.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
@@ -224,4 +224,15 @@ export const handlePatchAppearance = route(async (req, res) => {
   }
   const updated = await setAppearance(user.id, appearance as Appearance);
   res.json({ appearance: updated.appearance });
+});
+
+/**
+ * { mastodon_handle: "@name@server" | "server" | "" } → { mastodon_handle }
+ * (2026-11-15): Share on Mastodon saves it the first time it asks, and
+ * Settings changes or clears it ("" clears).
+ */
+export const handlePatchMastodon = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const updated = await setMastodonHandle(user.id, (req.body ?? {}).mastodon_handle);
+  res.json({ mastodon_handle: updated.mastodon_handle });
 });

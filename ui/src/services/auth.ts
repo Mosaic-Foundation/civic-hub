@@ -32,6 +32,8 @@ export interface AuthUser {
   notices_email?: boolean;
   /** The person's look (decision 9); light by default. */
   appearance?: "light" | "dark" | "system";
+  /** Their Mastodon handle or server, for Share on Mastodon (2026-11-15); null until given. */
+  mastodon_handle?: string | null;
   /**
    * Slice 11 — most recent legal-document version this user accepted
    * (e.g. "1.0"). null means the user has never accepted; the UI shows

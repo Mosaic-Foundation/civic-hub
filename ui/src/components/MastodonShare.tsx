@@ -2,15 +2,19 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useHub } from "../config/hub";
 import { mastodonInteractUrl, mastodonServerFrom, mastodonShareUrl } from "./mastodonShareUrl";
 import { request } from "../services/http";
+import { useAuth } from "../context/authState";
+import { setMastodonHandle } from "../services/api";
 
 /**
  * Share on Mastodon (the fediverse plan, 2026-11-12, item 1). Mastodon has no
  * one website to share to: each person is on their own server. So the first
- * tap asks which server ("mastodon.social", or their whole handle), remembers
- * it in this browser, and opens that server's own compose page with the title
- * and the link filled in (`https://<server>/share?text=…`, which Mastodon has
- * answered since 2017). Later taps go straight there, with a "Change server"
- * link beside the bar for a few seconds.
+ * tap asks for their handle (or just their server) and remembers it: on their
+ * account when they are signed in (Settings → Mastodon changes it; Adam,
+ * 2026-11-15), in this browser when they are not. It then opens the hub's
+ * own post about the item on that server, to boost or reply to, or, when the
+ * hub has not posted it, the server's compose page with the title and link
+ * (`https://<server>/share?text=…`). Later taps go straight there, with a
+ * "Change server" link beside the bar for a few seconds.
  *
  * Shown only on hubs that switched the Fediverse feature on.
  */
@@ -38,7 +42,9 @@ function remember(server: string | null) {
 
 export default function MastodonShare({ title, url, processId }: { title: string; url: string; processId?: string }) {
   const hub = useHub();
+  const { user, updateUser } = useAuth();
   const on = hub.plugins.enabled("fediverse");
+  const savedServer = user?.mastodon_handle ? mastodonServerFrom(user.mastodon_handle) : null;
   // The hub's own post about this item, when it made one: Share then opens
   // that post on the person's server, to boost or reply to, so it reads as
   // it does to the hub's followers. Read ahead, so the click can open a tab
@@ -80,7 +86,7 @@ export default function MastodonShare({ title, url, processId }: { title: string
   }
 
   function onButton() {
-    const server = rememberedServer();
+    const server = savedServer ?? rememberedServer();
     if (server) open(server);
     else {
       setOpenedOn(null);
@@ -99,6 +105,12 @@ export default function MastodonShare({ title, url, processId }: { title: string
     setAsking(false);
     setError(null);
     open(server);
+    // Signed in: keep it on the account, so no device asks again.
+    if (user) {
+      setMastodonHandle(value)
+        .then((r) => updateUser({ ...user, mastodon_handle: r.mastodon_handle }))
+        .catch(() => {});
+    }
   }
 
   return (
@@ -153,7 +165,7 @@ export default function MastodonShare({ title, url, processId }: { title: string
             </button>
           </div>
           <p className="mastodon-ask-hint">
-            {error ?? "Where your account is, or your whole handle. Remembered in this browser."}
+            {error ?? (user ? "Your handle, or just your server. Saved to your account; change it in Settings." : "Your handle, or just your server. Remembered in this browser.")}
           </p>
         </form>
       )}

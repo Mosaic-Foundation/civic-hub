@@ -322,6 +322,7 @@ app.get("/", route((_req, res) => {
       "PATCH /user/settings/digest": "Toggle digest subscription (authed)",
       "GET /unsubscribe/notices?token=X": "Stop notices about things you take part in",
       "PATCH /user/settings/notices": "Notices about things I take part in, on or off (authed)",
+      "PATCH /user/settings/mastodon": "My Mastodon handle, for Share on Mastodon (authed)",
       "PATCH /user/settings/appearance": "Your look: light, dark or follow the device (authed)",
       // Generated from the job registry, so the docs cannot drift from the mounts.
       ...Object.fromEntries(
