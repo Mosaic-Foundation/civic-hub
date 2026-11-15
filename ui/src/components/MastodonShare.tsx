@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useHub } from "../config/hub";
-import { mastodonServerFrom, mastodonShareUrl } from "./mastodonShareUrl";
+import { mastodonInteractUrl, mastodonServerFrom, mastodonShareUrl } from "./mastodonShareUrl";
+import { request } from "../services/http";
 
 /**
  * Share on Mastodon (the fediverse plan, 2026-11-12, item 1). Mastodon has no
@@ -35,8 +36,24 @@ function remember(server: string | null) {
   }
 }
 
-export default function MastodonShare({ title, url }: { title: string; url: string }) {
+export default function MastodonShare({ title, url, processId }: { title: string; url: string; processId?: string }) {
   const hub = useHub();
+  const on = hub.plugins.enabled("fediverse");
+  // The hub's own post about this item, when it made one: Share then opens
+  // that post on the person's server, to boost or reply to, so it reads as
+  // it does to the hub's followers. Read ahead, so the click can open a tab
+  // at once (a tab opened after a wait is blocked as a popup).
+  const [note, setNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (!on || !processId) return;
+    let live = true;
+    request<{ note: string }>("GET", `/fediverse/posts?process=${encodeURIComponent(processId)}`)
+      .then((r) => live && setNote(r.note))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [on, processId]);
   const inputId = useId();
   const [asking, setAsking] = useState(false);
   const [value, setValue] = useState("");
@@ -50,13 +67,13 @@ export default function MastodonShare({ title, url }: { title: string; url: stri
     if (asking) inputRef.current?.focus();
   }, [asking]);
 
-  if (!hub.plugins.enabled("fediverse")) return null;
+  if (!on) return null;
 
   const text = `${title} ${url}`;
 
   function open(server: string) {
     // No window features: iOS Safari blocks a window.open that has them.
-    window.open(mastodonShareUrl(server, text), "_blank", "noopener");
+    window.open(note ? mastodonInteractUrl(server, note) : mastodonShareUrl(server, text), "_blank", "noopener");
     setOpenedOn(server);
     window.clearTimeout(noteTimer.current);
     noteTimer.current = window.setTimeout(() => setOpenedOn(null), NOTE_MS);

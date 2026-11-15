@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mastodonServerFrom, mastodonShareUrl } from "./mastodonShareUrl";
+import { mastodonInteractUrl, mastodonServerFrom, mastodonShareUrl } from "./mastodonShareUrl";
 
 describe("Share on Mastodon", () => {
   it("takes the server from whatever a person types", () => {
@@ -24,6 +24,12 @@ describe("Share on Mastodon", () => {
   it("opens the server's compose page with the title and link filled in", () => {
     expect(mastodonShareUrl("mastodon.social", "Skate park vote https://hub.example/process/p1")).toBe(
       "https://mastodon.social/share?text=Skate%20park%20vote%20https%3A%2F%2Fhub.example%2Fprocess%2Fp1",
+    );
+  });
+
+  it("opens the hub's own post on the person's server, to boost or reply", () => {
+    expect(mastodonInteractUrl("mastodon.social", "https://hub.example/ap/hub/posts/abc-123")).toBe(
+      "https://mastodon.social/authorize_interaction?uri=https%3A%2F%2Fhub.example%2Fap%2Fhub%2Fposts%2Fabc-123",
     );
   });
 });

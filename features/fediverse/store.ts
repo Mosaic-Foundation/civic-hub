@@ -115,6 +115,8 @@ export interface FediverseStore {
   /** A post, newest first, at most `limit`; older than `before` (published_at) when given. */
   posts(limit: number, before?: string | null): Promise<Post[]>;
   post(id: string): Promise<Post | null>;
+  /** The hub's newest item post about a process, or null. */
+  postForProcess(processId: string): Promise<Post | null>;
   postCount(): Promise<number>;
   /** Store a post and queue its deliveries. Null when an item post for that event exists already. */
   addPost(post: Post, inboxes: readonly string[]): Promise<Post | null>;
@@ -209,6 +211,15 @@ export function dbStore(host: FeatureHost): FediverseStore {
     },
     async post(id) {
       return t("fediverse_posts").select<Post>(POST_COLUMNS).eq("id", id).maybeSingle();
+    },
+    async postForProcess(processId) {
+      const [p] = await t("fediverse_posts")
+        .select<Post>(POST_COLUMNS)
+        .eq("process_id", processId)
+        .eq("kind", "item")
+        .order("published_at", { ascending: false })
+        .limit(1);
+      return p ?? null;
     },
     async postCount() {
       return t("fediverse_posts").count();
@@ -387,6 +398,13 @@ export function memoryStore(): FediverseStore & {
     },
     async post(id) {
       return allPosts.find((p) => p.id === id) ?? null;
+    },
+    async postForProcess(processId) {
+      return (
+        [...allPosts]
+          .filter((p) => p.kind === "item" && p.process_id === processId)
+          .sort((a, b) => b.published_at.localeCompare(a.published_at))[0] ?? null
+      );
     },
     async postCount() {
       return allPosts.length;

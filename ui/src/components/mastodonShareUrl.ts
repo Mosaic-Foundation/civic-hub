@@ -18,3 +18,12 @@ export function mastodonServerFrom(input: string): string | null {
 export function mastodonShareUrl(server: string, text: string): string {
   return `https://${server}/share?text=${encodeURIComponent(text)}`;
 }
+
+/**
+ * The hub's own post about this item, opened on `server` so the person can
+ * boost it or reply to it: Mastodon's remote-interaction page fetches the
+ * post and shows it as a follower sees it.
+ */
+export function mastodonInteractUrl(server: string, noteUri: string): string {
+  return `https://${server}/authorize_interaction?uri=${encodeURIComponent(noteUri)}`;
+}

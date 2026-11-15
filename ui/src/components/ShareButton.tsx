@@ -243,7 +243,7 @@ export default function ShareButton({ title, url, nudge, processId }: ShareButto
       )}
 
       {/* Share on Mastodon: on hubs with the Fediverse feature on. */}
-      <MastodonShare title={title} url={fullUrl} />
+      <MastodonShare title={title} url={fullUrl} processId={processId ?? nudge?.processId} />
 
       {isTouchDevice && (
       <a

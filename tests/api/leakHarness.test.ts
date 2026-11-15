@@ -486,6 +486,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /admin/fediverse/followers": { query: ["", "?from=2026-01-01&to=2026-12-31"] },
   // Off on Athens and Floyd here, so 404; tests/api/fediverse walks it on.
   "GET /fediverse/posts/:id": {},
+  "GET /fediverse/posts/": { query: ["", "?process=proc_x"] },
   "GET /\\.well-known/civic.json": {},
   "GET /\\.well-known/did.json": {},
 

@@ -128,6 +128,19 @@ function federationHandler(host: FeatureHost, store: FediverseStore, kv: KvStore
 /** GET /fediverse/posts/:id: a post as the hub's roundup page shows it. Public, like the post itself. */
 function publicRouter(store: FediverseStore): Router {
   const r = Router();
+  // GET /fediverse/posts?process=<id>: the hub's own post about a process, if
+  // it made one, so Share on Mastodon can open that post (to boost or reply)
+  // instead of composing a new one. Public, like the post.
+  r.get(
+    "/posts",
+    route(async (req, res) => {
+      const pid = String(req.query.process ?? "");
+      if (!/^[A-Za-z0-9_.-]{1,128}$/.test(pid)) throw new ValidationError("process is a process id");
+      const post = await store.postForProcess(pid);
+      if (!post) throw new NotFoundError("The hub has not posted this");
+      res.json({ id: post.id, note: `${hubFacts().origin}/ap/${HUB_ACTOR}/posts/${post.id}`, published_at: post.published_at });
+    }),
+  );
   r.get(
     "/posts/:id",
     route(async (req, res) => {

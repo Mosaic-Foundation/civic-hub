@@ -158,6 +158,8 @@ describe("the hub's fediverse account", () => {
 
   it("answers 404 for a post that isn't there", async () => {
     expect((await call("GET", "/fediverse/posts/nope-000000", HOST)).status).toBe(404);
+    expect((await call("GET", "/fediverse/posts?process=proc_none", HOST)).status).toBe(404);
+    expect((await call("GET", "/fediverse/posts?process=", HOST)).status).toBe(400);
   });
 
   it("goes quiet again when switched off", async () => {
