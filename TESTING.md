@@ -87,6 +87,21 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Pinned and urgent announcements (2026-11-15)
+
+- **Unit** `tests/unit/announcementBoard.test.ts` (7): pinned/urgent now, end dates passed or ahead, the end-date
+  checks (urgent needs one, at most 30 days, not past). `pluginRoutes` lists the three new admin routes;
+  `feedMetaHooks` expects `urgent`.
+- **API** `tests/api/announcementBoard.test.ts` (8): an official marks urgent (page, card, top line); the end date
+  rules; the author clears urgent with an `updated` event; only an admin pins (form, PATCH, admin route); pin on the
+  form, unpin from the admin list, the card follows; a passed end date drops off with nothing run; ten at most; the
+  event log. `aside.test.ts` allows the `pinned`/`urgent` marks and the `urgent` key; `leakHarness` has plans for
+  the three routes.
+- Results (local, server with `CIVIC_PLUGINS_UNVERIFIED=on`): unit all pass; API 1,060 passed, failing and not this
+  change: `sampleContent`'s two removal tests and two `leakHarness` tests (500s on `/admin/hub/sample-content*`
+  and `/admin/hub/mode/readiness`), and `pluginPackages`' withdraw test (unverified mode mounts everything).
+  Checked by hand in the browser: form, page, admin tab, card scroll, urgent line on desktop and phone.
+
 ## The home feed's request cap (2026-11-12)
 
 - `tests/unit/wireFeedReader.test.ts` (new, 5): the stream reader against a fake `/events` (100 per page) — dense

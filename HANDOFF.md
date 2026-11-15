@@ -4,6 +4,30 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Pinned and urgent announcements — 2026-11-15
+
+On dev, unpushed (see the commits after 6fe6ffd). **The catalog entry for Announcements 0.3.0 is a migration**
+(release.sh dev), then approve it in the dev console; until then Announcements is not mounted on dev.
+
+- **Design (Adam, 2026-11-15):** pinned = admins only (Admin → Announcements, the post/edit form, the page's admin
+  bar); optional end date; at most 10 at once (`PINNED_MAX`). Urgent = a checkbox on the form for anyone who may
+  post or edit it; needs an end date (default 7 days, at most 30). Rules in `src/shared/announcementBoard.ts`;
+  an end date is read at read time, nothing runs. Neither moves the feed nor goes to the Fediverse; each change is
+  a public `civic.process.updated` with `data.announcement.board_change` (pinned/unpinned/urgent/not_urgent).
+- **State:** flat fields on the announcement's state (`pinned`, `pinned_at`, `pinned_by`, `pinned_until`, `urgent`,
+  `urgent_until`); no table, no schema change. Read models carry `pinned/pinned_until/urgent/urgent_until` (live).
+- **Routes:** `GET /admin/announcements`, `POST /admin/announcements/:id/pin {pinned_until?}`, `.../unpin`;
+  `POST /announcement` and `PATCH /announcement/:id` take `urgent`, `urgent_until` and (admins) `pinned`,
+  `pinned_until`.
+- **Right column:** `GET /api/aside` → `announcements` is the board (urgent first, then newest) when anything is
+  pinned or urgent, else the latest 3 as before; new `urgent` (newest urgent one). The card scrolls past 3 rows.
+  `processRows.announcementBoardRows()` filters on `state->>pinned` / `state->>urgent`.
+- **UI:** Admin → Community → Announcements (`AdminAnnouncements.tsx`); the form's "Prominence" checkboxes; red
+  Urgent chip (kit `StatusChip tone="alert"`) on the feed card, the page and the card; `aside/UrgentLine.tsx` across
+  the top of public pages on every layout (closing it hides that one per browser). `aside/asideFacts.ts` shares one
+  `/api/aside` read between the column and the line; `refreshAside()` after a save.
+- Not done: urgent email (Adam: later, with a confirmation screen); officials pinning.
+
 ## Fediverse phase 3: replies kept as text, likes and boosts counted — 2026-11-15
 
 On dev, unpushed: 502d537, fc61183 (+ this). **Migration 20261116000000 first** (release.sh dev). Already on dev
