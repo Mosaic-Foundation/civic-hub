@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useIsWideViewport } from "../hooks/useIsWideViewport";
 import SampleBadge from "./SampleBadge";
-import { ListCard } from "../kit";
+import { ListCard, StatusChip } from "../kit";
 import type { ActivityColor, ActivityKind } from "../../../src/shared/feedActivity";
 import { absoluteTime, relativeTime } from "../utils/dates";
 
@@ -57,6 +57,8 @@ export interface FeedPostView {
    * metadata it already fetches lazily — see Feed.tsx::buildEngagement.
    */
   engagement?: string | null;
+  /** An announcement marked urgent right now: a red Urgent label beside the pill. */
+  urgent?: boolean;
 }
 
 interface Props {
@@ -124,7 +126,14 @@ export default function FeedPost({ post }: Props) {
       kind={post.pillColor}
       kindLabel={post.pillLabel}
       title={post.title}
-      badges={post.sample ? <SampleBadge /> : undefined}
+      badges={
+        post.sample || post.urgent ? (
+          <>
+            {post.urgent && <StatusChip tone="alert">Urgent</StatusChip>}
+            {post.sample && <SampleBadge />}
+          </>
+        ) : undefined
+      }
       meta={[
         post.note ? <span key="note" className="feed-post-note">{post.note}</span> : null,
         post.authorName ? <span key="author" className="feed-post-author">{post.authorName}</span> : null,

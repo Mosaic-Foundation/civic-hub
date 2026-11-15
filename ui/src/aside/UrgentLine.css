@@ -1,0 +1,55 @@
+/* The urgent line (UrgentLine.tsx): the kit's alert colours, one line. */
+
+.urgent-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  border-bottom: 1px solid var(--color-error);
+}
+
+.urgent-line-label {
+  flex: none;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  font-size: var(--font-size-sm);
+}
+
+.urgent-line-link {
+  min-width: 0;
+  color: inherit;
+  font-weight: var(--font-weight-medium);
+  text-decoration: underline;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.urgent-line-link:hover {
+  color: inherit;
+}
+
+.urgent-line-close {
+  flex: none;
+  min-width: var(--control-height-sm);
+  min-height: var(--control-height-sm);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.urgent-line-close:focus-visible,
+.urgent-line-link:focus-visible {
+  outline: 2px solid var(--color-error);
+  outline-offset: 2px;
+}

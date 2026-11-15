@@ -2,9 +2,9 @@
 // About. Each draws nothing when it has nothing to say, so an empty card is
 // never a box with a heading and no rows. Kit surfaces and tokens only.
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Button, Card } from "../kit";
+import { Button, Card, StatusChip } from "../kit";
 import { useHub } from "../config/hub";
 import { useAuth } from "../context/authState";
 import { processTypes } from "../config/navigation";
@@ -13,6 +13,7 @@ import AuthModal from "../components/AuthModal";
 import { localShortDate } from "../utils/dates";
 import { CALENDAR_PLUGIN, type AsideData } from "./useAsideData";
 import { comingUpRows, dateTile, timeOfDay } from "./comingUp";
+import { BOARD_SHOWN } from "../../../src/shared/announcementBoard";
 
 function AsideCard({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   const headId = `aside-${id}-title`;
@@ -77,18 +78,47 @@ export function ComingUpCard({ data }: { data: AsideData }) {
   );
 }
 
+// Announcements (2026-11-15; src/shared/announcementBoard.ts): the pinned
+// and urgent ones when there are any, urgent first; else the newest few. Past
+// BOARD_SHOWN rows the list scrolls inside the card.
 export function AnnouncementsCard({ data }: { data: AsideData }) {
   const list = data.facts?.announcements ?? [];
+  const scrolls = list.length > BOARD_SHOWN;
+  const listRef = useRef<HTMLUListElement>(null);
+  // Three rows high, and a sliver of the fourth so the list reads as one to scroll.
+  useLayoutEffect(() => {
+    const ul = listRef.current;
+    if (!ul) return;
+    if (!scrolls) {
+      ul.style.maxHeight = "";
+      return;
+    }
+    const third = ul.children[BOARD_SHOWN - 1] as HTMLElement | undefined;
+    if (third) ul.style.maxHeight = `${third.offsetTop - ul.offsetTop + third.offsetHeight + 20}px`;
+  }, [scrolls, list]);
   if (list.length === 0) return null;
   return (
     <AsideCard id="announcements" title="Announcements">
-      <ul className="aside-rows aside-rows--plain">
+      <ul
+        ref={listRef}
+        className={`aside-rows aside-rows--plain${scrolls ? " aside-rows--scroll" : ""}`}
+        {...(scrolls ? { tabIndex: 0, "aria-label": `${list.length} announcements` } : {})}
+      >
         {list.map((a) => (
           <li key={a.process_id}>
             <Link to={a.url} className="aside-row aside-row--plain">
               <span className="aside-row-text">
                 <span className="aside-row-title">{a.title}</span>
-                <span className="aside-row-meta">{localShortDate(a.published_at)}</span>
+                <span className="aside-row-meta">
+                  {a.urgent && <StatusChip tone="alert">Urgent</StatusChip>}
+                  {a.pinned && !a.urgent && (
+                    <>
+                      <span>Pinned</span>
+                      <span aria-hidden="true">·</span>
+                    </>
+                  )}
+                  {localShortDate(a.published_at)}
+                </span>
               </span>
             </Link>
           </li>

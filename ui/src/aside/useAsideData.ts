@@ -5,7 +5,8 @@
 // error: the column is an aside.
 
 import { useEffect, useState } from "react";
-import { getAside, getCalendarEvents, type AsideFacts, type CalendarEventRow } from "../services/api";
+import { getCalendarEvents, type AsideFacts, type CalendarEventRow } from "../services/api";
+import { loadAsideFacts, onAsideChanged } from "./asideFacts";
 import { pluginEnabled, type PluginId } from "../config/plugins";
 
 /** The plugin whose calendar Coming up reads its events from. */
@@ -24,13 +25,20 @@ export function useAsideData(): AsideData {
   useEffect(() => {
     let live = true;
     void Promise.all([
-      getAside().catch(() => null),
+      loadAsideFacts(),
       calendarOn ? getCalendarEvents().catch(() => null) : Promise.resolve(null),
     ]).then(([facts, events]) => {
       if (live) setData({ facts, events, loaded: true });
     });
+    // A pin or an urgent label changed: the announcements again, the calendar as it was.
+    const off = onAsideChanged(() => {
+      void loadAsideFacts().then((facts) => {
+        if (live) setData((d) => ({ ...d, facts }));
+      });
+    });
     return () => {
       live = false;
+      off();
     };
   }, [calendarOn]);
   return data;

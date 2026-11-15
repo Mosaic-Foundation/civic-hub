@@ -79,4 +79,5 @@ export const NewProject = page(() => draft().then((m) => ({ default: m.NewProjec
 export const NewProposal = page(() => draft().then((m) => ({ default: m.NewProposal })));
 export const NewVote = page(() => draft().then((m) => ({ default: m.NewVote })));
 export const PostAnnouncement = page(() => import("./pages/PostAnnouncement"));
+export const AdminAnnouncements = page(() => import("./pages/AdminAnnouncements"));
 export const CreateWordCloud = page(() => import("./pages/CreateWordCloud"));

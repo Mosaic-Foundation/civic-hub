@@ -63,6 +63,7 @@ import { useIsWideViewport } from "./hooks/useIsWideViewport";
 import { useTypingFocus } from "./hooks/useTypingFocus";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import AsideColumn from "./aside/AsideColumn";
+import UrgentLine from "./aside/UrgentLine";
 import { THREE_COLUMN_QUERY, pageHasAside } from "./aside/asidePages";
 import AuthModal from "./components/AuthModal";
 import "./App.css";
@@ -245,6 +246,8 @@ function AppContent() {
       {/* Demo hubs (Phase 7): explains the Sample badge; admins get the
           link to remove the sample content. */}
       {hub.demo_mode && <DemoBanner />}
+      {/* The newest urgent announcement, on every public page (aside/UrgentLine.tsx). */}
+      {!inAdmin && hub.plugins.enabled("announcement") && <UrgentLine />}
     </>
   );
 

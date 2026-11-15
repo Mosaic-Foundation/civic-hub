@@ -1229,6 +1229,12 @@ export interface Announcement {
   created_at: string;
   last_edited_at: string | null;
   edit_count: number;
+  /** Pinned to the right column's card right now (src/shared/announcementBoard.ts). */
+  pinned?: boolean;
+  pinned_until?: string | null;
+  /** The red Urgent label, its end date not passed. */
+  urgent?: boolean;
+  urgent_until?: string | null;
   /**
    * Slice 11 — moderation state. Null on never-moderated announcements.
    * When `removed` is true and the viewer is not an admin, the body /
@@ -1275,6 +1281,12 @@ export interface CreateAnnouncementInput {
   links?: AnnouncementLink[];
   image_url?: string | null;
   image_alt?: string | null;
+  /** Any poster may; needs urgent_until (ISO). */
+  urgent?: boolean;
+  urgent_until?: string | null;
+  /** Admins only; pinned_until (ISO) optional. */
+  pinned?: boolean;
+  pinned_until?: string | null;
 }
 
 export interface UpdateAnnouncementInput {
@@ -1287,6 +1299,11 @@ export interface UpdateAnnouncementInput {
    */
   image_url?: string | null;
   image_alt?: string | null;
+  urgent?: boolean;
+  urgent_until?: string | null;
+  /** Admins only. */
+  pinned?: boolean;
+  pinned_until?: string | null;
 }
 
 export function createAnnouncement(
@@ -2072,6 +2089,43 @@ export function adminRemoveAnnouncement(
     `/admin/moderation/announcements/${processId}/remove`,
     { reason },
   );
+}
+
+/** One row of Admin → Announcements. */
+export interface AdminAnnouncementRow {
+  id: string;
+  title: string;
+  author_role: AnnouncementAuthorRole;
+  author_display_name: string | null;
+  created_at: string;
+  pinned_at: string | null;
+  /** Posted by the news sync, not by hand. */
+  synced: boolean;
+  pinned: boolean;
+  pinned_until: string | null;
+  urgent: boolean;
+  urgent_until: string | null;
+}
+
+/** GET /admin/announcements: what is pinned or urgent now, and the newest others. */
+export interface AdminAnnouncements {
+  pinned: AdminAnnouncementRow[];
+  recent: AdminAnnouncementRow[];
+  pinned_count: number;
+  pinned_max: number;
+}
+
+export function adminListAnnouncements(): Promise<AdminAnnouncements> {
+  return request("GET", "/admin/announcements");
+}
+
+/** Pin to the right column's card; `until` (ISO) optional. */
+export function adminPinAnnouncement(processId: string, until: string | null): Promise<Announcement> {
+  return request("POST", `/admin/announcements/${processId}/pin`, { pinned_until: until });
+}
+
+export function adminUnpinAnnouncement(processId: string): Promise<Announcement> {
+  return request("POST", `/admin/announcements/${processId}/unpin`);
 }
 
 /** Restore a previously removed announcement. */
@@ -2935,8 +2989,23 @@ export function adminGetHiddenMembers(): Promise<{ hidden: Array<Member & { join
 }
 
 /** GET /api/aside: the right column's facts (src/services/aside.ts; ADR-019). */
+export interface AsideAnnouncement {
+  process_id: string;
+  title: string;
+  published_at: string;
+  url: string;
+  sample?: true;
+  /** Pinned right now. */
+  pinned?: true;
+  /** Marked urgent right now. */
+  urgent?: true;
+}
+
 export interface AsideFacts {
-  announcements: Array<{ process_id: string; title: string; published_at: string; url: string; sample?: true }>;
+  /** Pinned and urgent ones when there are any, else the newest few. */
+  announcements: AsideAnnouncement[];
+  /** The newest urgent announcement, for the line across the top of the pages. */
+  urgent: AsideAnnouncement | null;
   about: { member_count: number | null };
 }
 

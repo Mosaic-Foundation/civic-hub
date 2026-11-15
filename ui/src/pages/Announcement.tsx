@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useApi } from "../hooks/useApi";
 import { Link, useParams } from "react-router-dom";
 import {
+  adminPinAnnouncement,
   adminRemoveAnnouncement,
   adminRestoreAnnouncement,
+  adminUnpinAnnouncement,
   getAnnouncement,
   type Announcement,
 } from "../services/api";
@@ -17,6 +19,10 @@ import "./Announcement.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import SampleBadge from "../components/SampleBadge";
 import Modal from "../components/Modal";
+import { StatusChip } from "../kit";
+import { useHub } from "../config/hub";
+import { shortDay } from "../components/boardDates";
+import { refreshAside } from "../aside/asideFacts";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
 
@@ -31,6 +37,7 @@ const REASON_CHIPS = [
 export default function AnnouncementPage() {
   const { id } = useParams<{ id: string }>();
   const { isAdmin } = useAuth();
+  const hub = useHub();
 
   const {
     data: announcement,
@@ -97,6 +104,22 @@ export default function AnnouncementPage() {
     }
   }
 
+  // Pin / unpin from the page (no end date here; Admin → Announcements and
+  // the edit form take one).
+  async function handlePinToggle() {
+    if (!id || !announcement) return;
+    setModerationError(null);
+    try {
+      const updated = announcement.pinned
+        ? await adminUnpinAnnouncement(id)
+        : await adminPinAnnouncement(id, null);
+      setAnnouncement({ ...announcement, ...updated });
+      refreshAside();
+    } catch (err) {
+      setModerationError(err instanceof Error ? err.message : "Could not change the pin");
+    }
+  }
+
   async function handleRestore() {
     if (!id) return;
     setModerationError(null);
@@ -122,6 +145,12 @@ export default function AnnouncementPage() {
       <header className="announcement-header">
         <p className="announcement-eyebrow">
           {isAdminLabel ? "Announcement" : `${roleLabel} announcement`}
+          {announcement.urgent && (
+            <>
+              {" "}
+              <StatusChip tone="alert">Urgent</StatusChip>
+            </>
+          )}
           {announcement.is_sample && (
             <>
               {" "}
@@ -154,6 +183,9 @@ export default function AnnouncementPage() {
                 {relativeTime(announcement.last_edited_at)}
               </time>
             </>
+          )}
+          {announcement.urgent && announcement.urgent_until && (
+            <>{` · Urgent until ${shortDay(announcement.urgent_until, hub.timeZone)}`}</>
           )}
           {canEdit && !isRemoved && (
             <>
@@ -189,6 +221,15 @@ export default function AnnouncementPage() {
             </>
           ) : (
             <>
+              <button type="button" onClick={handlePinToggle}>
+                {announcement.pinned ? "Unpin" : "Pin to Announcements card"}
+              </button>
+              {announcement.pinned && (
+                <span>
+                  Pinned
+                  {announcement.pinned_until && ` until ${shortDay(announcement.pinned_until, hub.timeZone)}`}
+                </span>
+              )}
               <button
                 type="button"
                 className="danger"

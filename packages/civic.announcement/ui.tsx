@@ -2,7 +2,7 @@
 // (manifest: ./manifest.ts).
 
 import { Link } from "react-router-dom";
-import { AnnouncementPage, PostAnnouncement } from "../../ui/src/lazyPages";
+import { AdminAnnouncements, AnnouncementPage, PostAnnouncement } from "../../ui/src/lazyPages";
 import { getAnnouncement } from "../../ui/src/services/api";
 import { relativeTime } from "../../ui/src/utils/dates";
 import type { FeedKindUi, ProcessUi } from "../../ui/src/processes/types";
@@ -35,6 +35,7 @@ const announcementKind: FeedKindUi = {
         imageAlt: a.image_alt ?? null,
         editCount: a.edit_count ?? 0,
         lastEditedAt: a.last_edited_at ?? null,
+        urgent: a.urgent === true,
       };
     }),
   engagement: (meta) => {
@@ -52,6 +53,8 @@ const announcementUi: ProcessUi = {
     { path: "/announcement/new", element: <PostAnnouncement /> },
     { path: "/announcement/:id/edit", element: <PostAnnouncement /> },
     { path: "/announcement/:id", element: <AnnouncementPage /> },
+    // Admin → Announcements: pinned and urgent, pin and unpin (2026-11-15).
+    { path: "/admin/announcements", element: <AdminAnnouncements />, admin: true },
   ],
   feed: {
     announcement: announcementKind,

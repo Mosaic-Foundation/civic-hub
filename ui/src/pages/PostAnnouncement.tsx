@@ -8,6 +8,11 @@ import {
 } from "../services/api";
 import { useAuth } from "../context/authState";
 import PostImagePicker from "../components/PostImagePicker";
+import { Checkbox } from "../kit";
+import { useHub } from "../config/hub";
+import { dayFromToday, dayOf, endOfDay } from "../components/boardDates";
+import { refreshAside } from "../aside/asideFacts";
+import { URGENT_DEFAULT_DAYS, URGENT_MAX_DAYS } from "../../../src/shared/announcementBoard";
 import "./PostAnnouncement.css";
 
 const TITLE_MAX = 200;
@@ -18,6 +23,8 @@ export default function PostAnnouncement() {
   const navigate = useNavigate();
   const { id: editId } = useParams<{ id?: string }>();
   const { role, canPostAnnouncements, loading: authLoading } = useAuth();
+  const hub = useHub();
+  const tz = hub.timeZone;
 
   const isEditMode = Boolean(editId);
 
@@ -30,6 +37,11 @@ export default function PostAnnouncement() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  // Urgent (any poster) and pinned (admins): src/shared/announcementBoard.ts.
+  const [urgent, setUrgent] = useState(false);
+  const [urgentUntil, setUrgentUntil] = useState(() => dayFromToday(URGENT_DEFAULT_DAYS, tz));
+  const [pinned, setPinned] = useState(false);
+  const [pinnedUntil, setPinnedUntil] = useState("");
 
   // Load the existing announcement when editing.
   useEffect(() => {
@@ -43,10 +55,14 @@ export default function PostAnnouncement() {
         setImageUrl(a.image_url);
         setImageAlt(a.image_alt);
         setIsOwner(!!a.is_owner);
+        setUrgent(!!a.urgent);
+        if (a.urgent && a.urgent_until) setUrgentUntil(dayOf(a.urgent_until, tz));
+        setPinned(!!a.pinned);
+        setPinnedUntil(dayOf(a.pinned_until, tz));
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoadingExisting(false));
-  }, [editId]);
+  }, [editId, tz]);
 
   // Gate: only Board or admin can reach the form at all. On edit, only the
   // original author or an admin can reach the form. Residents and
@@ -99,6 +115,8 @@ export default function PostAnnouncement() {
     }
   }
 
+  const isAdminRole = role === "admin";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -116,6 +134,12 @@ export default function PostAnnouncement() {
       const altToSend = imageUrl
         ? ((imageAlt ?? "").trim().length > 0 ? imageAlt!.trim() : null)
         : null;
+      const marks = {
+        urgent,
+        urgent_until: urgent ? endOfDay(urgentUntil, tz) : null,
+        // Only an admin sends pinned: the server refuses it from anyone else.
+        ...(isAdminRole ? { pinned, pinned_until: pinned ? endOfDay(pinnedUntil, tz) : null } : {}),
+      };
       if (isEditMode && editId) {
         await updateAnnouncement(editId, {
           title: title.trim(),
@@ -123,7 +147,9 @@ export default function PostAnnouncement() {
           links: cleanedLinks,
           image_url: imageUrl,
           image_alt: altToSend,
+          ...marks,
         });
+        refreshAside();
         navigate(`/announcement/${editId}`);
       } else {
         const created = await createAnnouncement({
@@ -132,7 +158,9 @@ export default function PostAnnouncement() {
           links: cleanedLinks,
           image_url: imageUrl,
           image_alt: altToSend,
+          ...marks,
         });
+        refreshAside();
         navigate(`/announcement/${created.id}`);
       }
     } catch (err) {
@@ -164,6 +192,7 @@ export default function PostAnnouncement() {
     body.trim().length > 0 &&
     !titleOver &&
     !bodyOver &&
+    !(urgent && !urgentUntil) &&
     !submitting;
 
   return (
@@ -280,6 +309,56 @@ export default function PostAnnouncement() {
             </button>
           )}
         </div>
+
+        <fieldset className="form-field announcement-marks">
+          <legend className="form-label">Prominence</legend>
+          <Checkbox
+            label="Mark as urgent"
+            hint="Shows a red Urgent label on the post, and a line across the top of the hub's pages, until the end of the date below. For a fire ban, a road closure, a boil-water notice."
+            checked={urgent}
+            onChange={(e) => setUrgent(e.target.checked)}
+            disabled={submitting}
+          />
+          {urgent && (
+            <label className="announcement-mark-date">
+              Urgent until
+              <input
+                className="form-input"
+                type="date"
+                value={urgentUntil}
+                min={dayFromToday(0, tz)}
+                max={dayFromToday(URGENT_MAX_DAYS, tz)}
+                onChange={(e) => setUrgentUntil(e.target.value)}
+                required
+                disabled={submitting}
+              />
+            </label>
+          )}
+          {isAdminRole && (
+            <>
+              <Checkbox
+                label="Pin to the Announcements card"
+                hint="Keeps it in the right column's Announcements card until you unpin it or the end date passes. Admins only."
+                checked={pinned}
+                onChange={(e) => setPinned(e.target.checked)}
+                disabled={submitting}
+              />
+              {pinned && (
+                <label className="announcement-mark-date">
+                  Pinned until <span className="optional">(optional)</span>
+                  <input
+                    className="form-input"
+                    type="date"
+                    value={pinnedUntil}
+                    min={dayFromToday(0, tz)}
+                    onChange={(e) => setPinnedUntil(e.target.value)}
+                    disabled={submitting}
+                  />
+                </label>
+              )}
+            </>
+          )}
+        </fieldset>
 
         {error && <p className="form-error">{error}</p>}
 

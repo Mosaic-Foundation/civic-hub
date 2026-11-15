@@ -4,7 +4,7 @@
 //
 //   Review        Processes, Briefs, Meeting summaries, Edits; a closed
 //                 group's head carries the sum of their counts
-//   Community     Moderation, Feedback
+//   Community     Moderation, Announcements, Feedback
 //   Activity      a plain item (a feature's page, when switched on)
 //   Hub settings  its sections (src/shared/adminAnchors.ts)
 //   and at the foot, in small type: Archived, Setup guide, Contact Civic.Social.
@@ -106,6 +106,10 @@ export function useAdminNav(): AdminNav {
   review.push(item("edits", "Edits", "edits", "/admin/edits", counts.edits));
 
   const community: NavItem[] = [item("moderation", "Moderation", "moderation", "/admin/moderation")];
+  // Pinned and urgent announcements (2026-11-15), while the plugin is on.
+  if (hub.plugins.enabled("announcement")) {
+    community.push(item("admin-announcements", "Announcements", "announcement", "/admin/announcements"));
+  }
   if (hub.plugins.enabled("feedback")) {
     community.push(item("admin-feedback", "Feedback", "feedback", "/admin/feedback", counts.feedback));
   }
