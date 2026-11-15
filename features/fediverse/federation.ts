@@ -28,6 +28,7 @@
 import { createFederationBuilder, type Context, type Federation, type KvStore } from "@fedify/fedify";
 import {
   Accept,
+  Announce,
   Create,
   Delete,
   Endpoints,
@@ -35,6 +36,7 @@ import {
   Hashtag,
   Image,
   isActor,
+  Like,
   Link,
   Note,
   PropertyValue,
@@ -42,6 +44,7 @@ import {
   Reject,
   Service,
   Undo,
+  Update,
   type Actor,
 } from "@fedify/vocab";
 import { Temporal } from "temporal-polyfill";
@@ -326,20 +329,119 @@ builder
   })
   .on(Undo, async (ctx, undo) => {
     if (!undo.actorId) return;
-    const object = await undo.getObject(ctx);
-    if (!(object instanceof Follow) || !isHub(ctx, object.objectId)) return;
     // The Undo's actor is the account that signed it (Fedify checks), so it
-    // can only take back its own follow.
-    if (object.actorId && object.actorId.href !== undo.actorId.href) return;
-    await ctx.data.store.removeFollower(undo.actorId.href);
+    // can only take back its own follow, like or boost.
+    const object = await undo.getObject(ctx).catch(() => null);
+    if (object instanceof Follow) {
+      if (!isHub(ctx, object.objectId)) return;
+      if (object.actorId && object.actorId.href !== undo.actorId.href) return;
+      await ctx.data.store.removeFollower(undo.actorId.href);
+      return;
+    }
+    // A like or boost, embedded or named by its id.
+    const id = object?.id ?? undo.objectId;
+    if (id) await ctx.data.store.removeReaction(id.href, undo.actorId.href);
   })
   .on(Delete, async (ctx, del) => {
-    // An account that deletes itself stops following. Posts deleted by their
-    // author are phase 3 (replies).
-    if (del.actorId && del.objectId && del.objectId.href === del.actorId.href) {
-      await ctx.data.store.removeFollower(del.actorId.href);
+    if (!del.actorId || !del.objectId) return;
+    if (del.objectId.href === del.actorId.href) {
+      // An account deleted: it stops following, and the hub forgets its
+      // replies, likes and boosts.
+      await ctx.data.store.forgetActor(del.actorId.href);
+      return;
     }
+    // A reply deleted by its author: the hub deletes its copy.
+    await ctx.data.store.deleteReply(del.objectId.href, del.actorId.href);
+  })
+  .on(Create, async (ctx, create) => {
+    await keepReply(ctx, create);
+  })
+  .on(Update, async (ctx, update) => {
+    // An edited reply: the new text replaces the old (a profile update is not a reply, and is ignored).
+    await keepReply(ctx, update);
+  })
+  .on(Like, async (ctx, like) => {
+    await keepReaction(ctx, like, "like");
+  })
+  .on(Announce, async (ctx, boost) => {
+    await keepReaction(ctx, boost, "boost");
   });
+
+/** Longest reply text kept; links to at most this many pictures or videos. */
+export const REPLY_MAX_CHARS = 5000;
+export const REPLY_MAX_MEDIA = 8;
+
+/** The hub's post a Note or activity is about, or null when it is not one of the hub's. */
+async function hubPostId(ctx: Context<FediverseData>, uri: URL | null): Promise<string | null> {
+  if (!uri) return null;
+  const parsed = ctx.parseUri(uri);
+  if (parsed?.type !== "object" || parsed.class !== Note) return null;
+  const values = parsed.values as { identifier?: string; id?: string };
+  if (values.identifier !== HUB_ACTOR || !values.id) return null;
+  return (await ctx.data.store.post(values.id)) ? values.id : null;
+}
+
+/** A reply's words, as plain text: paragraphs and line breaks kept, markup and entities gone. */
+export function replyText(html: string): string {
+  const text = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e: string) => {
+      const named: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+      if (e[0] === "#") {
+        const code = e[1]?.toLowerCase() === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+        return Number.isFinite(code) && code > 0 && code < 0x110000 ? String.fromCodePoint(code) : m;
+      }
+      return named[e.toLowerCase()] ?? m;
+    })
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return text.length > REPLY_MAX_CHARS ? `${text.slice(0, REPLY_MAX_CHARS - 1)}…` : text;
+}
+
+/** Keep a reply to one of the hub's posts (a Create or an Update of a Note). */
+async function keepReply(ctx: Context<FediverseData>, activity: Create | Update): Promise<void> {
+  if (!activity.actorId) return;
+  const note = await activity.getObject(ctx).catch(() => null);
+  if (!(note instanceof Note) || !note.id) return;
+  // Written by the account that sent it, from a server the hub has not blocked.
+  if (note.attributionId?.href !== activity.actorId.href) return;
+  if (isBlocked(activity.actorId.hostname, ctx.data.blocked)) return;
+  const postId = await hubPostId(ctx, note.replyTargetId);
+  if (!postId) return;
+  const json = (await note.toJsonLd({ format: "compact", contextLoader: ctx.contextLoader })) as Record<string, unknown>;
+  const attachments = ([] as unknown[]).concat(json.attachment ?? []);
+  const media = attachments
+    .map((a) => {
+      const u = (a as { url?: unknown }).url;
+      const href = typeof u === "string" ? u : (u as { href?: unknown } | undefined)?.href;
+      return typeof href === "string" && /^https?:\/\//.test(href) ? href : null;
+    })
+    .filter((h): h is string => h !== null)
+    .slice(0, REPLY_MAX_MEDIA);
+  const page = note.url instanceof URL ? note.url.href : note.url instanceof Link ? (note.url.href?.href ?? null) : null;
+  const sender = await activity.getActor(ctx).catch(() => null);
+  await ctx.data.store.saveReply({
+    id: note.id.href,
+    post_id: postId,
+    actor_uri: activity.actorId.href,
+    actor_handle: sender && isActor(sender) ? followerHandle(sender) : null,
+    text: replyText(note.content?.toString() ?? ""),
+    media_links: media,
+    url: page && /^https?:\/\//.test(page) ? page : null,
+    published_at: note.published ? new Date(note.published.epochMilliseconds).toISOString() : null,
+  });
+}
+
+/** Keep a like or boost of one of the hub's posts. */
+async function keepReaction(ctx: Context<FediverseData>, activity: Like | Announce, kind: "like" | "boost"): Promise<void> {
+  if (!activity.id || !activity.actorId) return;
+  if (isBlocked(activity.actorId.hostname, ctx.data.blocked)) return;
+  const postId = await hubPostId(ctx, activity.objectId);
+  if (!postId) return;
+  await ctx.data.store.addReaction({ activity_id: activity.id.href, kind, post_id: postId, actor_uri: activity.actorId.href });
+}
 
 function followerHandle(actor: Actor): string | null {
   const user = actor.preferredUsername?.toString();

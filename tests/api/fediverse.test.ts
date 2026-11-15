@@ -151,7 +151,7 @@ describe("the hub's fediverse account", () => {
   it("answers the Activity card's follower counts, for admins only", async () => {
     const res = await call("GET", "/admin/fediverse/followers?from=2026-01-01&to=2026-12-31", HOST, undefined, admin);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ total: 0, new_in_period: 0 });
+    expect(res.body).toEqual({ total: 0, new_in_period: 0, replies: 0, likes: 0, boosts: 0 });
     expect((await call("GET", "/admin/fediverse/followers?from=2026-12-31&to=2026-01-01", HOST, undefined, admin)).status).toBe(400);
     expect((await call("GET", "/admin/fediverse/followers?from=2026-01-01&to=2026-12-31", HOST)).status).toBe(401);
   });

@@ -5,9 +5,10 @@
 // federation, signed and verified exactly as over the network.
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { Temporal } from "temporal-polyfill";
 import { createFederation, MemoryKvStore, type Federation } from "@fedify/fedify";
-import { Accept, Create, Follow, Note, Person, Undo, Endpoints, Delete, Update } from "@fedify/vocab";
-import { avatarUrl, federationFor, profileSummary, acceptedUsernames, hubHandle, type FediverseData, type HubFacts } from "../../features/fediverse/federation.js";
+import { Accept, Announce, Image, Create, Follow, Like, Note, Person, Undo, Endpoints, Delete, Update, type Activity } from "@fedify/vocab";
+import { avatarUrl, replyText, federationFor, profileSummary, acceptedUsernames, hubHandle, type FediverseData, type HubFacts } from "../../features/fediverse/federation.js";
 import { memoryStore } from "../../features/fediverse/store.js";
 import { open as openSealed, seal } from "../../src/services/sealedSecrets.js";
 
@@ -82,7 +83,7 @@ afterAll(() => {
 const alice = new URL(`${SOCIAL}/users/alice`);
 const hubActor = new URL(`${HUB}/ap/hub`);
 
-async function asAlice(activity: Follow | Undo | Delete) {
+async function asAlice(activity: Activity) {
   const ctx = social.createContext(new URL(SOCIAL), undefined);
   await ctx.sendActivity({ identifier: "alice" }, { id: hubActor, inboxId: new URL(`${HUB}/ap/hub/inbox`) }, activity);
 }
@@ -393,6 +394,63 @@ describe("the hub's profile", () => {
     // A new logo: sent again.
     expect(await announceProfile(deps([], { facts: { ...facts, logoUrl: "/new-logo.png" } }))).toBe(1);
     expect(updated).toHaveLength(2);
+  });
+});
+
+describe("what comes back", () => {
+  const replyTo = () => new URL(`${HUB}/ap/hub/posts/${store.allPosts[0]!.id}`);
+  const replyId = new URL(`${SOCIAL}/users/alice/statuses/1`);
+  const reply = (content: string, inReplyTo: URL, by: URL = alice) =>
+    new Note({ id: replyId, attribution: by, replyTarget: inReplyTo, content, url: new URL(`${SOCIAL}/@alice/1`), published: Temporal.Instant.from("2026-11-15T12:00:00Z"), attachments: [new Image({ url: new URL(`${SOCIAL}/media/1.jpg`) })] });
+
+  it("keeps a reply to a hub post as text, with links to its pictures", async () => {
+    await asAlice(new Create({ id: new URL(`${SOCIAL}/users/alice/statuses/1/activity`), actor: alice, object: reply("<p>Great idea &amp; thanks!</p><p>Line two<br>three</p>", replyTo()) }));
+    const kept = store.replies.get(replyId.href)!;
+    expect(kept).toMatchObject({ actor_uri: alice.href, actor_handle: "@alice@social.example", post_id: store.allPosts[0]!.id });
+    expect(kept.text).toBe("Great idea & thanks!\n\nLine two\nthree");
+    expect(kept.media_links).toEqual([`${SOCIAL}/media/1.jpg`]);
+  });
+
+  it("keeps the new text when its author edits it, and deletes it when they delete it", async () => {
+    await asAlice(new Update({ id: new URL(`${SOCIAL}/users/alice/statuses/1#updates/1`), actor: alice, object: reply("<p>Edited</p>", replyTo()) }));
+    expect(store.replies.get(replyId.href)!.text).toBe("Edited");
+    await asAlice(new Delete({ id: new URL(`${SOCIAL}/users/alice/statuses/1#delete`), actor: alice, object: replyId }));
+    expect(store.replies.has(replyId.href)).toBe(false);
+  });
+
+  it("ignores a note that answers nothing of the hub's, or that someone else wrote", async () => {
+    await asAlice(new Create({ id: new URL(`${SOCIAL}/a/2`), actor: alice, object: reply("hi", new URL(`${SOCIAL}/users/bob/statuses/9`)) }));
+    await asAlice(new Create({ id: new URL(`${SOCIAL}/a/3`), actor: alice, object: reply("hi", replyTo(), new URL(`${SOCIAL}/users/bob`)) }));
+    expect(store.replies.size).toBe(0);
+  });
+
+  it("counts a like and a boost once each, and takes them back on Undo", async () => {
+    const like = new Like({ id: new URL(`${SOCIAL}/likes/1`), actor: alice, object: replyTo() });
+    await asAlice(like);
+    await asAlice(new Like({ id: new URL(`${SOCIAL}/likes/2`), actor: alice, object: replyTo() }));
+    await asAlice(new Announce({ id: new URL(`${SOCIAL}/boosts/1`), actor: alice, object: replyTo(), to: new URL("https://www.w3.org/ns/activitystreams#Public") }));
+    expect([...store.reactions.values()].map((r) => r.kind).sort()).toEqual(["boost", "like"]);
+    const now = new Date();
+    const counts = await store.returnsSince(new Date(now.getTime() - 60_000).toISOString(), new Date(now.getTime() + 60_000).toISOString());
+    expect(counts).toEqual({ replies: 0, likes: 1, boosts: 1 });
+    await asAlice(new Undo({ id: new URL(`${SOCIAL}/likes/1#undo`), actor: alice, object: like }));
+    expect([...store.reactions.values()].map((r) => r.kind)).toEqual(["boost"]);
+    // A like of something that isn't a hub post is not counted.
+    await asAlice(new Like({ id: new URL(`${SOCIAL}/likes/3`), actor: alice, object: new URL(`${SOCIAL}/users/bob/statuses/9`) }));
+    expect(store.reactions.size).toBe(1);
+  });
+
+  it("forgets an account's replies, likes and boosts when the account is deleted", async () => {
+    await asAlice(new Create({ id: new URL(`${SOCIAL}/a/4`), actor: alice, object: reply("again", replyTo()) }));
+    expect(store.replies.size).toBe(1);
+    await asAlice(new Delete({ id: new URL(`${SOCIAL}/users/alice#delete2`), actor: alice, object: alice }));
+    expect(store.replies.size).toBe(0);
+    expect(store.reactions.size).toBe(0);
+  });
+
+  it("reads a reply's words out of its markup", () => {
+    expect(replyText("<p><span class=\"h-card\"><a href=\"x\">@<span>hub</span></a></span> yes &#x1F44D; &lt;b&gt;</p>")).toBe("@hub yes 👍 <b>");
+    expect(replyText("x".repeat(6000))).toHaveLength(5000);
   });
 });
 

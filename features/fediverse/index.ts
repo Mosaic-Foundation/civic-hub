@@ -189,7 +189,8 @@ function adminRouter(host: FeatureHost, store: FediverseStore, kv: KvStore): Rou
       });
     }),
   );
-  // GET /admin/fediverse/followers?from=&to=: Admin → Activity's card.
+  // GET /admin/fediverse/followers?from=&to=: Admin → Activity's card: followers,
+  // and replies, likes and boosts of the hub's posts in the period.
   r.get(
     "/followers",
     route(async (req, res) => {
@@ -199,9 +200,12 @@ function adminRouter(host: FeatureHost, store: FediverseStore, kv: KvStore): Rou
       if (!day.test(from) || !day.test(to) || from > to) throw new ValidationError("from and to are days, YYYY-MM-DD, from first");
       const end = new Date(`${to}T00:00:00Z`);
       end.setUTCDate(end.getUTCDate() + 1);
+      const start = `${from}T00:00:00Z`;
       res.json({
         total: await store.followerCount(),
-        new_in_period: await store.followersSince(`${from}T00:00:00Z`, end.toISOString()),
+        new_in_period: await store.followersSince(start, end.toISOString()),
+        // Replies, likes and boosts of the hub's posts in the period (phase 3).
+        ...(await store.returnsSince(start, end.toISOString())),
       });
     }),
   );

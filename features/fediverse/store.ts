@@ -60,6 +60,33 @@ export interface Delivery {
   next_attempt_at: string;
 }
 
+/** A reply from the fediverse to one of the hub's posts, kept as text. */
+export interface Reply {
+  id: string;
+  post_id: string;
+  actor_uri: string;
+  actor_handle: string | null;
+  text: string;
+  media_links: string[];
+  url: string | null;
+  published_at: string | null;
+}
+
+/** A like or boost of one of the hub's posts. */
+export interface Reaction {
+  activity_id: string;
+  kind: "like" | "boost";
+  post_id: string;
+  actor_uri: string;
+}
+
+/** What came back from the fediverse in a period. */
+export interface Returns {
+  replies: number;
+  likes: number;
+  boosts: number;
+}
+
 /** What a delivery attempt came to. */
 export type DeliveryResult =
   | { delivered: true; status: number }
@@ -96,6 +123,19 @@ export interface FediverseStore {
   dueDeliveries(now: string, limit: number): Promise<Delivery[]>;
   recordDelivery(d: Delivery, result: DeliveryResult, now: string): Promise<void>;
 
+  /** Keep a reply, or its edit (same id, same author). False when another account's reply has that id. */
+  saveReply(reply: Reply): Promise<boolean>;
+  /** Delete a reply, only when `actorUri` wrote it. */
+  deleteReply(id: string, actorUri: string): Promise<boolean>;
+  /** Keep a like or boost; one per account, post and kind (a repeat is ignored). */
+  addReaction(reaction: Reaction): Promise<void>;
+  /** Take back a like or boost, only when `actorUri` made it. */
+  removeReaction(activityId: string, actorUri: string): Promise<boolean>;
+  /** Everything an account sent: when the account itself is deleted. */
+  forgetActor(actorUri: string): Promise<void>;
+  /** Replies, likes and boosts received in [from, to). */
+  returnsSince(from: string, to: string): Promise<Returns>;
+
   /** A small value the job keeps between runs (its cursor, its last roundup). */
   getState(name: string): Promise<string | null>;
   setState(name: string, value: string): Promise<void>;
@@ -110,7 +150,16 @@ function uniqueInboxes(rows: readonly { inbox_url: string; shared_inbox_url: str
 }
 
 export function dbStore(host: FeatureHost): FediverseStore {
-  const t = (name: "fediverse_keys" | "fediverse_followers" | "fediverse_posts" | "fediverse_deliveries" | "fediverse_kv") =>
+  const t = (
+    name:
+      | "fediverse_keys"
+      | "fediverse_followers"
+      | "fediverse_posts"
+      | "fediverse_deliveries"
+      | "fediverse_kv"
+      | "fediverse_replies"
+      | "fediverse_reactions",
+  ) =>
     host.db().from(name);
   return {
     async keys() {
@@ -194,6 +243,47 @@ export function dbStore(host: FeatureHost): FediverseStore {
       await t("fediverse_deliveries").update(values).eq("post_id", d.post_id).eq("inbox_url", d.inbox_url);
     },
 
+    async saveReply(reply) {
+      const was = await t("fediverse_replies").select<{ actor_uri: string }>("actor_uri").eq("id", reply.id).maybeSingle();
+      if (was && was.actor_uri !== reply.actor_uri) return false;
+      if (was) {
+        await t("fediverse_replies")
+          .update({ text: reply.text, media_links: reply.media_links, url: reply.url, edited_at: new Date().toISOString() })
+          .eq("id", reply.id);
+      } else {
+        await t("fediverse_replies").upsert({ ...reply }, { onConflict: "hub_id,id", ignoreDuplicates: true });
+      }
+      return true;
+    },
+    async deleteReply(id, actorUri) {
+      const gone = await t("fediverse_replies").delete().eq("id", id).eq("actor_uri", actorUri).select<{ id: string }>("id");
+      return gone.length > 0;
+    },
+    async addReaction(r) {
+      await t("fediverse_reactions").upsert({ ...r }, { onConflict: "hub_id,post_id,actor_uri,kind", ignoreDuplicates: true });
+    },
+    async removeReaction(activityId, actorUri) {
+      const gone = await t("fediverse_reactions")
+        .delete()
+        .eq("activity_id", activityId)
+        .eq("actor_uri", actorUri)
+        .select<{ activity_id: string }>("activity_id");
+      return gone.length > 0;
+    },
+    async forgetActor(actorUri) {
+      await t("fediverse_replies").delete().eq("actor_uri", actorUri);
+      await t("fediverse_reactions").delete().eq("actor_uri", actorUri);
+      await t("fediverse_followers").delete().eq("actor_uri", actorUri);
+    },
+    async returnsSince(from, to) {
+      const [replies, likes, boosts] = await Promise.all([
+        t("fediverse_replies").count().gte("received_at", from).lt("received_at", to),
+        t("fediverse_reactions").count().eq("kind", "like").gte("received_at", from).lt("received_at", to),
+        t("fediverse_reactions").count().eq("kind", "boost").gte("received_at", from).lt("received_at", to),
+      ]);
+      return { replies, likes, boosts };
+    },
+
     async getState(name) {
       const row = await t("fediverse_kv").select<{ value: unknown }>("value").eq("key", stateKey(name)).maybeSingle();
       return typeof row?.value === "string" ? row.value : null;
@@ -206,6 +296,8 @@ export function dbStore(host: FeatureHost): FediverseStore {
 
 /** The same, in memory, for one hub: the unit tests'. */
 export function memoryStore(): FediverseStore & {
+  replies: Map<string, Reply & { received_at: string; edited_at?: string }>;
+  reactions: Map<string, Reaction & { received_at: string }>;
   followers: Map<string, Follower & { followed_at: string }>;
   allPosts: Post[];
   deliveries: Map<string, Delivery & { delivered_at?: string; gave_up_at?: string; last_status?: number | null }>;
@@ -215,11 +307,49 @@ export function memoryStore(): FediverseStore & {
   const allPosts: Post[] = [];
   const deliveries = new Map<string, Delivery & { delivered_at?: string; gave_up_at?: string; last_status?: number | null }>();
   const state = new Map<string, string>();
+  const replies = new Map<string, Reply & { received_at: string; edited_at?: string }>();
+  const reactions = new Map<string, Reaction & { received_at: string }>();
   const dkey = (postId: string, inbox: string) => `${postId} ${inbox}`;
   return {
+    replies,
+    reactions,
     followers,
     allPosts,
     deliveries,
+    async saveReply(reply) {
+      const was = replies.get(reply.id);
+      if (was && was.actor_uri !== reply.actor_uri) return false;
+      replies.set(reply.id, was ? { ...was, ...reply, edited_at: new Date().toISOString() } : { ...reply, received_at: new Date().toISOString() });
+      return true;
+    },
+    async deleteReply(id, actorUri) {
+      const r = replies.get(id);
+      if (!r || r.actor_uri !== actorUri) return false;
+      return replies.delete(id);
+    },
+    async addReaction(r) {
+      const dup = [...reactions.values()].some((x) => x.post_id === r.post_id && x.actor_uri === r.actor_uri && x.kind === r.kind);
+      if (!dup && !reactions.has(r.activity_id)) reactions.set(r.activity_id, { ...r, received_at: new Date().toISOString() });
+    },
+    async removeReaction(activityId, actorUri) {
+      const r = reactions.get(activityId);
+      if (!r || r.actor_uri !== actorUri) return false;
+      return reactions.delete(activityId);
+    },
+    async forgetActor(actorUri) {
+      for (const [k, v] of replies) if (v.actor_uri === actorUri) replies.delete(k);
+      for (const [k, v] of reactions) if (v.actor_uri === actorUri) reactions.delete(k);
+      followers.delete(actorUri);
+    },
+    async returnsSince(from, to) {
+      const within = (at: string) => at >= from && at < to;
+      const rs = [...reactions.values()].filter((r) => within(r.received_at));
+      return {
+        replies: [...replies.values()].filter((r) => within(r.received_at)).length,
+        likes: rs.filter((r) => r.kind === "like").length,
+        boosts: rs.filter((r) => r.kind === "boost").length,
+      };
+    },
     async keys() {
       return stored;
     },
