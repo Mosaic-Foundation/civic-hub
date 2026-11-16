@@ -48,6 +48,7 @@ export const SETTINGS_NAV = [
   { id: "people", label: "Admins" },
   { id: "officials", label: "Officials" },
   { id: "participation", label: "Participation" },
+  { id: "districts", label: "Districts" },
   { id: "plugins", label: "Plugins" },
 ] as const;
 

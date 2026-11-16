@@ -96,7 +96,8 @@ describe("forHub — construction", () => {
     // 46 since 20261114000000 (the fediverse feature): fediverse_keys, fediverse_followers.
     // 49 since 20261115000000 (fediverse phase 2): fediverse_kv, fediverse_posts, fediverse_deliveries.
     // 51 since 20261116000000 (fediverse phase 3): fediverse_replies, fediverse_reactions.
-    expect(HUB_TABLES).toHaveLength(51);
+    // 52 since 20261116030000 (districts and demographics): member_about.
+    expect(HUB_TABLES).toHaveLength(52);
     expect(HUB_TABLES).not.toContain("hubs");
   });
 });

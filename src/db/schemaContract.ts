@@ -91,6 +91,8 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "admin_digest_marks", columns: ["hub_id", "covered_until", "updated_at"], owner: "civic.admin_digest" },
   { table: "waitlist", columns: ["invited_by"], owner: "services/hubInvites" },
   { table: "hub_invites", columns: ["hub_id", "email", "invited_by", "outcome", "link_hash", "created_at", "expires_at", "used_at"], owner: "services/hubInvites" },
+  // Districts and demographics: a member's own About-you answers (20261116030000).
+  { table: "member_about", columns: ["hub_id", "user_id", "district_id", "birth_year", "race", "declined", "asked_at"], owner: "civic.about" },
   { table: "hub_roles", columns: ["hub_id", "role", "user_id", "source", "granted_email", "attrs"], owner: "authz" },
   // Plugin packages (20261025000000, ADR-014).
   { table: "hub_plugins", columns: ["hub_id", "package", "version", "plugin", "capabilities", "installed_at", "installed_by", "removed_at", "removed_by", "winding_down_since", "winding_down_by"], owner: "plugins" },
@@ -154,6 +156,8 @@ const HOST_EXPORTS: readonly ExportManifestEntry[] = [
   { table: "hub_settings", rows: "export" },
   { table: "job_runs", rows: "omit", reason: "an operational log of this host's scheduled runs; the next host writes its own" },
   { table: "link_previews", rows: "omit", reason: "a cache of other sites' metadata; the next host refetches it" },
+  // A member's own About-you answers move with their account (20261116030000).
+  { table: "member_about", rows: "export" },
   { table: "process_links", rows: "export" },
   { table: "process_reviews", rows: "export" },
   { table: "processes", rows: "export" },

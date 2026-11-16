@@ -20,6 +20,7 @@ import {
 import { validateThemeValue } from "../shared/theme.js";
 import { parseWixFields } from "../shared/wixFields.js";
 import { ASIDE_CARDS_MAX, ASIDE_CARD_ID_SHAPE } from "../shared/asideCards.js";
+import { DISTRICTS_MAX, DISTRICT_ID_SHAPE, DISTRICT_NAME_MAX } from "../shared/aboutYou.js";
 
 export type SettingsWriteResult =
   | {
@@ -197,6 +198,35 @@ export function normalizeValue(
         cards.push({ id, shown });
       }
       return cards.length === 0 ? "" : JSON.stringify(cards);
+    }
+
+    case "district_list": {
+      // An array or its JSON; stored as a JSON array of { id, name }, "" for none.
+      let list: unknown = raw;
+      if (typeof raw === "string") {
+        if (raw.trim() === "") return "";
+        try {
+          list = JSON.parse(raw);
+        } catch {
+          return { error: `${key} must be a list of districts.` };
+        }
+      }
+      if (!Array.isArray(list)) return { error: `${key} must be a list of districts.` };
+      if (list.length > DISTRICTS_MAX) return { error: `${key} can hold at most ${DISTRICTS_MAX} districts.` };
+      const districts: Array<{ id: string; name: string }> = [];
+      for (const entry of list) {
+        const { id, name } = (entry ?? {}) as { id?: unknown; name?: unknown };
+        if (typeof id !== "string" || !DISTRICT_ID_SHAPE.test(id) || typeof name !== "string") {
+          return { error: `${key} must be a list of districts, each an id and a name.` };
+        }
+        const trimmed = name.trim();
+        if (!trimmed) return { error: `${key}: every district needs a name.` };
+        if (trimmed.length > DISTRICT_NAME_MAX) return { error: `${key}: "${trimmed.slice(0, 20)}…" is longer than ${DISTRICT_NAME_MAX} characters.` };
+        if (districts.some((d) => d.id === id)) return { error: `${key} lists ${id} twice.` };
+        if (districts.some((d) => d.name.toLowerCase() === trimmed.toLowerCase())) return { error: `${key} lists "${trimmed}" twice.` };
+        districts.push({ id, name: trimmed });
+      }
+      return districts.length === 0 ? "" : JSON.stringify(districts);
     }
 
     case "theme": {

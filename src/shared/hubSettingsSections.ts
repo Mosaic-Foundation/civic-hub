@@ -75,7 +75,13 @@ export type SettingFieldKind =
    * array of { id, shown } in order, ids distinct (src/shared/asideCards.ts).
    * Ids the hub doesn't draw are kept, so a plugin's card keeps its place.
    */
-  | "aside_cards";
+  | "aside_cards"
+  /**
+   * The hub's districts (districts and demographics, 2026-11-16): a JSON
+   * array of { id, name }, ids distinct and kept when a name changes, so a
+   * ballot tagged with a district keeps it (src/shared/aboutYou.ts).
+   */
+  | "district_list";
 
 export interface SettingFieldSpec {
   key: string;
@@ -91,7 +97,7 @@ export interface SettingFieldSpec {
   processType?: string;
 }
 
-export const SETTINGS_SECTION_IDS = ["identity", "copy", "legal", "email", "theme", "plugins"] as const;
+export const SETTINGS_SECTION_IDS = ["identity", "copy", "legal", "email", "theme", "districts", "plugins"] as const;
 
 /** A `plugin.<id>.` id: a process plugin (from the manifests) or a hub feature. */
 export type PluginId = ProcessPluginId | HubFeatureId;
@@ -194,6 +200,18 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "nav.aside_cards", kind: "aside_cards" },
     // The feed's closing reminders (Events 4): hours before a close, up to 14 days; 0 is off.
     { key: "feed.closing_reminder_hours", kind: "number", min: 0, max: 336 },
+  ],
+  // Districts and demographics (Adam, 2026-11-16): what a district is
+  // called, the list, where to look one up, and which About-you questions
+  // members are asked (src/shared/aboutYou.ts).
+  districts: [
+    { key: "about.district_term", kind: "text", maxLength: 40 },
+    { key: "about.district_term_plural", kind: "text", maxLength: 40 },
+    { key: "about.districts", kind: "district_list" },
+    { key: "about.find_district_url", kind: "url" },
+    { key: "about.ask_district", kind: "boolean" },
+    { key: "about.ask_birth_year", kind: "boolean" },
+    { key: "about.ask_race", kind: "boolean" },
   ],
   // Since Phase 2c (Adam, 2026-09-24): every plugin's on/off, and beneath it
   // the settings that plugin has. Settings another section already owns

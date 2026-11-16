@@ -87,6 +87,9 @@ export const SEARCH_WORDS: Readonly<Record<string, SearchWords>> = {
     words: ["representatives", "board", "council", "elected", "politicians", "officers", "brief recipients", "legislators"],
   },
   "settings.participation": { words: ["endorsements", "threshold", "anonymous", "comments", "support"] },
+  "settings.districts": {
+    words: ["districts", "wards", "magisterial districts", "demographics", "age", "race", "about you", "breakdown", "results by district"],
+  },
   "settings.plugins": { words: ["features", "modules", "add-ons", "addons", "extensions", "apps", "turn on", "turn off"] },
 
   // Plugin panels (labels from each plugin).
@@ -196,6 +199,13 @@ export const SEARCH_WORDS: Readonly<Record<string, SearchWords>> = {
   "nav.layout": { label: "Navigation", words: ["layout", "menu", "sidebar", "tabs", "three columns", "top navigation", "left column"] },
   "nav.section_order": { label: "Section order", words: ["menu order", "reorder", "tabs order", "navigation order", "arrange"] },
   "nav.aside_cards": { label: "Right column", words: ["sidebar cards", "aside", "coming up", "widgets"] },
+  "about.district_term": { label: "What a district is called", words: ["ward", "district name", "term", "precinct"] },
+  "about.district_term_plural": { label: "More than one", words: ["plural", "wards", "districts"] },
+  "about.districts": { label: "Districts", words: ["district list", "wards", "magisterial districts", "add district"] },
+  "about.find_district_url": { label: "Find your district link", words: ["district map", "lookup", "look up district"] },
+  "about.ask_district": { label: "Ask which district", words: ["district question", "where do you live"] },
+  "about.ask_birth_year": { label: "Ask year of birth", words: ["age", "birth year", "age groups"] },
+  "about.ask_race": { label: "Ask race or ethnicity", words: ["race", "ethnicity", "demographics"] },
   "feed.closing_reminder_hours": {
     label: "Closing reminders in the feed",
     words: ["closing soon", "deadline", "reminder", "ending soon", "countdown"],
