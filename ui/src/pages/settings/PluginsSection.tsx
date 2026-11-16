@@ -216,7 +216,17 @@ function PluginCard({
         <span className="plugin-card-title">
           <span className="plugin-card-name">{pluginCopy(id, hub).name}</span>
           <span className={`plugin-card-state${on ? " is-on" : ""}`}>
-            {install?.state === "winding_down" ? "Winding down" : install ? (on ? "Installed" : "Not installed") : on ? "On" : "Off"}
+            {install?.state === "winding_down"
+              ? "Winding down"
+              : install?.state === "unavailable"
+                ? "Paused"
+                : install
+                  ? on
+                    ? "Installed"
+                    : "Not installed"
+                  : on
+                    ? "On"
+                    : "Off"}
           </span>
           {on && setup && <span className="plugin-needs-setup-chip">Needs setup</span>}
         </span>
@@ -242,7 +252,9 @@ function PluginCard({
           {panel && on && <div className="plugin-settings">{panel}</div>}
           {panel && !on && (
             <p className="form-hint plugin-off-note">
-              {install
+              {install?.state === "unavailable"
+                ? "Paused. Its settings are kept and apply again when it is running."
+                : install
                 ? "Not installed. Its settings are kept and apply again when it is installed."
                 : "Off. Its settings are kept and apply again when it is switched back on."}
             </p>

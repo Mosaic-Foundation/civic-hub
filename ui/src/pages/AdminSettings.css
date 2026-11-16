@@ -1739,3 +1739,12 @@
   font-size: var(--text-small-size);
   color: var(--color-text-muted);
 }
+
+/* The Install, Update and Remove dialogs' buttons (kit Buttons): laid out
+   here, since the drafting pages' stylesheet is not loaded on admin pages. */
+.plugin-install-dialog .confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}

@@ -19,6 +19,7 @@ import Modal from "../../components/Modal";
 import HelpButton from "../../components/HelpButton";
 import { adminInstallPlugin, adminRemovePlugin, adminUpdatePlugin, type PluginInstall } from "../../services/api";
 import { formatDate } from "../../utils/dates";
+import { Button } from "../../kit";
 
 function versions(install: PluginInstall): string {
   return install.packages.length === 1
@@ -111,8 +112,9 @@ export function PluginInstallControls({ install, onChanged }: { install: PluginI
       )}
       {install.state === "unavailable" && (
         <p className="plugin-install-state" role="status">
-          <span className="plugin-install-label">Not available right now.</span> Civic.Social has been told and is looking
-          into it. Its items and settings are kept.
+          <span className="plugin-install-label">Installed, but paused.</span> The version on this hub's server is waiting
+          for Civic.Social's approval, so it is not running right now. Its items and settings are kept, and it comes
+          back by itself once the version is approved.
         </p>
       )}
       {asking === "install" && <InstallDialog install={install} onClose={() => setAsking(null)} onDone={onChanged} />}
@@ -169,12 +171,12 @@ function InstallDialog({ install, onClose, onDone }: { install: PluginInstall; o
         </p>
       )}
       <div className="confirm-actions">
-        <button type="button" className="draft-submit-btn" onClick={confirm} disabled={busy}>
+        <Button variant="primary" onClick={confirm} disabled={busy}>
           {busy ? "Installing…" : "Install"}
-        </button>
-        <button type="button" className="draft-secondary-btn" onClick={onClose} disabled={busy}>
+        </Button>
+        <Button onClick={onClose} disabled={busy}>
           Cancel
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -237,12 +239,12 @@ function UpdateDialog({ install, onClose, onDone }: { install: PluginInstall; on
         </p>
       )}
       <div className="confirm-actions">
-        <button type="button" className="draft-submit-btn" onClick={confirm} disabled={busy}>
+        <Button variant="primary" onClick={confirm} disabled={busy}>
           {busy ? "Updating…" : "Update"}
-        </button>
-        <button type="button" className="draft-secondary-btn" onClick={onClose} disabled={busy}>
+        </Button>
+        <Button onClick={onClose} disabled={busy}>
           Cancel
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -321,12 +323,12 @@ function RemoveDialog({ install, onClose, onDone }: { install: PluginInstall; on
         </p>
       )}
       <div className="confirm-actions">
-        <button type="button" className="draft-submit-btn" onClick={confirm} disabled={busy}>
+        <Button variant="primary" onClick={confirm} disabled={busy}>
           {busy ? "Removing…" : mode === "wind_down" ? "Wind down" : "Stop now"}
-        </button>
-        <button type="button" className="draft-secondary-btn" onClick={onClose} disabled={busy}>
+        </Button>
+        <Button onClick={onClose} disabled={busy}>
           Cancel
-        </button>
+        </Button>
       </div>
     </Modal>
   );
