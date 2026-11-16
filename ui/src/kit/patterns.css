@@ -99,6 +99,7 @@
 .feed-post--type-wordcloud           { --feed-kind: var(--type-wordcloud-fg); }
 .feed-post--type-announcement        { --feed-kind: var(--type-announcement-fg); }
 .feed-post--type-announcement-author { --feed-kind: var(--type-announcement-author-fg); }
+.feed-post--type-news                { --feed-kind: var(--type-news-fg); }
 .feed-post--type-meeting             { --feed-kind: var(--type-meeting-fg); }
 .feed-post--type-official-response   { --feed-kind: var(--type-official-response-fg); }
 .feed-post--type-generic             { --feed-kind: var(--type-generic-fg); }
@@ -259,6 +260,7 @@
 .feed-pill--type-wordcloud           { background: var(--type-wordcloud-bg);           color: var(--type-wordcloud-fg); }
 .feed-pill--type-announcement        { background: var(--type-announcement-bg);        color: var(--type-announcement-fg); }
 .feed-pill--type-announcement-author { background: var(--type-announcement-author-bg); color: var(--type-announcement-author-fg); }
+.feed-pill--type-news                { background: var(--type-news-bg);                color: var(--type-news-fg); }
 .feed-pill--type-meeting             { background: var(--type-meeting-bg);             color: var(--type-meeting-fg); }
 .feed-pill--type-official-response   { background: var(--type-official-response-bg);   color: var(--type-official-response-fg); }
 .feed-pill--type-generic             { background: var(--type-generic-bg);             color: var(--type-generic-fg); }

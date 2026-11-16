@@ -212,6 +212,11 @@ export const KEYS = {
   PLUGIN_NEWS_SYNC_CONNECTOR: "plugin.news_sync.connector",
   PLUGIN_NEWS_SYNC_SOURCE_URL: "plugin.news_sync.source_url",
   PLUGIN_NEWS_SYNC_MAX_PER_RUN: "plugin.news_sync.max_per_run",
+  // How synced posts are shown (Adam, 2026-11-16): the "From" line on each
+  // card (empty means "<place> Government", as synced posts always read), and
+  // whether they are News (the default) or Announcements on the feed.
+  PLUGIN_NEWS_SYNC_FROM_LABEL: "plugin.news_sync.from_label",
+  PLUGIN_NEWS_SYNC_SHOW_AS: "plugin.news_sync.show_as",
   // The Members plugin (Adam, 2026-10-14). Below `min_count` members,
   // residents see no count, no avatar stack and no Members page; admins always
   // see the count. Unset is 0 (shown, as before the plugin); new hubs are

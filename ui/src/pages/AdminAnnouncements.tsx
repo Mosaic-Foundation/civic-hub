@@ -4,14 +4,22 @@
 // stay in the right column's Announcements card until unpinned or their end
 // date passes; urgent ones are marked by their author on the form and show
 // here so an admin sees everything on the card in one place.
+//
+// Posts News Sync copied in are listed too, so an admin can pin one (2026-11-16):
+// each such row is tagged News or Announcement and says who it is from, and a
+// Source filter shows the hub's own posts or one source's. All of that comes
+// from News Sync's own route; with News Sync off the rows and the filter are
+// simply not there.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import { useAuth } from "../context/authState";
 import { useHub } from "../config/hub";
 import {
   adminListAnnouncements,
+  adminListNewsSyncItems,
+  type NewsSyncItem,
   adminPinAnnouncement,
   adminUnpinAnnouncement,
   type AdminAnnouncementRow,
@@ -23,10 +31,27 @@ import { dayFromToday, endOfDay, shortDay } from "../components/boardDates";
 import { refreshAside } from "../aside/asideFacts";
 import "./AdminAnnouncements.css";
 
-function Byline({ row }: { row: AdminAnnouncementRow }) {
-  const who = row.synced ? "News sync" : row.author_display_name || (row.author_role === "board" ? "Board member" : row.author_role);
+/** The Source filter: everything, the hub's own posts, or one News Sync source by its label. */
+type SourceFilter = { kind: "all" } | { kind: "hub" } | { kind: "synced"; from: string };
+
+function filterKey(f: SourceFilter): string {
+  return f.kind === "synced" ? `synced:${f.from}` : f.kind;
+}
+
+function parseFilter(key: string): SourceFilter {
+  if (key.startsWith("synced:")) return { kind: "synced", from: key.slice("synced:".length) };
+  return key === "hub" ? { kind: "hub" } : { kind: "all" };
+}
+
+function Byline({ row, synced }: { row: AdminAnnouncementRow; synced: NewsSyncItem | undefined }) {
+  const who = row.synced
+    ? `From ${synced?.from ?? row.author_role} · News Sync`
+    : row.author_display_name || (row.author_role === "board" ? "Board member" : row.author_role);
   return (
     <span className="admin-ann-meta">
+      {row.synced && (
+        <span className="admin-ann-tag">{synced?.show_as === "announcement" ? "Announcement" : "News"}</span>
+      )}
       {who} · {localShortDate(row.created_at)}
     </span>
   );
@@ -40,6 +65,31 @@ export default function AdminAnnouncements() {
     !authLoading && isAdmin ? "admin/announcements" : null,
     () => adminListAnnouncements(),
   );
+  // News Sync's posts: who each is from, News or Announcement. Only asked for
+  // while News Sync is on; otherwise none, and no Source filter.
+  const newsSyncOn = hub.plugins.enabled("news_sync");
+  const { data: newsData } = useApi<{ items: NewsSyncItem[] }>(
+    !authLoading && isAdmin && newsSyncOn ? "admin/news-sync/items" : null,
+    () => adminListNewsSyncItems(),
+  );
+  const syncedById = useMemo(() => new Map((newsData?.items ?? []).map((i) => [i.id, i])), [newsData]);
+  const [source, setSource] = useState<SourceFilter>({ kind: "all" });
+  // One entry per source label among the rows listed, in order of first appearance.
+  const sources = useMemo(() => {
+    const out: string[] = [];
+    for (const row of [...(data?.pinned ?? []), ...(data?.recent ?? [])]) {
+      if (!row.synced) continue;
+      const from = syncedById.get(row.id)?.from ?? row.author_role;
+      if (!out.includes(from)) out.push(from);
+    }
+    return out;
+  }, [data, syncedById]);
+  const shows = (row: AdminAnnouncementRow): boolean => {
+    if (source.kind === "all") return true;
+    if (source.kind === "hub") return !row.synced;
+    return row.synced && (syncedById.get(row.id)?.from ?? row.author_role) === source.from;
+  };
+
   // The row being pinned: its end date is asked for in place.
   const [pinning, setPinning] = useState<string | null>(null);
   const [until, setUntil] = useState("");
@@ -71,6 +121,8 @@ export default function AdminAnnouncements() {
   }
 
   const full = data ? data.pinned_count >= data.pinned_max : false;
+  const pinnedRows = (data?.pinned ?? []).filter(shows);
+  const recentRows = (data?.recent ?? []).filter(shows);
 
   return (
     <div className="page admin-page admin-announcements-page">
@@ -91,15 +143,33 @@ export default function AdminAnnouncements() {
 
       {data && (
         <>
+          {sources.length > 0 && (
+            <label className="admin-ann-source">
+              <span>Source</span>
+              <select
+                className="form-input"
+                value={filterKey(source)}
+                onChange={(e) => setSource(parseFilter(e.target.value))}
+              >
+                <option value="all">All</option>
+                <option value="hub">Posted on this hub</option>
+                {sources.map((from) => (
+                  <option key={from} value={`synced:${from}`}>
+                    From {from} (News Sync)
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <Group
             heading="Pinned and urgent"
             description={`${data.pinned_count} of ${data.pinned_max} pinned. The card shows three and scrolls for the rest; urgent ones come first.`}
           >
-            {data.pinned.length === 0 ? (
+            {pinnedRows.length === 0 ? (
               <p className="kit-note">Nothing is pinned or urgent. The card shows the latest announcements.</p>
             ) : (
               <ul className="admin-ann-list">
-                {data.pinned.map((row) => (
+                {pinnedRows.map((row) => (
                   <li key={row.id} className="admin-ann-row">
                     <div className="admin-ann-text">
                       <Link to={`/announcement/${row.id}`} className="admin-ann-title">
@@ -114,7 +184,7 @@ export default function AdminAnnouncements() {
                           </span>
                         )}
                       </span>
-                      <Byline row={row} />
+                      <Byline row={row} synced={syncedById.get(row.id)} />
                     </div>
                     <div className="admin-ann-actions">
                       {row.pinned ? (
@@ -139,17 +209,17 @@ export default function AdminAnnouncements() {
           </Group>
 
           <Group heading="Other announcements" description="Newest first. Pin one to keep it in the card.">
-            {data.recent.length === 0 ? (
+            {recentRows.length === 0 ? (
               <p className="kit-note">No other announcements.</p>
             ) : (
               <ul className="admin-ann-list">
-                {data.recent.map((row) => (
+                {recentRows.map((row) => (
                   <li key={row.id} className="admin-ann-row">
                     <div className="admin-ann-text">
                       <Link to={`/announcement/${row.id}`} className="admin-ann-title">
                         {row.title}
                       </Link>
-                      <Byline row={row} />
+                      <Byline row={row} synced={syncedById.get(row.id)} />
                     </div>
                     <div className="admin-ann-actions">
                       {pinning === row.id ? (

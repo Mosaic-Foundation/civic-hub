@@ -672,6 +672,19 @@
       "kind": "url"
     },
     {
+      "key": "plugin.news_sync.from_label",
+      "kind": "text",
+      "maxLength": 80
+    },
+    {
+      "key": "plugin.news_sync.show_as",
+      "kind": "choice",
+      "options": [
+        "news",
+        "announcement"
+      ]
+    },
+    {
       "key": "plugin.feedback.contact_email",
       "kind": "email"
     },

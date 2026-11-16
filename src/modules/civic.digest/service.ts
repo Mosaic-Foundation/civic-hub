@@ -355,6 +355,7 @@ type BuiltinDigestSection =
   | "vote_results"
   | "meeting_summaries"
   | "announcements"
+  | "news"
   | "word_clouds"
   | "proposals"
   | "projects"
@@ -396,6 +397,7 @@ const SECTION_LABELS: Record<string, string> = {
   vote_results: "New vote results",
   meeting_summaries: "New meeting summaries",
   announcements: "Announcements",
+  news: "News",
   word_clouds: "Word clouds",
   proposals: "Proposals",
   projects: "Projects",
@@ -410,6 +412,7 @@ const SECTION_ORDER: DigestSection[] = [
   "vote_results",
   "meeting_summaries",
   "announcements",
+  "news",
   "word_clouds",
   "proposals",
   "projects",
@@ -436,6 +439,7 @@ const PILL_COLORS: Record<string, { bg: string; fg: string }> = {
   wordcloud: { bg: "#edf0dd", fg: "#5c6b2a" },
   announcement: { bg: "#fbe5d3", fg: "#8c3210" },
   "announcement-author": { bg: "#e4ddf0", fg: "#3a2c5e" },
+  news: { bg: "#e3e8ec", fg: "#34495a" },
   meeting: { bg: "#d9ecd9", fg: "#0f4a26" },
   "official-response": { bg: "#fdf1e0", fg: "#8a5a13" },
   // Declared colours (A5), as their packages give them.
@@ -579,7 +583,9 @@ export function formatDigestText(
 function groupBySection(items: DigestItem[]): Map<DigestSection, DigestItem[]> {
   const out = new Map<DigestSection, DigestItem[]>();
   for (const item of items) {
-    const section = sectionOf(item.kind);
+    // Posts News Sync copied in are announcements underneath but read as
+    // News (src/shared/newsSource.ts), so they get their own section.
+    const section = item.color === "news" ? "news" : sectionOf(item.kind);
     const list = out.get(section) ?? [];
     list.push(item);
     out.set(section, list);

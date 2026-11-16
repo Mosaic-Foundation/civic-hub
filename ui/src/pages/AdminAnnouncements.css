@@ -76,3 +76,28 @@
     align-items: stretch;
   }
 }
+
+/* The Source filter above the lists, and a synced row's News / Announcement
+   tag (2026-11-16). */
+.admin-ann-source {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
+}
+
+.admin-ann-source .form-input {
+  max-width: 32ch;
+}
+
+.admin-ann-tag {
+  display: inline-block;
+  margin-right: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--type-news-bg);
+  color: var(--type-news-fg);
+  font-weight: var(--font-weight-medium);
+}

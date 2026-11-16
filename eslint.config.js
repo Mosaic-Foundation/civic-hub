@@ -633,16 +633,17 @@ export default [
       }],
     },
   },
-  // The feed classifier is shared with the UI: its one import is the
-  // manifest list (Architecture 2; it was import-free before).
+  // The feed classifier is shared with the UI: its imports are the
+  // manifest list (Architecture 2; it was import-free before) and the
+  // import-free reader of a News Sync post's source (2026-11-16).
   {
     files: ["src/shared/feedActivity.ts"],
     rules: {
       "no-restricted-imports": ["error", {
         patterns: [{
-          regex: "^(?!\\./processManifests\\.js$)",
+          regex: "^(?!\\./processManifests\\.js$|\\./newsSource\\.js$)",
           allowTypeImports: true,
-          message: "feedActivity imports only the manifest list (src/shared/processManifests.ts).",
+          message: "feedActivity imports only the manifest list (src/shared/processManifests.ts) and src/shared/newsSource.ts.",
         }],
       }],
     },

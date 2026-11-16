@@ -170,6 +170,11 @@ describe("news sync — one pass, each hub its own feed", () => {
     for (const c of floyd) {
       expect(c.jurisdiction).toBe("us-va-floyd");
       expect((c.state as { author_role: string }).author_role).toBe("Floyd County Government");
+      // Shown as News, from the hub's own government (src/shared/newsSource.ts).
+      expect((c.state as { source: { label?: string; show_as?: string } }).source).toMatchObject({
+        label: "Floyd County Government",
+        show_as: "news",
+      });
     }
   });
 

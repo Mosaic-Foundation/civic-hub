@@ -43,7 +43,7 @@ import {
 } from "../services/feedPage.js";
 import type { ActivitySurface } from "../shared/feedActivity.js";
 
-const SURFACES: readonly ActivitySurface[] = ["announcement", "meeting_summary", "activity"];
+const SURFACES: readonly ActivitySurface[] = ["announcement", "news", "meeting_summary", "activity"];
 
 export const handleGetFeed = route(async (req, res) => {
   const processId = firstQueryValue(req.query.process_id);

@@ -470,9 +470,21 @@
     "anchor": "plugin-news-sync-connector"
   },
   "plugin.news_sync.source_url": {
-    "text": "The address of your government's news feed. Items are copied in as announcements, so Announcements must be on too. Left empty, news sync does nothing.",
+    "text": "The address of the news feed to copy from. Posts are saved as announcements underneath, so Announcements must be on too. Left empty, news sync does nothing.",
     "page": "/reference/plugins",
     "anchor": "plugin-news-sync-source-url"
+  },
+  "plugin.news_sync.from_label": {
+    "text": "Shown on each copied post as \"From ...\", so residents know where it came from. Left empty, it reads as your place's name followed by \"Government\".",
+    "page": "/reference/plugins",
+    "anchor": "plugin-news-sync-from-label",
+    "pending": true
+  },
+  "plugin.news_sync.show_as": {
+    "text": "News (the default) gives copied posts a News label and their own News filter on the feed. Announcement shows them with the hub's own announcements. Only admins can pin one.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-news-sync-show-as",
+    "pending": true
   },
   "plugin.digest.send_hour": {
     "text": "The hour the digest goes out, in the hub's time zone (set under Identity). Left empty, it goes out at 13:00.",

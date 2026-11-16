@@ -35,9 +35,11 @@ import {
   EmailField,
   HourField,
   NumberField,
+  TextField,
   UrlField,
   type FormApi,
 } from "./pluginFields";
+import { NEWS_SHOW_AS_LABELS, newsFromLabel } from "../../../../src/shared/newsSource";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
 import { useHub, type Hub } from "../../config/hub";
 import { feedbackContactEmail } from "../../../../src/shared/platform";
@@ -88,6 +90,48 @@ function pluginCopy(id: PluginId, hub: Hub): { name: string; what: string } {
 const NEWS_CONNECTOR_LABELS: Record<string, string> = {
   "wix-cms": "Wix blog feed",
 };
+
+/**
+ * News Sync's panel: where the posts come from, and how they read on the feed
+ * (src/shared/newsSource.ts). It saves its posts as announcements, so it says
+ * so plainly when Announcements is off.
+ */
+function NewsSyncPanel({ f }: { f: FormApi }) {
+  const hub = useHub();
+  const place = hub.isPlace ? hub.jurisdiction.split(",")[0]?.trim() : null;
+  return (
+    <>
+      {!hub.plugins.enabled("announcement") && (
+        <p className="form-error" role="status">
+          News Sync needs Announcements switched on. Its posts are saved as announcements, so nothing is copied in
+          while Announcements is off.
+        </p>
+      )}
+      <ChoiceField
+        f={f}
+        k="plugin.news_sync.connector"
+        label="Kind of feed"
+        labels={NEWS_CONNECTOR_LABELS}
+        emptyLabel="Not set up"
+      />
+      <UrlField f={f} k="plugin.news_sync.source_url" label="Feed address" hint="Both must be set for news sync to run." />
+      <TextField
+        f={f}
+        k="plugin.news_sync.from_label"
+        label="From label"
+        placeholder={newsFromLabel(null, place)}
+        hint={'Shown on each post as "From …", so residents know where it came from. Left empty, it reads as shown here.'}
+      />
+      <ChoiceField
+        f={f}
+        k="plugin.news_sync.show_as"
+        label="Show posts as"
+        labels={NEWS_SHOW_AS_LABELS}
+        hint="News gets its own News filter on the feed. Announcement puts them with the hub's own announcements. Applies to posts copied in from now on. Either way, only admins can pin one, from Admin → Announcements."
+      />
+    </>
+  );
+}
 
 const NO_COUNTS: Record<string, number> = {};
 
@@ -416,23 +460,7 @@ function LiveItemsWarning({ id, live }: { id: PluginId; live: number }) {
 // The hub features' own panels. A process plugin's panel comes from its type's
 // module (ui/src/processes/), through processSettingsPanel.
 const FEATURE_PANELS: Partial<Record<PluginId, (f: FormApi) => React.ReactNode>> = {
-  news_sync: (f) => (
-    <>
-      <ChoiceField
-        f={f}
-        k="plugin.news_sync.connector"
-        label="Kind of feed"
-        labels={NEWS_CONNECTOR_LABELS}
-        emptyLabel="Not set up"
-      />
-      <UrlField
-        f={f}
-        k="plugin.news_sync.source_url"
-        label="Feed address"
-        hint="Both must be set for news sync to run. Posts are created as announcements, so Announcements must be on too."
-      />
-    </>
-  ),
+  news_sync: (f) => <NewsSyncPanel f={f} />,
   digest: (f) => (
     <HourField
       f={f}

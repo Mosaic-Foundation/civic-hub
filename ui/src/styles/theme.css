@@ -214,6 +214,10 @@
   --type-announcement-bg: var(--ds-color-accent-100);
   --type-announcement-fg: var(--ds-color-accent-800);
   --type-announcement-author-bg: #e4ddf0;        --type-announcement-author-fg: #3a2c5e;
+  /* News: posts News Sync copies in from another site (2026-11-16). A quiet
+     slate, so they sit back from the hub's own announcements. Mirrored in
+     civic.digest/service.ts PILL_COLORS. */
+  --type-news-bg: #e3e8ec;                       --type-news-fg: #34495a;
   --type-meeting-bg: var(--ds-color-success-100);
   --type-meeting-fg: var(--ds-color-success-700);
   --type-official-response-bg: #fdf1e0;          --type-official-response-fg: #8a5a13;

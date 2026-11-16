@@ -163,13 +163,51 @@ describe("classifyActivity — result_published discrimination", () => {
     expect(a?.kind).toBe("announcement-author");
   });
 
-  it("synced announcement reuses the admin palette (announcement kind)", () => {
+  it("a synced post from before show_as reads as News, from its author label", () => {
     const a = classifyActivity(
       ev("civic.process.result_published", {
         announcement: { author_role: "Floyd County Government", source: { origin: "floyd-news" } },
       }),
     );
-    expect(a?.kind).toBe("announcement");
+    expect(a).toMatchObject({ surface: "news", kind: "announcement", color: "news", pill: "News", from: "Floyd County Government" });
+  });
+
+  it("a synced post carries its source's own From label", () => {
+    const a = classifyActivity(
+      ev("civic.process.result_published", {
+        announcement: {
+          author_role: "Floyd County Government",
+          source: { origin: "news-sync", label: "Floyd County", show_as: "news" },
+        },
+      }),
+    );
+    expect(a).toMatchObject({ surface: "news", from: "Floyd County" });
+  });
+
+  it("a synced post set to show as an announcement reuses the admin palette, and still says where it came from", () => {
+    const a = classifyActivity(
+      ev("civic.process.result_published", {
+        announcement: {
+          author_role: "Floyd County Government",
+          source: { origin: "news-sync", label: "Floyd County Government", show_as: "announcement" },
+        },
+      }),
+    );
+    expect(a).toMatchObject({
+      surface: "announcement",
+      kind: "announcement",
+      color: "announcement",
+      pill: "Floyd County Gov",
+      from: "Floyd County Government",
+    });
+  });
+
+  it("a hand-posted announcement has no From line", () => {
+    const a = classifyActivity(
+      ev("civic.process.result_published", { announcement: { author_role: "admin" } }),
+    );
+    expect(a?.surface).toBe("announcement");
+    expect(a?.from).toBeUndefined();
   });
 
   it("meeting summary via process.type → meeting_summary surface", () => {

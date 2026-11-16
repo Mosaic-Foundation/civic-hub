@@ -66,14 +66,17 @@ export function eventToPost(
     // The type's own label (design A, navigation slice 2026-10-14): one
     // word per kind of thing, from the registry, so a plugin's type gets its
     // pill with no change here.
-    pillLabel: typeDisplay(eventProcessType(event))?.label ?? activity.pill,
+    // News (posts News Sync copied in) are announcements underneath, so the
+    // registry would call them "Announcement": the classifier's word wins.
+    pillLabel: activity.surface === "news" ? activity.pill : typeDisplay(eventProcessType(event))?.label ?? activity.pill,
     note: ACTIVITY_NOTES[activity.kind] ?? null,
     pillKind: activity.kind,
     pillColor: activity.color,
     summary,
     timestamp: event.timestamp,
     href: activity.href,
-    authorName: authorName ?? null,
+    // A synced post says where it came from: "From Floyd County Government".
+    authorName: activity.from ? `From ${activity.from}` : authorName ?? null,
     sample: event.sample,
   };
 }

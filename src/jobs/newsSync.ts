@@ -16,6 +16,10 @@
 // are no thumbnails (document scans are unreadable); the body comes from the
 // feed's description when present, otherwise a strict Claude paraphrase of
 // the title, otherwise empty.
+//
+// Each post's source also carries the hub's "From" label and whether it shows
+// as News or as an announcement (src/shared/newsSource.ts). The source never
+// marks a post urgent or pinned; admins pin it like any other.
 
 import { env } from "../config/env.js";
 import {
@@ -45,6 +49,10 @@ import { getSettingSync, isPluginEnabledSync } from "../services/hubSettings.js"
 import { KEYS } from "../models/hubSettings.js";
 import { civicPlaceShortName, processJurisdiction } from "../config/hub.js";
 import type { JobOutcome, JobRunner } from "./types.js";
+import { newsFromLabel, newsShowAs, type NewsShowAs } from "../shared/newsSource.js";
+
+/** A synced post's source, with how it is shown (src/shared/newsSource.ts). */
+type SyncedSource = AnnouncementSource & { label: string; show_as: NewsShowAs };
 
 const CRON_ACTOR = "system:news-sync-cron";
 
@@ -53,15 +61,13 @@ function modelName(): string {
 }
 
 /**
- * Who a synced post is shown as written by: the hub's own government, named
- * from its place — "Floyd County Government" for Floyd, which is exactly the
- * label its synced posts have always carried. Derived rather than a setting
- * because the place is already the hub's data (`hubs.jurisdiction_name`); a
- * hub with no civic geography gets the neutral "Local Government".
+ * Who a synced post is shown as from: the hub's "From label" setting, else
+ * its own government, named from its place ("Floyd County Government" for
+ * Floyd, the label its synced posts have always carried), else the neutral
+ * "Local Government" (src/shared/newsSource.ts).
  */
-function syncedAuthorRole(): string {
-  const place = civicPlaceShortName();
-  return place ? `${place} Government` : "Local Government";
+function syncedFromLabel(): string {
+  return newsFromLabel(getSettingSync(KEYS.PLUGIN_NEWS_SYNC_FROM_LABEL), civicPlaceShortName());
 }
 
 function todayIsoLocal(): string {
@@ -121,6 +127,10 @@ export const newsSyncJob: JobRunner = async (): Promise<JobOutcome> => {
     governing_body: getSettingSync(KEYS.COPY_GOVERNING_BODY_NAME)?.trim() || null,
   };
 
+  // Read once per run: every post this run saves carries the same two.
+  const fromLabel = syncedFromLabel();
+  const showAs = newsShowAs(getSettingSync(KEYS.PLUGIN_NEWS_SYNC_SHOW_AS)?.trim());
+
   const started = Date.now();
   const today = todayIsoLocal();
   let discovered = 0;
@@ -159,11 +169,13 @@ export const newsSyncJob: JobRunner = async (): Promise<JobOutcome> => {
 
       const entryStart = Date.now();
       try {
-        const source: AnnouncementSource = {
+        const source: SyncedSource = {
           origin: "news-sync",
           connector: cfg.connector,
           share_url: entry.share_url,
           ingested_at: new Date().toISOString(),
+          label: fromLabel,
+          show_as: showAs,
         };
 
         // When the feed's description is empty (~75% of Wix posts),
@@ -213,7 +225,7 @@ export const newsSyncJob: JobRunner = async (): Promise<JobOutcome> => {
             title: entry.title,
             body,
             author_id: CRON_ACTOR,
-            author_role: syncedAuthorRole(),
+            author_role: fromLabel,
             links: [],
             // Slice 13.1: no thumbnails for synced announcements.
             // Wix's document-scan thumbnails are unreadable noise;

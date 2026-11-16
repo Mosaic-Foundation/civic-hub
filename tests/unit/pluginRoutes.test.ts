@@ -28,6 +28,8 @@ const BEFORE: string[] = JSON.parse(readFileSync(join(here, "../fixtures/plugins
 
 /** Added on purpose since e92804c, each with why. */
 const ADDED: Record<string, string> = {
+  // News Sync posts shown as News (2026-11-16): Admin → Announcements' synced rows.
+  "GET /admin/news-sync/items": "Admin → Announcements: News Sync's posts, each with its source and how it shows",
   // Pinned and urgent announcements (2026-11-15): Admin → Announcements.
   "GET /admin/announcements": "Admin → Announcements: what is pinned or urgent, and the newest others",
   "POST /admin/announcements/:id/pin": "Pin an announcement to the right column's card",

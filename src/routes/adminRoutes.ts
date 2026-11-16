@@ -32,6 +32,7 @@ import {
   handleRestoreComment,
 } from "../controllers/moderationController.js";
 import { handleGetHubAdminLog } from "../controllers/hubAdminLogController.js";
+import { handleAdminListNewsSyncItems } from "../controllers/newsSyncAdminController.js";
 import { handleGetSetupCard, handlePostSetupCard } from "../controllers/hubSetupCardController.js";
 import {
   handleArchiveProcess,
@@ -106,6 +107,10 @@ router.get("/feedback", handleAdminListFeedback);
 router.post("/feedback/:id/forward", handleForwardFeedback);
 // An admin's own message to Civic.Social. Not behind the Feedback plugin.
 router.post("/contact-civic-social", handleContactCivicSocial);
+
+// Posts News Sync copied in: who each is from, and News or Announcement.
+// Admin → Announcements tags its rows and filters by source with it.
+router.get("/news-sync/items", handleAdminListNewsSyncItems);
 
 // The numbers on the admin tabs and the account-menu dot: what is new in
 // each queue since this admin last opened that tab. Opening a tab stamps

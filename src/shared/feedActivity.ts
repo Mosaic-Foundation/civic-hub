@@ -36,6 +36,7 @@
 // via emitEvent) as the single discriminator, falling back to the legacy
 // data-shape checks for historical events emitted before the field existed.
 
+import { syncedSourceView } from "./newsSource.js";
 import { LEGACY_TYPES, MANIFEST_LIST } from "./processManifests.js";
 
 /**
@@ -45,7 +46,7 @@ import { LEGACY_TYPES, MANIFEST_LIST } from "./processManifests.js";
  * wordclouds, proposals, projects, and conversations all live under
  * "activity"; announcements and meeting summaries get their own filter pill.
  */
-export type ActivitySurface = "announcement" | "meeting_summary" | "activity";
+export type ActivitySurface = "announcement" | "news" | "meeting_summary" | "activity";
 
 /**
  * Fine-grained render variant. Each consumer maps this to its own presentation
@@ -103,6 +104,8 @@ export type BuiltinActivityColor =
   | "wordcloud"
   | "announcement"
   | "announcement-author"
+  // Posts News Sync copies in from another site (2026-11-16, Adam).
+  | "news"
   | "meeting"
   | "official-response"
   | "generic";
@@ -122,6 +125,11 @@ export interface Activity {
    * purely from the event payload, so they belong here too.)
    */
   pill: string;
+  /**
+   * Who a post copied in by News Sync is from ("Floyd County Government"),
+   * shown as "From …" on its card. Unset on everything else.
+   */
+  from?: string;
   /**
    * A brief's source process type (kind "brief" only), so a reader that
    * knows the hub can word its pill: a vote's brief is "Brief to the
@@ -400,12 +408,19 @@ function classifyAnnouncement(
         ? "Admin"
         : rawRole;
   const isAdmin = normalized === "Admin";
-  // Synced-from-external announcements (the news-sync cron, e.g. Floyd County
-  // Gov) reuse the admin palette so they group with admin-authored ones under
-  // the same filter pill. Keyed on the presence of `source`, not on its
-  // origin string: only a sync writes one, and the origin value changed when
-  // the module was renamed, so older rows carry a different one.
-  const isSynced = Boolean(ann?.source);
+  // Posts News Sync copied in (e.g. from Floyd County's site) are keyed on the
+  // presence of `source`, not on its origin string: only a sync writes one,
+  // and the origin value changed when the module was renamed, so older rows
+  // carry a different one. They are News, with their own pill and filter,
+  // unless the hub set News Sync to show them as announcements; then they
+  // reuse the admin palette and group with admin-authored ones
+  // (src/shared/newsSource.ts). Either way the card says who they are from.
+  const synced = syncedSourceView(ann?.source);
+  const isSynced = synced !== null;
+  const from = synced ? (synced.label ?? normalized) : undefined;
+  if (synced?.showAs === "news") {
+    return { surface: "news", kind: "announcement", color: "news", pill: "News", from, href: actionUrl };
+  }
   return {
     surface: "announcement",
     // Non-admin authors (board members, committees) get a distinct pill +
@@ -414,6 +429,7 @@ function classifyAnnouncement(
     kind: isAdmin || isSynced ? "announcement" : "announcement-author",
     color: isAdmin || isSynced ? "announcement" : "announcement-author",
     pill: abbreviateGovernment(normalized),
+    ...(from ? { from } : {}),
     href: actionUrl,
   };
 }

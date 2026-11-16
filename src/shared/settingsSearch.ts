@@ -221,6 +221,8 @@ export const SEARCH_WORDS: Readonly<Record<string, SearchWords>> = {
   "plugin.meeting_summary.source_quiet_days": { label: "Ask for a check after no new meeting for", words: ["quiet", "stale", "no new meetings", "alert"] },
   "plugin.news_sync.connector": { label: "Kind of feed", words: ["rss", "atom", "news feed type"] },
   "plugin.news_sync.source_url": { label: "Feed address", words: ["rss url", "feed url", "news url"] },
+  "plugin.news_sync.from_label": { label: "From label", words: ["source name", "from", "news source", "label"] },
+  "plugin.news_sync.show_as": { label: "Show posts as", words: ["news", "announcement", "category"] },
   "plugin.digest.send_hour": { label: "Send time", words: ["digest time", "email time", "when emails go out", "hour"] },
   "plugin.feedback.contact_email": { label: "Address on the Feedback page", words: ["feedback email", "contact email", "support address"] },
   "plugin.members.min_count": { label: "Show members from", words: ["member threshold", "minimum members", "member count"] },

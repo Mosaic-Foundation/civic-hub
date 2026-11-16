@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router-dom";
 export type FeedFilterKey =
   | "all"
   | "announcement"
+  | "news"
   | "meeting_summary"
   | "activity";
 
@@ -13,6 +14,7 @@ const PARAM = "type";
 function isFilterKey(v: string | null): v is FeedFilterKey {
   return (
     v === "announcement" ||
+    v === "news" ||
     v === "meeting_summary" ||
     v === "activity"
   );

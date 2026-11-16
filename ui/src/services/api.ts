@@ -935,7 +935,7 @@ export async function getFeedMeta(processIds: string[]): Promise<Record<string, 
 }
 
 /** The feed's filter pills; mirrors ActivitySurface in src/shared/feedActivity.ts. */
-export type FeedSurface = "announcement" | "meeting_summary" | "activity";
+export type FeedSurface = "announcement" | "news" | "meeting_summary" | "activity";
 
 /** Cards per page of the feed. */
 export const FEED_PAGE_SIZE = 25;
@@ -2117,6 +2117,19 @@ export interface AdminAnnouncements {
 
 export function adminListAnnouncements(): Promise<AdminAnnouncements> {
   return request("GET", "/admin/announcements");
+}
+
+/** One post News Sync copied in (GET /admin/news-sync/items; src/shared/newsSource.ts). */
+export interface NewsSyncItem {
+  id: string;
+  /** Who it is from: "Floyd County Government". */
+  from: string;
+  show_as: "news" | "announcement";
+}
+
+/** Every post News Sync copied in; empty while News Sync is off. */
+export function adminListNewsSyncItems(): Promise<{ items: NewsSyncItem[] }> {
+  return request("GET", "/admin/news-sync/items");
 }
 
 /** Pin to the right column's card; `until` (ISO) optional. */
