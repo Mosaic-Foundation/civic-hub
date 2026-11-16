@@ -96,7 +96,11 @@
   flex-shrink: 0;
 }
 
-/* The one primary action: solid, dark, the widest button in the bar. */
+/* The one primary action: solid, dark, the widest button in the bar. Its
+   colour falls back to the primary outside the drafting footer (which sets
+   --submit-bg): in a confirm dialog the variable was unset, so the button was
+   white text on nothing ("Leave" on Settings' leave-without-saving dialog,
+   Adam 2026-11-16). */
 .draft-submit-btn {
   display: inline-flex;
   align-items: center;
@@ -105,7 +109,7 @@
   min-height: var(--control-height);
   min-width: calc(var(--space-10) * 3.5);
   padding: var(--space-2) var(--space-4);
-  background: var(--submit-bg);
+  background: var(--submit-bg, var(--color-primary));
   color: var(--color-primary-text);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
@@ -116,7 +120,7 @@
 }
 
 .draft-submit-btn:hover:not(:disabled) {
-  background: var(--submit-bg-hover);
+  background: var(--submit-bg-hover, var(--color-primary-hover));
 }
 
 .draft-submit-btn:focus-visible,
