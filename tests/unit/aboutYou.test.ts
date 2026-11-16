@@ -138,3 +138,24 @@ describe("a member's tags", () => {
     expect(tagsFrom(null, config, now)).toEqual({ district_id: null, age_bracket: null, race: null });
   });
 });
+
+describe("reading the Census geocoder's answer", () => {
+  it("takes the county subdivision and county names from the first match", async () => {
+    const { placeFromCensus } = await import("../../src/hosting/censusGeocoder.js");
+    const body = {
+      result: {
+        addressMatches: [
+          {
+            geographies: {
+              "County Subdivisions": [{ NAME: "Court House district", BASENAME: "Court House" }],
+              Counties: [{ NAME: "Floyd County" }],
+            },
+          },
+        ],
+      },
+    };
+    expect(placeFromCensus(body)).toEqual({ countySubdivision: "Court House district", county: "Floyd County" });
+    expect(placeFromCensus({ result: { addressMatches: [] } })).toBeNull();
+    expect(placeFromCensus(null)).toBeNull();
+  });
+});

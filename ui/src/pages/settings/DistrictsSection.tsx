@@ -7,7 +7,7 @@ import HelpButton from "../../components/HelpButton";
 import SectionForm, { type FormApi } from "./SectionForm";
 import { BooleanField, TextField, UrlField } from "./fields";
 import { Button } from "../../kit";
-import { setting } from "../../config/hubConfig";
+import { useHub } from "../../config/hub";
 import {
   ABOUT_KEYS,
   DISTRICTS_MAX,
@@ -20,7 +20,8 @@ import {
 } from "../../../../src/shared/aboutYou";
 
 export default function DistrictsSection() {
-  const fallback = defaultDistrictTerm(setting("identity.jurisdiction_type"));
+  const hub = useHub();
+  const fallback = defaultDistrictTerm(hub.setting("identity.jurisdiction_type"));
   return (
     <SectionForm
       section="districts"

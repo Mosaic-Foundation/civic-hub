@@ -6,6 +6,7 @@
 
 import type { SubmissionField } from "../../../src/shared/submissionPreview";
 import { request, upload } from "./http";
+import { askAboutYouFirst } from "./aboutYou";
 
 /** An address a published item was not emailed to, and why. */
 export interface HeldBackRecipient {
@@ -263,12 +264,13 @@ export function closeEarly<V = ProcessState>(processId: string, action: string, 
   return request("POST", `/process/${processId}/action`, { type: action, payload: { note } });
 }
 
-export function submitVote(
+export async function submitVote(
   processId: string,
   actor: string,
   option: string,
   receipt: HeldReceiptPayload | null = null,
 ): Promise<ActionResult> {
+  await askAboutYouFirst();
   return request("POST", `/process/${processId}/action`, {
     type: "process.vote",
     actor,
@@ -276,12 +278,13 @@ export function submitVote(
   });
 }
 
-export function submitApprovalVote(
+export async function submitApprovalVote(
   processId: string,
   actor: string,
   selections: string[],
   receipt: HeldReceiptPayload | null = null,
 ): Promise<ActionResult> {
+  await askAboutYouFirst();
   return request("POST", `/process/${processId}/action`, {
     type: "process.vote",
     actor,
@@ -289,7 +292,8 @@ export function submitApprovalVote(
   });
 }
 
-export function supportVote(processId: string, actor: string): Promise<ActionResult> {
+export async function supportVote(processId: string, actor: string): Promise<ActionResult> {
+  await askAboutYouFirst();
   return request("POST", `/process/${processId}/action`, {
     type: "process.support",
     actor,
@@ -392,10 +396,11 @@ export function getCivicProposal(id: string): Promise<CivicProposalDetail> {
 }
 
 /** Support/endorse a proposal */
-export function supportCivicProposal(
+export async function supportCivicProposal(
   proposalId: string,
   userId: string
 ): Promise<{ support_count: number; status: string; view: CivicProposalDetail | null }> {
+  await askAboutYouFirst();
   return request("POST", `/proposals/${proposalId}/support`, { user_id: userId });
 }
 
@@ -556,7 +561,11 @@ export function draftApi<D>(kind: DraftKindName): DraftApi<D> {
     list: () => request("GET", base),
     get: (id) => request("GET", `${base}/${id}`),
     update: (id, patch) => request("PATCH", `${base}/${id}`, patch),
-    submit: (id, opts) => request("POST", `${base}/${id}/submit`, opts ?? {}),
+    // Submitting a draft is taking part: the one-time About-you card first.
+    submit: async (id, opts) => {
+      await askAboutYouFirst();
+      return request("POST", `${base}/${id}/submit`, opts ?? {});
+    },
   };
 }
 
@@ -716,10 +725,11 @@ export function completeProject(
   return request("POST", `/projects/${id}/complete`);
 }
 
-export function setProjectSentiment(
+export async function setProjectSentiment(
   id: string,
   sentiment: SentimentValue | "neutral",
 ): Promise<{ support_count: number; oppose_count: number; user_sentiment: SentimentValue | null; view: ProjectDetail | null }> {
+  await askAboutYouFirst();
   return request("POST", `/projects/${id}/sentiment`, { sentiment });
 }
 
@@ -801,13 +811,15 @@ export function getInputs(processId: string): Promise<CommunityInput[]> {
   return request("GET", `/process/${processId}/input`);
 }
 
-export function submitInput(
+export async function submitInput(
   processId: string,
   body: string,
   isAnonymous = false,
   /** "update" — a creator's update; the server allows it only for the creator. */
   phase?: "update",
 ): Promise<CommunityInput> {
+  // A comment is taking part (a creator's update is not): the one-time card first.
+  if (!phase) await askAboutYouFirst();
   // The author is the authenticated session user — the server ignores
   // any caller-supplied identity.
   return request("POST", `/process/${processId}/input`, {
@@ -2347,21 +2359,23 @@ export function getDeliberationClusters(processId: string): Promise<ClusterState
   return request("GET", `/deliberations/${processId}/clusters`);
 }
 
-export function deliberationVote(
+export async function deliberationVote(
   processId: string,
   statementId: number,
   vote: VoteDirection,
 ): Promise<{ ok: boolean }> {
+  await askAboutYouFirst();
   return request("POST", `/deliberations/${processId}/participate/vote`, {
     statement_id: statementId,
     vote,
   });
 }
 
-export function deliberationSubmitStatement(
+export async function deliberationSubmitStatement(
   processId: string,
   text: string,
 ): Promise<{ statement_id: number }> {
+  await askAboutYouFirst();
   return request("POST", `/deliberations/${processId}/participate/statement`, {
     text,
   });
@@ -2597,11 +2611,12 @@ export async function createWordcloudProcess(input: {
   return process;
 }
 
-export function submitWordcloudResponse(
+export async function submitWordcloudResponse(
   processId: string,
   promptId: string,
   text: string,
 ): Promise<ActionResult> {
+  await askAboutYouFirst();
   return request("POST", `/process/${processId}/action`, {
     type: "process.submit",
     actor: "unused",

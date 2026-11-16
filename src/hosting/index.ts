@@ -33,6 +33,7 @@ import { polisService, fakePolisService } from "./polis.js";
 import { sentryErrors } from "./sentry.js";
 import { healthchecksHeartbeat } from "./healthchecks.js";
 import { supabaseStorage } from "./supabaseStorage.js";
+import { censusGeocoder } from "./censusGeocoder.js";
 
 /** The implementations for this deployment's settings. */
 export function hostingAdapters(): Adapters {
@@ -44,6 +45,7 @@ export function hostingAdapters(): Adapters {
     errors: sentryErrors(),
     heartbeat: healthchecksHeartbeat,
     objectStore: supabaseStorage,
+    geocoder: censusGeocoder,
   };
   const chosen = fake ? { ...fakeAdapters(), objectStore: supabaseStorage } : real;
   return {

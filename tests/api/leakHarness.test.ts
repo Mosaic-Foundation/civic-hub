@@ -369,6 +369,8 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /hub-config": {},
   "GET /hub-config/documents": { query: ["", "?key=copy.about", "?keys=copy.about"] },
   "GET /auth/me": {},
+  // Districts and demographics (2026-11-16): the member's own About-you answers.
+  "GET /user/about/": {},
   // "N members", the stack and the Members page (members and invites slice).
   "GET /members/summary": {},
   "GET /members/": { query: ["", "?offset=60"] },

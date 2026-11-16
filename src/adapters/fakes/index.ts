@@ -12,8 +12,9 @@ import { fakeVideo } from "./video.js";
 import { fakeErrors } from "./errors.js";
 import { fakeHeartbeat } from "./heartbeat.js";
 import { memoryObjectStore } from "./objectStore.js";
+import { fakeGeocoder } from "./geocoder.js";
 
-export { fakeAi, fakeMail, fakeVideo, fakeErrors, fakeHeartbeat, memoryObjectStore };
+export { fakeAi, fakeMail, fakeVideo, fakeErrors, fakeHeartbeat, memoryObjectStore, fakeGeocoder };
 
 export function fakeAdapters(): Omit<Adapters, "deliberation"> {
   return {
@@ -23,5 +24,6 @@ export function fakeAdapters(): Omit<Adapters, "deliberation"> {
     errors: fakeErrors(),
     heartbeat: fakeHeartbeat(),
     objectStore: memoryObjectStore(),
+    geocoder: fakeGeocoder(),
   };
 }
