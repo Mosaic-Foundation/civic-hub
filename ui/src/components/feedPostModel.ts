@@ -3,6 +3,7 @@
 import type { CivicEvent } from "../services/api";
 import { typeDisplay } from "../config/navigation";
 import { classifyActivity, type Activity, type ActivityKind } from "../../../src/shared/feedActivity";
+import { syncedFrom } from "../../../src/shared/newsSource";
 import { feedKindUi } from "../processes";
 import { summaryFromDescription } from "../processes/feedText";
 import type { CardText } from "../processes/types";
@@ -48,6 +49,12 @@ export function eventToPost(
   event: CivicEvent,
   getProcessDescription: (processId: string) => string | undefined,
   getProcessTitle: (processId: string) => string | undefined,
+  /**
+   * The hub's News Sync "From" label (plugin.news_sync.from_label), when set.
+   * Each hub has one News Sync source, so the setting as it stands now names
+   * every synced post, including ones copied in before it was changed.
+   */
+  newsFromLabel?: string | null,
 ): FeedPostView | null {
   const activity = classifyActivity(event);
   if (!activity) return null;
@@ -76,7 +83,7 @@ export function eventToPost(
     timestamp: event.timestamp,
     href: activity.href,
     // A synced post says where it came from: "From Floyd County Government".
-    authorName: activity.from ? `From ${activity.from}` : authorName ?? null,
+    authorName: activity.from ? `From ${syncedFrom(newsFromLabel, activity.from)}` : authorName ?? null,
     sample: event.sample,
   };
 }

@@ -56,3 +56,14 @@ export function syncedSourceView(source: unknown): SyncedSourceView | null {
     showAs: newsShowAs(s.show_as),
   };
 }
+
+/**
+ * Who a synced post is from, as its card and Admin → Announcements say it:
+ * the hub's From label as set now, else what the post itself says (its own
+ * label, else its author label). Each hub has one News Sync source, so the
+ * current setting names every synced post, including ones copied in before
+ * it changed (Adam, 2026-11-16).
+ */
+export function syncedFrom(currentSetting: string | null | undefined, postFrom: string): string {
+  return currentSetting?.trim() || postFrom;
+}

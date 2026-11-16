@@ -120,7 +120,7 @@ function NewsSyncPanel({ f }: { f: FormApi }) {
         k="plugin.news_sync.from_label"
         label="From label"
         placeholder={newsFromLabel(null, place)}
-        hint={'Shown on each post as "From …", so residents know where it came from. Left empty, it reads as shown here.'}
+        hint={'Shown on each synced post as "From …", so residents know where it came from. Applies to every synced post, including ones copied in earlier. Left empty, it reads as shown here.'}
       />
       <ChoiceField
         f={f}

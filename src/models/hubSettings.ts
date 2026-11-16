@@ -398,6 +398,8 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.PLUGIN_FEEDBACK_CONTACT_EMAIL,
   // 2026-10-27 (ADR-016): the About page shows the hub's numbers when it is on.
   KEYS.PLUGIN_ANALYTICS_PUBLIC_NUMBERS,
+  // 2026-11-16 (Adam): every synced post's feed card prints it ("From …").
+  KEYS.PLUGIN_NEWS_SYNC_FROM_LABEL,
 ];
 
 const PUBLIC_KEYS: ReadonlySet<string> = new Set(PUBLIC_KEY_LIST);

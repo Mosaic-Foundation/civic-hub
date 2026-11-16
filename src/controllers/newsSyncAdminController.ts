@@ -6,12 +6,13 @@
 
 import { route } from "../http/route.js";
 import { getAllProcesses } from "../services/processService.js";
-import { isPluginEnabledSync } from "../services/hubSettings.js";
-import { syncedSourceView, type NewsShowAs } from "../shared/newsSource.js";
+import { getSettingSync, isPluginEnabledSync } from "../services/hubSettings.js";
+import { KEYS } from "../models/hubSettings.js";
+import { syncedFrom, syncedSourceView, type NewsShowAs } from "../shared/newsSource.js";
 
 export interface NewsSyncItem {
   id: string;
-  /** "Floyd County Government": the post's own label, else its author label. */
+  /** Who it is from: the hub's From label as set now, else the post's own label, else its author label. */
   from: string;
   show_as: NewsShowAs;
 }
@@ -22,13 +23,16 @@ export const handleAdminListNewsSyncItems = route(async (_req, res) => {
     return;
   }
   const all = await getAllProcesses(["civic.announcement"]);
+  // Each hub has one News Sync source, so the From label as it stands now
+  // names every synced post, including ones copied in before it changed.
+  const current = getSettingSync(KEYS.PLUGIN_NEWS_SYNC_FROM_LABEL);
   const items: NewsSyncItem[] = [];
   for (const p of all) {
     const state = p.state as { source?: unknown; author_role?: unknown };
     const view = syncedSourceView(state.source);
     if (!view) continue;
     const role = typeof state.author_role === "string" && state.author_role.trim() ? state.author_role.trim() : "News Sync";
-    items.push({ id: p.id, from: view.label ?? role, show_as: view.showAs });
+    items.push({ id: p.id, from: syncedFrom(current, view.label ?? role), show_as: view.showAs });
   }
   res.json({ items });
 });
