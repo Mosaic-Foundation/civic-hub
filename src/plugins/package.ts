@@ -36,6 +36,8 @@ import type { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../utils/http.js"
 import type { GrantableAdapter } from "../shared/pluginGrant.js";
 import type { HubQueryBuilder } from "../db/forHub.js";
 import type { DraftKind } from "../processes/draftKinds.js";
+import type { Process } from "../models/process.js";
+import type { BriefContent } from "../processes/contracts/briefContent.js";
 
 /** A router a package mounts, at `path` on the hub (or under /admin, behind the admin check). */
 export interface PluginMount {
@@ -59,6 +61,41 @@ export interface PluginServer {
   adminRoutes?: readonly PluginMount[];
   /** A runner for each job its manifest declares, by job id. */
   jobs?: Readonly<Record<string, JobRunner>>;
+  /**
+   * Comments on something of its own that is not a process (kernel step 3):
+   * a proposal takes comments before it becomes a vote. The kernel's comment
+   * routes ask `exists(id)` for an id that is no process, and file the
+   * comment under `phase`.
+   */
+  inputTargets?: { phase: "proposal"; exists(id: string): Promise<boolean> };
+  /** The development reset (debug routes only, never production): empty its own records. */
+  dev?: { reset?(): Promise<void> };
+  /**
+   * What it does when the kernel says something happened (kernel step 3): the
+   * kernel calls it in-process, for the hub in scope, only while the package
+   * is mounted and its plugin is on there. A listener's failure is logged and
+   * never stops the kernel's own work or another listener.
+   */
+  on?: {
+    /** A process of any type entered a closed status (closed, finalized…), once, after its write committed. */
+    processClosed?: (closed: ClosedProcess) => Promise<void>;
+  };
+}
+
+/** A process that just closed, as the kernel hands it to a listener (PluginServer.on.processClosed). */
+export interface ClosedProcess {
+  /** The process as stored after the close and its after-commit work. */
+  process: Process;
+  /** Who closed it: an account, or "system:<part>". */
+  actor: string;
+  /**
+   * What it came to (the process.result contract,
+   * src/processes/contracts/briefContent.ts), asked of its own type once and
+   * only when a listener asks: its handler's result, with the kernel's
+   * closed-early line and its district and demographic tables. Null when its
+   * type says nothing.
+   */
+  result(): Promise<BriefContent | null>;
 }
 
 /** The database a package's store reaches: the hub in scope, its granted tables only. */

@@ -94,13 +94,21 @@ describe("process manifests", () => {
     expect(refused([m])).toThrow('process manifest civic.sample: missing "capabilities"');
   });
 
+  it("lets a grant listen for the kernel's process.closed, and says so on the Install confirmation (kernel step 3)", async () => {
+    const { grantProblem, grantInPlainWords } = await import("../../src/shared/pluginGrant.js");
+    const base = manifest();
+    const caps = { ...base.capabilities, activities: { emit: base.capabilities.activities.emit, listen: ["process.closed"] } };
+    expect(grantProblem(caps, { emits: base.descriptor.emits, tables: base.tables.map((t) => t.name), tier: base.descriptor.tier })).toBeNull();
+    expect(grantInPlainWords({ name: "Briefs", caps, holds: {} }).can.join(" ")).toContain("Hear when anything on this hub closes");
+  });
+
   it("refuses a grant that differs from what the manifest declares, or reaches past the rules", () => {
     const base = manifest();
     const caps = base.capabilities;
     const bad: Array<[Partial<ProcessManifest["capabilities"]>, string]> = [
       [{ activities: { emit: [], listen: [] } }, "activities.emit must equal its descriptor's emits"],
       [{ activities: { emit: ["civic.sample.*"], listen: [] } }, "no wildcards"],
-      [{ activities: { emit: caps.activities.emit, listen: ["civic.vote.closed"] } }, "listen must be empty"],
+      [{ activities: { emit: caps.activities.emit, listen: ["civic.vote.closed"] } }, "listen may name only process.closed"],
       [{ state: { read: ["own-process"], write: ["own-process"], tables: ["sample_rows", "users"] } }, "state.tables must equal its manifest's tables"],
       [{ adapters: ["heartbeat"] as never }, "capabilities.adapters may name only"],
       [{ network: { egress: ["polis.example.org"] } }, "network.egress must be empty"],

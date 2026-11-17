@@ -392,6 +392,21 @@ export interface ProcessHandler {
   generateBrief?(process: Process): BriefContent | null | Promise<BriefContent | null>;
 
   /**
+   * What a comment on one of its processes is called in the comment list
+   * (kernel step 3): "vote" for a vote, whose panel draws a divider between
+   * its comments and the ones carried over from its proposal. Default
+   * "comment".
+   */
+  commentPhase?: "vote" | "comment";
+
+  /**
+   * Whether a process waiting for an admin's review is flagged for a closer
+   * look (kernel step 3): a meeting summary whose quality check failed. The
+   * admin digest counts these; default false.
+   */
+  flaggedForReview?(process: Process): boolean;
+
+  /**
    * Optional: a fresh brief for a closed process, for an admin's Regenerate
    * (Actions slice, 2026-10-13). Omit it and Regenerate runs generateBrief
    * again. A type whose brief rests on work done at close (a conversation's

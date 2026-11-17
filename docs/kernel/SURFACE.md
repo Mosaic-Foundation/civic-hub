@@ -57,6 +57,7 @@ Since step 2 (neutral roles and terms): `term(t, n)` and `hubContext().term` (th
 profile names them: "resident", "official", "hub" on a Civic Hub), `KERNEL_ROLES`, `KERNEL_TERMS`, `namesRole`, and the
 types `KernelRole`, `KernelTerm`; on the UI side `useSpace().term`. Descriptors name `member` and `accountable` (and
 `creation.member`); the older `resident`/`official` still read.
+Since step 3: `processesOf().idWhere(key, value)` (one of its own processes by a state field), the type `ClosedProcess`, and on the package contract `PluginServer.on.processClosed`, `inputTargets`, `dev.reset`, and the handler hooks `commentPhase` and `flaggedForReview`.
 A package's own table is read through its host (`host.db().from("brief_responses")`), never `forHub`. On the UI side, the kernel UI surface below
 (`ui/src/host/index.ts`). Announcements carries its own copy of the pinned and urgent rules (`board.ts`), kept equal
 to the right column's (`src/shared/announcementBoard.ts`) by a test until step 3 makes the board a contribution. A package's UI files are `ui.tsx` and its `ui/`
@@ -105,14 +106,14 @@ directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `
 | Coupling | Replaced by |
 | --- | --- |
 | Conversations calls `regenerateBrief`, reads `DeliberationResult`/`DeliberationSummary`, `RegeneratedBrief` | done for step 1 (0.4.0): its closed page reads only itself (the summary it kept, `keepResult`, else its own result's figures); its older `POST /deliberations/:id/regenerate` link is gone (Regenerate is the brief's), and it no longer `requires` Briefs. Step 3: the kernel's `process.closed` event carries the result; Briefs listens (Plugin Dependencies Strategy, case 4) |
-| Briefs reads `DeliberationResult`/`DeliberationSummary` | the `process.result` contract each process type fills; Briefs reads it from the event |
+| Briefs reads `DeliberationResult`/`DeliberationSummary` | the `process.result` contract each process type fills; Briefs reads it from the event (done, step 3: `ClosedProcess.result()`) |
 | Meeting summaries call `isPluginEnabledSync` | done: `settingsOf("meeting_summary").enabled()`, its own switch |
 | The digest writes a closed vote's count with `voteResultLine` (`src/shared/feedActivity.ts`); Votes' feed card has its own copy | the line rides on the vote's event (step 3) |
-| The review preview names a vote's `method` labels (`src/shared/submissionPreview.ts`, `METHOD_LABELS`) | Votes' `describeSubmission` maps it, as it now does `check_mode` (step 3) |
+| The review preview names a vote's `method` labels (`src/shared/submissionPreview.ts`, `METHOD_LABELS`) | done (step 3): Votes' `describeSubmission` maps it, as it does `check_mode` |
 | `/process/:id`, the vote's page, also sends an old link for another type to that type's page | the kernel's redirect, apart from the vote's page (step 3) |
 | The settings save checks `wix_fields` (a kind only Meeting summaries uses) with `src/shared/wixFields.ts` | a package's own check of its settings (step 3); until then the package keeps an identical copy, tested equal |
 | Conversations call `getProcessHandler`, `getActionDispatcher` | done (0.4.0): `actOn`, `actAsSystem`, and its own handler for its list and its deadline read |
-| The kernel's `src/processes/spawnBrief.ts` and the files in `PACKAGE_REACH_NOT_YET` (nine since Briefs) | events and contributions (step 3) |
+| The kernel's `src/processes/spawnBrief.ts` and the files in `PACKAGE_REACH_NOT_YET` (nine since Briefs) | step 3, first batch done: the kernel's `process.closed` event (`src/services/processClosed.ts`; a package listens with `on.processClosed` and declares `activities.listen: ["process.closed"]`; Briefs makes its brief this way, `packages/civic.brief/onClosed.ts`); a package's `inputTargets` (proposals take comments), `dev.reset`, and the handler hooks `commentPhase` (the vote's divider) and `flaggedForReview` (a flagged meeting summary in the admin digest). Four entries left, all seeding or News Sync: `sampleSeed.ts`, `seedData.ts`, `autoSeed.ts`, `newsSync.ts` (folds into Announcements with Adam's work on dev) |
 | The hub's `BriefPointer` and `BriefSourcePointer` (and `ui/src/services/briefDelivery.ts`, the hub's `getPublicBrief`) | Briefs' contribution to a process page (step 3); Briefs' pages read them through `/ui` until then |
 | The admin queue counts name `briefs` (`AdminQueue`), and `AdminPublicationReview.css` styles Briefs' and Meeting summaries' review pages | a package registers its queue (step 3); the review frame is kernel UI |
 | The hub's welcome strip shows the onboarding word cloud (`WordcloudTeaser`, over HTTP, the `plugin.wordcloud.onboarding_id` setting) | a contribution Word clouds registers to the strip (step 3) |

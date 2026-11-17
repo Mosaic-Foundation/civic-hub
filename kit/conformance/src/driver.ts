@@ -252,7 +252,7 @@ export async function reviewOf(processId: string): Promise<{ id: string; status:
   return (await localRest(`process_reviews?select=id,status&process_id=eq.${processId}`)) as { id: string; status: string }[];
 }
 
-/** The briefs a process produced (spawnBrief keys them by source). */
+/** The briefs a process produced (Briefs keys them by source). */
 export async function briefsOf(processId: string): Promise<{ id: string }[]> {
   return (await localRest(
     `processes?select=id&type=eq.civic.brief&state->>source_process_id=eq.${processId}`,

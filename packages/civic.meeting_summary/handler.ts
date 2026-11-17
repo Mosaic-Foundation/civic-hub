@@ -22,6 +22,7 @@ import {
   createMeetingSummaryState,
   getPublicReadModel,
   getAdminSummary,
+  effectiveQualityFlag,
   type CreateMeetingSummaryInput,
   type MeetingSourceType,
   type MeetingSummaryProcessState,
@@ -36,6 +37,8 @@ const meetingSummaryProcess: ProcessHandler = {
   type: "civic.meeting_summary",
   descriptor: MEETING_SUMMARY_MANIFEST.descriptor,
   requiredSchema: [...MEETING_SUMMARY_MANIFEST.requiredSchema],
+  // A summary whose quality check failed gets a closer look (the admin digest counts it; kernel step 3).
+  flaggedForReview: (process) => Boolean(effectiveQualityFlag(getState(process))),
   detailPath: MEETING_SUMMARY_MANIFEST.detailPath,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {

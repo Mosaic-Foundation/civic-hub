@@ -208,7 +208,7 @@ capabilities: {
 | Field | What it means | What the admin reads |
 |---|---|---|
 | `activities.emit` | The events it writes. Must equal the descriptor's `emits`. | "Add entries to the hub's public record about its own items: when an answer comes in, one closes and it publishes a result." |
-| `activities.listen` | Must be empty: the hub delivers no events to plugins yet. | |
+| `activities.listen` | The kernel events it listens for: `process.closed` only, today. `server(host)` returns `on.processClosed` for it. | |
 | `state.tables` | Its tables. Must equal the manifest's `tables`. | "Keep its own records on this hub: residents' answers to straw polls, one each. It cannot read or change anything else the hub keeps." |
 | `adapters` | The outside services it uses, through the hub: `ai`, `mail`, `video`, `deliberation`, `objectStore`, `web`. Empty for the straw poll. | "Use the hub's AI service…", or, when absent, "It will not be able to: Use AI. Send email." |
 | `network.egress` | Must be empty: a plugin reaches an outside service only through an adapter. | "Contact any service outside this hub." (cannot) |

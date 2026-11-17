@@ -181,11 +181,6 @@ export function formatDuration(ms: number): string {
   return `${days} day${days === 1 ? "" : "s"}`;
 }
 
-const METHOD_LABELS: Record<string, string> = {
-  yes_no_unsure: "Yes / No / Unsure",
-  approval: "Choose all options you approve of",
-};
-
 // ---------------------------------------------------------------------------
 // The generic walk
 // ---------------------------------------------------------------------------
@@ -223,9 +218,6 @@ export function fieldFor(
   }
 
   if (typeof value === "string") {
-    if (key === "method") {
-      return { key, label, kind: "text", value: METHOD_LABELS[value] ?? value };
-    }
     if (isUrlish(value) && !value.includes("\n")) {
       const parsed = parseLinkLine(value);
       return { key, label, kind: "links", value: parsed ? [parsed] : [] };

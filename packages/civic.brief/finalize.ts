@@ -1,7 +1,7 @@
 // The brief's finalize (plugin session 2; ADR-015): a source hands its brief
 // raw material it needs the AI to finish (`source_result`), and the brief
 // finishes it here, under its own grant, before the brief is written. The hub
-// calls it for a new brief (spawnBriefFromClosedProcess) and a regenerated one
+// calls it for a new brief (briefOnClose, ./onClosed.ts) and a regenerated one
 // (src/services/briefRegenerate.ts). Content without a `source_result` passes
 // through unchanged: a vote's, a proposal's, a project's.
 //

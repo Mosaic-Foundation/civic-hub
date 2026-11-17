@@ -56,10 +56,7 @@ import {
   HOST_EVENT_TYPES,
   type ActionDescriptor,
 } from "../processes/descriptor.js";
-import {
-  spawnBriefFromClosedProcess,
-  findExistingBriefId,
-} from "../processes/spawnBrief.js";
+import { announceClosed, anyoneListensForClosed } from "./processClosed.js";
 import { forHub, type HubDb } from "../db/forHub.js";
 import type { ActionCaller } from "../processes/types.js";
 import { callerMayCall, subjectIsOfficial } from "../authz/canActor.js";
@@ -463,28 +460,18 @@ async function attemptAction(
 
   for (const fn of afterCommit) await fn();
 
-  // Universal brief seam: when a process transitions INTO a terminal state,
-  // spawn its Civic Brief (pending admin review) if its handler produces one.
-  // A no-op for types without generateBrief. Only the action whose write won
-  // gets here, and the spawn is insert-or-skip on a unique index, so a
-  // process has one brief. Best-effort: a failure must never wedge the close.
+  // The kernel's "process closed" event (kernel step 3): when a process
+  // enters a closed status, the packages that listen hear it (Briefs makes
+  // its brief this way). Only the action whose write won gets here, so it is
+  // said once. Never wedges the close: announceClosed logs a listener's
+  // failure and carries on.
   const enteredTerminal =
     !isTerminalStatus(previousStatus) && isTerminalStatus(process.status);
-  if (enteredTerminal && handler.generateBrief) {
-    try {
-      const existing = await findExistingBriefId(process.id);
-      if (!existing) {
-        // As stored after the after-commit work, which may have written to it
-        // (a conversation's summary is made there since 2026-10-16).
-        const latest = afterCommit.length > 0 ? ((await getProcess(process.id)) ?? process) : process;
-        await spawnBriefFromClosedProcess(latest, action.actor);
-      }
-    } catch (err) {
-      console.warn(
-        `[brief] spawn on close of ${process.id} failed (close proceeds):`,
-        err instanceof Error ? err.message : err,
-      );
-    }
+  if (enteredTerminal && anyoneListensForClosed()) {
+    // As stored after the after-commit work, which may have written to it
+    // (a conversation's summary is made there since 2026-10-16).
+    const latest = afterCommit.length > 0 ? ((await getProcess(process.id)) ?? process) : process;
+    await announceClosed(latest, action.actor);
   }
 
   return { process, result };

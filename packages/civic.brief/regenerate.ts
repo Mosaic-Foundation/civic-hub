@@ -52,7 +52,7 @@ async function freshContent(
 ): Promise<{ content: BriefContent; source_state?: Record<string, unknown> } | null> {
   const fresh = await results.fresh(source.id);
   if (!fresh) return null;
-  // Finished by the brief, as a new brief's content is (spawnBrief.ts).
+  // Finished by the brief, as a new brief's content is (./onClosed.ts).
   const content = await finalizeBriefContent(fresh.content);
   if (fresh.closed_early) content.closed_early = fresh.closed_early;
   // The same normalization a new brief gets (fields, lists, image).

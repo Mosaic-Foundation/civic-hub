@@ -9,6 +9,7 @@ import adminRoutes from "./adminRoutes.js";
 import { proposalDraftKind } from "./draftKind.js";
 import { proposalsStore } from "./store.js";
 import { createProposalsStore } from "./storeImpl.js";
+import { clearProposals, proposalExists } from "./service.js";
 
 const proposalPackage: PluginPackage = {
   name: "@civic-social/plugin-proposal",
@@ -22,6 +23,9 @@ const proposalPackage: PluginPackage = {
       drafts: { kind: proposalDraftKind },
       routes: [{ path: "/proposals", router: routes }],
       adminRoutes: [{ path: "/proposals", router: adminRoutes }],
+      // A proposal takes comments before it becomes a vote (kernel step 3).
+      inputTargets: { phase: "proposal", exists: (id) => proposalExists(id) },
+      dev: { reset: () => clearProposals() },
     };
   },
 };

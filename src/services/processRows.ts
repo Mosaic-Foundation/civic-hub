@@ -158,6 +158,22 @@ export async function briefIdForSource(sourceProcessId: string): Promise<string 
   return row?.id ?? null;
 }
 
+/**
+ * The id of the first process of these types whose state holds `value` at
+ * `key` (a brief's `source_process_id`), or null. processesOf().idWhere.
+ */
+export async function processIdByState(types: readonly string[], key: string, value: string): Promise<string | null> {
+  if (!/^[a-z_][a-z0-9_]*$/.test(key)) throw new Error(`processIdByState: ${key} is not a state key`);
+  const row = await db()
+    .from("processes")
+    .select<{ id: string }>("id")
+    .in("type", [...types])
+    .eq(`state->>${key}`, value)
+    .limit(1)
+    .maybeSingle();
+  return row?.id ?? null;
+}
+
 /** Id, type, title and status of each of these processes, in id order, read in chunks. */
 export async function processHeads(
   ids: string[],

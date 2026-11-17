@@ -30,7 +30,7 @@ export type { Process, ProcessAction, ProcessStatus, CreateProcessInput } from "
 export type { ProcessHandler, RegeneratedBrief, EditPolicy, EditChangeSet } from "../processes/types.js";
 export type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 export { storeSlot, type StoreSlot } from "../processes/storeSlot.js";
-export type { GrantedDb, PluginAdapters, PluginHost, PluginPackage, PluginServer, PluginMount } from "../plugins/package.js";
+export type { GrantedDb, PluginAdapters, PluginHost, PluginPackage, PluginServer, PluginMount, ClosedProcess } from "../plugins/package.js";
 
 // --- Requests and the names a package uses as it loads ----------------------------------
 // Listed ahead of the groups that reach the loader (the events and services

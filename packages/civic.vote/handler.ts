@@ -82,9 +82,18 @@ function parseHeldReceipt(raw: unknown): HeldReceipt | null {
   return { receipt_id: r.receipt_id, change_key: r.change_key };
 }
 
+/** How the review page's preview names a vote's method (the kernel's walk used to; kernel step 3). */
+const METHOD_LABELS: Record<string, string> = {
+  yes_no_unsure: "Yes / No / Unsure",
+  approval: "Choose all options you approve of",
+};
+
 const voteProcess: ProcessHandler = {
   type: "civic.vote",
   descriptor: VOTE_MANIFEST.descriptor,
+  // A vote's comment list draws a divider between its comments and the ones
+  // carried over from its proposal (kernel step 3: the kernel named the vote).
+  commentPhase: "vote",
   requiredSchema: [...VOTE_MANIFEST.requiredSchema],
   detailPath: VOTE_MANIFEST.detailPath,
   draftPath: (draftId: string) => `/votes/new?draft=${encodeURIComponent(draftId)}`,
@@ -116,7 +125,11 @@ const voteProcess: ProcessHandler = {
   // whole ballot as submitted.
   describeSubmission: (source) =>
     describeSubmissionFields(source, ["method", "options", "config.voting_duration_ms", "check_mode"]).map((f) =>
-      f.key === "check_mode" && isCheckMode(f.value) ? { ...f, kind: "text" as const, value: checkModeLine(f.value) } : f,
+      f.key === "check_mode" && isCheckMode(f.value)
+        ? { ...f, kind: "text" as const, value: checkModeLine(f.value) }
+        : f.key === "method" && typeof f.value === "string"
+          ? { ...f, kind: "text" as const, value: METHOD_LABELS[f.value] ?? f.value }
+          : f,
     ),
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {

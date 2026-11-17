@@ -97,7 +97,7 @@ capabilities: {
 | Field | What it means | Checked |
 |---|---|---|
 | `activities.emit` | The event types it emits about its own processes. Must equal the descriptor's `emits`. The hub's own lifecycle events (`HOST_EVENT_TYPES`: created, updated, removed, the review's) are the hub's and not listed. | At startup (equal to the descriptor); at the one emission path, every event, in production too. |
-| `activities.listen` | Must be empty: the hub delivers no events to plugins yet. | At startup. |
+| `activities.listen` | The kernel events it listens for: `process.closed` only, today (kernel step 3). Its `server(host)` returns a listener for exactly these (`on.processClosed`). | At startup. |
 | `state.tables` | Its tables, legacy ones included. Must equal the manifest's `tables`. | At startup; its store's database refuses any other table. |
 | `adapters` | The outside services it calls. A Tier 3 type names the adapter its service goes through. | Its host hands out only these. |
 | `network.egress` | Must be empty: a package reaches an outside service only through an adapter. | At startup. |

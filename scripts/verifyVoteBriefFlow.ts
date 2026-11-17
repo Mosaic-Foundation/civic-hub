@@ -9,7 +9,7 @@ import {
   executeAction,
   getProcess,
 } from "../src/services/processService.js";
-import { findExistingBriefId } from "../src/processes/spawnBrief.js";
+import { briefIdForSource as findExistingBriefId } from "../src/services/processRows.js";
 import type { BriefProcessState } from "../packages/civic.brief/api.js";
 import { DEFAULT_JURISDICTION, processJurisdiction } from "../src/config/hub.js";
 import type { Hub } from "../src/models/hub.js";

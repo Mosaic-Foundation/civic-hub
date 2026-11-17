@@ -4,6 +4,31 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 3, first part: "process closed", and packages say what they offer — 2026-11-17
+
+On `kernel-extraction` (PR #22, draft). Four catalog entries regenerated at the same versions (Briefs 0.4.0 now
+`20261117172640`, Votes 0.4.0 `20261117172659`, Meeting summaries 0.3.0 `20261117172710`, Proposals 0.3.0
+`20261117172727`; the old files are deleted). Nothing on screen changes.
+
+- **The kernel no longer makes briefs.** `src/processes/spawnBrief.ts` is gone. When a process enters a closed status,
+  `executeAction` calls `announceClosed` (`src/services/processClosed.ts`): every mounted package whose plugin is on
+  and whose server returns `on.processClosed` hears it, with `result()` (the type's process.result plus the kernel's
+  closed-early line and district/demographic tables, made once, only if asked). A listener's failure is logged; the
+  close stands. Briefs listens (`packages/civic.brief/onClosed.ts`) and declares `activities.listen:
+  ["process.closed"]`, which the grant now allows (only that event); the Install confirmation says "Hear when
+  anything on this hub closes…". The loader refuses a package whose grant and listeners disagree. Briefs' update
+  will show that new line to each hub's admin.
+- **`processesOf().idWhere(key, value)`**: Briefs checks for an existing brief by `source_process_id`.
+- **Name checks replaced by what a package offers:** comments on a proposal (`inputTargets`, Proposals), the dev reset
+  (`dev.reset`, Proposals), the vote's comment divider (handler `commentPhase: "vote"`), a flagged meeting summary in
+  the admin digest (handler `flaggedForReview`), and the vote method's words on the review preview (Votes'
+  `describeSubmission`; the kernel's walk shows the stored value). A comment on a proposal now needs Proposals on, as
+  a process's does.
+- `PACKAGE_REACH_NOT_YET` is down to four: the sample and debug seeds, and News Sync (waiting for Adam's
+  Announcements work on dev).
+
+---
+
 ## Kernel step 2: neutral roles and terms, the civic profile — 2026-11-17
 
 On `kernel-extraction` (PR #22, draft; Adam merges once at the end). No migrations, no package version changes, nothing

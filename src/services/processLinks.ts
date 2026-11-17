@@ -12,7 +12,7 @@ import { forHub, HubDbError, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { uiBaseUrl, uiOriginFor } from "../utils/baseUrl.js";
 import { generateId } from "../utils/id.js";
-import { findExistingBriefId } from "../processes/spawnBrief.js";
+import { briefIdForSource as findExistingBriefId } from "./processRows.js";
 import { getManifest, isPublished, processDetailPath, publicationOf, summarizedProcessIdOf } from "../processes/registry.js";
 import { isPubliclyFetchable } from "./processLifecycle.js";
 import { isProcessTypeEnabled } from "./pluginGate.js";

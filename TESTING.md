@@ -87,6 +87,13 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 3, first part: "process closed" and package contributions (2026-11-17)
+
+- **Unit:** 2,815 passed. `processManifest.test.ts`: a grant may listen for `process.closed`, and the Install words say
+  so. `submissionPreview.test.ts`: the kernel's walk shows a vote's stored method; Votes' `describeSubmission` names it.
+  **API:** 1,065 passed (brief made on close, Briefs-off conversation makes none, regenerate, publish); the 4 failures
+  are `events.test.ts`'s sandbox-only ones. `catalog:add` green for Briefs, Votes, Meeting summaries and Proposals.
+
 ## Kernel step 2: neutral roles and terms, the civic profile (2026-11-17)
 
 - **Unit:** 2,813 passed. New `tests/unit/spaceProfile.test.ts`: the four roles and the old names read as two of them;

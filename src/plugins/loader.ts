@@ -122,6 +122,11 @@ export function loadPackages(list: readonly ConfiguredPackage[]): LoadedPackage[
     if (JSON.stringify(declared) !== JSON.stringify(runners)) {
       throw new PackageError(entry, `its manifest declares jobs [${declared.join(", ")}] and server(host) runs [${runners.join(", ")}]`);
     }
+    const listens = [...m.capabilities.activities.listen].sort();
+    const hears = server.on?.processClosed ? ["process.closed"] : [];
+    if (JSON.stringify(listens) !== JSON.stringify(hears)) {
+      throw new PackageError(entry, `its grant listens for [${listens.join(", ")}] and server(host) listens for [${hears.join(", ")}]`);
+    }
     for (const mount of [...(server.routes ?? []), ...(server.adminRoutes ?? [])]) {
       if (typeof mount.path !== "string" || !mount.path.startsWith("/") || !mount.router) {
         throw new PackageError(entry, `a route needs a path starting with "/" and a router (${String(mount.path)})`);

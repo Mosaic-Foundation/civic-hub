@@ -91,8 +91,8 @@ Still civic or plugin-shaped inside `src/`, to be sorted in step 3:
 | `civic.auth`, `civic.review`, `civic.drafts`, `civic.search`, `civic.process_links`, `civic.feedback`, `civic.input`, `civic.link_preview` | kernel |
 | `civic.digest`, `civic.admin_digest`, `civic.assistant`, `src/jobs/newsSync.ts` | feature plugins (News Sync folds into Announcements) |
 | `civic.receipts` | the Votes plugin |
-| `src/services/brief*.ts`, `src/processes/spawnBrief.ts` | the Briefs plugin; the kernel emits "process closed" and owns the `process.result` contract |
-| `src/debug/seedDeliberationMocks.ts` | the Conversations plugin |
+| `src/services/brief*.ts`, `src/processes/spawnBrief.ts` | done: the Briefs plugin listens for the kernel's "process closed" (`src/services/processClosed.ts`) and gets the `process.result` the kernel owns |
+| `src/debug/seedDeliberationMocks.ts` | done (step 1): the Conversations plugin |
 
 ## 5. The kernel surface plugins see
 
@@ -126,7 +126,7 @@ exists (`civic-conformance`).
 | 0 | This page, ADR-020, the surface inventory | done on `kernel-extraction` |
 | 1 | The eight first-party plugins onto SDK v1 and the kit (no imports of hub pages or engine internals) | SDK v1: done for all eight (Nov 17). Pages on the kit: not started (`MOVED_HUB_PAGES`) |
 | 2 | Neutral roles and terms; the civic profile file | done (Nov 17): `src/shared/spaceProfile.ts`, `src/shared/profiles/civic.ts`, `term()`; packages move their descriptors to `member`/`accountable` at their next release |
-| 3 | Sort the civic modules (table above); replace the kernel's checks of plugins by name with events | not started |
+| 3 | Sort the civic modules (table above); replace the kernel's checks of plugins by name with events | under way (Nov 17): the kernel's `process.closed` event (Briefs listens; the kernel no longer makes briefs), and package contributions in place of five name checks. Left: the UI couplings (brief pointer, admin queues, welcome strip), the digest's vote line, the settings check, the old-link redirect, seeding, and moving the modules in the table |
 | 4 | Space types as data (profile, defaults, pins); the deployment picks its type from a setting | not started |
 | 5 | Split into `mosaic-kernel` (after identity phases 1 and 2 merge); rename packages `@mosaic/...` | not started |
 | 6 | The four conformance layers; kernel releases run Civic Hub's tests; update bot | not started |

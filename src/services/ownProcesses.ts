@@ -28,6 +28,7 @@ import {
   getSampleProcessIds,
   saveProcessState,
 } from "./processService.js";
+import { processIdByState } from "./processRows.js";
 import { actOnProcess, readAsPage, viewFor } from "../controllers/processController.js";
 import { getActionDispatcher } from "../processes/serviceSlots.js";
 import { getActor, getAuthUser } from "../middleware/auth.js";
@@ -79,6 +80,11 @@ export interface OwnProcesses {
   view(res: Response, id: string): Promise<Record<string, unknown> | null>;
   /** The ids of these types' seeded sample processes (they show the sample badge). */
   sampleIds(): Promise<Set<string>>;
+  /**
+   * The id of one of these types' processes whose state holds `value` at
+   * `key` (a brief's `source_process_id`), or null (kernel step 3).
+   */
+  idWhere(key: string, value: string): Promise<string | null>;
   /**
    * Run one action as the hub itself (a job, or work after a close commits),
    * through the kernel's one action path. The actor names the part of the
@@ -136,6 +142,7 @@ export function processesOf(...types: string[]): OwnProcesses {
       if (!process || !mine.has(process.definition.type)) throw new NotFoundError("Process not found");
       return archiveProcess(id, adminId, reason);
     },
+    idWhere: (key, value) => processIdByState(frozen, key, value),
     actOn: (res, id, action, payload = {}) => actOnProcess(res, id, action, payload, frozen),
     page: (req, id, notFound = "Not found") => readAsPage(req, id, frozen, notFound),
     async view(res, id) {

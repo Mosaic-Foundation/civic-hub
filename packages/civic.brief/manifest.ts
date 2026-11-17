@@ -6,7 +6,7 @@ import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manif
 
 /**
  * What a brief is (src/processes/descriptor.ts). The hub spawns one when a
- * process closes (spawnBriefFromClosedProcess); an admin reviews, edits and
+ * process closes (it listens for the kernel's process.closed, ./onClosed.ts); an admin reviews, edits and
  * approves it through /admin/briefs/*, and approval publishes it and sets the
  * row to finalized. It has no process actions. An official's response
  * (POST /brief/:id/respond, a different table's write) emits action_taken
@@ -144,7 +144,7 @@ export const BRIEF_MANIFEST = defineManifest({
     ],
   },
   capabilities: {
-    activities: { emit: ["civic.process.aggregation_completed", "civic.process.outcome_recorded", "civic.process.result_published", "civic.process.action_taken"], listen: [] },
+    activities: { emit: ["civic.process.aggregation_completed", "civic.process.outcome_recorded", "civic.process.result_published", "civic.process.action_taken"], listen: ["process.closed"] },
     state: { read: ["own-process"], write: ["own-process"], tables: ["brief_responses"] },
     adapters: ["mail", "ai"],
     network: { egress: [] },

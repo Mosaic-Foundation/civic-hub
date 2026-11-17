@@ -35,6 +35,7 @@ export type {
   FeedProcessMeta,
   PluginPackage,
   PluginServer,
+  ClosedProcess,
   PluginMount,
   PluginHost,
   PluginAdapters,

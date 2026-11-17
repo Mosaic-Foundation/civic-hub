@@ -22,7 +22,8 @@ import { clearEvents, getEventCount } from "../events/eventStore.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { clearInputs, submitInput } from "../modules/civic.input/index.js";
 /** Empties the proposals. Loaded on first use, never as the engine starts (engine 2, ADR-017). */
-const clearProposals = async (): Promise<void> => (await import("../../packages/civic.proposals/service.js")).clearProposals();
+// Each package empties its own records (PluginServer.dev.reset, kernel step 3).
+const clearProposals = async (): Promise<void> => (await import("../services/packageContributions.js")).resetPackagesForDev();
 import { clearAuth } from "../modules/civic.auth/index.js";
 import { clearReceipts } from "../modules/civic.receipts/index.js";
 import {
