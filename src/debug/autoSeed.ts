@@ -1,4 +1,6 @@
-// Auto-seed on startup — ensures dev scenarios are loaded.
+// Auto-seed on startup — ensures dev scenarios are loaded. The scenarios are
+// the space type's (SpaceServer.dev, config/space.ts; the Civic Hub's are in
+// spaces/civic/dev/); this is the kernel's gate around them.
 //
 // Gated behind CIVIC_ALLOW_SEED=true. Set this in your local .env. Leave it
 // unset in the Vercel Production environment so production data is never
@@ -8,174 +10,15 @@
 // in the in-memory store, we skip. On cold starts with a fresh instance,
 // the guard is re-entered once.
 
-import { env } from "../config/env.js";
 import { seedAllowed } from "../config/devFlags.js";
-import {
-  createProcess,
-  executeAction,
-  saveProcessState,
-} from "../services/processService.js";
-import { submitInput } from "../modules/civic.input/index.js";
-import { emitEvent } from "../events/eventEmitter.js";
 import { getEventCount } from "../events/eventStore.js";
 import { countProcessesInHub } from "../services/processRows.js";
 import { currentHubIdOrNull } from "../config/hubContext.js";
-import type { AnnouncementProcessContext, AnnouncementProcessState } from "../../packages/civic.announcement/api.js";
-import type { MeetingSummaryProcessContext, MeetingSummaryProcessState } from "../../packages/civic.meeting_summary/api.js";
-import type { Process } from "../models/process.js";
-import {
-  FLOCK_CAMERA_VOTE,
-  GREEN_BOX_VOTE,
-  type SeedScenario,
-} from "./seedData.js";
-import {
-  ATHENS_ANNOUNCEMENTS,
-  ATHENS_FLOCK_CAMERA,
-  ATHENS_GREEN_BOX,
-  ATHENS_MEETING_SUMMARIES,
-} from "./seedDataAthens.js";
-import { localizeScenario } from "./localizeScenario.js";
+import { spaceType } from "../plugins/spaceType.js";
 
 function allowSeed(): boolean {
   // Never in production, whatever the env says (src/config/devFlags.ts).
   return seedAllowed();
-}
-
-/**
- * Slice 19b — fixture selector. Each Vercel deployment can pick which
- * jurisdiction's seed data to load via CIVIC_SEED_FIXTURE. The default
- * set is placeless (its scenarios are filled with the seeding hub's own
- * place, governing body, and jurisdiction code via localizeScenario())
- * so production behavior is unchanged; the Athens fixture powers the
- * public demo at demo-hub.civic.social.
- *
- * Add a new fixture by exporting scenarios from a new seed-data
- * module and adding a case below — handlers should be cheap (just
- * scenario references) so adding a fixture is a one-line change.
- */
-function selectScenarios(): SeedScenario[] {
-  const fixture = env.CIVIC_SEED_FIXTURE?.trim().toLowerCase();
-  switch (fixture) {
-    case "athens":
-      // Order matters for visual freshness in the feed (events sort
-      // descending by timestamp): we seed votes first, then
-      // announcements, then meeting summaries — so the feed shows the
-      // ballot-driving content above the news-style content above the
-      // longer-form summaries.
-      return [
-        ATHENS_GREEN_BOX,
-        ATHENS_FLOCK_CAMERA,
-        ...ATHENS_ANNOUNCEMENTS,
-        ...ATHENS_MEETING_SUMMARIES,
-      ];
-    case "default":
-    case undefined:
-    case "":
-      return [GREEN_BOX_VOTE, FLOCK_CAMERA_VOTE].map((s) => localizeScenario(s));
-    default:
-      console.warn(
-        `[auto-seed] Unknown CIVIC_SEED_FIXTURE="${fixture}" — using the default set.`,
-      );
-      return [GREEN_BOX_VOTE, FLOCK_CAMERA_VOTE].map((s) => localizeScenario(s));
-  }
-}
-
-/**
- * The id a seed process gets on one hub. Scenario ids are fixed so a seed is
- * deterministic, but process ids are globally unique and every hub on a
- * deployment seeds the same scenarios. Suffixing the hub keeps each hub's
- * seed deterministic and lets two hubs seed without colliding.
- */
-export function seedIdForHub(id: string, hubId: string): string {
-  return `${id}_${hubId}`;
-}
-
-async function runScenario(scenario: SeedScenario, hubId: string): Promise<void> {
-  const proc = await createProcess({
-    ...scenario.process,
-    ...(scenario.process.id ? { id: seedIdForHub(scenario.process.id, hubId) } : {}),
-  });
-
-  // Slice 19b follow-up — type-aware dispatch. The vote/proposal
-  // path uses the generic action dispatcher; announcements and
-  // meeting summaries publish via type-specific event helpers
-  // because their lifecycles bypass the standard action flow.
-  // Adding a new process type here is a one-branch change.
-  const type = proc.definition.type;
-
-  if (type === "civic.announcement") {
-    await runAnnouncementSeed(proc, scenario.process.createdBy);
-  } else if (type === "civic.meeting_summary") {
-    await runMeetingSummarySeed(proc, scenario.process.createdBy);
-  } else {
-    // civic.vote / civic.proposal — generic actions + community inputs.
-    for (const action of scenario.actions ?? []) {
-      await executeAction(proc.id, action, "system");
-    }
-    if (scenario.inputs) {
-      for (const input of scenario.inputs) {
-        await submitInput(proc.id, input.author_id, input.body, {
-          jurisdiction: proc.jurisdiction,
-          emit: emitEvent,
-        });
-      }
-    }
-  }
-
-  console.log(
-    `[auto-seed] Loaded: "${proc.title}" (${proc.id}) — status: ${proc.status}`,
-  );
-}
-
-/**
- * Mirror the announcement controller's create+publish flow:
- * createProcess() already auto-emitted civic.process.created via
- * processService; we then fire the module's publication events
- * (which include another `created` with announcement-specific data
- * plus result_published) and finalize the process row.
- */
-async function runAnnouncementSeed(
-  proc: Process,
-  actor: string,
-): Promise<void> {
-  const state = proc.state as unknown as AnnouncementProcessState;
-  const ctx: AnnouncementProcessContext = {
-    process_id: proc.id,
-    jurisdiction: proc.jurisdiction,
-    emit: emitEvent,
-  };
-  // Loaded on first use, never as the engine starts (engine 2, ADR-017).
-  const { emitPublicationEvents: emitAnnouncementPublicationEvents } = await import("../../packages/civic.announcement/api.js");
-  await emitAnnouncementPublicationEvents(ctx, actor, state);
-  proc.status = "finalized";
-  await saveProcessState(proc);
-}
-
-/**
- * Mirror the meeting-summary cron + admin-approve flow:
- * createProcess() already auto-emitted civic.process.created;
- * emitCreationEvents fires aggregation_completed; approveMeetingSummary
- * walks the state machine pending → approved → published and emits
- * outcome_recorded + result_published. Finally we finalize the row.
- *
- * Demo seed data is published immediately (not pending review) so
- * visitors see it in the feed without an admin step.
- */
-async function runMeetingSummarySeed(
-  proc: Process,
-  actor: string,
-): Promise<void> {
-  const state = proc.state as unknown as MeetingSummaryProcessState;
-  const ctx: MeetingSummaryProcessContext = {
-    process_id: proc.id,
-    jurisdiction: proc.jurisdiction,
-    emit: emitEvent,
-  };
-  const { emitCreationEvents: emitMeetingSummaryCreationEvents, approveMeetingSummary } = await import("../../packages/civic.meeting_summary/api.js");
-  await emitMeetingSummaryCreationEvents(ctx, actor, state);
-  await approveMeetingSummary(state, actor, ctx);
-  proc.status = "finalized";
-  await saveProcessState(proc);
 }
 
 // Memoize the seed run per hub so concurrent requests don't trigger duplicate
@@ -203,12 +46,10 @@ export async function seedOnStartup(): Promise<void> {
       return;
     }
 
-    const scenarios = selectScenarios();
-    const fixtureName = env.CIVIC_SEED_FIXTURE?.trim().toLowerCase() || "default";
-    console.log(`[auto-seed] Seeding hub "${hubId}" (fixture: ${fixtureName})...`);
-    for (const scenario of scenarios) {
-      await runScenario(scenario, hubId);
-    }
+    // What a hub is seeded with is its space type's (kernel step 3).
+    const dev = spaceType()?.dev;
+    if (!dev) return;
+    await dev.seedEmptyHub(hubId);
     console.log("[auto-seed] Done\n");
   })().catch((err) => {
     console.error("[auto-seed] failed:", err);

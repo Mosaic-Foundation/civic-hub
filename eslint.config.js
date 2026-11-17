@@ -368,11 +368,18 @@ const authzSeamRule = {
 // list only shrinks (tests/unit/packageBoundary.test.ts fails on an entry
 // that no longer reaches a package).
 export const PACKAGE_REACH_NOT_YET = {
-  "src/services/sampleSeed.ts": "seeds every type's sample content by calling its service; each package should contribute its own samples",
-  "src/debug/seedData.ts": "the debug seed writes a sample conversation's state in the conversation package's type",
-  "src/debug/autoSeed.ts": "seeds an announcement's published state and events (emitPublicationEvents, AnnouncementProcessState) for the development scenarios",
   "src/jobs/newsSync.ts": "posts each news item as an announcement: its result-published event (emitAnnouncementResultPublished) and its state types",
 };
+
+// A space type (kernel step 3; src/plugins/space.ts) is the layer above the
+// kernel: spaces/<dir>/ (the Civic Hub's is spaces/civic/). It may use the
+// kernel's own modules and the packages it curates, a package's values only
+// by await import() (as the engine's reach list above); never a feature
+// package or the configured lists. The engine reaches a space type only
+// through config/space.ts, which the hosting layer writes, and reads that
+// file in one place.
+const SPACES_DIR = "spaces/";
+const SPACE_READERS = { "src/plugins/spaceType.ts": "config/space.ts" };
 
 const PACKAGES_DIR = "packages/";
 // A feature package (ADR-016): a hub feature built as a plugin package is,
@@ -483,7 +490,8 @@ const packageBoundaryRule = {
       };
     }
     const inFeature = rel.startsWith(FEATURES_DIR);
-    if (!inPackage && !inEngine && !inFeature) return {};
+    const inSpace = rel.startsWith(SPACES_DIR);
+    if (!inPackage && !inEngine && !inFeature && !inSpace) return {};
     const pkgDir = inPackage || inFeature ? rel.split("/").slice(0, 2).join("/") : null;
     const isManifest = (inPackage || inFeature) && rel === `${pkgDir}/manifest.ts`;
 
@@ -528,7 +536,16 @@ const packageBoundaryRule = {
       }
       if (!spec.startsWith(".")) return;
       const target = relative(ROOT, resolve(dirname(file), spec)).split("\\").join("/").replace(/\.js$/, ".ts");
-      if (target.startsWith(PACKAGES_DIR) && !(rel in PACKAGE_REACH_NOT_YET)) {
+      if (inEngine && target.startsWith(SPACES_DIR)) {
+        context.report({ node, message: `"${spec}": the engine never imports a space type; it reads the hub's in config/space.ts (src/plugins/spaceType.ts).` });
+      }
+      if (inEngine && target === "config/space.ts" && SPACE_READERS[rel] !== target) {
+        context.report({ node, message: `"${spec}": only src/plugins/spaceType.ts reads the hub's space type (config/space.ts).` });
+      }
+      if (inSpace && target.startsWith(SPACES_DIR) && !target.startsWith(rel.split("/").slice(0, 2).join("/") + "/")) {
+        context.report({ node, message: `"${spec}": a space type imports only its own files of spaces/.` });
+      }
+      if (target.startsWith(PACKAGES_DIR) && inEngine && !(rel in PACKAGE_REACH_NOT_YET)) {
         context.report({ node, message: `"${spec}": the engine never imports a plugin package; the hub loads them from config/plugins.json (ADR-014).` });
       } else if (target.startsWith(PACKAGES_DIR) && node.type !== "ImportExpression" && node.importKind !== "type" && node.exportKind !== "type") {
         // Even a file still allowed to reach a package loads it on first use
@@ -563,7 +580,7 @@ export default [
     ignores: ["node_modules/**", "dist/**", "ui/**", "test-results/**", "backups/**", "supabase/**", "features/*/ui/**"],
   },
   {
-    files: ["src/**/*.ts", "packages/**/*.ts", "features/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "kit/**/*.ts", "examples/**/*.ts"],
+    files: ["src/**/*.ts", "packages/**/*.ts", "features/**/*.ts", "spaces/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "kit/**/*.ts", "examples/**/*.ts"],
     languageOptions: { parser: tsParser, sourceType: "module", ecmaVersion: "latest" },
     // Other plugins' disable comments may exist in the tree; they are not errors here.
     linterOptions: { reportUnusedDisableDirectives: "off" },
@@ -574,7 +591,7 @@ export default [
   // environment only through src/config/env.ts. Scripts and tests read their
   // own.
   {
-    files: ["src/**/*.ts", "packages/**/*.ts", "features/**/*.ts", "api/**/*.ts"],
+    files: ["src/**/*.ts", "packages/**/*.ts", "features/**/*.ts", "spaces/**/*.ts", "api/**/*.ts"],
     ignores: ["src/config/env.ts"],
     rules: {
       "no-restricted-properties": [

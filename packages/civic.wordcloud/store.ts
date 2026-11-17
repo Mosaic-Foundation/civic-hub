@@ -46,6 +46,8 @@ export interface WordcloudStore {
   visibleBodies(processId: string, promptId: string): Promise<string[]>;
   /** The visible submissions, newest first, optionally for one prompt (paged past 1,000). */
   visibleResponses(processId: string, promptId?: string): Promise<ResponseRow[]>;
+  /** Sample answers (PluginServer.samples), each with its planned time. */
+  insertSamples(rows: ReadonlyArray<NewSubmission & { submitted_at: string }>): Promise<void>;
   /** Development seed only: every submission on the hub. */
   deleteAll(): Promise<void>;
 }

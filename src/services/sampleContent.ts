@@ -32,7 +32,8 @@ import {
   REVIEW_CHILD_COLUMNS,
 } from "../models/sampleContent.js";
 import { recordHubAdminAudit } from "./hubAdminAudit.js";
-import { getSetting, setSetting } from "./hubSettings.js";
+import { setSetting } from "./hubSettings.js";
+import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { KEYS } from "../models/hubSettings.js";
 import { ensureStarterWordcloud } from "./starterWordcloud.js";
 import {
@@ -216,12 +217,7 @@ export async function removeSampleContent(actorEmail: string): Promise<SampleRem
   }
   // A setting that names a sample process would point at nothing: the
   // hub's word cloud, which the seed chooses when there is none.
-  const cleared: string[] = [];
-  const chosen = await getSetting(currentHubId(), KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID);
-  if (chosen && ids.includes(chosen)) {
-    await setSetting(currentHubId(), KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID, "", actorEmail);
-    cleared.push(KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID);
-  }
+  const cleared = await clearSettingsNaming(ids, actorEmail);
 
   await recordHubAdminAudit({
     actor: actorEmail,
@@ -231,7 +227,7 @@ export async function removeSampleContent(actorEmail: string): Promise<SampleRem
   });
   // The strip showed the sample word cloud: the starter takes its place
   // (Adam, 2026-10-13), real content now that the samples are gone.
-  if (cleared.length) await ensureStarterWordcloud(actorEmail);
+  if (cleared.includes(KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID)) await ensureStarterWordcloud(actorEmail);
   console.log(
     `[hub] sample content removed on ${currentHubId()} by ${actorEmail}: ` +
       `${summary.processes} processes, ${summary.added_in_demo} added in demo, ` +
@@ -303,12 +299,7 @@ export async function deleteOneSample(
   }
   const deleted = await deleteSampleProcesses(ids);
 
-  const cleared: string[] = [];
-  const chosen = await getSetting(currentHubId(), KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID);
-  if (chosen && ids.includes(chosen)) {
-    await setSetting(currentHubId(), KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID, "", actorEmail);
-    cleared.push(KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID);
-  }
+  const cleared = await clearSettingsNaming(ids, actorEmail);
 
   const item: SampleItem = { id: root.id, type: root.type, title: root.title, added_in_demo: root.added_in_demo };
   await recordHubAdminAudit({
@@ -318,7 +309,7 @@ export async function deleteOneSample(
     after: cleared.length ? { deleted, cleared } : { deleted },
   });
   // As for removing them all: the starter replaces the sample word cloud.
-  if (cleared.length) await ensureStarterWordcloud(actorEmail);
+  if (cleared.includes(KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID)) await ensureStarterWordcloud(actorEmail);
   return { item, deleted, cleared };
 }
 
@@ -357,4 +348,21 @@ export async function hubContentFlags(
     db.from("hub_settings").count().eq("key", KEYS.COPY_WELCOME).neq("value", "").then((n) => n > 0, () => false),
   ]);
   return { samples, welcome, sample_items: sampleItems };
+}
+
+/**
+ * Empty every plugin setting (`plugin.<id>.*`) whose value is one of these
+ * removed sample processes: a sample's seeder may have chosen it
+ * (SampleKit.adoptSetting), and it would point at nothing. The keys emptied.
+ */
+async function clearSettingsNaming(ids: readonly string[], actorEmail: string): Promise<string[]> {
+  const hubId = currentHubId();
+  const stored = (await fetchHubSettings(hubId)) ?? {};
+  const cleared: string[] = [];
+  for (const [key, value] of Object.entries(stored)) {
+    if (!key.startsWith("plugin.") || !value || !ids.includes(value)) continue;
+    await setSetting(hubId, key as never, "", actorEmail);
+    cleared.push(key);
+  }
+  return cleared;
 }

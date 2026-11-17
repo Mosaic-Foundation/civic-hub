@@ -1,8 +1,8 @@
 // The Floyd names used below are fixture values for the test, not defaults.
 
 import { describe, expect, it } from "vitest";
-import { GREEN_BOX_VOTE, FLOCK_CAMERA_VOTE } from "../../src/debug/seedData.js";
-import { localizeScenario } from "../../src/debug/localizeScenario.js";
+import { GREEN_BOX_VOTE, FLOCK_CAMERA_VOTE } from "../../spaces/civic/dev/seedData.js";
+import { localizeScenario } from "../../spaces/civic/dev/localizeScenario.js";
 
 const FLOYD_NAMES = {
   place: "Floyd County",

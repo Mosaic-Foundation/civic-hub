@@ -7,6 +7,7 @@ import handler from "./handler.js";
 import routes from "./routes.js";
 import { wordcloudStore } from "./store.js";
 import { createWordcloudStore } from "./storeImpl.js";
+import { seedWordcloudSample } from "./samples.js";
 
 const wordcloudPackage: PluginPackage = {
   name: "@civic-social/plugin-wordcloud",
@@ -15,7 +16,7 @@ const wordcloudPackage: PluginPackage = {
   manifest,
   server(host) {
     wordcloudStore.bind(createWordcloudStore(host.db));
-    return { handler, routes: [{ path: "/wordcloud", router: routes }] };
+    return { handler, routes: [{ path: "/wordcloud", router: routes }], samples: { seed: seedWordcloudSample } };
   },
 };
 

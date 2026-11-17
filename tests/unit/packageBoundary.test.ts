@@ -85,10 +85,23 @@ describe("civic/package-boundary", () => {
   });
 
   it("lets a file on the reach list load a package only on first use: types statically, values by await import() (ADR-017)", async () => {
-    const reach = "src/services/sampleSeed.ts";
+    const reach = "src/jobs/newsSync.ts";
     expect(await errors(reach, `import { createProposal } from "../../packages/civic.proposals/service.js";`)).toHaveLength(1);
     expect(await errors(reach, `import type { ProposalSummary } from "../../packages/civic.proposals/service.js";`)).toHaveLength(0);
     expect(await errors(reach, `export const f = async () => (await import("../../packages/civic.proposals/service.js")).createProposal;`)).toHaveLength(0);
+  });
+
+  it("lets a space type use the kernel and load its packages on first use; the engine reaches it only through config/space.ts (kernel step 3)", async () => {
+    const space = "spaces/civic/x.ts";
+    expect(await errors(space, `import { forHub } from "../../src/db/forHub.js";`)).toHaveLength(0);
+    expect(await errors(space, `import type { VoteProcessState } from "../../packages/civic.vote/service.js";`)).toHaveLength(0);
+    expect(await errors(space, `export const f = async () => (await import("../../packages/civic.vote/service.js")).propose;`)).toHaveLength(0);
+    expect(await errors(space, `import { propose } from "../../packages/civic.vote/service.js";`)).toHaveLength(1);
+    expect(await errors(space, `import { rollup } from "../../features/analytics/rollup.js";`)).toHaveLength(1);
+    expect(await errors(space, `import { x } from "../other/x.js";`)).toHaveLength(1);
+    expect(await errors("src/services/somethingNew.ts", `import civic from "../../spaces/civic/index.js";`)).toHaveLength(1);
+    expect(await errors("src/services/somethingNew.ts", `import { SPACE } from "../../config/space.js";`)).toHaveLength(1);
+    expect(await errors("src/plugins/spaceType.ts", `import { SPACE } from "../../config/space.js";`)).toHaveLength(0);
   });
 
   it("refuses engine code importing a package, or reading the configured list, outside the files named", async () => {

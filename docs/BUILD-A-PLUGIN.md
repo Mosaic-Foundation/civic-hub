@@ -433,6 +433,43 @@ A type can also add to the hub's own pages with `contributes`, drawn only while 
 
 A page reads its own settings with `useSpace().setting("plugin.<your id>.…")`.
 
+### Sample content: `samples`
+
+A new hub can start with sample content so it does not look empty, and a plugin can make its own. Return
+`samples` from `server(host)`:
+
+```ts
+import type { SampleKit, SampleTemplate } from "@civic-social/plugin-sdk";
+
+async function seed(template: SampleTemplate, kit: SampleKit) {
+  const p = await kit.create({                       // marked as sample; dated `template.at` days from now
+    title: kit.fill("Lunch for {HUB_NAME}?"),        // the hub's names filled in
+    description: "",
+    state: { question: kit.fill(String(template.question)) },
+  });
+  // ...your own records through host.db(), your events with kit.emitAt(kit.at(-2))
+}
+
+return {
+  handler,
+  samples: {
+    seed,
+    defaults: () => [{ key: "straw_poll_lunch", by: "TEAM", at: -3, question: "Pizza or tacos?" }],
+  },
+};
+```
+
+- `seed(template, kit)` makes one sample of your type. The hub's space type may bring its own templates for your type
+  (the Civic Hub brings a word cloud, for instance); `defaults()` are yours, used only where the space type brings
+  none of your type. A key is unique on the hub; the sample's process id is made from it.
+- The kit gives you the hub's sample people (`kit.author("JORDAN")`; `by` on a template), times relative to now
+  (`kit.at(days, minutes)`, `at` on a template), `kit.fill(text)` for `{HUB_NAME}`, `{JURISDICTION}` and
+  `{GOVERNING_BODY}`, `create`, `save`, `comment`, and `adoptSetting(key, value)` to set one of your own settings when the
+  hub has none (Word clouds makes its sample the hub's word cloud this way).
+- Everything a sample creates is marked as sample: its events never reach the public log or a digest, and the admin's
+  Remove sample content takes all of it. Send nothing outside the hub from a seed.
+- Word clouds is the working example: `packages/civic.wordcloud/samples.ts`.
+
 ## 7. Run the suite
 
 ```bash

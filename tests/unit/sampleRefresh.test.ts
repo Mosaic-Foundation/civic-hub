@@ -7,7 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { SAMPLE_TEMPLATES, templatesFor, type SampleTemplate } from "../../src/services/sampleTemplates.js";
 import { REFRESH_WINDOW_DAYS, refreshReason } from "../../src/services/sampleRefresh.js";
-import { SAMPLE_ENDORSEMENT_FLOOR, sampleSupportThreshold } from "../../src/services/sampleSeed.js";
+import { SAMPLE_ENDORSEMENT_FLOOR, sampleSupportThreshold } from "../../spaces/civic/sampleRules.js";
 import { refreshesSamples, SAMPLE_REFRESH_MODES } from "../../src/shared/sampleRefresh.js";
 import { describeJobRun } from "../../src/jobs/describe.js";
 import { codeOfConductVerdict } from "../../src/services/codeOfConduct.js";

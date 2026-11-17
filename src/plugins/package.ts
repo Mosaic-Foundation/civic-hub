@@ -38,6 +38,7 @@ import type { HubQueryBuilder } from "../db/forHub.js";
 import type { DraftKind } from "../processes/draftKinds.js";
 import type { Process } from "../models/process.js";
 import type { BriefContent } from "../processes/contracts/briefContent.js";
+import type { PluginSamples } from "./samples.js";
 
 /** A router a package mounts, at `path` on the hub (or under /admin, behind the admin check). */
 export interface PluginMount {
@@ -76,6 +77,13 @@ export interface PluginServer {
   checkSetting?(key: string, value: string): string | null;
   /** The development reset (debug routes only, never production): empty its own records. */
   dev?: { reset?(): Promise<void> };
+  /**
+   * Its sample content (kernel step 3; src/plugins/samples.ts): it seeds the
+   * samples of its type a hub's space type brings, and may bring default
+   * samples of its own for a space type that brings none. Without it, the space
+   * type seeds its type's samples itself.
+   */
+  samples?: PluginSamples;
   /**
    * What it does when the kernel says something happened (kernel step 3): the
    * kernel calls it in-process, for the hub in scope, only while the package

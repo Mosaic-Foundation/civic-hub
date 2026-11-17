@@ -99,7 +99,7 @@ export interface SampleVote extends Base {
   closes_at?: number;
   /** Anonymous ballots per option, same order as `options`. */
   ballots?: readonly number[];
-  /** Endorsements while proposed (the threshold: sampleSupportThreshold, src/services/sampleSeed.ts). */
+  /** Endorsements while proposed (the threshold: sampleSupportThreshold, spaces/civic/sampleRules.ts). */
   endorsed_by?: readonly Author[];
 }
 

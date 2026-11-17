@@ -82,7 +82,7 @@ screen cannot be written without it.
 | Hosting | `src/hosting/`, `api/`, `vercel.json`, `supabase/config.toml` | stays with each deployment |
 | Platform | `mosaic-console` (its own repo since Nov 11) | unchanged |
 | General plugins | `packages/civic.*`, `features/*` | `mosaic-kernel/plugins/` |
-| Civic space type | civic words and modules still inside `src/` (below), `src/shared/spaceTypes.ts` | `civic-hub`: the civic profile, civic-only plugins, branding, hosting |
+| Civic space type | `spaces/civic/` (its sample content and development seed; `config/space.ts` names it), civic words and modules still inside `src/` (below), `src/shared/spaceTypes.ts` | `civic-hub`: the civic profile, civic-only plugins, branding, hosting |
 
 Still civic or plugin-shaped inside `src/`, to be sorted in step 3:
 
@@ -126,7 +126,7 @@ exists (`civic-conformance`).
 | 0 | This page, ADR-020, the surface inventory | done on `kernel-extraction` |
 | 1 | The eight first-party plugins onto SDK v1 and the kit (no imports of hub pages or engine internals) | SDK v1: done for all eight (Nov 17). Pages on the kit: not started (`MOVED_HUB_PAGES`) |
 | 2 | Neutral roles and terms; the civic profile file | done (Nov 17): `src/shared/spaceProfile.ts`, `src/shared/profiles/civic.ts`, `term()`; packages move their descriptors to `member`/`accountable` at their next release |
-| 3 | Sort the civic modules (table above); replace the kernel's checks of plugins by name with events | under way (Nov 17): the kernel's `process.closed` event (Briefs listens; the kernel no longer makes briefs), and package contributions in place of five name checks. Then a type's own closed line for the digest (`resultLine`), a package's own check of its settings (`checkSetting`), and the kernel's `/process/:id` link (`ui/src/pages/ProcessLink.tsx`). Then what a package adds to the kernel's pages (`contributes`: the brief pointer, review queues in the admin rail, the welcome strip). Then sign-up's stop (`contributes.afterSignUp`). Left: seeding, and moving the modules in the table |
+| 3 | Sort the civic modules (table above); replace the kernel's checks of plugins by name with events | under way (Nov 17): the kernel's `process.closed` event (Briefs listens; the kernel no longer makes briefs), and package contributions in place of five name checks. Then a type's own closed line for the digest (`resultLine`), a package's own check of its settings (`checkSetting`), and the kernel's `/process/:id` link (`ui/src/pages/ProcessLink.tsx`). Then what a package adds to the kernel's pages (`contributes`: the brief pointer, review queues in the admin rail, the welcome strip). Then sign-up's stop (`contributes.afterSignUp`). Then sample content: the kernel's plugin sample hook (`PluginServer.samples`, `SampleKit`; Word clouds seeds its own), and the Civic Hub's curated samples and development seed moved out of the kernel into the space type layer (`spaces/civic/`, named in `config/space.ts`). Left: News Sync, and moving the modules in the table |
 | 4 | Space types as data (profile, defaults, pins); the deployment picks its type from a setting | not started |
 | 5 | Split into `mosaic-kernel` (after identity phases 1 and 2 merge); rename packages `@mosaic/...` | not started |
 | 6 | The four conformance layers; kernel releases run Civic Hub's tests; update bot | not started |

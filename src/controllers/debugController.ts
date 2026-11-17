@@ -1,4 +1,5 @@
-// Debug controller — loads sample data for development testing.
+// Debug controller — loads sample data for development testing. The kernel
+// wipes the hub; the scenarios are its space type's (config/space.ts).
 // NOT for production use. All actions go through normal business logic.
 //
 // Two-layer safeguard against accidentally wiping live data:
@@ -13,31 +14,16 @@ import { env } from "../config/env.js";
 import { ConflictError, ForbiddenError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { seedAllowed } from "../config/devFlags.js";
-import {
-  createProcess,
-  executeAction,
-  clearProcesses,
-} from "../services/processService.js";
+import { clearProcesses } from "../services/processService.js";
 import { clearEvents, getEventCount } from "../events/eventStore.js";
-import { emitEvent } from "../events/eventEmitter.js";
-import { clearInputs, submitInput } from "../modules/civic.input/index.js";
+import { clearInputs } from "../modules/civic.input/index.js";
 /** Empties the proposals. Loaded on first use, never as the engine starts (engine 2, ADR-017). */
 // Each package empties its own records (PluginServer.dev.reset, kernel step 3).
 const clearProposals = async (): Promise<void> => (await import("../services/packageContributions.js")).resetPackagesForDev();
 import { clearAuth } from "../modules/civic.auth/index.js";
 import { clearReceipts } from "../modules/civic.receipts/index.js";
-import {
-  FLOCK_CAMERA_VOTE,
-  GREEN_BOX_VOTE,
-  ALL_DELIBERATION_SEEDS,
-  type SeedScenario,
-  type DeliberationSeedScenario,
-} from "../debug/seedData.js";
-import { localizeScenario } from "../debug/localizeScenario.js";
-import { currentHubId } from "../config/hubContext.js";
-import { seedIdForHub } from "../debug/autoSeed.js";
 import { countReviewTurns } from "../services/devSeedChecks.js";
-import { insertProcessRow } from "../services/processRows.js";
+import { spaceType } from "../plugins/spaceType.js";
 
 // Production Supabase hostnames that MUST NEVER be seeded against.
 // Add a new entry whenever a new production project is provisioned.
@@ -84,92 +70,6 @@ async function reseedBlocker(): Promise<string | null> {
     );
   }
   return null;
-}
-
-async function runScenario(
-  scenario: SeedScenario,
-): Promise<Record<string, unknown>> {
-  const process = await createProcess({
-    ...scenario.process,
-    ...(scenario.process.id
-      ? { id: seedIdForHub(scenario.process.id, currentHubId()) }
-      : {}),
-  });
-
-  for (const action of scenario.actions ?? []) {
-    await executeAction(process.id, action, "system");
-  }
-
-  if (scenario.inputs) {
-    for (const input of scenario.inputs) {
-      await submitInput(process.id, input.author_id, input.body, {
-        jurisdiction: process.jurisdiction,
-        emit: emitEvent,
-      });
-    }
-  }
-
-  return {
-    id: process.id,
-    type: process.definition.type,
-    title: process.title,
-    status: process.status,
-  };
-}
-
-/**
- * Seed a deliberation process by writing directly to the DB.
- * Bypasses the action dispatcher (and therefore the Polis API)
- * so we can create active/completed deliberations with fake data.
- */
-async function seedDeliberation(
-  scenario: DeliberationSeedScenario,
-): Promise<Record<string, unknown>> {
-  const { status } = scenario;
-  const p = { ...scenario.process, id: seedIdForHub(scenario.process.id, currentHubId()) };
-  const now = new Date().toISOString();
-
-  const row = {
-    id: p.id,
-    type: p.definition.type,
-    process_version: p.definition.version,
-    title: p.title,
-    description: p.description,
-    jurisdiction: p.jurisdiction ?? "local",
-    status,
-    content: null,
-    state: p.state as unknown as Record<string, unknown>,
-    created_by: p.createdBy,
-    source_proposal_id: null,
-    starts_at: null,
-    ends_at: null,
-    created_at: now,
-    updated_at: now,
-  };
-
-  // Stamped with the hub being seeded (processes are read per hub).
-  await insertProcessRow(row);
-
-  // Emit a creation event so it shows in the feed
-  await emitEvent({
-    event_type: "civic.process.created",
-    actor: p.createdBy,
-    process_id: p.id,
-    jurisdiction: p.jurisdiction ?? "local",
-    data: {
-      process: {
-        type: p.definition.type,
-        title: p.title,
-      },
-    },
-  });
-
-  return {
-    id: p.id,
-    type: p.definition.type,
-    title: p.title,
-    status,
-  };
 }
 
 export const handleSeed = route(async (_req, res) => {
@@ -227,18 +127,8 @@ export const handleSeed = route(async (_req, res) => {
 
   console.log("[seed] Seeding system...");
 
-  const createdProcesses: Record<string, unknown>[] = [];
-
-  // Green Box — active vote
-  createdProcesses.push(await runScenario(localizeScenario(GREEN_BOX_VOTE)));
-
-  // Flock Camera — proposed vote
-  createdProcesses.push(await runScenario(localizeScenario(FLOCK_CAMERA_VOTE)));
-
-  // Deliberation / conversation seed data — bypasses Polis API
-  for (const scenario of ALL_DELIBERATION_SEEDS) {
-    createdProcesses.push(await seedDeliberation(localizeScenario(scenario)));
-  }
+  // What the hub is seeded with is its space type's (SpaceServer.dev, kernel step 3).
+  const createdProcesses = (await spaceType()?.dev?.seedAfterReset()) ?? [];
 
   const eventCount = await getEventCount();
 

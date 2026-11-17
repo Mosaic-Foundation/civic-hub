@@ -25,6 +25,10 @@ export function createWordcloudStore(db: () => GrantedDb): WordcloudStore {
       }
     },
 
+    async insertSamples(rows) {
+      if (rows.length) await db().from("wordcloud_submissions").insert([...rows]);
+    },
+
     async visibleBodies(processId, promptId) {
       const rows = await readAll((from, to) =>
         db()

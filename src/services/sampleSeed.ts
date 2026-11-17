@@ -1,92 +1,42 @@
-// Seeding a hub's sample content (Phase 7): the templates in
-// sampleTemplates.ts, filled with the hub's names and written through the
-// real code paths, the way scripts/seedBetaSlate.ts wrote Floyd's slate
-// (retired 2026-09-27; in git history up to 39ac22d).
+// Seeding a hub's sample content (Phase 7; kernel step 3, the samples hook).
+// Contract: BUILD-PLAN-multi-tenant.md "Phase 7: Sample content for new hubs";
+// the hook: src/plugins/samples.ts and docs/BUILD-A-PLUGIN.md. Run inside the
+// hub's scope by scripts/seed-sample-content.ts, by the console's Create hub
+// (the operator API's seedSamples) and by the sample refresh.
 //
-// Contract: BUILD-PLAN-multi-tenant.md → "Phase 7 — Sample content for new
-// hubs". Run inside the hub's scope by scripts/seed-sample-content.ts and by
-// the console's Create hub (the operator API's seedSamples).
-//
-// - Real paths: processes through createProcess (marked `isSample`), votes
-//   through the civic.vote module's lifecycle, proposals, projects and
-//   comments through their modules, the outcome through the brief's own
-//   approve path. The database stamps every event of a sample process as
-//   sample, so none of it reaches /events or a digest.
-// - Nothing leaves the building: the outcome's delivery goes to a mailer
-//   that logs and sends nothing, the recipient label is the hub's governing
-//   body with a `.invalid` address, the conversation is served by the
-//   `seed-` mock layer (no Polis), and announcements skip the publication
-//   receipt.
-// - Times are relative to now: every event is stamped with its planned time
-//   (the log cannot be backdated after the fact) and the row tables get
-//   matching created_at, so the open vote is open and the feed looks current.
-// - Idempotent: fixed ids (proc_sample_<hub>_<key>, user_sample_<hub>_00n);
-//   a template whose process exists is skipped, authors are upserted.
-// - Templates that do not fit the hub's kind (identity.hub_kind; today every
-//   template is for place hubs) or its jurisdiction type are skipped. The
-//   hub's plugin switches are NOT consulted (Adam, 2026-09-27): every template
-//   the type allows is seeded, with every plugin treated as on for the run.
-//   Content whose plugin is off stays hidden, like any process of that type,
-//   until the plugin is turned on; removal takes all of it either way.
+// The kernel names no type and holds no sample of its own:
+// - The plan: the samples the hub's space type brings (SpaceServer.samples,
+//   config/space.ts), then each loaded plugin's own defaults for a type the
+//   space type brings none of. A sample made from another (`needs`) is
+//   skipped when that one is not in the plan.
+// - The seeding: each sample goes to the plugin that provides its type when
+//   it seeds its own (PluginServer.samples.seed), to the space type otherwise.
+//   Either gets a SampleKit: the sample people, times relative to now, the
+//   hub's names, and a create that marks the process as sample (the database
+//   stamps its events as sample, so none of it reaches /events or a digest).
+// - Idempotent: fixed ids (proc_sample_<hub>_<key>, user_sample_<hub>_00n); a
+//   sample whose process exists is skipped, the sample people are upserted.
+// - The hub's plugin switches are NOT consulted (Adam, 2026-09-27): the run sees
+//   every plugin on, so the real create paths accept every sample. Content
+//   whose plugin is off stays hidden, like any process of that type, until the
+//   plugin is turned on; removal takes all of it either way.
 
-import { randomUUID } from "node:crypto";
 import { forHub, type HubDb, type TableName } from "../db/forHub.js";
 import { currentHub, currentHubId, currentHubSettings, withHubScope } from "../config/hubContext.js";
-import { KEYS, PLUGIN_IDS } from "../models/hubSettings.js";
+import { PLUGIN_IDS } from "../models/hubSettings.js";
 import type { CreateEventInput } from "../models/event.js";
-import type { Process, ProcessContent, ProcessStatus } from "../models/process.js";
+import type { ProcessContent } from "../models/process.js";
 import { sampleProcessId, sampleUserId } from "../models/sampleContent.js";
-import { isJurisdictionType } from "../shared/jurisdictionType.js";
-import { hubKindOf } from "../shared/hubKind.js";
 import { emitEvent } from "../events/eventEmitter.js";
-import { createProcess, getProcess, saveProcessState } from "./processService.js";
-import { getSettingSync, getSupportThreshold, isPluginEnabled } from "./hubSettings.js";
-import { sampleDeliverySuppressed } from "./sampleContent.js";
+import { createProcess, saveProcessState } from "./processService.js";
+import { getSettingSync, isPluginEnabled, setSetting } from "./hubSettings.js";
 import { sampleNames } from "./sampleNames.js";
-import { sampleBallotTagsForThisHub } from "./sampleBallotTags.js";
 import { processExistsOnHub, processVersionOnHub, stampProcessCreatedAt } from "./processRows.js";
-import {
-  SAMPLE_AUTHORS,
-  fillSample,
-  templatesFor,
-  type SampleAnnouncement,
-  type SampleDeliberation,
-  type SampleMeetingSummary,
-  type SampleWordcloud,
-  type SampleNames,
-  type SampleOutcome,
-  type SampleProject,
-  type SampleProposal,
-  type SampleTemplate,
-  type SampleVote,
-} from "./sampleTemplates.js";
-import { uiBaseUrl } from "../utils/baseUrl.js";
-import { processWireIris } from "./processLinks.js";
-import type * as VoteService from "../../packages/civic.vote/service.js";
-import type { VoteProcessState } from "../../packages/civic.vote/service.js";
-import { getBallotChoicesForProcess } from "../modules/civic.receipts/index.js";
+import { SAMPLE_AUTHORS, fillSample, type SampleNames } from "./sampleTemplates.js";
 import { submitInput } from "../modules/civic.input/index.js";
-import type { BriefProcessState } from "../../packages/civic.brief/api.js";
-import type { AnnouncementProcessState } from "../../packages/civic.announcement/models.js";
-import type { MeetingSummaryProcessState } from "../../packages/civic.meeting_summary/api.js";
-import type { WordcloudProcessState } from "../../packages/civic.wordcloud/service.js";
-import { generateId } from "../utils/id.js";
-import { DEFAULT_POLIS_URL } from "../shared/polisUrl.js";
-import { setSetting } from "./hubSettings.js";
-
-/** The prefix the deliberation controller serves from the mock layer. */
-export const SAMPLE_CONVERSATION_PREFIX = "seed-sample-";
-
-const PROCESS_TYPE: Record<SampleTemplate["kind"], string> = {
-  vote: "civic.vote",
-  outcome: "civic.brief",
-  proposal: "civic.proposal",
-  deliberation: "civic.polis_deliberation",
-  project: "civic.project",
-  announcement: "civic.announcement",
-  meeting_summary: "civic.meeting_summary",
-  wordcloud: "civic.wordcloud",
-};
+import { loadedPackages, packageOfType } from "../plugins/loader.js";
+import { spaceType } from "../plugins/spaceType.js";
+import type { PluginSampleTemplate, SampleKit, SampleTemplate } from "../plugins/samples.js";
 
 export interface SampleSeedReport {
   hub: string;
@@ -100,54 +50,19 @@ export interface SampleSeedReport {
 const DAY = 24 * 60 * 60 * 1000;
 
 /**
- * Seed this hub's sample content. Runs in the hub's scope — re-entered with
+ * Seed this hub's sample content. Runs in the hub's scope, re-entered with
  * every plugin switched on, so the real create paths (which refuse a process
- * type whose plugin is off) accept every template. Only this run sees the
+ * type whose plugin is off) accept every sample. Only this run sees the
  * switches that way; the stored settings are not touched.
  */
-// The types' services, loaded on first use, never as the engine starts
-// (engine 2, ADR-017): a package imports the SDK by name, and the hub hands
-// the SDK its engine only once the engine has loaded, before any package.
-let vote: typeof VoteService;
-let createProposal: typeof import("../../packages/civic.proposals/service.js").createProposal;
-let supportProposal: typeof import("../../packages/civic.proposals/service.js").supportProposal;
-let createProject: typeof import("../../packages/civic.projects/service.js").createProject;
-let setProjectSentiment: typeof import("../../packages/civic.projects/service.js").setProjectSentiment;
-let emitProjectUpdated: typeof import("../../packages/civic.projects/events.js").emitProjectUpdated;
-let approveBrief: typeof import("../../packages/civic.brief/api.js").approveBrief;
-let setRecipients: typeof import("../../packages/civic.brief/api.js").setRecipients;
-let emitBriefAggregationCompleted: typeof import("../../packages/civic.brief/events.js").emitBriefAggregationCompleted;
-let emitAnnouncementResultPublished: typeof import("../../packages/civic.announcement/events.js").emitAnnouncementResultPublished;
-let approveMeetingSummary: typeof import("../../packages/civic.meeting_summary/api.js").approveMeetingSummary;
-let buildProcessDescription: typeof import("../../packages/civic.meeting_summary/api.js").buildProcessDescription;
-let emitMeetingSummaryCreationEvents: typeof import("../../packages/civic.meeting_summary/api.js").emitCreationEvents;
-let activateWordcloud: typeof import("../../packages/civic.wordcloud/service.js").activateWordcloud;
-
-async function loadPackages(): Promise<void> {
-  if (vote) return;
-  vote = await import("../../packages/civic.vote/service.js");
-  ({ createProposal, supportProposal } = await import("../../packages/civic.proposals/service.js"));
-  ({ createProject, setProjectSentiment } = await import("../../packages/civic.projects/service.js"));
-  ({ emitProjectUpdated } = await import("../../packages/civic.projects/events.js"));
-  ({ approveBrief, setRecipients } = await import("../../packages/civic.brief/api.js"));
-  ({ emitBriefAggregationCompleted } = await import("../../packages/civic.brief/events.js"));
-  ({ emitAnnouncementResultPublished } = await import("../../packages/civic.announcement/events.js"));
-  const meeting = await import("../../packages/civic.meeting_summary/api.js");
-  approveMeetingSummary = meeting.approveMeetingSummary;
-  buildProcessDescription = meeting.buildProcessDescription;
-  emitMeetingSummaryCreationEvents = meeting.emitCreationEvents;
-  ({ activateWordcloud } = await import("../../packages/civic.wordcloud/service.js"));
-}
-
 export async function seedSampleContent(
   opts: {
     dryRun?: boolean;
     now?: Date;
-    /** Only these template keys (the sample refresh re-seeds one at a time). */
+    /** Only these sample keys (the sample refresh re-seeds one at a time). */
     only?: readonly string[];
   } = {},
 ): Promise<SampleSeedReport> {
-  await loadPackages();
   const hub = currentHub();
   if (!hub) currentHubId(); // throws the usual "no hub in scope"
   const settings = { ...(currentHubSettings() ?? {}) };
@@ -155,31 +70,76 @@ export async function seedSampleContent(
   return withHubScope(hub!, settings, () => seedInScope(opts));
 }
 
+/** Who seeds samples of a type: the plugin that provides it, when it offers to. */
+function pluginSeeder(type: string) {
+  const p = packageOfType(type);
+  const samples = p?.server.samples;
+  return p && samples ? { plugin: p.plugin, seed: samples.seed.bind(samples) } : null;
+}
+
+/**
+ * The run's plan (pure): the space type's samples, then each plugin's
+ * defaults for a type the space type brings none of, narrowed to `only`. A
+ * sample is skipped when its key is taken, nothing seeds its type, or the
+ * sample it is made from is not planned before it.
+ */
+export function planSamples(input: {
+  fromSpace: readonly SampleTemplate[];
+  defaults: ReadonlyArray<{ type: string; templates: readonly PluginSampleTemplate[] }>;
+  only?: readonly string[];
+  canSeed: (t: SampleTemplate) => boolean;
+}): { plan: SampleTemplate[]; skipped: Array<{ key: string; reason: string }> } {
+  const spaceTypes = new Set(input.fromSpace.map((t) => t.type));
+  const all: SampleTemplate[] = [...input.fromSpace];
+  for (const d of input.defaults) {
+    if (spaceTypes.has(d.type)) continue;
+    for (const t of d.templates) all.push({ ...t, type: d.type });
+  }
+  const plan: SampleTemplate[] = [];
+  const skipped: Array<{ key: string; reason: string }> = [];
+  const keys = new Set<string>();
+  for (const t of all) {
+    if (input.only && !input.only.includes(t.key)) continue;
+    if (keys.has(t.key)) {
+      skipped.push({ key: t.key, reason: `another sample already has the key ${t.key}` });
+      continue;
+    }
+    keys.add(t.key);
+    if (!input.canSeed(t)) {
+      skipped.push({ key: t.key, reason: `nothing on this hub seeds ${t.type}` });
+      continue;
+    }
+    if (t.needs && !plan.some((p) => p.key === t.needs)) {
+      skipped.push({ key: t.key, reason: `the sample it is made from (${t.needs}) is not seeded` });
+      continue;
+    }
+    plan.push(t);
+  }
+  return { plan, skipped };
+}
+
 async function seedInScope(opts: { dryRun?: boolean; now?: Date; only?: readonly string[] }): Promise<SampleSeedReport> {
   const hubId = currentHubId();
+  const space = spaceType();
   const run = new SeedRun(hubId, sampleNames(), opts.now ?? new Date());
-  const typeRaw = getSettingSync(KEYS.IDENTITY_JURISDICTION_TYPE);
-  const kind = hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND));
-  const fitting = templatesFor(isJurisdictionType(typeRaw) ? typeRaw : null, kind).filter(
-    (t) => !opts.only || opts.only.includes(t.key),
-  );
+  const defaults = loadedPackages().flatMap((p) => {
+    const d = p.server.samples?.defaults?.();
+    return d?.length ? [{ type: p.type, templates: d }] : [];
+  });
+  const { plan, skipped } = planSamples({
+    fromSpace: space?.samples?.plan() ?? [],
+    defaults,
+    only: opts.only,
+    canSeed: (t) => !!pluginSeeder(t.type) || !!space?.samples,
+  });
   const report: SampleSeedReport = {
     hub: hubId,
     dry_run: !!opts.dryRun,
     created: [],
     existing: [],
-    skipped: [],
+    skipped,
     authors: Object.keys(SAMPLE_AUTHORS).length,
   };
-
-  const plan: SampleTemplate[] = [];
-  for (const t of fitting) {
-    if (t.kind === "outcome" && !plan.some((p) => p.key === t.source)) {
-      report.skipped.push({ key: t.key, reason: `its vote (${t.source}) is not seeded` });
-      continue;
-    }
-    plan.push(t);
-  }
   if (opts.dryRun) {
     for (const t of plan) {
       ((await run.exists(t.key)) ? report.existing : report.created).push(t.key);
@@ -193,28 +153,15 @@ async function seedInScope(opts: { dryRun?: boolean; now?: Date; only?: readonly
       report.existing.push(t.key);
       continue;
     }
-    await run.seed(t);
+    const own = pluginSeeder(t.type);
+    if (own) await own.seed(t, run.kit(t, own.plugin));
+    else await space!.samples!.seed(t, run.kit(t, null));
     report.created.push(t.key);
   }
   return report;
 }
 
-/**
- * Endorsements a tester must add, beyond the seeded ones, before a sample vote
- * gathering endorsements opens (Adam, 2026-11-06): one tester's endorsement
- * must not open it into a live vote by accident.
- */
-export const SAMPLE_ENDORSEMENT_FLOOR = 5;
-
-/**
- * A sample vote's endorsement threshold: the hub's, but never fewer than
- * SAMPLE_ENDORSEMENT_FLOOR beyond its seeded endorsers, whatever the hub's
- * threshold (a hub's may be 0). Pure.
- */
-export function sampleSupportThreshold(hubThreshold: number, seededEndorsers: number): number {
-  return Math.max(hubThreshold, seededEndorsers + SAMPLE_ENDORSEMENT_FLOOR);
-}
-
+/** One seed run on one hub: the kit each sample gets, and the sample people. */
 class SeedRun {
   private readonly db: HubDb;
 
@@ -226,8 +173,6 @@ class SeedRun {
     this.db = forHub(hubId);
   }
 
-  // --- helpers --------------------------------------------------------------
-
   private fill(text: string): string {
     return fillSample(text, this.names);
   }
@@ -237,12 +182,9 @@ class SeedRun {
     return new Date(this.now.getTime() + days * DAY + minutes * 60_000).toISOString();
   }
 
-  private id(key: string): string {
-    return sampleProcessId(this.hubId, key);
-  }
-
-  private user(author: keyof typeof SAMPLE_AUTHORS): { id: string; name: string } {
-    const a = SAMPLE_AUTHORS[author];
+  private author(key: string): { id: string; name: string } {
+    const a = (SAMPLE_AUTHORS as Record<string, { n: number; full_name: string }>)[key];
+    if (!a) throw new Error(`no sample person ${key} (the kernel's are ${Object.keys(SAMPLE_AUTHORS).join(", ")})`);
     return { id: sampleUserId(this.hubId, a.n), name: this.fill(a.full_name) };
   }
 
@@ -258,12 +200,11 @@ class SeedRun {
   }
 
   async exists(key: string): Promise<boolean> {
-    return processExistsOnHub(this.hubId, this.id(key));
+    return processExistsOnHub(this.hubId, sampleProcessId(this.hubId, key));
   }
 
   async upsertAuthors(): Promise<void> {
-    for (const key of Object.keys(SAMPLE_AUTHORS) as Array<keyof typeof SAMPLE_AUTHORS>) {
-      const a = SAMPLE_AUTHORS[key];
+    for (const a of Object.values(SAMPLE_AUTHORS)) {
       await this.db.from("users").upsert(
         {
           id: sampleUserId(this.hubId, a.n),
@@ -279,444 +220,63 @@ class SeedRun {
     }
   }
 
-  private async create(t: SampleTemplate, input: {
-    title: string;
-    description: string;
-    state?: Record<string, unknown>;
-    content?: Record<string, unknown>;
-  }): Promise<Process> {
-    const by = this.user(t.by);
-    const at = this.at(t.at);
-    const p = await createProcess({
-      id: this.id(t.key),
-      definition: { type: PROCESS_TYPE[t.kind], version: t.kind === "deliberation" ? "1.0" : "0.1" },
-      title: input.title,
-      description: input.description,
-      createdBy: by.id,
-      state: input.state,
-      content: input.content as ProcessContent | undefined,
-      eventTimestamp: at,
-      isSample: true,
-    });
-    await stampProcessCreatedAt(this.hubId, p.id, at);
-    // The stamp is a write, so it moved the row's version; this copy is the
-    // seed's own and carries on from it (saveProcessState checks it).
-    p.version = await processVersionOnHub(this.hubId, p.id);
-    return p;
-  }
-
-  private async comment(processId: string, jurisdiction: string, c: { by: keyof typeof SAMPLE_AUTHORS; body: string; at: number }, phase: "comment" | "update"): Promise<string> {
-    const u = this.user(c.by);
-    const iso = this.at(c.at);
-    const input = await submitInput(
-      processId,
-      u.id,
-      this.fill(c.body),
-      { jurisdiction, emit: this.emitAt(iso) },
-      phase,
-      { is_anonymous: false, author_name: u.name },
-    );
-    await this.stamp("community_inputs", { id: input.id }, iso, "submitted_at");
-    return input.id;
-  }
-
-  // --- votes ----------------------------------------------------------------
-
-  private voteCtx(p: Process, iso: string) {
-    return { process_id: p.id, jurisdiction: p.jurisdiction, emit: this.emitAt(iso) };
-  }
-
-  /** Persist the way executeAction does: status + state, and process.updated on a status change. */
-  private async persistVote(p: Process, st: VoteProcessState, previous: string, iso: string, actor: string): Promise<void> {
-    p.status = st.status as ProcessStatus;
-    p.state = st as unknown as Record<string, unknown>;
-    await saveProcessState(p);
-    if (previous !== p.status) {
-      await this.emitAt(iso)({
-        event_type: "civic.process.updated",
-        actor,
-        process_id: p.id,
-        jurisdiction: p.jurisdiction,
-        processType: "civic.vote",
-        data: { process: { previous_status: previous, status: p.status } },
-      });
-    }
-  }
-
-  /** Anonymous ballots: receipt + choice, no person and no time. */
-  private async ballots(p: Process, t: SampleVote): Promise<number> {
-    const pool: string[] = [];
-    t.options.forEach((opt, i) => {
-      for (let k = 0; k < (t.ballots?.[i] ?? 0); k++) pool.push(this.fill(opt));
-    });
-    // Deterministic interleave, so the ballots do not arrive option by option.
-    let seed = 7;
-    for (let i = pool.length - 1; i > 0; i--) {
-      seed = (seed * 9301 + 49297) % 233280;
-      const j = Math.floor((seed / 233280) * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-    // No time on a ballot, sample or not (vote_records_no_time, 2026-10-10).
-    const method = vote.getVotingMethod(t.method);
-    // District and age tags on a demo hub only, so its closed vote shows breakdowns (sampleBallotTags.ts).
-    const tags = sampleBallotTagsForThisHub(pool.length);
-    const rows = pool.map((opt, i) => ({
-      receipt_id: randomUUID(),
-      process_id: p.id,
-      choice: method.key === "approval" ? JSON.stringify([opt]) : opt,
-      ...tags[i]!,
-    }));
-    if (rows.length) await this.db.from("vote_records").insert(rows);
-    return rows.length;
-  }
-
-  private async seedVote(t: SampleVote): Promise<void> {
-    const author = this.user(t.by);
-    const options = t.options.map((o) => this.fill(o));
-    const threshold = sampleSupportThreshold(await getSupportThreshold(this.hubId), t.endorsed_by?.length ?? 0);
-    const p = await this.create(t, {
-      title: this.fill(t.title),
-      description: this.fill(t.description),
-      state: {
-        method: t.method,
-        options,
-        activation_mode: t.phase === "proposed" ? "proposal_required" : "direct",
-        support_threshold: t.phase === "proposed" ? threshold : 0,
-        voting_duration_ms: 14 * DAY,
+  /** The kit for one sample; `plugin` is the seeding plugin's id (null: the space type). */
+  kit(template: SampleTemplate, plugin: string | null): SampleKit {
+    const hubId = this.hubId;
+    return {
+      hubId,
+      now: this.now,
+      template,
+      fill: (text) => this.fill(text),
+      at: (days, minutes) => this.at(days, minutes),
+      id: (key) => sampleProcessId(hubId, key),
+      author: (key) => this.author(key),
+      emitAt: (iso) => this.emitAt(iso),
+      create: async (input) => {
+        const by = this.author(input.by ?? template.by ?? "TEAM");
+        const at = this.at(input.at ?? template.at ?? 0);
+        const p = await createProcess({
+          id: sampleProcessId(hubId, template.key),
+          definition: { type: template.type, version: input.version ?? "0.1" },
+          title: input.title,
+          description: input.description,
+          createdBy: by.id,
+          state: input.state,
+          content: input.content as ProcessContent | undefined,
+          eventTimestamp: at,
+          isSample: true,
+        });
+        await stampProcessCreatedAt(hubId, p.id, at);
+        // The stamp is a write, so it moved the row's version; this copy is the
+        // seed's own and carries on from it (saveProcessState checks it).
+        p.version = await processVersionOnHub(hubId, p.id);
+        return p;
       },
-    });
-    let st = p.state as unknown as VoteProcessState;
-
-    if (t.phase === "proposed") {
-      ({ state: st } = await vote.propose(st, author.id, this.voteCtx(p, this.at(t.at, 1))));
-      await this.persistVote(p, st, "draft", this.at(t.at, 1), author.id);
-      let m = 2;
-      for (const who of t.endorsed_by ?? []) {
-        const u = this.user(who);
-        const prev = st.status;
-        const iso = this.at(t.at + m * 0.5);
-        ({ state: st } = await vote.addSupport(st, u.id, this.voteCtx(p, iso)));
-        await this.persistVote(p, st, prev, iso, u.id);
-        m++;
-      }
-      return;
-    }
-
-    const opens = this.at(t.opens_at ?? t.at);
-    ({ state: st } = await vote.activate(st, author.id, this.voteCtx(p, opens)));
-    st.voting_opens_at = opens;
-    st.voting_closes_at = this.at(t.closes_at ?? 7);
-    st.total_votes = await this.ballots(p, t);
-    await this.persistVote(p, st, "draft", opens, author.id);
-
-    if (t.phase === "closed") {
-      // Close through the module, as the deadline close does: tally from the
-      // anonymous receipts, stamped with the deadline.
-      const closed = st.voting_closes_at;
-      const method = vote.getVotingMethod(st.method ?? vote.DEFAULT_METHOD);
-      const ballots = (await getBallotChoicesForProcess(p.id)).map((c) => method.parseReceipt(c));
-      ({ state: st } = await vote.closeVote(st, "system:auto-close", ballots, this.voteCtx(p, closed)));
-      await this.persistVote(p, st, "active", closed, "system:auto-close");
-    }
-  }
-
-  // --- outcome --------------------------------------------------------------
-
-  private async seedOutcome(t: SampleOutcome): Promise<void> {
-    const source = await getProcess(this.id(t.source));
-    if (!source) throw new Error(`sample outcome ${t.key}: its vote ${t.source} is missing`);
-    const team = this.user(t.by);
-    const closedAt = this.at(t.at);
-    const publishedAt = this.at(t.published_at);
-    const record = await this.create(t, {
-      title: source.title,
-      description: source.description,
-      state: {
-        source_process_id: source.id,
-        source_process_type: source.definition.type,
-        content: {
-          title: source.title,
-          headline: this.fill(t.headline),
-          summary: this.fill(t.summary),
-          sections: t.sections.map((s) => ({ heading: this.fill(s.heading), body: this.fill(s.body) })),
-          participation_label: this.fill(t.participation_label),
-          participation_count: t.participation_count,
-          comments: [],
-          admin_notes: "",
-          image_url: null,
-          image_alt: null,
-        },
+      save: (p) => saveProcessState(p),
+      comment: async (p, c, phase = "comment") => {
+        const u = this.author(c.by);
+        const iso = this.at(c.at);
+        const input = await submitInput(
+          p.id,
+          u.id,
+          this.fill(c.body),
+          { jurisdiction: p.jurisdiction, emit: this.emitAt(iso) },
+          phase,
+          { is_anonymous: false, author_name: u.name },
+        );
+        await this.stamp("community_inputs", { id: input.id }, iso, "submitted_at");
+        return input.id;
       },
-    });
-    const state = record.state as unknown as BriefProcessState;
-    const ctxAt = (iso: string) => ({ process_id: record.id, jurisdiction: record.jurisdiction, emit: this.emitAt(iso) });
-    await emitBriefAggregationCompleted(ctxAt(this.at(t.at, 1)), "system:brief-spawn", state);
-    state.generated_at = closedAt;
-    setRecipients(state, [{ email: `governing-body@${this.hubId}.sample.invalid`, label: this.fill(t.sent_to) }]);
-    await saveProcessState(record);
-
-    await approveBrief(state, team.id, ctxAt(publishedAt), {
-      fallbackRecipients: [],
-      hubLabel: this.names.HUB_NAME,
-      publicBriefUrl: `${uiBaseUrl()}/brief/${record.id}`,
-      sourceProcessIri:
-        (await processWireIris([state.source_process_id])).get(state.source_process_id) ?? null,
-      // Never delivered: sample content (and a .invalid address besides).
-      sendEmail: sampleDeliverySuppressed,
-      finalizeSource: async (sourceId) => {
-        const s = await getProcess(sourceId);
-        if (!s || s.status === "finalized") return;
-        let vState = s.state as unknown as VoteProcessState;
-        const method = vote.getVotingMethod(vState.method ?? vote.DEFAULT_METHOD);
-        const ballots = (await getBallotChoicesForProcess(s.id)).map((c) => method.parseReceipt(c));
-        ({ state: vState } = await vote.finalizeVote(vState, team.id, ballots, this.voteCtx(s, publishedAt)));
-        s.status = vState.status as ProcessStatus;
-        s.state = vState as unknown as Record<string, unknown>;
-        await saveProcessState(s);
+      adoptSetting: async (key, value) => {
+        if (!plugin || !key.startsWith(`plugin.${plugin}.`)) {
+          throw new Error(`a sample may set only its own plugin's settings (plugin.${plugin ?? "<id>"}.*), not ${key}`);
+        }
+        if (getSettingSync(key as never)) return false;
+        // The stored switch, not this run's (which sees every plugin on).
+        if (!(await isPluginEnabled(hubId, plugin as never))) return false;
+        await setSetting(hubId, key as never, value, "sample-seed");
+        return true;
       },
-    });
-    record.status = "finalized";
-    state.approved_at = publishedAt;
-    state.published_at = publishedAt;
-    state.delivered_at = publishedAt;
-    record.state = state as unknown as Record<string, unknown>;
-    await saveProcessState(record);
-  }
-
-  // --- proposal -------------------------------------------------------------
-
-  private async seedProposal(t: SampleProposal): Promise<void> {
-    const author = this.user(t.by);
-    const title = this.fill(t.title);
-    const description = this.fill(t.description);
-    const at = this.at(t.at);
-    const p = await this.create(t, {
-      title,
-      description,
-      content: { category: "idea", optional_links: [], assistant_helped: false },
-    });
-    await createProposal(
-      { id: p.id, title, description, submitted_by: author.id, category: "idea", assistant_helped: false, closes_at: this.at(t.closes_at) },
-      this.emitAt(at),
-    );
-    await this.stamp("proposals", { id: p.id }, at);
-    let i = 0;
-    for (const who of t.endorsed_by) {
-      const u = this.user(who);
-      const iso = this.at(t.at, 30 + i * 90);
-      await supportProposal(p.id, u.id, this.emitAt(iso));
-      await this.stamp("proposal_supports", { proposal_id: p.id, user_id: u.id }, iso);
-      i++;
-    }
-    for (const c of t.comments) await this.comment(p.id, p.jurisdiction, c, "comment");
-  }
-
-  // --- deliberation ---------------------------------------------------------
-
-  private async seedDeliberation(t: SampleDeliberation): Promise<void> {
-    const author = this.user(t.by);
-    const topic = this.fill(t.topic);
-    const framing = this.fill(t.framing);
-    const p = await this.create(t, {
-      title: topic,
-      description: framing,
-      state: {
-        topic,
-        framing,
-        seed_statements: t.statements.map((s) => this.fill(s)),
-        duration_ms: (t.closes_at - t.at) * DAY,
-      },
-    });
-    // What the start action does, minus Polis: the conversation is served by
-    // the seed- mock layer under this id.
-    const conversationId = `${SAMPLE_CONVERSATION_PREFIX}${t.key}`;
-    // The same fallback as the start action (deliberationBoot.ts).
-    const polisUrl = (getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL) || DEFAULT_POLIS_URL).replace(/\/+$/, "");
-    const st = p.state as Record<string, unknown>;
-    st.polis_conversation_id = conversationId;
-    st.polis_base_url = `${polisUrl}/${conversationId}`;
-    st.deadline = this.at(t.closes_at);
-    p.status = "active";
-    await saveProcessState(p);
-    await this.emitAt(this.at(t.at, 1))({
-      event_type: "civic.process.started",
-      actor: author.id,
-      process_id: p.id,
-      jurisdiction: p.jurisdiction,
-      processType: "civic.polis_deliberation",
-      data: { process_id: p.id, process_type: "civic.polis_deliberation", polis_conversation_id: conversationId, topic },
-    });
-  }
-
-  // --- project --------------------------------------------------------------
-
-  private async seedProject(t: SampleProject): Promise<void> {
-    const author = this.user(t.by);
-    const title = this.fill(t.title);
-    const description = this.fill(t.description);
-    const at = this.at(t.at);
-    const p = await this.create(t, { title, description, content: { sources: [], assistant_helped: false } });
-    await createProject({ id: p.id, title, description, user_id: author.id }, this.emitAt(at));
-    await this.stamp("projects", { id: p.id }, at);
-    let i = 0;
-    for (const who of t.supported_by) {
-      const u = this.user(who);
-      const iso = this.at(t.at + 1 + i);
-      await setProjectSentiment(p.id, u.id, "support", this.emitAt(iso));
-      await this.stamp("project_sentiments", { project_id: p.id, user_id: u.id }, iso);
-      i++;
-    }
-    for (const c of t.comments) await this.comment(p.id, p.jurisdiction, c, "comment");
-    for (const u of t.updates) {
-      const iso = this.at(u.at);
-      const updateId = await this.comment(p.id, p.jurisdiction, { by: t.by, body: u.body, at: u.at }, "update");
-      await emitProjectUpdated({ project_id: p.id, emit: this.emitAt(iso) }, author.id, { update_id: updateId });
-    }
-  }
-
-  // --- announcement ---------------------------------------------------------
-
-  private async seedAnnouncement(t: SampleAnnouncement): Promise<void> {
-    const author = this.user(t.by);
-    const title = this.fill(t.title);
-    const body = this.fill(t.body);
-    // The hand-authored path without its publication receipt: there is no
-    // human author to warn.
-    const record = await this.create(t, {
-      title,
-      description: body,
-      state: {
-        title,
-        body,
-        author_id: author.id,
-        author_role: "Admin",
-        official_type: null,
-        author_display_name: author.name,
-        links: [],
-        image_url: null,
-        image_alt: null,
-      },
-    });
-    const state = record.state as unknown as AnnouncementProcessState;
-    await emitAnnouncementResultPublished(
-      { process_id: record.id, jurisdiction: record.jurisdiction, emit: this.emitAt(this.at(t.at, 1)) },
-      author.id,
-      state,
-      { timestamp: this.at(t.at, 1) },
-    );
-    record.status = "finalized";
-    await saveProcessState(record);
-  }
-
-  // --- meeting summary ------------------------------------------------------
-
-  private async seedMeetingSummary(t: SampleMeetingSummary): Promise<void> {
-    const team = this.user(t.by);
-    const title = this.fill(t.meeting_title);
-    const meetingDate = this.at(t.meeting_at).slice(0, 10);
-    const blocks = t.blocks.map((b) => ({
-      topic_title: this.fill(b.title),
-      topic_summary: this.fill(b.summary),
-      start_time_seconds: b.at_minute * 60,
-      action_taken: b.action ? this.fill(b.action) : null,
-    }));
-    // The pipeline's shape (the meeting_summary job's), with no source:
-    // no minutes, no agenda, no recording, no AI. source_type "minutes" keeps
-    // the cron's upgrade pass from ever picking it up.
-    const p = await this.create(t, {
-      title: `Meeting summary: ${meetingDate}`,
-      description: buildProcessDescription(blocks),
-      state: {
-        source_id: `sample:${this.id(t.key)}`,
-        source_minutes_url: null,
-        source_agenda_url: null,
-        source_type: "minutes",
-        source_video_url: null,
-        additional_video_urls: [],
-        meeting_title: title.charAt(0).toUpperCase() + title.slice(1),
-        meeting_date: meetingDate,
-        blocks,
-        ai_instructions_used: "",
-        ai_model: "sample",
-      },
-    });
-    const state = p.state as unknown as MeetingSummaryProcessState;
-    const ctxAt = (iso: string) => ({ process_id: p.id, jurisdiction: p.jurisdiction, emit: this.emitAt(iso) });
-    await emitMeetingSummaryCreationEvents(ctxAt(this.at(t.at, 1)), team.id, state);
-    await approveMeetingSummary(state, team.id, ctxAt(this.at(t.published_at, 2)));
-    state.generated_at = this.at(t.at, 1);
-    state.approved_at = this.at(t.published_at, 2);
-    state.published_at = this.at(t.published_at, 2);
-    p.status = "finalized";
-    // Read on the page in place of a minutes PDF (review issue #7). Set here:
-    // the handler's initializeState keeps only the fields it knows.
-    p.state = { ...(state as unknown as Record<string, unknown>), sample_minutes: this.fill(t.minutes) };
-    await saveProcessState(p);
-  }
-
-  // --- word cloud -----------------------------------------------------------
-
-  private async seedWordcloud(t: SampleWordcloud): Promise<void> {
-    const team = this.user(t.by);
-    const p = await this.create(t, {
-      title: this.fill(t.title),
-      description: this.fill(t.description),
-      state: { prompts: [{ id: "p1", text: this.fill(t.prompt) }], lifecycle_mode: "evergreen" },
-    });
-    let st = p.state as unknown as WordcloudProcessState;
-    const opens = this.at(t.at, 1);
-    ({ state: st } = await activateWordcloud(st, team.id, { process_id: p.id, jurisdiction: p.jurisdiction, emit: this.emitAt(opens) }));
-    p.status = st.status;
-    p.state = st as unknown as Record<string, unknown>;
-    await saveProcessState(p);
-
-    // Anonymous answers, spread over the days since it opened: rows, not
-    // events, like the sample ballots.
-    const words = t.answers.flatMap(([word, n]) => Array.from({ length: n }, () => word));
-    const from = new Date(opens).getTime();
-    const to = this.now.getTime() - 60_000;
-    const rows = words.map((body, i) => ({
-      id: generateId("wcsub"),
-      process_id: p.id,
-      prompt_id: "p1",
-      author_id: null,
-      body,
-      device_token: null,
-      // Interleaved, so the words do not arrive one kind at a time.
-      submitted_at: new Date(from + ((to - from) * (((i * 7) % words.length) + 1)) / (words.length + 1)).toISOString(),
-    }));
-    if (rows.length) await this.db.from("wordcloud_submissions").insert(rows);
-
-    // The hub's word cloud (the banner, and where a new account lands), when
-    // it has none. Removal clears it again (sampleContent.ts). Not while the
-    // hub's STORED Word clouds switch is off (this run sees every plugin on):
-    // a new account would be sent to a page that answers "not found".
-    if (
-      !getSettingSync(KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID) &&
-      (await isPluginEnabled(this.hubId, "wordcloud"))
-    ) {
-      await setSetting(this.hubId, KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID, p.id, "sample-seed");
-    }
-  }
-
-  async seed(t: SampleTemplate): Promise<void> {
-    switch (t.kind) {
-      case "vote":
-        return this.seedVote(t);
-      case "outcome":
-        return this.seedOutcome(t);
-      case "proposal":
-        return this.seedProposal(t);
-      case "deliberation":
-        return this.seedDeliberation(t);
-      case "project":
-        return this.seedProject(t);
-      case "announcement":
-        return this.seedAnnouncement(t);
-      case "meeting_summary":
-        return this.seedMeetingSummary(t);
-      case "wordcloud":
-        return this.seedWordcloud(t);
-    }
+    };
   }
 }

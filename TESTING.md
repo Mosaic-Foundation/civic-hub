@@ -87,6 +87,13 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 3, fifth part: sample content (2026-11-17)
+
+- **Unit:** 2,819 passed, plus `samplesHook.test.ts` (the kernel's plan: space samples, then plugin defaults, skipped
+  keys, `needs`; every civic template's type; Word clouds' answer times) and `packageBoundary` (the `spaces/` fence).
+  **API:** 1,065 passed (the 4 `events.test.ts` failures are this sandbox's only); `sampleSeed.test.ts` seeds through
+  the new path, Word clouds' sample and onboarding setting included. `catalog:add` green for Word clouds.
+
 ## Kernel step 3, fourth part: sign-up's stop (2026-11-17)
 
 - **UI:** 110 passed (`PackageSlots.test.tsx`: the stop only while Word clouds is on, never off-site). **Unit:** 2,818

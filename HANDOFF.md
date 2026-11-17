@@ -4,6 +4,36 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 3, fifth part: sample content — a plugin's own, and the Civic Hub's out of the kernel — 2026-11-17
+
+On `kernel-extraction`. Adam (Nov 17): "some kind of standard way for plugin creators to speak to the hub to create
+demo data", with the Civic Hub's own set moved out of the kernel (option A).
+
+- **The hook.** `PluginServer.samples` (`src/plugins/samples.ts`, in SDK v0 and v1): `seed(template, kit)` makes one
+  sample of the plugin's type; optional `defaults()` brings its own for a space type that brings none of its type. The
+  `SampleKit`: sample people (`author`), times relative to now (`at`), `fill`, `create` (marked sample, dated), `save`,
+  `comment`, `emitAt`, and `adoptSetting` (one of its own settings, only when unset and its plugin is stored on).
+- **The kernel** (`src/services/sampleSeed.ts`) names no type now: it plans (`planSamples`, pure: the space type's
+  samples, then plugin defaults, `needs` for a sample made from another), upserts the sample people, and hands each
+  sample to its type's plugin when it seeds its own, to the space type otherwise.
+- **The space type layer.** `SpaceServer` (`src/plugins/space.ts`); the hosting layer names it in `config/space.ts`,
+  read only by `src/plugins/spaceType.ts`. The Civic Hub's is `spaces/civic/`: `samplePlan.ts` (which templates fit,
+  each with its type), `samples.ts` (the seeders for votes, outcomes, proposals, conversations, projects,
+  announcements, meeting summaries), `sampleRules.ts`, and `dev/` (the development seed: `seedData.ts`,
+  `seedDataAthens.ts`, `localizeScenario.ts`, `devSeed.ts`). The kernel's `autoSeed.ts` and `/debug/seed` keep the
+  gates and the wipe and call `dev.seedEmptyHub` / `dev.seedAfterReset`.
+- **Word clouds** seeds its own sample (`packages/civic.wordcloud/samples.ts`; its store gains `insertSamples`). Its
+  unreleased 0.3.0 catalog entry regenerated (`20261117222505`); it stays 0.3.0, because a new version must first move
+  its pages onto the kit (`MOVED_HUB_PAGES`).
+- Removing the samples empties any `plugin.*` setting naming a removed sample (was Word clouds' key by name).
+- Lint: `spaces/` is fenced (kernel modules yes, packages' values only by `await import()`, no features, no other
+  space); the engine never imports `spaces/` and reads `config/space.ts` in one file. `PACKAGE_REACH_NOT_YET` is down
+  to `src/jobs/newsSync.ts`.
+- Still civic in the kernel: the templates and sample people (`sampleTemplates.ts`, step 4), the starter word cloud
+  after removal (`starterWordcloud.ts`). Nothing on screen changes; a seeded hub gets the same samples.
+
+---
+
 ## Kernel step 3, fourth part: sign-up's stop at the word cloud — 2026-11-17
 
 On `kernel-extraction`. `contributes.afterSignUp`: where a new member lands after signing up. Word clouds gives its

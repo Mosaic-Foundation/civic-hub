@@ -9,9 +9,9 @@
 // Outside a hub scope (the boot-time auto-seed) the readers fall back to the
 // environment, like every other hub-identity read.
 
-import { civicPlaceShortName, defaultJurisdiction } from "../config/hub.js";
-import { getSettingSync } from "../services/hubSettings.js";
-import { KEYS } from "../models/hubSettings.js";
+import { civicPlaceShortName, defaultJurisdiction } from "../../../src/config/hub.js";
+import { getSettingSync } from "../../../src/services/hubSettings.js";
+import { KEYS } from "../../../src/models/hubSettings.js";
 
 export interface ScenarioNames {
   /** "Floyd County" — `{PLACE}`. */

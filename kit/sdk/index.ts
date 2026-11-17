@@ -47,6 +47,11 @@ export type {
   BriefSection,
   JobOutcome,
   JobRunner,
+  // Sample content a package seeds (PluginServer.samples, kernel step 3).
+  PluginSamples,
+  PluginSampleTemplate,
+  SampleKit,
+  SampleTemplate,
 } from "../../src/sdk/index.js";
 
 // --- The one emission path: every event a package writes goes through it ------------------
