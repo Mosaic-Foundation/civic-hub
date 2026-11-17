@@ -19,7 +19,7 @@ vi.mock("../../src/db/hubs.js", () => ({ countyGeoidForHub: async () => county }
 
 const { installAdapters } = await import("../../src/adapters/index.js");
 const { fakeGeocoder } = await import("../../src/adapters/fakes/geocoder.js");
-const { ensureCensusDistricts, resetCensusDistrictChecks, CENSUS_RECHECK_MS } = await import(
+const { ensureCensusDistricts, resetCensusDistrictChecks, CENSUS_RECHECK_MS, CENSUS_RETRY_MS } = await import(
   "../../src/services/districtLookup.js"
 );
 const { aboutConfig, parseCensusDistricts } = await import("../../src/shared/aboutYou.js");
@@ -88,14 +88,18 @@ describe("a county hub's Census districts", () => {
     expect(store.has("about.census_districts")).toBe(false);
   });
 
-  it("are checked once per instance until the recheck time, and a Census failure keeps nothing", async () => {
+  it("are checked once per instance until the recheck time; a Census failure keeps nothing and is retried in minutes", async () => {
     county = "00000"; // the fake's "Census unreachable"
     await ensureCensusDistricts("floyd", 0);
     expect(store.has("about.census_districts")).toBe(false);
     county = "51063";
     await ensureCensusDistricts("floyd", 1000);
     expect(store.has("about.census_districts")).toBe(false);
-    await ensureCensusDistricts("floyd", CENSUS_RECHECK_MS + 1);
+    await ensureCensusDistricts("floyd", CENSUS_RETRY_MS + 1);
     expect(store.has("about.census_districts")).toBe(true);
+    // Once kept, the next look is hours away.
+    county = "51067";
+    await ensureCensusDistricts("floyd", CENSUS_RETRY_MS + 2 + CENSUS_RETRY_MS);
+    expect(parseCensusDistricts(store.get("about.census_districts"))?.county).toBe("51063");
   });
 });

@@ -133,6 +133,8 @@ export async function districtsForCounty(countyGeoid: string): Promise<District[
 
 /** How long one server instance trusts what it last found for a hub before checking again. */
 export const CENSUS_RECHECK_MS = 6 * HOUR_MS;
+/** After the Census couldn't be reached: try again this soon, not hours later. */
+export const CENSUS_RETRY_MS = 10 * 60 * 1000;
 /** How long a hub's page waits for the Census on its first visit before going on without it. */
 export const CENSUS_WAIT_MS = 4_000;
 
@@ -164,6 +166,7 @@ export function ensureCensusDistricts(hubId: string, now: number = Date.now()): 
   if (last !== undefined && now - last < CENSUS_RECHECK_MS) return Promise.resolve();
   const running = inFlight.get(hubId);
   if (running) return running;
+  let retry = false;
   const job = (async () => {
     try {
       if (parseDistricts(await getSetting(hubId, KEYS.ABOUT_DISTRICTS)).length > 0) return;
@@ -176,14 +179,17 @@ export function ensureCensusDistricts(hubId: string, now: number = Date.now()): 
       if (kept?.county === county) return;
       const districts = await districtsForCounty(county);
       if (!districts?.length) {
-        // Not reached, or nothing listed: try again on the next check, not every request.
+        // Not reached, or nothing listed: try again in a few minutes, not every request.
+        retry = true;
         return;
       }
       await setSetting(hubId, KEYS.ABOUT_CENSUS_DISTRICTS, encodeCensusDistricts(county, districts), null);
     } catch (err) {
+      retry = true;
       console.error(`[districts] the Census list for ${hubId} could not be kept`, err instanceof Error ? err.message : err);
     } finally {
-      checkedAt.set(hubId, now);
+      // A failed check counts as made long enough ago that the next one comes after CENSUS_RETRY_MS.
+      checkedAt.set(hubId, retry ? now - CENSUS_RECHECK_MS + CENSUS_RETRY_MS : now);
       inFlight.delete(hubId);
     }
   })();

@@ -159,16 +159,17 @@ describe("reading the Census geocoder's answer", () => {
 });
 
 describe("filling the district list from the Census", () => {
-  it("reads a county's subdivisions from a Census Data API answer", async () => {
+  it("reads a county's subdivisions from a TIGERweb answer", async () => {
     const { subdivisionNamesFromCensus } = await import("../../src/hosting/censusGeocoder.js");
-    const body = [
-      ["NAME", "state", "county", "county subdivision"],
-      ["Little River district, Floyd County, Virginia", "51", "063", "91664"],
-      ["Burks Fork district, Floyd County, Virginia", "51", "063", "90880"],
-      ["County subdivisions not defined, Floyd County, Virginia", "51", "063", "00000"],
-    ];
+    const body = {
+      features: [
+        { attributes: { NAME: "Little River district" } },
+        { attributes: { NAME: "Burks Fork district" } },
+        { attributes: { NAME: "County subdivisions not defined" } },
+      ],
+    };
     expect(subdivisionNamesFromCensus(body)).toEqual(["Burks Fork district", "Little River district"]);
-    expect(subdivisionNamesFromCensus({ error: "x" })).toBeNull();
+    expect(subdivisionNamesFromCensus({ error: { code: 400 } })).toBeNull();
   });
 
   it("names a district as people say it", async () => {
