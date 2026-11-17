@@ -4,7 +4,6 @@
 import { engine } from "./engine.js";
 
 const e = engine();
-export const BREAKDOWN_DIMENSIONS = e.BREAKDOWN_DIMENSIONS;
 export const CivicError = e.CivicError;
 export const ConflictError = e.ConflictError;
 export const ForbiddenError = e.ForbiddenError;
@@ -15,9 +14,6 @@ export const UnavailableError = e.UnavailableError;
 export const ValidationError = e.ValidationError;
 export const afterActionCommits = e.afterActionCommits;
 export const applyEdit = e.applyEdit;
-export const breakdownAsText = e.breakdownAsText;
-export const breakdownFor = e.breakdownFor;
-export const breakdownsFor = e.breakdownsFor;
 export const closeThroughDispatcher = e.closeThroughDispatcher;
 export const emitEvent = e.emitEvent;
 export const generateId = e.generateId;

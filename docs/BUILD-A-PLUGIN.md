@@ -365,45 +365,13 @@ A hub can ask its members which district they live in, their year of birth and, 
 ethnicity. Each answer is optional and each member is asked once. The answers belong to the member: only they see
 them, in Settings > About you, and they go when the account is deleted.
 
-**Your plugin never reads a member's answers.** There is no SDK call that returns them, and none will be added. What
-you can have is totals:
+**Plugins never get members' answers, and never get the breakdowns made from them.** There is no SDK call for either.
 
-```ts
-import { breakdownsFor, breakdownFor, breakdownAsText, type Breakdown } from "@civic-social/plugin-sdk";
-
-// Every table the hub has for a finished process: one per question the hub asks,
-// in the order district, age group, race. One group at a time, never crossed.
-const tables: Breakdown[] = await breakdownsFor(processId);
-
-// Or one: "district", "age" or "race". Null when there is none.
-const byDistrict = await breakdownFor(processId, "district");
-```
-
-What comes back, for each table:
-
-- `kind`: `"results"` for a vote (each group's count for each choice, from the ballots) or `"participants"` for
-  anything else (how many people took part in each group, from your type's `participation` events and the
-  host's comments, matched to the members' answers when the table is made).
-- `title` (for example "Results by district", in the hub's own word for a district), `group_label`, `columns` (the
-  choices; empty for participants) and `rows`. Each row has a `label`, its `cells` (one per column) and its `total`.
-- A `null` cell or total means "Fewer than 5". Every group under 5 people is hidden, zero included, and so is
-  anything that would let someone work a hidden number out from a total that is shown. Print `hidden_label` where
-  you get `null`.
-- Every hub's list ends with a "Not provided" row: people who skipped the question.
-- `breakdownAsText(table)` gives one plain line per group, for an email or a brief.
-
-**Work the same when it returns nothing.** `breakdownsFor` returns an empty list while the process is still open,
-when the hub asks none of the questions, when the process is not shown to the public, and when nobody took part.
-That is the normal case on most hubs. Never make a page, an action or a close wait on it or depend on it.
-
-Results never show a group under 5. The raw data is another matter: a vote's ballots carry each voter's district and
-age group, so someone holding a copy of the hub's database could work out how a person voted if they were the only
-voter in their district or age group. Adam accepted this on 2026-11-17 and the Privacy Policy says so. Nothing your
-plugin does should make it easier: never store a group beside anything that names a person.
-
-The hub already shows these tables on every finished process's page and adds them to its brief, so you only need
-them for something of your own (a results email, a summary on your own page). Nothing about a member's answers is
-posted to the fediverse.
+**Your plugin needs to do nothing.** When a process finishes, the hub itself adds results by district and by age
+group (and by race, where the hub asks) to its page, and to its brief if it has one. It counts the people who took
+part from the `participation` events your manifest declares, plus the hub's own comments, so declare those
+accurately. Every group under 5 people is hidden. Your plugin works the same whether a hub asks these questions or
+not.
 
 ## 5. Tie it together: `index.ts`
 

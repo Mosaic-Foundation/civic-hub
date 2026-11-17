@@ -83,12 +83,6 @@ export type { Notice, NoticeReport } from "../../src/sdk/index.js";
 export { hubContext } from "../../src/sdk/index.js";
 export type { HubContext } from "../../src/sdk/index.js";
 
-// --- Totals by district, age group or race (districts and demographics, Adam 2026-11-16): a
-// finished process's tables, one group at a time, every group under 5 hidden. Never a member's
-// answers. Empty when the hub asks none of the questions: a package works the same either way --
-export { breakdownsFor, breakdownFor, breakdownAsText, BREAKDOWN_DIMENSIONS } from "../../src/sdk/index.js";
-export type { Breakdown, BreakdownRow, BreakdownDimension } from "../../src/sdk/index.js";
-
 // --- Its own records, on the database its host hands it (its granted tables only) ----------
 export { storeSlot, HubDbError, readAll, readProcessState, writeProcessState } from "../../src/sdk/index.js";
 export type { StoreSlot } from "../../src/sdk/index.js";

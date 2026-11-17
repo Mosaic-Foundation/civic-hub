@@ -28,12 +28,17 @@ ballot tags), so release with `./scripts/release.sh dev`. Design: Adam, 2026-11-
   answers at cast and change, through `cast_ballot_with_tags` (cast_ballot plus `p_tags`; an overload would turn
   /health red). `cast_ballot` is kept for the code before this release: drop it in a later migration.
   `reshuffle_ballots` carries the tags; `tests/fixtures/ballotSecrecyRules.ts` allows exactly these columns.
-- **Breakdowns** (`src/services/breakdowns.ts`, SDK v1 and the hub SDK): a finished process's totals by one group;
+- **Breakdowns** (`src/services/breakdowns.ts`, internal: not in the plugin SDK, Adam 2026-11-17): a finished process's totals by one group;
   votes from the tags (choices by group), other types from participation events joined to current answers. Every
   cell under 5 (zero included) is hidden, then secondary hiding until no row or column has exactly one hidden cell.
   `GET /process/:id/breakdowns`; `ResultsBreakdown` on the vote, proposal, project, conversation and word cloud pages;
   briefs get the tables as sections at spawn (`spawnBrief.ts`), so the Brief package is unchanged.
-- **Docs:** "Member information" in `docs/BUILD-A-PLUGIN.md`. Help notes for `about.*` are pending and point at
+- **Per type:** votes get "Results by district" and "Results by age group" (each choice's count per group, from the
+  ballot tags); proposals, projects and word clouds get "Who took part, by district" and "by age group"
+  (participation events plus comments, against current answers); conversations (participation "elsewhere") and
+  types with none get no table. Briefs exist for votes, proposals, projects and conversations, so only the first
+  three get breakdown sections. Race tables join each where the hub asks.
+- **Docs:** "Member information" in `docs/BUILD-A-PLUGIN.md`: plugins get nothing and need do nothing. Help notes for `about.*` are pending and point at
   `/reference/settings/participation` until a Districts page is published in the docs repo.
 - **Accepted risk (Adam, 2026-11-17):** results never show a group under 5, but someone holding a copy of the hub's
   database could work out how a person voted if they were the only voter in their district or age group (the tags

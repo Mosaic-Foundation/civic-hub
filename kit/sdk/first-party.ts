@@ -13,7 +13,6 @@ export type * from "../../src/sdk/index.js";
 export {
   AiLimitError,
   AlreadyVotedError,
-  BREAKDOWN_DIMENSIONS,
   CivicError,
   ConflictError,
   DAY_MS,
@@ -37,9 +36,6 @@ export {
   applyGeneratedDraft,
   applyOnApproval,
   archiveProcess,
-  breakdownAsText,
-  breakdownFor,
-  breakdownsFor,
   briefIdForSource,
   buildEvent,
   can,

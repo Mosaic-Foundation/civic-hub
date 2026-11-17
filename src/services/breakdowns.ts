@@ -16,8 +16,9 @@
 //     is shown (each row's total, each choice's overall total).
 //   - Nothing when the hub asks none of the questions, or the process is not
 //     finished (a vote's tally must not leak while it is open).
-// Plugins call it through the SDK and get only these tables; no one's
-// answers ever leave civic.about.
+// Internal to the hub (Adam, 2026-11-17: not in the plugin SDK): the hub
+// itself puts these tables on process pages and in briefs. No one's answers
+// ever leave civic.about.
 
 import { getManifest } from "../processes/registry.js";
 import { getEnabledProcess, isProcessHistoryServable, asRead, isTerminalStatus } from "./processService.js";
@@ -260,8 +261,11 @@ async function tablesFor(process: Process, dimensions: BreakdownDimension[], con
   const ballots = await getBallotTagsForProcess(processId);
   if (ballots.length > 0) return dimensions.map((d) => resultsTable(process, d, config, ballots));
 
+  // "none": nobody takes part. "elsewhere": people take part outside the hub
+  // (a conversation in Polis), so the hub's events would undercount them and
+  // a table would mislead.
   const declared = getManifest(process.definition.type)?.participation?.participation;
-  if (declared === "none") return [];
+  if (declared === "none" || declared === "elsewhere") return [];
   const people = await tagsForMembers(await participantIds(process));
   if (people.length === 0) return [];
   return dimensions.map((d) => participantsTable(process, d, config, people));
