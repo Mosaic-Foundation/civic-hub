@@ -123,9 +123,10 @@ export default function AboutYouForm({
   );
 }
 
+/** Why the lookup found no district; a found address with no match just asks the member to choose. */
 const LOOKUP_REASON: Record<"not_found" | "no_match" | "unavailable", string> = {
   not_found: "We couldn't find that address.",
-  no_match: "We found the address but couldn't tell which one it's in.",
+  no_match: "",
   unavailable: "The lookup isn't working right now.",
 };
 
@@ -167,7 +168,7 @@ function AddressLookup({
         setAddress("");
       } else {
         setFailed(true);
-        setMessage(`${LOOKUP_REASON[r.reason ?? "unavailable"]} Choose your ${term} from the list.`);
+        setMessage(`${LOOKUP_REASON[r.reason ?? "unavailable"]} Choose your ${term} from the list.`.trim());
       }
     } catch (err) {
       setFailed(true);
@@ -210,21 +211,6 @@ function AddressLookup({
       {message && (
         <p className={failed ? "form-error" : "settings-message"} role="status">
           {message}
-          {failed && config.findDistrictUrl && (
-            <>
-              {" "}
-              <a href={config.findDistrictUrl} target="_blank" rel="noopener noreferrer">
-                Find your {term}
-              </a>
-            </>
-          )}
-        </p>
-      )}
-      {!message && config.findDistrictUrl && (
-        <p className="form-hint">
-          <a href={config.findDistrictUrl} target="_blank" rel="noopener noreferrer">
-            Find your {term} on a map
-          </a>
         </p>
       )}
     </div>

@@ -10,7 +10,6 @@
 // Settings (src/models/hubSettings.ts KEYS, section "districts"):
 //   about.district_term, about.district_term_plural   what the hub calls a district
 //   about.districts                                    the list, JSON [{ id, name }]
-//   about.find_district_url                            "Find your district" link
 //   about.ask_district / ask_birth_year / ask_race     which questions are on
 //
 // Plain data, shared with the UI: imports nothing but other shared files.
@@ -20,7 +19,6 @@ export const ABOUT_KEYS = {
   DISTRICT_TERM: "about.district_term",
   DISTRICT_TERM_PLURAL: "about.district_term_plural",
   DISTRICTS: "about.districts",
-  FIND_DISTRICT_URL: "about.find_district_url",
   ASK_DISTRICT: "about.ask_district",
   ASK_BIRTH_YEAR: "about.ask_birth_year",
   ASK_RACE: "about.ask_race",
@@ -117,7 +115,6 @@ export function pluralOf(singular: string): string {
 export interface AboutConfig {
   term: { singular: string; plural: string };
   districts: District[];
-  findDistrictUrl: string | null;
   /** Which questions are asked. District is asked only when there are districts to choose from. */
   questions: Record<AboutQuestion, boolean>;
 }
@@ -129,14 +126,12 @@ export function aboutConfig(read: SettingReader): AboutConfig {
   const plural =
     read(ABOUT_KEYS.DISTRICT_TERM_PLURAL)?.trim() || (ownSingular ? pluralOf(singular) : fallback.plural);
   const districts = parseDistricts(read(ABOUT_KEYS.DISTRICTS));
-  const url = read(ABOUT_KEYS.FIND_DISTRICT_URL)?.trim();
   const questions = {} as Record<AboutQuestion, boolean>;
   for (const q of ABOUT_QUESTIONS) questions[q] = flag(read(ASK_KEY[q]), QUESTION_DEFAULTS[q]);
   if (districts.length === 0) questions.district = false;
   return {
     term: { singular, plural },
     districts,
-    findDistrictUrl: url && /^https?:\/\//i.test(url) ? url : null,
     questions,
   };
 }

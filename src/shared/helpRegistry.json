@@ -590,12 +590,6 @@
     "anchor": "about-districts",
     "pending": true
   },
-  "about.find_district_url": {
-    "text": "A page where people can look up their district, such as an official map. Shown when the address lookup finds no match.",
-    "page": "/reference/settings/participation",
-    "anchor": "about-find-district-url",
-    "pending": true
-  },
   "about.ask_district": {
     "text": "Ask members which district they live in. On unless switched off; needs at least one district in the list.",
     "page": "/reference/settings/participation",

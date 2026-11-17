@@ -208,7 +208,6 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "about.district_term", kind: "text", maxLength: 40 },
     { key: "about.district_term_plural", kind: "text", maxLength: 40 },
     { key: "about.districts", kind: "district_list" },
-    { key: "about.find_district_url", kind: "url" },
     { key: "about.ask_district", kind: "boolean" },
     { key: "about.ask_birth_year", kind: "boolean" },
     { key: "about.ask_race", kind: "boolean" },

@@ -1,12 +1,12 @@
 // Districts — what the hub calls its districts, the list members choose
-// from, where to look one up, and which About-you questions are asked
+// from, and which About-you questions are asked
 // (districts and demographics, Adam 2026-11-16; src/shared/aboutYou.ts).
 
 import { useEffect, useId, useRef, useState } from "react";
 import { adminCensusDistricts } from "../../services/api";
 import HelpButton from "../../components/HelpButton";
 import SectionForm, { type FormApi } from "./SectionForm";
-import { BooleanField, TextField, UrlField } from "./fields";
+import { BooleanField, TextField } from "./fields";
 import { Button } from "../../kit";
 import {
   ABOUT_KEYS,
@@ -52,12 +52,6 @@ export default function DistrictsSection() {
               width={280}
             />
             <DistrictListField f={f} singular={singular} />
-            <UrlField
-              f={f}
-              k={ABOUT_KEYS.FIND_DISTRICT_URL}
-              label="Find your district link (optional)"
-              hint="A page where people can look up their district, such as an official map. Shown when the address lookup finds no match."
-            />
             <h3 className="settings-subsection-title" style={{ marginTop: "var(--space-6)" }}>
               Questions members are asked
             </h3>
