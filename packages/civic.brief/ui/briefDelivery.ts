@@ -1,8 +1,9 @@
 // The public brief's delivery lines, shared by the brief page and the
 // pointer on its source's page. Names and titles only, never an address.
+// Moved from the hub's services/briefDelivery.ts.
 
+import { absoluteDate } from "@civic-social/plugin-sdk/ui";
 import type { PublicBrief } from "./api";
-import { absoluteDate } from "../utils/dates";
 
 /** "A" / "A and B" / "A, B, and C": the receipt reads as a sentence. */
 export function joinNames(names: string[]): string {

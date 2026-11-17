@@ -1,8 +1,12 @@
+// Word clouds' teaser in the strip across the top of the hub's public pages:
+// its contribution to the kernel's welcome strip (`contributes.welcomeStrip`,
+// kernel step 3), drawn only while Word clouds is on. Moved from the hub's
+// components/WordcloudTeaser.tsx.
+
 import { useEffect, useMemo, useState } from "react";
-import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
-import { getWordcloudCloud } from "../services/api";
-import { useHub } from "../config/hub";
+import { useApi, useSpace } from "@civic-social/plugin-sdk/ui";
+import { getWordcloudCloud } from "./api";
 import "./WordcloudTeaser.css";
 
 /**
@@ -71,11 +75,10 @@ function loadCloud(id: string): Promise<CloudResponse> {
 // Shows the actual submitted words rotating through; when the cloud is empty it
 // says only "Community word cloud": the prompt is on the word cloud's own page,
 // not in the strip (Adam, 2026-10-14: the note took too much room). Hidden entirely when no word cloud is
-// configured (VITE_HUB_ONBOARDING_WORDCLOUD_ID) or the fetch fails, so it never
+// chosen (plugin.wordcloud.onboarding_id) or the fetch fails, so it never
 // renders a broken/empty bar.
 export default function WordcloudTeaser() {
-  const hub = useHub();
-  const id = hub.onboarding_wordcloud_id;
+  const id = useSpace().setting("plugin.wordcloud.onboarding_id");
   const [idx, setIdx] = useState(0);
 
   // Hidden when there is no id, the read fails, or the response holds no cloud.

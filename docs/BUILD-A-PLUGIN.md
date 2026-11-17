@@ -420,6 +420,17 @@ const strawPollUi: ProcessUi = {
 export default strawPollUi;
 ```
 
+A type can also add to the hub's own pages with `contributes`, drawn only while its plugin is on:
+
+- `processTop`: a component (given `processId`) drawn at the top of every process page, under its header. Briefs
+  draws its "Read the brief" pointer there.
+- `adminQueue`: a tab in the admin rail's Review group (`{ queue, label, icon, path }`), with the count of what arrived
+  since the admin last opened it. `queue` is the name your manifest gives `publication.queue`; your admin page calls
+  `markAdminQueueSeen(queue)` when it opens.
+- `welcomeStrip`: a component drawn in the strip across the top of the hub's public pages (Word clouds' teaser).
+
+A page reads its own settings with `useSpace().setting("plugin.<your id>.…")`.
+
 ## 7. Run the suite
 
 ```bash

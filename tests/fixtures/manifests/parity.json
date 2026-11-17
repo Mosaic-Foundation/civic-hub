@@ -1368,6 +1368,7 @@
         "feedback_seen_at",
         "briefs_seen_at",
         "meeting_summaries_seen_at",
+        "queues_seen_at",
         "hidden_from_members",
         "demo_only"
       ],

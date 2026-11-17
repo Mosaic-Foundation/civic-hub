@@ -4,6 +4,28 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 3, third part: what a package adds to the kernel's pages — 2026-11-17
+
+On `kernel-extraction` (PR #22, draft). Dev merged in (through 3377e24). One migration, `20261117200000` (adds
+`users.queues_seen_at` and copies the Briefs and Meeting summaries cursors into it; safe to run again). Catalog entries
+regenerated at the same versions: Briefs 0.4.0 `20261117194523`, Meeting summaries 0.3.0 `20261117194534`, Word
+clouds 0.3.0 `20261117194546`. Nothing on screen changes.
+
+- **`contributes` on a type's UI module** (`ui/src/processes/types.ts`, drawn by `ui/src/components/PackageSlots.tsx`
+  while the package's plugin is on): `processTop` (Briefs' pointer, through `ProcessPageTop`; `BriefPointer` is its
+  older SDK name, so Votes, Proposals, Projects and Conversations need no release), `adminQueue` (Briefs' and Meeting
+  summaries' rail tabs), `welcomeStrip` (Word clouds' teaser, moved into the package).
+- **Admin queues by name.** `PublicationQueue` is any lowercase name a manifest gives (checked at load; not reviews,
+  feedback or edits). The server counts every mounted queue (`adminQueues()`); a package queue's "last opened" lives in
+  `users.queues_seen_at` under its name. The old `briefs_seen_at` and `meeting_summaries_seen_at` columns are unread.
+- **`useSpace().setting(key)`**: a package's page reads its settings. The browser's `hub.setting` falls back to the old
+  build-time variables for the two settings that had them.
+- Briefs now holds `BriefPointer`, `BriefSourcePointer` and the delivery lines; SDK v1 drops `BriefSourcePointer`,
+  `heldBackLine` and `joinNames`.
+- From dev: `sampleBallotTags.ts` reads a process's sample flag through `processRows` (the db-convention lint).
+
+---
+
 ## Kernel step 3, second part: the digest's vote line, a package's own settings check, the kernel's /process link — 2026-11-17
 
 On `kernel-extraction` (PR #22, draft). Catalog entries regenerated at the same versions for Votes 0.4.0 and Meeting

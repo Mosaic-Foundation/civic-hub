@@ -5,12 +5,15 @@
 import { lazy } from "react";
 import { ProcessField, formatCount, type ProcessUi } from "@civic-social/plugin-sdk/ui";
 import { getWordcloud } from "./ui/api";
+import WordcloudTeaser from "./ui/WordcloudTeaser";
 
 const WordCloud = lazy(() => import("./ui/WordCloud"));
 const CreateWordCloud = lazy(() => import("./ui/CreateWordCloud"));
 
 const wordcloudUi: ProcessUi = {
   type: "civic.wordcloud",
+  // The hub's word cloud in the strip across the top of its pages.
+  contributes: { welcomeStrip: WordcloudTeaser },
   routes: [
     { path: "/wordcloud/new", element: <CreateWordCloud /> },
     { path: "/wordcloud/:id", element: <WordCloud /> },

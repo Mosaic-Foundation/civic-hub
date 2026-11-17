@@ -16,6 +16,8 @@ import { useEffect, useMemo, type ReactNode } from "react";
 import { useApi } from "../hooks/useApi";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./authState";
+import { useHub } from "../config/hub";
+import { adminQueueTabs } from "../components/PackageSlots";
 import { NavDataContext, type NavData } from "./navDataState";
 import {
   adminQueueCounts,
@@ -28,18 +30,13 @@ import {
   type EditNotification,
 } from "../services/api";
 
-/** The queues the review count adds up, in the order the icon opens them. */
-const REVIEW_QUEUES = [
-  { key: "reviews", to: "/admin/reviews" },
-  { key: "briefs", to: "/admin/briefs" },
-  { key: "meeting_summaries", to: "/admin/meeting-summaries" },
-] as const;
 
 const NO_EDITS: EditNotification[] = [];
 
 export function NavDataProvider({ children }: { children: ReactNode }) {
   const { user, isAdmin } = useAuth();
   const { pathname } = useLocation();
+  const hub = useHub();
 
   // The member count changes rarely: on sign-in (joining adds one) and load.
   // A failed read shows no count, like every read here.
@@ -93,8 +90,11 @@ export function NavDataProvider({ children }: { children: ReactNode }) {
     };
   }, [isAdmin, reloadCounts]);
 
-  const reviews = counts ? REVIEW_QUEUES.reduce((n, q) => n + counts[q.key], 0) : 0;
-  const reviewsTo = REVIEW_QUEUES.find((q) => (counts?.[q.key] ?? 0) > 0)?.to ?? "/admin/reviews";
+  // The queues the review count adds up, in the order the icon opens them:
+  // the kernel's reviews, then each package's queue (while its plugin is on).
+  const reviewQueues = [{ key: "reviews", to: "/admin/reviews" }, ...adminQueueTabs(hub).map((q) => ({ key: q.queue, to: q.path }))];
+  const reviews = counts ? reviewQueues.reduce((n, q) => n + (counts[q.key] ?? 0), 0) : 0;
+  const reviewsTo = reviewQueues.find((q) => (counts?.[q.key] ?? 0) > 0)?.to ?? "/admin/reviews";
 
   const value: NavData = {
     memberCount,

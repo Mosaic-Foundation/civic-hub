@@ -12,7 +12,7 @@
 // hub's own, whatever the hub's theme and layout; its stylesheet sets layout
 // spacing only (docs/PLUGIN-STYLE.md; conformance step 22).
 
-export type { ProcessUi, ProcessRoute, FeedKindUi, ProcessMeta } from "../../ui/src/processes/types";
+export type { ProcessUi, ProcessRoute, FeedKindUi, ProcessMeta, PackageContributions, AdminQueueTab } from "../../ui/src/processes/types";
 
 export {
   Button,
@@ -100,6 +100,7 @@ export {
   CommunityInputPanel,
   CommentForm,
   submitInput,
+  ProcessPageTop,
   BriefPointer,
   ProcessPicker,
   StatusFilter,
@@ -210,10 +211,7 @@ export {
   OFFICIAL_TYPE_LABELS,
   normalizeOfficialType,
   getOfficialsRoster,
-  heldBackLine,
-  joinNames,
   briefResponseContext,
-  BriefSourcePointer,
   type OfficialType,
   type Official,
   type HeldBackRecipient,

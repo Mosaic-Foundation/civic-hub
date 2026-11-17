@@ -77,7 +77,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "job_runs", columns: ["hub_id", "job_id", "started_at", "finished_at", "status", "summary", "problems", "details"], owner: "core/jobRuns" },
   // The last scheduled run of each job, whatever it did (20261019000000): the console's Dashboard.
   { table: "job_last_run", columns: ["job_id", "started_at", "finished_at", "status", "duration_ms", "hubs_run", "hubs_failed", "error"], owner: "core/jobLastRun" },
-  { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at", "feedback_seen_at", "briefs_seen_at", "meeting_summaries_seen_at"], owner: "civic.auth" },
+  { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at", "feedback_seen_at", "briefs_seen_at", "meeting_summaries_seen_at", "queues_seen_at"], owner: "civic.auth" },
   { table: "sessions", columns: ["token", "assurance"], owner: "civic.auth" },
   { table: "sign_in_codes", columns: ["email", "code_hash", "link_hash", "attempts", "expires_at"], owner: "civic.auth" },
   { table: "rate_limit_hits", columns: ["bucket", "at"], owner: "core/rateLimit" },

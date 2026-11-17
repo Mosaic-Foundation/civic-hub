@@ -87,6 +87,14 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 3, third part: package contributions (2026-11-17)
+
+- **UI:** 109 passed. New `ui/src/components/PackageSlots.test.tsx`: a package's process-page addition, review queue
+  and welcome strip show only while its plugin is on. `AdminRail.test.tsx` takes the queues from the packages.
+  **Unit:** 2,818 passed (`manifestParity` fixture gains `queues_seen_at`).
+  **API:** 1,065 passed, `adminQueueCounts.test.ts` among them (counts and "opened" by queue name); the 4 failures are
+  `events.test.ts`'s sandbox-only ones. `catalog:add` green for Briefs, Meeting summaries and Word clouds.
+
 ## Kernel step 3, second part: closed line, settings check, /process link (2026-11-17)
 
 - **Unit:** 2,815 passed. `digest-parity.test.ts`: a closed vote's digest row reads its final count from Votes'

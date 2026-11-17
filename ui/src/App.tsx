@@ -22,7 +22,7 @@ import BottomBar from "./components/BottomBar";
 import { NavDataProvider } from "./context/NavDataContext";
 import { navLayout } from "./config/navigation";
 import HubBanner from "./components/HubBanner";
-import WordcloudTeaser from "./components/WordcloudTeaser";
+import { WelcomeStripSlot } from "./components/PackageSlots";
 import FeedVotesTabs from "./components/FeedVotesTabs";
 import Home from "./pages/Home";
 import ProcessLink, { type ProcessLinkPage } from "./pages/ProcessLink";
@@ -258,8 +258,8 @@ function AppContent() {
   const bannersInColumn = layout === "sidebar" && wide && !cardLayout;
   const teaserAndBanner = (
     <>
-      {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
-      {!inAdmin && hub.plugins.enabled("wordcloud") && <WordcloudTeaser />}
+      {/* What packages add to the strip (Word clouds' teaser), while their plugin is on. */}
+      {!inAdmin && <WelcomeStripSlot />}
       <BannerSlot />
     </>
   );

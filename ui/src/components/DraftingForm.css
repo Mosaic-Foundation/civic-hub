@@ -336,7 +336,6 @@
    slim row. Desktop is unchanged. */
 @media (max-width: 768px) {
   html.drafting-focus .civic-nav,
-  html.drafting-focus .wc-teaser,
   html.drafting-focus .hub-banner,
   html.drafting-focus .feed-votes-tabs,
   html.drafting-focus .beta-banner {

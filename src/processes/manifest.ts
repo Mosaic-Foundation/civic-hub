@@ -86,8 +86,13 @@ export interface LegacyTypeDeclaration {
   participation: ParticipationDeclaration;
 }
 
-/** The admin queues a type's unpublished records can wait in (src/services/adminQueues.ts). */
-export type PublicationQueue = "briefs" | "meeting_summaries";
+/**
+ * The admin queue a type's unpublished records wait in, named by its package
+ * ("briefs", "meeting_summaries"): lowercase letters, digits and underscores.
+ * The kernel counts each one for the admin rail (src/services/adminQueues.ts);
+ * the package's UI names its tab (`contributes.adminQueue`).
+ */
+export type PublicationQueue = string;
 
 /**
  * A type whose records an admin publishes before residents see them (a brief,
@@ -394,6 +399,14 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       throw new ManifestError(`${where(m)}: descriptor.type must look like "civic.vote"`);
     }
     if (seenTypes.has(d.type)) throw new ManifestError(`${where(m)}: a second manifest declares this type`);
+    // A package's admin queue is a name the kernel counts and the admin rail
+    // links (kernel step 3); the kernel's own three are not a package's.
+    if (m.publication !== undefined) {
+      const q = (m.publication as { queue?: unknown }).queue;
+      if (typeof q !== "string" || !/^[a-z][a-z0-9_]*$/.test(q) || ["reviews", "feedback", "edits"].includes(q)) {
+        throw new ManifestError(`${where(m)}: publication.queue "${String(q)}" must be a lowercase name (letters, digits, _) other than reviews, feedback or edits`);
+      }
+    }
     seenTypes.add(d.type);
     if (typeof d.plugin !== "string" || (d.plugin as string) === "") throw new ManifestError(`${where(m)}: missing "descriptor.plugin"`);
     if (host.featureIds.includes(d.plugin)) {

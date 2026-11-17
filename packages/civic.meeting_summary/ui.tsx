@@ -30,6 +30,10 @@ const MEETING_CONNECTOR_LABELS: Record<string, string> = {
 
 const meetingSummaryUi: ProcessUi = {
   type: "civic.meeting_summary",
+  // Its review queue in the admin rail (the kernel counts what is new).
+  contributes: {
+    adminQueue: { queue: "meeting_summaries", label: "Meeting summaries", icon: "meeting", path: "/admin/meeting-summaries" },
+  },
   routes: [
     { path: "/admin/meeting-summaries", element: <AdminMeetingSummaries />, admin: true },
     { path: "/admin/meeting-summaries/:id", element: <AdminMeetingSummaries />, admin: true },

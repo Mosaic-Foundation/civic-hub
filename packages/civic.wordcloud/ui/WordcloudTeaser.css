@@ -84,3 +84,11 @@
     text-overflow: ellipsis;
   }
 }
+
+/* The focused drafting layout at phone width hides the strip, as it hides the
+   hub's header and banner (the kernel's DraftingForm.css). */
+@media (max-width: 768px) {
+  html.drafting-focus .wc-teaser {
+    display: none;
+  }
+}

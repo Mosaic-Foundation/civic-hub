@@ -1468,9 +1468,10 @@ export function adminListEdits(): Promise<{ items: AdminEditRow[]; unseen: numbe
 /** The numbers on the admin tabs and the admin's account-menu dot: what is
  *  NEW in each queue since this admin last opened that tab. Opening a tab
  *  clears its count (adminMarkQueueSeen). */
-export type AdminQueue = "reviews" | "briefs" | "meeting_summaries" | "feedback" | "edits";
+export type AdminQueue = string;
 
-export type AdminQueueCounts = Record<AdminQueue, number> & { total: number };
+/** The kernel's own queues, and one count per package queue (`briefs`, `meeting_summaries`), by its name. */
+export type AdminQueueCounts = { reviews: number; feedback: number; edits: number; total: number } & Partial<Record<string, number>>;
 
 export function adminQueueCounts(): Promise<AdminQueueCounts> {
   return request("GET", "/admin/queue-counts");

@@ -195,6 +195,18 @@ export function getPublicBrief(id: string): Promise<PublicBrief> {
   return request("GET", `/brief/${id}`);
 }
 
+// --- The kernel's links, as the pointers read the brief ⇄ source pair ---
+
+/** One side of a link, as the kernel's GET /process/:id/links gives it (the fields the pointers read). */
+export interface RenderedLink {
+  id: string;
+  peer: { id: string; type: string; title: string; href: string };
+}
+
+export function getProcessLinks(processId: string): Promise<{ outgoing: RenderedLink[]; incoming: RenderedLink[] }> {
+  return request("GET", `/process/${processId}/links`);
+}
+
 /** Post a public official response (official-role accounts only; 403
  *  otherwise). Returns the refreshed response list + status. */
 export function postBriefResponse(

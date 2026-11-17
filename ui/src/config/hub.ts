@@ -47,6 +47,16 @@ import {
 } from "../../../src/shared/hubCopy";
 import { defaultGoverningBodyShort } from "../../../src/shared/jurisdictionType";
 
+/**
+ * Settings an older build carried in build-time variables (before hub
+ * settings), read when the hub has not saved its own: the server's
+ * ENV_FALLBACKS (src/models/hubSettings.ts) for the browser's side.
+ */
+const LEGACY_BUILD_ENV: Readonly<Record<string, string | undefined>> = {
+  "plugin.wordcloud.onboarding_id": import.meta.env.VITE_HUB_ONBOARDING_WORDCLOUD_ID,
+  "plugin.conversation.polis_url": import.meta.env.VITE_HUB_POLIS_URL,
+};
+
 /** Env var, trimmed, or undefined when unset or blank. */
 function env(value: string | undefined): string | undefined {
   const v = value?.trim();
@@ -455,9 +465,13 @@ const hub = {
     return getLoadedHubConfig();
   },
 
-  /** One settings key, or undefined when this hub has not configured it. */
+  /**
+   * One settings key, or undefined when this hub has not configured it. A
+   * setting an older build carried in a build-time variable falls back to it.
+   * A package's page reads its own through useSpace().setting (kernel step 3).
+   */
   setting(key: string): string | undefined {
-    return setting(key);
+    return setting(key) ?? env(LEGACY_BUILD_ENV[key]);
   },
 
   /**

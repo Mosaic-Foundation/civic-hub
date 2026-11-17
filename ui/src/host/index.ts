@@ -109,6 +109,8 @@ export interface SpaceView {
   jurisdiction: string;
   /** Whether a plugin is switched on in this space. */
   pluginEnabled: (pluginId: string) => boolean;
+  /** One of the space's settings, "" when unset: a package reads its own (`plugin.<id>.…`). */
+  setting: (key: string) => string;
 }
 
 /**
@@ -145,6 +147,7 @@ function spaceViewOf(hub: ReturnType<typeof useHub>): SpaceView {
     governingBodyRef: hub.governing_body_ref,
     jurisdiction: hub.jurisdiction,
     pluginEnabled: (pluginId) => hub.plugins.enabled(pluginId as never),
+    setting: (key) => hub.setting(key) ?? "",
   };
 }
 
@@ -170,10 +173,12 @@ export { default as CommunityInputPanel } from "../components/CommunityInputPane
 export { default as CommentForm } from "../components/ProposalCommentForm";
 // Adding to it from a type's own panel (a comment cast with a ballot).
 export { submitInput, type CommunityInput } from "../services/api";
-// Briefs' pointer from a finished process to its brief. Step 3 makes it a
-// contribution Briefs registers (docs/kernel/SURFACE.md, "Event"); until then
-// the page mounts it and it shows nothing while Briefs is off.
-export { BriefPointer } from "../components/BriefPointer";
+// What packages add at the top of a process page, under its header (kernel
+// step 3: Briefs' pointer to the process's brief, while Briefs is on). A page
+// mounts it once; the kernel draws each contribution and names no package.
+// `BriefPointer` is its older name, kept for the pages that still say it.
+export { ProcessPageTop, ProcessPageTop as BriefPointer } from "../components/PackageSlots";
+export type { PackageContributions, AdminQueueTab } from "../processes/types";
 export type { ClosedEarly, EarlyCloseOffer, UploadedImage } from "../services/api";
 // Editing a live process (a type whose editPolicy allows it): what may change now, and the draft an edit opens.
 export { getEditPolicy, startProcessEdit, type EditPolicy } from "../services/api";
@@ -274,8 +279,5 @@ export {
 // space's result recipients (Officials settings), and how a published result's delivery reads.
 export { authorBadges, OFFICIAL_TYPES, OFFICIAL_TYPE_LABELS, normalizeOfficialType, type OfficialType } from "../../../src/shared/officialTypes";
 export { getOfficialsRoster, type Official, type HeldBackRecipient } from "../services/api";
-export { heldBackLine, joinNames } from "../services/briefDelivery";
 // The line a feed card for an official's response carries (the digest writes the same).
 export { briefResponseContext } from "../../../src/shared/feedActivity";
-// The pointer from a result to the process it is about (step 3 makes it Briefs' contribution).
-export { BriefSourcePointer } from "../components/BriefPointer";

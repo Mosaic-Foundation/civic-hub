@@ -5,7 +5,7 @@ import {
   getAdminQueueCounts,
   isAdminQueue,
   markAdminQueueSeen,
-  ADMIN_QUEUES,
+  adminQueues,
 } from "../services/adminQueues.js";
 
 /** GET /admin/queue-counts — the numbers on the admin tabs. */
@@ -17,7 +17,7 @@ export const handleAdminQueueCounts = route(async (_req, res) => {
 export const handleMarkAdminQueueSeen = route(async (req, res) => {
   const queue = req.params.queue;
   if (!isAdminQueue(queue)) {
-    throw new ValidationError(`Unknown queue. Expected one of: ${ADMIN_QUEUES.join(", ")}.`);
+    throw new ValidationError(`Unknown queue. Expected one of: ${adminQueues().join(", ")}.`);
   }
   await markAdminQueueSeen(getAuthUser(res).id, queue);
   res.json({ ok: true });

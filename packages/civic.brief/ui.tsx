@@ -12,6 +12,7 @@ import {
   type ProcessUi,
 } from "@civic-social/plugin-sdk/ui";
 import { getPublicBrief } from "./ui/api";
+import { BriefPointer } from "./ui/BriefPointer";
 
 const AdminBriefs = lazy(() => import("./ui/AdminBriefs"));
 const Outcomes = lazy(() => import("./ui/Outcomes"));
@@ -29,6 +30,12 @@ function VoteResultsRedirect() {
 
 const briefUi: ProcessUi = {
   type: "civic.brief",
+  // What Briefs adds to the kernel's pages: the pointer from a finished
+  // process to its brief, and its review queue in the admin rail.
+  contributes: {
+    processTop: BriefPointer,
+    adminQueue: { queue: "briefs", label: "Briefs", icon: "outcome", path: "/admin/briefs" },
+  },
   routes: [
     // Unified Briefs queue — the universal admin results surface.
     { path: "/admin/briefs", element: <AdminBriefs />, admin: true },

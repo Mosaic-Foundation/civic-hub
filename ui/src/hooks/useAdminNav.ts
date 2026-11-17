@@ -22,12 +22,13 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useApi } from "./useApi";
 import { adminQueueCounts, ADMIN_QUEUES_CHANGED, type AdminQueueCounts } from "../services/api";
+import { adminQueueTabs } from "../components/PackageSlots";
 import { useHub } from "../config/hub";
 import { FEATURE_UI } from "../features";
 import { SETTINGS_NAV, SETUP_CHECKLIST_PATH } from "../../../src/shared/adminAnchors";
 import type { NavItem } from "./useNavGroups";
 
-const EMPTY: AdminQueueCounts = { reviews: 0, briefs: 0, meeting_summaries: 0, feedback: 0, edits: 0, total: 0 };
+const EMPTY: AdminQueueCounts = { reviews: 0, feedback: 0, edits: 0, total: 0 };
 
 /** Is this an admin page? Every admin route lives under /admin. */
 export function isAdminPath(pathname: string): boolean {
@@ -98,10 +99,10 @@ export function useAdminNav(): AdminNav {
   });
 
   const review: NavItem[] = [item("processes", "Processes", "reviews", "/admin/reviews", counts.reviews)];
-  // Hidden when the hub switched the plugin off (config/plugins.tsx).
-  if (hub.plugins.enabled("brief")) review.push(item("briefs", "Briefs", "outcome", "/admin/briefs", counts.briefs));
-  if (hub.plugins.enabled("meeting_summary")) {
-    review.push(item("meeting-summaries", "Meeting summaries", "meeting", "/admin/meeting-summaries", counts.meeting_summaries));
+  // The packages' review queues (Briefs, Meeting summaries), while their
+  // plugin is on (components/PackageSlots.tsx).
+  for (const q of adminQueueTabs(hub)) {
+    review.push(item(q.path.replace(/^\/admin\//, ""), q.label, q.icon, q.path, counts[q.queue] ?? 0));
   }
   review.push(item("edits", "Edits", "edits", "/admin/edits", counts.edits));
 

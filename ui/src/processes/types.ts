@@ -4,7 +4,7 @@
 // one ProcessUi, and index.ts lists them. App, the feed, the Plugins page and
 // the link picker read the list instead of keeping a hand map of types.
 
-import type { ReactElement, ReactNode } from "react";
+import type { ComponentType, ReactElement, ReactNode } from "react";
 import type { Activity, ActivityKind } from "../../../src/shared/feedActivity";
 import type { CivicEvent, RelationType } from "../services/api";
 import type { FormApi } from "../pages/settings/pluginFields";
@@ -108,4 +108,38 @@ export interface ProcessUi {
   settingsPanel?: (f: FormApi) => ReactNode;
   /** The relation the link picker offers first when linking FROM a process of this type. */
   linkRelation?: RelationType;
+  /** What this type's package adds to the kernel's own pages, while its plugin is on. */
+  contributes?: PackageContributions;
+}
+
+/**
+ * What a package adds to the kernel's own pages (kernel step 3). The kernel
+ * draws each one where it belongs and names no package; a contribution shows
+ * only while its package's plugin is on.
+ */
+export interface PackageContributions {
+  /**
+   * Drawn at the top of every process page, under its header (the page mounts
+   * ProcessPageTop). Briefs: "The final brief is published. Read the brief".
+   * Draws nothing where it has nothing to say.
+   */
+  processTop?: ComponentType<{ processId: string }>;
+  /** A tab in the admin rail's Review group, with its count of what is new. */
+  adminQueue?: AdminQueueTab;
+  /** Drawn in the strip across the top of the hub's public pages (Word clouds' teaser). */
+  welcomeStrip?: ComponentType;
+}
+
+/**
+ * A package's review queue in the admin rail. `queue` is the publication queue
+ * its manifest names (`publication.queue`): the kernel counts what arrived
+ * since the admin last opened `path`, and opening it clears the count
+ * (markAdminQueueSeen(queue)).
+ */
+export interface AdminQueueTab {
+  queue: string;
+  label: string;
+  /** An icon name the kernel's rail knows (components/icons). */
+  icon: string;
+  path: string;
 }

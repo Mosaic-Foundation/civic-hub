@@ -7,15 +7,12 @@ import {
   absoluteTime,
   PostFeaturedImage,
   ProcessHeader,
-  BriefSourcePointer,
   ShareButton,
   useSpace,
   useAction,
   useViewer,
   authorBadges,
   RelatedProcesses,
-  heldBackLine,
-  joinNames,
   manifestOf,
   typeName,
 } from "@civic-social/plugin-sdk/ui";
@@ -24,6 +21,8 @@ import {
   postBriefResponse,
   type PublicBrief,
 } from "./api";
+import { BriefSourcePointer } from "./BriefPointer";
+import { heldBackLine, joinNames } from "./briefDelivery";
 // Reuse the vote-results public styling — same page language.
 import "./VoteResults.css";
 import "./Brief.css";

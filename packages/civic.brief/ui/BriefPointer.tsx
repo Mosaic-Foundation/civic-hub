@@ -1,16 +1,14 @@
-import { useApi } from "../hooks/useApi";
+// Briefs' pointers between a brief and the process it summarizes. The source's
+// is Briefs' contribution to every process page (`contributes.processTop`, kernel
+// step 3): the kernel draws whatever packages add there and names none; Briefs
+// draws this, and nothing while Briefs is off. Moved from the hub's
+// components/BriefPointer.tsx.
+
 import { Link } from "react-router-dom";
-import {
-  getProcessLinks,
-  getPublicBrief,
-  type PublicBrief,
-  type RenderedLink,
-} from "../services/api";
-import { friendlyType } from "./processLinkTypes";
-import { absoluteDate } from "../utils/dates";
+import { absoluteDate, typeName, useApi, useSpace } from "@civic-social/plugin-sdk/ui";
+import { getProcessLinks, getPublicBrief, type PublicBrief, type RenderedLink } from "./api";
+import { heldBackLine, joinNames } from "./briefDelivery";
 import "./BriefPointer.css";
-import { useHub } from "../config/hub";
-import { heldBackLine, joinNames } from "../services/briefDelivery";
 
 /**
  * The brief ↔ source pairing, surfaced where a reader actually looks.
@@ -63,7 +61,7 @@ function deliveryLine(brief: PublicBrief, governingBodyRef: string): string {
  * a brief exists for this process.
  */
 export function BriefPointer({ processId }: { processId: string }) {
-  const hub = useHub();
+  const space = useSpace();
   const { brief } = useBriefPair(processId);
 
   // The button still works without the receipt line, so a failed read shows none.
@@ -76,7 +74,7 @@ export function BriefPointer({ processId }: { processId: string }) {
     <aside className="brief-pointer" aria-label="Final brief">
       <div className="brief-pointer-text">
         <strong>The final brief is published.</strong>
-        {detail && <span className="brief-pointer-sub"> {deliveryLine(detail, hub.governing_body_ref)}</span>}
+        {detail && <span className="brief-pointer-sub"> {deliveryLine(detail, space.governingBodyRef)}</span>}
       </div>
       <Link to={brief.peer.href} className="brief-pointer-button">
         Read the brief &rarr;
@@ -88,14 +86,14 @@ export function BriefPointer({ processId }: { processId: string }) {
 /**
  * At the top of a brief: "This brief summarizes the completed
  * {type} [Title]  [Open the {type} →]". The type word comes from the
- * shared friendlyType map, so a future type reads sensibly without a
+ * type's own name (typeName), so a future type reads sensibly without a
  * change here.
  */
 export function BriefSourcePointer({ processId }: { processId: string }) {
   const { source } = useBriefPair(processId);
   if (!source) return null;
 
-  const noun = friendlyType(source.peer.type).toLowerCase();
+  const noun = typeName(source.peer.type).toLowerCase();
 
   return (
     <aside className="brief-pointer brief-pointer--source" aria-label="Summarized process">
