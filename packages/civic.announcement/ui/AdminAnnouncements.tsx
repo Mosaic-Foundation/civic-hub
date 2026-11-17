@@ -13,9 +13,19 @@
 
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useApi } from "../hooks/useApi";
-import { useAuth } from "../context/authState";
-import { useHub } from "../config/hub";
+import {
+  Button,
+  dayFromToday,
+  endOfDay,
+  Group,
+  localShortDate,
+  refreshAside,
+  shortDay,
+  StatusChip,
+  useApi,
+  useSpace,
+  useViewer,
+} from "@civic-social/plugin-sdk/ui";
 import {
   adminListAnnouncements,
   adminListNewsSyncItems,
@@ -24,11 +34,7 @@ import {
   adminUnpinAnnouncement,
   type AdminAnnouncementRow,
   type AdminAnnouncements as Board,
-} from "../services/api";
-import { Button, Group, StatusChip } from "../kit";
-import { localShortDate } from "../utils/dates";
-import { dayFromToday, endOfDay, shortDay } from "../components/boardDates";
-import { refreshAside } from "../aside/asideFacts";
+} from "./api";
 import "./AdminAnnouncements.css";
 
 /** The Source filter: everything, the hub's own posts, or one News Sync source by its label. */
@@ -58,18 +64,19 @@ function Byline({ row, synced }: { row: AdminAnnouncementRow; synced: NewsSyncIt
 }
 
 export default function AdminAnnouncements() {
-  const { isAdmin, loading: authLoading } = useAuth();
-  const hub = useHub();
-  const tz = hub.timeZone;
+  const { isAdmin, loading: authLoading } = useViewer();
+  const space = useSpace();
+  const tz = space.timeZone;
   const { data, loading, error, reload } = useApi<Board>(
     !authLoading && isAdmin ? "admin/announcements" : null,
     () => adminListAnnouncements(),
   );
-  // News Sync's posts: who each is from, News or Announcement. Only asked for
-  // while News Sync is on; otherwise none, and no Source filter.
-  const newsSyncOn = hub.plugins.enabled("news_sync");
+  // News Sync's posts: who each is from, News or Announcement. Its route
+  // answers an empty list while News Sync is off (then no Source filter), so
+  // the page never asks which features are on (kernel step 1; News Sync folds
+  // into Announcements at step 3).
   const { data: newsData } = useApi<{ items: NewsSyncItem[] }>(
-    !authLoading && isAdmin && newsSyncOn ? "admin/news-sync/items" : null,
+    !authLoading && isAdmin ? "admin/news-sync/items" : null,
     () => adminListNewsSyncItems(),
   );
   const syncedById = useMemo(() => new Map((newsData?.items ?? []).map((i) => [i.id, i])), [newsData]);

@@ -4,6 +4,21 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 1: Announcements on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Announcements 0.4.0 is a migration** (20261117024504): apply and approve.
+
+- Announcements 0.4.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its three pages (the post, the form,
+  Admin → Announcements) and their styles moved into `packages/civic.announcement/ui/`, its client into `ui/api.ts`.
+  Two cascade fixes keep the look: rules App.css always overrode were dropped (`h1` margins), and the shared
+  `.form-counter` rule moved to `PostImagePicker.css` (the picker is the kernel's).
+- Admin → Announcements always asks News Sync's route (it answers empty while News Sync is off), so the page no
+  longer checks a feature by name.
+- Kernel names added: see `docs/kernel/SURFACE.md`, Progress. `requireAuthor` is listed in `src/sdk/index.ts`'s
+  early block (a package's routes take it as they load). Vitest maps the SDK's version 1 to the engine's SDK.
+- `board.ts` in the package and `src/shared/announcementBoard.ts` are two copies until step 3
+  (`announcementBoardCopy.test.ts`).
+
 ## Kernel step 1 begins: Word clouds on the kernel surface — 2026-11-17
 
 On `kernel-extraction` (from dev 69e0a13; not merged). Plan: `docs/KERNEL.md`; the inventory:

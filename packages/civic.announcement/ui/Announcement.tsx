@@ -1,6 +1,22 @@
 import { useState } from "react";
-import { useApi } from "../hooks/useApi";
 import { Link, useParams } from "react-router-dom";
+import {
+  absoluteTime,
+  Creator,
+  LinkPreviewCard,
+  Modal,
+  PostFeaturedImage,
+  refreshAside,
+  RelatedProcesses,
+  relativeTime,
+  SampleBadge,
+  ShareButton,
+  shortDay,
+  StatusChip,
+  useApi,
+  useSpace,
+  useViewer,
+} from "@civic-social/plugin-sdk/ui";
 import {
   adminPinAnnouncement,
   adminRemoveAnnouncement,
@@ -8,21 +24,8 @@ import {
   adminUnpinAnnouncement,
   getAnnouncement,
   type Announcement,
-} from "../services/api";
-import { useAuth } from "../context/authState";
-import { relativeTime, absoluteTime } from "../utils/dates";
-import PostFeaturedImage from "../components/PostFeaturedImage";
-import LinkPreviewCard from "../components/LinkPreviewCard";
-import ShareButton from "../components/ShareButton";
-import Creator from "../components/Creator";
+} from "./api";
 import "./Announcement.css";
-import RelatedProcesses from "../components/RelatedProcesses";
-import SampleBadge from "../components/SampleBadge";
-import Modal from "../components/Modal";
-import { StatusChip } from "../kit";
-import { useHub } from "../config/hub";
-import { shortDay } from "../components/boardDates";
-import { refreshAside } from "../aside/asideFacts";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
 
@@ -36,8 +39,8 @@ const REASON_CHIPS = [
 
 export default function AnnouncementPage() {
   const { id } = useParams<{ id: string }>();
-  const { isAdmin } = useAuth();
-  const hub = useHub();
+  const { isAdmin } = useViewer();
+  const space = useSpace();
 
   const {
     data: announcement,
@@ -185,7 +188,7 @@ export default function AnnouncementPage() {
             </>
           )}
           {announcement.urgent && announcement.urgent_until && (
-            <>{` · Urgent until ${shortDay(announcement.urgent_until, hub.timeZone)}`}</>
+            <>{` · Urgent until ${shortDay(announcement.urgent_until, space.timeZone)}`}</>
           )}
           {canEdit && !isRemoved && (
             <>
@@ -227,7 +230,7 @@ export default function AnnouncementPage() {
               {announcement.pinned && (
                 <span>
                   Pinned
-                  {announcement.pinned_until && ` until ${shortDay(announcement.pinned_until, hub.timeZone)}`}
+                  {announcement.pinned_until && ` until ${shortDay(announcement.pinned_until, space.timeZone)}`}
                 </span>
               )}
               <button

@@ -4,10 +4,6 @@
   margin: 0 auto;
 }
 
-.post-announcement-page h1 {
-  margin: 0 0 var(--space-sm);
-}
-
 .post-announcement-status {
   color: var(--color-text-subtle);
   font-family: var(--font-body);
@@ -28,12 +24,6 @@
   gap: var(--space-lg);
 }
 
-.form-counter {
-  align-self: flex-end;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-subtle);
-  margin-top: calc(var(--space-xs) * -1);
-}
 
 .announcement-link-row {
   display: grid;

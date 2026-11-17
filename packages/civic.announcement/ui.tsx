@@ -1,11 +1,15 @@
 // civic.announcement: a post from an official or admin on the feed
 // (manifest: ./manifest.ts).
 
+import { lazy } from "react";
 import { Link } from "react-router-dom";
-import { AdminAnnouncements, AnnouncementPage, PostAnnouncement } from "../../ui/src/lazyPages";
-import { getAnnouncement } from "../../ui/src/services/api";
-import { relativeTime } from "../../ui/src/utils/dates";
-import type { FeedKindUi, ProcessUi } from "../../ui/src/processes/types";
+import { relativeTime, type FeedKindUi, type ProcessUi } from "@civic-social/plugin-sdk/ui";
+import { getAnnouncement } from "./ui/api";
+
+// Its pages are its own (./ui/), built from the SDK's UI entry, and load when first opened.
+const AnnouncementPage = lazy(() => import("./ui/Announcement"));
+const PostAnnouncement = lazy(() => import("./ui/PostAnnouncement"));
+const AdminAnnouncements = lazy(() => import("./ui/AdminAnnouncements"));
 
 const announcementKind: FeedKindUi = {
   card: ({ id, data, getTitle, descSummary }) => {

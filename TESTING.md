@@ -87,6 +87,18 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 1: Announcements 0.4.0 on the kernel surface (2026-11-17)
+
+- **Unit:** `announcementBoardCopy.test.ts`: the package's pinned and urgent rules and the hub's copy have the same
+  code. 2,763 passed.
+- **API:** 1,048 passed locally; the same five fail as on the commit before step 1 (`events.test.ts` 4,
+  `leakHarness.test.ts`).
+- **Conformance:** `catalog:add` green for Announcements 0.4.0 (21 passed, steps 17 and 22 skipped:
+  `MOVED_HUB_PAGES`).
+- **By hand:** the announcement page and form render from the package, no console errors.
+
+---
+
 ## Kernel step 1: Word clouds on the kernel surface, Word clouds 0.3.0 (2026-11-17)
 
 - **Unit:**

@@ -19,10 +19,15 @@ package, the paths it still imports from `src/` or `ui/src/`).
 | --- | --- | --- | --- |
 | Events | 0.4.0 | yes | yes |
 | Word clouds | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES` in the conformance suite until then) |
-| Announcements, Proposals, Projects, Meeting summaries, Votes, Briefs, Conversations | not yet | | |
+| Announcements | 0.4.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
+| Proposals, Projects, Meeting summaries, Votes, Briefs, Conversations | not yet | | |
 
-Version 1 has gained so far: `processesOf(...types)` (`get`, `list`) and `assertPassesWordlist` on the server; the
-kernel UI surface below (`ui/src/host/index.ts`) on the UI side. A package's UI files are `ui.tsx` and its `ui/`
+Version 1 has gained so far, on the server: `processesOf(...types)` (`get`, `list`, `create`, `saveState`),
+`assertPassesWordlist`, `requireAuthor` and `authorshipOf` (posting for the space; the author's public role is the
+kernel's accountable role), `resolveCallerIsAdmin`, `enrichCreator`, `enrichCreators`, `PUBLIC_ADMIN_NAME`,
+`extractUrls`, `warmLinkPreviews`, `CreateProcessInput`. On the UI side, the kernel UI surface below
+(`ui/src/host/index.ts`). Announcements carries its own copy of the pinned and urgent rules (`board.ts`), kept equal
+to the right column's (`src/shared/announcementBoard.ts`) by a test until step 3 makes the board a contribution. A package's UI files are `ui.tsx` and its `ui/`
 directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `kit/conformance/src/fence.ts`).
 
 ## Kernel: version 1 gains these
@@ -76,7 +81,9 @@ What those pages use from the hub splits the same way:
   `useAction`, `useRequireAuth`, `AuthModal`, `useViewer`, `useSpace`, `ProcessHeader`, `statusDisplay`,
   `AdminArchiveButton`, `formatDate`, `formatCount`, `safeReturnPath`, the settings fields): the API client and hooks
   (`useApi`, `useAction`, `useRequireAuth`, the viewer, not the hub's whole sign-in state), the space (name, place)
-  and clock, and the process page parts every process type shares (`ProcessHeader`,
+  and clock (`useSpace().timeZone`, the date helpers), the right column's `refreshAside`, a post's picture and link
+  previews (`PostFeaturedImage`, `PostImagePicker`, `LinkPreviewCard`), `Creator`, `ShareButton`,
+  `RelatedProcesses`, `SampleBadge`, `Modal`, and the process page parts every process type shares (`ProcessHeader`,
   `ShareButton`, `RelatedProcesses`, `Creator`, `CloseEarly`, `EditHistory`, `DetailActions`, `RichText`,
   `AuthModal`, `StatusFilter`, `ProcessListCard`, `SourceLinks`, `SampleBadge`, the settings fields).
 - **Moves with the page**: components only one type uses (`VotePanel`, `ReceiptCode`, `deliberation/*`,

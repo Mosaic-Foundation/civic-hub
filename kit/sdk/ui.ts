@@ -12,7 +12,7 @@
 // hub's own, whatever the hub's theme and layout; its stylesheet sets layout
 // spacing only (docs/PLUGIN-STYLE.md; conformance step 22).
 
-export type { ProcessUi, ProcessRoute } from "../../ui/src/processes/types";
+export type { ProcessUi, ProcessRoute, FeedKindUi } from "../../ui/src/processes/types";
 
 export {
   Button,
@@ -82,7 +82,23 @@ export {
   ProcessHeader,
   statusDisplay,
   AdminArchiveButton,
+  Creator,
+  ShareButton,
+  RelatedProcesses,
+  SampleBadge,
+  Modal,
+  PostFeaturedImage,
+  PostImagePicker,
+  LinkPreviewCard,
+  refreshAside,
+  absoluteTime,
   formatDate,
+  localShortDate,
+  relativeTime,
+  dayFromToday,
+  dayOf,
+  endOfDay,
+  shortDay,
   formatCount,
   safeReturnPath,
   BooleanField,
@@ -102,4 +118,6 @@ export {
   type SpaceView,
   type StatusDisplay,
   type FormApi,
+  type ShareButtonProps,
+  type ShareNudge,
 } from "../../ui/src/host/index";

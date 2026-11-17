@@ -33,11 +33,13 @@ export interface Viewer {
   canParticipate: boolean;
   /** One of the space's admins. */
   isAdmin: boolean;
+  /** May post for the space: an admin, or someone the admins list as an author (requireAuthor on the server). */
+  mayPostForSpace: boolean;
 }
 
 export function useViewer(): Viewer {
-  const { loading, actorId, canParticipate, isAdmin } = useAuth();
-  return { loading, actorId, canParticipate, isAdmin };
+  const { loading, actorId, canParticipate, isAdmin, canPostAnnouncements } = useAuth();
+  return { loading, actorId, canParticipate, isAdmin, mayPostForSpace: canPostAnnouncements };
 }
 
 /** The space the page is in, as a package's page may know it. */
@@ -52,19 +54,37 @@ export interface SpaceView {
    * "where you live". The UI side of the kernel's spacePlace().
    */
   place: string;
+  /** Its IANA time zone, the one every time is shown in (as hubTimeZone()). */
+  timeZone: string;
 }
 
 export function useSpace(): SpaceView {
   const hub = useHub();
   const name = hub.name;
-  return { name, theName: (capital = false) => theName(name, capital), place: hub.place };
+  return { name, theName: (capital = false) => theName(name, capital), place: hub.place, timeZone: hub.timeZone };
 }
 
 // --- The parts every process page shares ---------------------------------------------------
 export { default as ProcessHeader } from "../components/ProcessHeader";
 export { statusDisplay, type StatusDisplay } from "../components/statusDisplay";
 export { default as AdminArchiveButton } from "../components/AdminArchiveButton";
-export { formatDate } from "../utils/dates";
+export { default as Creator } from "../components/Creator";
+export { default as ShareButton, type ShareButtonProps, type ShareNudge } from "../components/ShareButton";
+export { default as RelatedProcesses } from "../components/RelatedProcesses";
+export { default as SampleBadge } from "../components/SampleBadge";
+export { default as Modal } from "../components/Modal";
+
+// --- A post's picture and links -----------------------------------------------------------
+export { default as PostFeaturedImage } from "../components/PostFeaturedImage";
+export { default as PostImagePicker } from "../components/PostImagePicker";
+export { default as LinkPreviewCard } from "../components/LinkPreviewCard";
+
+// --- The right column: tell it something it shows has changed ------------------------------
+export { refreshAside } from "../aside/asideFacts";
+
+// --- Dates, in the space's zone where it takes one ------------------------------------------
+export { absoluteTime, formatDate, localShortDate, relativeTime } from "../utils/dates";
+export { dayFromToday, dayOf, endOfDay, shortDay } from "../components/boardDates";
 export { formatCount } from "../processes/feedText";
 export { safeReturnPath } from "../config/pluginRules";
 

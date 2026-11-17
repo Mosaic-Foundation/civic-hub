@@ -52,7 +52,6 @@ export const Deliberations = page(() => import("./pages/Deliberations"));
 export const DeliberationDetail = page(() => import("./pages/DeliberationDetail"));
 export const Outcomes = page(() => import("./pages/Outcomes"));
 export const BriefPage = page(() => import("./pages/Brief"));
-export const AnnouncementPage = page(() => import("./pages/Announcement"));
 export const MeetingSummary = page(() => import("./pages/MeetingSummary"));
 // The kit's gallery (Events 3): admins only, in the public layout.
 export const KitGallery = page(() => import("./pages/KitGallery"));
@@ -77,5 +76,3 @@ export const NewConversation = page(() => draft().then((m) => ({ default: m.NewC
 export const NewProject = page(() => draft().then((m) => ({ default: m.NewProject })));
 export const NewProposal = page(() => draft().then((m) => ({ default: m.NewProposal })));
 export const NewVote = page(() => draft().then((m) => ({ default: m.NewVote })));
-export const PostAnnouncement = page(() => import("./pages/PostAnnouncement"));
-export const AdminAnnouncements = page(() => import("./pages/AdminAnnouncements"));

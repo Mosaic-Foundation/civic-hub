@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
+  Checkbox,
+  dayFromToday,
+  dayOf,
+  endOfDay,
+  PostImagePicker,
+  refreshAside,
+  useSpace,
+  useViewer,
+} from "@civic-social/plugin-sdk/ui";
+import { URGENT_DEFAULT_DAYS, URGENT_MAX_DAYS } from "../board";
+import {
   createAnnouncement,
   getAnnouncement,
   updateAnnouncement,
   type AnnouncementLink,
-} from "../services/api";
-import { useAuth } from "../context/authState";
-import PostImagePicker from "../components/PostImagePicker";
-import { Checkbox } from "../kit";
-import { useHub } from "../config/hub";
-import { dayFromToday, dayOf, endOfDay } from "../components/boardDates";
-import { refreshAside } from "../aside/asideFacts";
-import { URGENT_DEFAULT_DAYS, URGENT_MAX_DAYS } from "../../../src/shared/announcementBoard";
+} from "./api";
 import "./PostAnnouncement.css";
 
 const TITLE_MAX = 200;
@@ -22,9 +26,9 @@ const LINKS_MAX = 5;
 export default function PostAnnouncement() {
   const navigate = useNavigate();
   const { id: editId } = useParams<{ id?: string }>();
-  const { role, canPostAnnouncements, loading: authLoading } = useAuth();
-  const hub = useHub();
-  const tz = hub.timeZone;
+  const { isAdmin: viewerIsAdmin, mayPostForSpace: canPostAnnouncements, loading: authLoading } = useViewer();
+  const space = useSpace();
+  const tz = space.timeZone;
 
   const isEditMode = Boolean(editId);
 
@@ -98,7 +102,7 @@ export default function PostAnnouncement() {
         </div>
       );
     }
-    const isAdmin = role === "admin";
+    const isAdmin = viewerIsAdmin;
     if (!isAdmin && !isOwner) {
       return (
         <div className="page post-announcement-page">
@@ -115,7 +119,7 @@ export default function PostAnnouncement() {
     }
   }
 
-  const isAdminRole = role === "admin";
+  const isAdminRole = viewerIsAdmin;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -31,8 +31,8 @@
   letter-spacing: var(--letter-spacing-normal);
 }
 
+/* Its margin was always App.css's ".page h1" (loaded later); left to it. */
 .announcement-header h1 {
-  margin: var(--space-xs) 0 var(--space-sm);
   font-size: var(--font-size-xl);
   line-height: var(--line-height-tight);
 }
