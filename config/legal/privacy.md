@@ -18,6 +18,7 @@
 - Your sign-in codes or the key that keeps you signed in, in a form anyone could use. We keep only a scrambled fingerprint of each.
 - Anything that joins your account to how you voted.
 - Your network (IP) address, except as a scrambled counter, kept for about two days, that stops anyone flooding the sign-in form.
+- Your street address, if you use it to find your district. It is sent to Mapbox to suggest matching addresses as you type and to the US Census Bureau to find your district, and neither we nor the hub keep it.
 
 **How anonymity works**
 - **Your vote.** We record that you voted, and, separately, the ballot. Nothing links the two. Ballots carry no time and are shuffled. If you tell the hub your district or year of birth, your ballot also carries your district and age group, never your name. Results never show a group of fewer than 5 people. But someone holding a copy of the hub's database could work out how you voted if you were the only voter in your district or age group.
@@ -103,6 +104,8 @@ We use a small number of trusted service providers to run the Hub. Each one rece
 - **Supabase** — database and authentication (stores your email, account metadata, votes, comments).
 - **Vercel** — web hosting (processes page requests, writes short-lived server logs).
 - **Resend** — email delivery (receives your email address and the digest contents when we send you a digest).
+- **Mapbox** — address suggestions (receives what you type in the address field when you look up your district, and nothing else about you).
+- **US Census Bureau** — finding your district (receives the street address you look your district up by, and nothing else about you).
 - **Anthropic** — AI processing for meeting summaries and vote-results generation. Anthropic receives public meeting documents and vote tallies; it does not receive your personal account information.
 
 We do not share your information with any other third party except:
