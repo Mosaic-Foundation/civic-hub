@@ -1,7 +1,11 @@
 // civic.receipts module — anonymous vote receipt service
 //
 // Data layout (2026-10-10, ballot secrecy against the raw data):
-//   vote_records       — receipt_id → { process_id, choice, change_key_hash }
+//   vote_records       — receipt_id → { process_id, choice, change_key_hash,
+//                        district_id, age_bracket, race }: the last three are
+//                        coarse groups stamped at cast/change time from the
+//                        voter's About-you answers (2026-11-16), shown only as
+//                        totals of 5 or more (src/services/breakdowns.ts).
 //                        NO user_id, NO time (created_at is always NULL), and
 //                        no order: reshuffle_ballots rewrites a process's
 //                        ballots in random order at close and hourly.
@@ -40,6 +44,7 @@ import type { CivicEvent } from "../../models/event.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { openOrRecentVoteIds } from "../../services/processRows.js";
 import { receiptsStore } from "./store.js";
+import { tagsForMember } from "../civic.about/index.js";
 
 // --- Public API ------------------------------------------------------------
 
@@ -85,6 +90,11 @@ export async function recordOrUpdateVote(
   held: HeldReceipt | null = null,
 ): Promise<{ receipt_id: string; change_key: string | null; updated: boolean; unchanged: boolean }> {
   const changeKey = held ? null : newChangeKey();
+  // The voter's coarse groups (districts and demographics, 2026-11-16): a
+  // district, an age group from the birth year now, race only if the hub
+  // asks; null where not provided. Stamped on the ballot, never the person.
+  // A failed read never stops a vote: the ballot is then "Not provided".
+  const tags = await tagsForMember(userId).catch(() => ({ district_id: null, age_bracket: null, race: null }));
   try {
     const out = await receiptsStore.get().castBallot({
       hubId: currentHubId(),
@@ -95,6 +105,7 @@ export async function recordOrUpdateVote(
       held: held ? { receipt_id: held.receipt_id, key_hash: hashChangeKey(held.change_key) } : null,
       // cast_ballot needs a hash even on a change, where it is unused.
       newKeyHash: hashChangeKey(changeKey ?? newChangeKey()),
+      tags,
     });
     return { ...out, change_key: changeKey };
   } catch (err) {

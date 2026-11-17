@@ -10,6 +10,10 @@ export interface VoteRecord {
   choice: string;
   /** sha256 of the change key the voter holds; never exposed. */
   change_key_hash: string | null;
+  /** Coarse groups at cast time (2026-11-16): never a person or a time. Null: not provided. */
+  district_id?: string | null;
+  age_bracket?: string | null;
+  race?: string[] | null;
   // No time: vote_records.created_at is always NULL (20261010000000).
 }
 

@@ -42,6 +42,8 @@ const AUTHENTICATED = [
   // Events 0.3.0: the trigger that refuses "going" past an event's limit (P0001).
   "calendar_attendance_capacity",
   "cast_ballot",
+  // Districts and demographics (20261116040000): cast_ballot with the ballot's tags.
+  "cast_ballot_with_tags",
   "count_pending_reviews",
   "current_hub_id",
   // The event log read as counts, for the Activity feature (ADR-016).

@@ -35,6 +35,13 @@ export const BALLOT_COLUMNS: Readonly<Record<string, string>> = {
   hub_id: "tenancy; adds no link (a process has one hub)",
   change_key_hash: "sha256 of the change key only the voter's browser holds",
   created_at: "kept for old readers; ALWAYS NULL (vote_records_no_time)",
+  // Districts and demographics (Adam, 2026-11-16; 20261116040000). Coarse
+  // groups, no person and no time; results show them only as totals of 5 or
+  // more (src/services/breakdowns.ts). Asked: a tag can narrow who cast a
+  // ballot in a small group, which is why every total under 5 is hidden.
+  district_id: "the voter's district at cast time, or NULL; shown only as totals of 5 or more",
+  age_bracket: "the voter's age group at cast time (never the year), or NULL; totals of 5 or more",
+  race: "only on hubs that ask, or NULL; totals of 5 or more",
 };
 
 /**
@@ -92,10 +99,13 @@ export function ballotSecrecyProblems(input: {
     }
   }
 
-  const cast = input.functions.find((f) => f.name === "cast_ballot");
-  if (!cast) problems.push("function cast_ballot: not found");
-  else if (new RegExp(RETIRED_BRIDGE, "i").test(cast.source)) {
-    problems.push(`function cast_ballot: touches ${RETIRED_BRIDGE}`);
+  // Both writers of a ballot: cast_ballot, and cast_ballot_with_tags (20261116040000).
+  const casts = input.functions.filter((f) => f.name === "cast_ballot" || f.name === "cast_ballot_with_tags");
+  if (casts.length === 0) problems.push("function cast_ballot: not found");
+  for (const cast of casts) {
+    if (new RegExp(RETIRED_BRIDGE, "i").test(cast.source)) {
+      problems.push(`function ${cast.name}: touches ${RETIRED_BRIDGE}`);
+    }
   }
 
   return problems;
