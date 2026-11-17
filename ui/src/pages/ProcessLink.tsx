@@ -16,11 +16,12 @@ import { useApi } from "../hooks/useApi";
 import { getProcessState, type ProcessState } from "../services/api";
 import { detailPathOf, pluginOfType } from "../processes/display";
 import { PluginOff } from "../components/PluginOff";
+import type { PluginId } from "../../../src/shared/hubSettingsSections";
 
 /** A type's page registered at /process/:id, and the plugin that switches it. */
 export interface ProcessLinkPage {
   type: string;
-  plugin?: string;
+  plugin?: PluginId;
   element: ReactElement;
 }
 

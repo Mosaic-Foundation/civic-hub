@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import ProcessLink from "./ProcessLink";
+import ProcessLink, { type ProcessLinkPage } from "./ProcessLink";
 
 const on = new Set<string>();
 const state = { current: { id: "p1", type: "civic.proposal" } as { id: string; type: string } };
@@ -13,7 +13,7 @@ vi.mock("../processes/display", () => ({
   pluginOfType: (type: string) => ({ "civic.proposal": "proposals", "civic.vote": "vote" })[type],
 }));
 
-const pages = [{ type: "civic.vote", plugin: "vote", element: <p>The vote's page</p> }];
+const pages: ProcessLinkPage[] = [{ type: "civic.vote", plugin: "vote", element: <p>The vote's page</p> }];
 
 function open(at = "/process/p1") {
   return render(
