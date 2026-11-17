@@ -47,8 +47,11 @@ jobs:
         run: npm run typecheck
       # High and critical advisories fail the build, in the backend and the
       # UI alike (.npmrc's audit=false only skips the install-time request).
+      # scripts/check-audit.ts is `npm audit --audit-level=high` plus a list
+      # of named, dated exceptions for advisories with no patched release
+      # (since 2026-11-17: picomatch GHSA-fc5q-39xc-vjpf, temporary).
       - name: Backend audit
-        run: npm audit --audit-level=high
+        run: npx tsx scripts/check-audit.ts
       # No string in src/ or ui/src/ may name a place: a place name is a hub's
       # data (its hubs row or hub_settings), never code. Comments are exempt;
       # anything else needs an entry with a reason in
@@ -94,8 +97,7 @@ jobs:
         run: npm ci --include=dev
         working-directory: ui
       - name: UI audit
-        run: npm audit --audit-level=high
-        working-directory: ui
+        run: npx tsx scripts/check-audit.ts ui
       # Includes the import boundaries: the hub app may not import the console
       # or the start page (ui/eslint.config.js).
       - name: UI lint

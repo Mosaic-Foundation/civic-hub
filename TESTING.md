@@ -3516,7 +3516,8 @@ The goal: before any push to `main`, every row in this table should have at leas
 
 **Update 2026-10-12 (Audit 4): CI checks everything the suites rely on.**
 - `ci.yml` uses npm 12.2.0 and `npm ci` (as Vercel does), pins every action by commit and the Supabase CLI
-  (2.110.0), and runs `npm audit --audit-level=high` in both packages.
+  (2.110.0), and runs `npm audit --audit-level=high` in both packages (since 2026-11-17 through
+  `scripts/check-audit.ts`, which allows named, dated exceptions for advisories with no patched release).
 - It type-checks `tests/`, `scripts/` and `api/` (`npm run typecheck`, `tsconfig.check.json`) and runs the UI lint
   with its import boundaries.
 - **The Playwright suite runs in `.github/workflows/e2e.yml`.** It runs on pushes to `dev` and by hand
