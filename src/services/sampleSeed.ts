@@ -43,6 +43,7 @@ import { createProcess, getProcess, saveProcessState } from "./processService.js
 import { getSettingSync, getSupportThreshold, isPluginEnabled } from "./hubSettings.js";
 import { sampleDeliverySuppressed } from "./sampleContent.js";
 import { sampleNames } from "./sampleNames.js";
+import { sampleBallotTagsForThisHub } from "./sampleBallotTags.js";
 import { processExistsOnHub, processVersionOnHub, stampProcessCreatedAt } from "./processRows.js";
 import {
   SAMPLE_AUTHORS,
@@ -357,10 +358,13 @@ class SeedRun {
     }
     // No time on a ballot, sample or not (vote_records_no_time, 2026-10-10).
     const method = vote.getVotingMethod(t.method);
-    const rows = pool.map((opt) => ({
+    // District and age tags on a demo hub only, so its closed vote shows breakdowns (sampleBallotTags.ts).
+    const tags = sampleBallotTagsForThisHub(pool.length);
+    const rows = pool.map((opt, i) => ({
       receipt_id: randomUUID(),
       process_id: p.id,
       choice: method.key === "approval" ? JSON.stringify([opt]) : opt,
+      ...tags[i]!,
     }));
     if (rows.length) await this.db.from("vote_records").insert(rows);
     return rows.length;

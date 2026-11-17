@@ -72,13 +72,16 @@ export default function Modal({
       }
     }
     // In this order, not document order (× comes first in the markup): the
-    // field to type in, else the first action, else ×.
+    // field to type in, else the first action, else a link, else ×. Buttons
+    // before links (2026-11-17): the Terms dialog opened with its Code of
+    // Conduct link ringed, as if half chosen, above the Continue button.
     const target =
       initialFocus?.current ??
       [
         "[autofocus]",
         "input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled])",
-        "button:not(.modal-close):not([disabled]), a[href]",
+        "button:not(.modal-close):not([disabled])",
+        "a[href]",
         ".modal-close",
       ]
         .map((sel) => dialog.querySelector<HTMLElement>(sel))

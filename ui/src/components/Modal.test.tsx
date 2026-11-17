@@ -39,6 +39,18 @@ describe("Modal", () => {
     expect(document.activeElement).toBe(screen.getByLabelText("Name"));
   });
 
+  it("with no field, focuses its first button, not a link above it", () => {
+    render(
+      <Modal title="We've updated our Terms" onClose={() => {}} dismissible={false} showClose={false}>
+        <p>
+          By continuing you agree to the <a href="/code-of-conduct">Code of Conduct</a>.
+        </p>
+        <button>Continue</button>
+      </Modal>,
+    );
+    expect(document.activeElement).toBe(screen.getByText("Continue"));
+  });
+
   it("Escape asks to close, and focus goes back to what opened it", async () => {
     const onClose = vi.fn();
     render(<Harness onClose={onClose} />);
