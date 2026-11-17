@@ -32,6 +32,7 @@ import { processTypeDisplays, type ProcessTypeDisplay } from "../processes/regis
 import { memberVisibility } from "../services/members.js";
 import { effectiveHubTimeZone, type HubTimeZone } from "../shared/hubTimeZone.js";
 import { KEYS } from "../models/hubSettings.js";
+import { ensureCensusDistrictsBriefly } from "../services/districtLookup.js";
 
 /** The hub fields the contract makes public. */
 interface PublicHub {
@@ -107,6 +108,9 @@ export const handleGetHubConfig = route(async (req, res) => {
     throw new NotFoundError("No civic hub is configured at this address.", "no_hub");
   }
 
+  // A county hub with no district list of its own starts using the Census's
+  // on its first page view (districts and demographics, 2026-11-17).
+  await ensureCensusDistrictsBriefly(hub.id);
   const settings = await getPublicSettings(hub.id);
   const [pluginSetup, content, members] = await Promise.all([
     pluginSetupFor(hub.id),

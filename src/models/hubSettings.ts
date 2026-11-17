@@ -83,6 +83,10 @@ export const KEYS = {
   ABOUT_DISTRICT_TERM: "about.district_term",
   ABOUT_DISTRICT_TERM_PLURAL: "about.district_term_plural",
   ABOUT_DISTRICTS: "about.districts",
+  // The county's districts from the Census, kept by the hub itself
+  // (src/services/districtLookup.ts ensureCensusDistricts), never in a
+  // settings section: used while about.districts is empty (2026-11-17).
+  ABOUT_CENSUS_DISTRICTS: "about.census_districts",
   ABOUT_ASK_DISTRICT: "about.ask_district",
   ABOUT_ASK_BIRTH_YEAR: "about.ask_birth_year",
   ABOUT_ASK_RACE: "about.ask_race",
@@ -380,6 +384,7 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.ABOUT_DISTRICT_TERM,
   KEYS.ABOUT_DISTRICT_TERM_PLURAL,
   KEYS.ABOUT_DISTRICTS,
+  KEYS.ABOUT_CENSUS_DISTRICTS,
   KEYS.ABOUT_ASK_DISTRICT,
   KEYS.ABOUT_ASK_BIRTH_YEAR,
   KEYS.ABOUT_ASK_RACE,

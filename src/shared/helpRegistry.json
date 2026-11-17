@@ -585,7 +585,7 @@
     "pending": true
   },
   "about.districts": {
-    "text": "The districts members choose from. Renaming one keeps it the same district in past results.",
+    "text": "The districts members choose from. A county hub with no list of its own uses its county's districts from the US Census. Renaming one keeps it the same district in past results.",
     "page": "/reference/settings/participation",
     "anchor": "about-districts",
     "pending": true

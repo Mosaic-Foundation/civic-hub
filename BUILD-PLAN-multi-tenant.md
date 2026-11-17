@@ -157,7 +157,7 @@ Key naming is dotted, lowercase, and namespaced. The canonical keys:
 | `email.` | `email.from_name`, `email.from_address`, `email.postal_address` |
 | `beta.` | `beta.allowlist`, `beta.waitlist_enabled` (there is no `beta.enabled`: see `hubs.mode`) |
 | `moderation.` | `moderation.comment_identity_mode` |
-| `about.` | Districts and demographics (added 2026-11-16, Adam): `about.district_term`, `about.district_term_plural` (what a district is called; unset = District on every hub, since 2026-11-17), `about.districts` (JSON `[{ id, name }]`, ids kept on a rename), `about.ask_district`, `about.ask_birth_year` (unset = on), `about.ask_race` (unset = off). All public: results print the term and names, and the one-time card reads the questions. Model: `src/shared/aboutYou.ts`. |
+| `about.` | Districts and demographics (added 2026-11-16, Adam): `about.district_term`, `about.district_term_plural` (what a district is called; unset = District on every hub, since 2026-11-17), `about.districts` (JSON `[{ id, name }]`, ids kept on a rename), `about.census_districts` (written by the hub, not an admin: a county hub's Census list `{ county, districts }`, used while `about.districts` is empty; 2026-11-17), `about.ask_district`, `about.ask_birth_year` (unset = on), `about.ask_race` (unset = off). All public: results print the term and names, and the one-time card reads the questions. Model: `src/shared/aboutYou.ts`. |
 | `plugin.<id>.` | `plugin.<id>.enabled` and `plugin.<id>.<setting>`; `plugin.feedback.contact_email` (added 2026-10-08, Adam: the address the Feedback page shows; unset = `legal.contact_email`, then the platform's; public) |
 
 `<id>` is the registry id: `vote`, `proposal`, `project`, `announcement`,

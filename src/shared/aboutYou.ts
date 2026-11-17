@@ -10,6 +10,9 @@
 // Settings (src/models/hubSettings.ts KEYS, section "districts"):
 //   about.district_term, about.district_term_plural   what the hub calls a district
 //   about.districts                                    the list, JSON [{ id, name }]
+//   about.census_districts                             the county's list from the Census,
+//                                                      kept by the hub itself (not the admin):
+//                                                      used while about.districts is empty
 //   about.ask_district / ask_birth_year / ask_race     which questions are on
 //
 // Plain data, shared with the UI: imports nothing but other shared files.
@@ -19,6 +22,7 @@ export const ABOUT_KEYS = {
   DISTRICT_TERM: "about.district_term",
   DISTRICT_TERM_PLURAL: "about.district_term_plural",
   DISTRICTS: "about.districts",
+  CENSUS_DISTRICTS: "about.census_districts",
   ASK_DISTRICT: "about.ask_district",
   ASK_BIRTH_YEAR: "about.ask_birth_year",
   ASK_RACE: "about.ask_race",
@@ -96,6 +100,35 @@ export function parseDistricts(raw: string | undefined): District[] {
 }
 
 /**
+ * The Census's districts for a county hub, as the hub keeps them
+ * (`about.census_districts`, written by src/services/districtLookup.ts, never
+ * by an admin): the county they are for, and the list. Null when there is none
+ * or the stored value is corrupt.
+ */
+export interface CensusDistricts {
+  /** The county's Census code (state and county FIPS), so a hub moved to another county refetches. */
+  county: string;
+  districts: District[];
+}
+
+export function parseCensusDistricts(raw: string | undefined): CensusDistricts | null {
+  if (!raw || raw.trim() === "") return null;
+  try {
+    const value = JSON.parse(raw) as { county?: unknown; districts?: unknown };
+    if (typeof value?.county !== "string" || !/^\d{5}$/.test(value.county)) return null;
+    const districts = parseDistricts(JSON.stringify(value.districts ?? []));
+    return districts.length ? { county: value.county, districts } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The stored form of a county's Census districts. */
+export function encodeCensusDistricts(county: string, districts: readonly District[]): string {
+  return JSON.stringify({ county, districts });
+}
+
+/**
  * What a district is called when the admin hasn't said: "District", on every
  * kind of hub (Adam, 2026-11-17: ward, precinct or borough is the admin's to
  * choose, not ours to guess from the kind of place).
@@ -115,6 +148,11 @@ export function pluralOf(singular: string): string {
 export interface AboutConfig {
   term: { singular: string; plural: string };
   districts: District[];
+  /**
+   * Where the list comes from: the admin's saved list ("hub"), the county's
+   * Census list while the admin has saved none ("census"), or nowhere ("none").
+   */
+  districtSource: "hub" | "census" | "none";
   /** Which questions are asked. District is asked only when there are districts to choose from. */
   questions: Record<AboutQuestion, boolean>;
 }
@@ -125,13 +163,19 @@ export function aboutConfig(read: SettingReader): AboutConfig {
   const ownSingular = !!read(ABOUT_KEYS.DISTRICT_TERM)?.trim();
   const plural =
     read(ABOUT_KEYS.DISTRICT_TERM_PLURAL)?.trim() || (ownSingular ? pluralOf(singular) : fallback.plural);
-  const districts = parseDistricts(read(ABOUT_KEYS.DISTRICTS));
+  // The admin's list wins; with none saved, a county hub uses its Census list
+  // (Adam, 2026-11-17: a county hub needs no admin work to ask for a district).
+  const saved = parseDistricts(read(ABOUT_KEYS.DISTRICTS));
+  const census = saved.length ? [] : (parseCensusDistricts(read(ABOUT_KEYS.CENSUS_DISTRICTS))?.districts ?? []);
+  const districts = saved.length ? saved : census;
+  const districtSource = saved.length ? "hub" : census.length ? "census" : "none";
   const questions = {} as Record<AboutQuestion, boolean>;
   for (const q of ABOUT_QUESTIONS) questions[q] = flag(read(ASK_KEY[q]), QUESTION_DEFAULTS[q]);
   if (districts.length === 0) questions.district = false;
   return {
     term: { singular, plural },
     districts,
+    districtSource,
     questions,
   };
 }

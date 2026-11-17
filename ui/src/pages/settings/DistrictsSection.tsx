@@ -2,18 +2,19 @@
 // from, and which About-you questions are asked
 // (districts and demographics, Adam 2026-11-16; src/shared/aboutYou.ts).
 
-import { useEffect, useId, useRef, useState } from "react";
-import { adminCensusDistricts } from "../../services/api";
+import { useId, useState } from "react";
 import HelpButton from "../../components/HelpButton";
 import SectionForm, { type FormApi } from "./SectionForm";
 import { BooleanField, TextField } from "./fields";
 import { Button } from "../../kit";
+import { useHub } from "../../config/hub";
 import {
   ABOUT_KEYS,
   DISTRICTS_MAX,
   DISTRICT_NAME_MAX,
   DEFAULT_DISTRICT_TERM,
   districtIdFrom,
+  parseCensusDistricts,
   parseDistricts,
   pluralOf,
   type District,
@@ -79,33 +80,22 @@ export default function DistrictsSection() {
   );
 }
 
-/** The districts, as a list of names. Each keeps its id when renamed, so past results keep it. */
+/**
+ * The districts, as a list of names. Each keeps its id when renamed, so past
+ * results keep it. On a county hub with no list of its own, the list shown is
+ * the Census's, which members already use (src/services/districtLookup.ts):
+ * the first change starts the hub's own list from it, ids and all, and "Use
+ * the Census list" goes back to it.
+ */
 function DistrictListField({ f, singular }: { f: FormApi; singular: string }) {
   const id = useId();
-  const list = parseDistricts(f.value(ABOUT_KEYS.DISTRICTS));
+  const hub = useHub();
+  const census = parseCensusDistricts(hub.setting(ABOUT_KEYS.CENSUS_DISTRICTS))?.districts ?? [];
+  const own = parseDistricts(f.value(ABOUT_KEYS.DISTRICTS));
+  const usingCensus = own.length === 0 && census.length > 0;
+  const list = usingCensus ? census : own;
   const [draft, setDraft] = useState("");
   const save = (next: District[]) => f.set(ABOUT_KEYS.DISTRICTS, next.length ? JSON.stringify(next) : "");
-  // The county's subdivisions from the Census (Adam, 2026-11-16: nobody should
-  // have to upload a map). An empty list is filled from it once, on opening;
-  // the admin checks the names and saves.
-  const [census, setCensus] = useState<District[] | null>(null);
-  const [filled, setFilled] = useState(false);
-  const tried = useRef(false);
-  const empty = list.length === 0;
-  useEffect(() => {
-    if (tried.current) return;
-    tried.current = true;
-    adminCensusDistricts()
-      .then((r) => {
-        if (!r.districts?.length) return;
-        setCensus(r.districts);
-        if (empty) {
-          f.set(ABOUT_KEYS.DISTRICTS, JSON.stringify(r.districts));
-          setFilled(true);
-        }
-      })
-      .catch(() => undefined);
-  }, [empty, f]);
   const add = () => {
     const name = draft.trim();
     if (!name || list.length >= DISTRICTS_MAX) return;
@@ -124,9 +114,10 @@ function DistrictListField({ f, singular }: { f: FormApi; singular: string }) {
       <p className="form-hint">
         The {singular.toLowerCase()} names members choose from. Renaming one keeps it the same in past results.
       </p>
-      {filled && (
-        <p className="settings-message" role="status">
-          Filled in from the US Census for your county. Check the names, then save.
+      {usingCensus && (
+        <p className="form-hint" role="status">
+          From the US Census for your county, and already in use. Change it only if it's wrong; saving a change makes
+          it this hub's own list.
         </p>
       )}
       {list.length > 0 && (
@@ -177,16 +168,8 @@ function DistrictListField({ f, singular }: { f: FormApi; singular: string }) {
         <Button size="sm" disabled={f.disabled || !draft.trim()} onClick={add}>
           Add
         </Button>
-        {census && !filled && (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={f.disabled}
-            onClick={() => {
-              save(census);
-              setFilled(true);
-            }}
-          >
+        {!usingCensus && census.length > 0 && (
+          <Button size="sm" variant="ghost" disabled={f.disabled} onClick={() => save([])}>
             Use the Census list
           </Button>
         )}

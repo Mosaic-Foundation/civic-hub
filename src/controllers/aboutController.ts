@@ -12,7 +12,9 @@
 import { route } from "../http/route.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { currentAboutConfig, getAnswers, markAsked, saveAnswers } from "../modules/civic.about/index.js";
-import { districtsFromCensus, lookUpDistrict } from "../services/districtLookup.js";
+import { ensureCensusDistricts, lookUpDistrict } from "../services/districtLookup.js";
+import { KEYS, getSetting } from "../services/hubSettings.js";
+import { parseCensusDistricts } from "../shared/aboutYou.js";
 import { currentHubId } from "../config/hubContext.js";
 
 export const handleGetAbout = route(async (_req, res) => {
@@ -40,9 +42,11 @@ export const handleDistrictLookup = route(async (req, res) => {
 
 /**
  * GET /admin/hub/districts/census (admins) → { districts: [{ id, name }] | null }:
- * the hub's county's subdivisions from the Census, plainly named, for
- * Settings > Districts to fill in. Nothing is saved until the admin saves.
+ * the county's Census list the hub keeps (filling it first if it has none),
+ * as Settings > Districts falls back to. Nothing the admin saves changes it.
  */
 export const handleCensusDistricts = route(async (_req, res) => {
-  res.json({ districts: await districtsFromCensus(currentHubId()) });
+  const hubId = currentHubId();
+  await ensureCensusDistricts(hubId);
+  res.json({ districts: parseCensusDistricts(await getSetting(hubId, KEYS.ABOUT_CENSUS_DISTRICTS))?.districts ?? null });
 });
