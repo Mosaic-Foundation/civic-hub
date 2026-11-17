@@ -36,6 +36,40 @@ export interface DistrictLookupAnswer {
   reason: "not_found" | "no_match" | "unavailable" | null;
 }
 
+/** Address suggestions: the least typed before asking, and how many asks an hour per member (one per pause in typing). */
+export const SUGGEST_MIN_CHARS = 3;
+export const SUGGESTIONS_PER_HOUR = 150;
+
+export interface AddressSuggestions {
+  /** Whether this hub can suggest at all; false: the card keeps its type-and-Find box. */
+  available: boolean;
+  /** Up to five full street addresses, for the member to pick from. */
+  suggestions: string[];
+}
+
+/**
+ * Street addresses matching what a member is typing (Adam, 2026-11-17,
+ * approved in his own words: what members type is sent to Mapbox for
+ * suggestions). Only the text and the hub's place name go out: never the
+ * member's id, name, email or network address. Nothing is kept or logged;
+ * a failure answers with no suggestions, and the card still has Find.
+ */
+export async function suggestAddresses(userId: string, rawText: unknown, config: AboutConfig, near: string | null): Promise<AddressSuggestions> {
+  const suggester = adapters().addressSuggest;
+  if (!config.questions.district || !suggester.configured()) return { available: false, suggestions: [] };
+  const text = typeof rawText === "string" ? rawText.replace(/\s+/g, " ").trim() : "";
+  if (text.length < SUGGEST_MIN_CHARS || text.length > ADDRESS_MAX) return { available: true, suggestions: [] };
+
+  const refused = await takeRateLimit([{ scope: "about.address_suggest", by: "user", value: userId, limit: SUGGESTIONS_PER_HOUR, windowMs: HOUR_MS }]);
+  if (refused) return { available: true, suggestions: [] };
+  try {
+    return { available: true, suggestions: (await suggester.suggest(text, near)).slice(0, 5) };
+  } catch {
+    // Not reported: nothing here may carry what was typed.
+    return { available: true, suggestions: [] };
+  }
+}
+
 export async function lookUpDistrict(userId: string, rawAddress: unknown, config: AboutConfig): Promise<DistrictLookupAnswer> {
   if (!config.questions.district) throw new ValidationError("This hub does not ask for a district.", "question_off");
   const address = typeof rawAddress === "string" ? rawAddress.replace(/\s+/g, " ").trim() : "";

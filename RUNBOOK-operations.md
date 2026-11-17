@@ -286,6 +286,7 @@ refused in production (`src/config/devFlags.ts`).
 | `POLIS_AUTH_TOKEN` | hosting | secret | no |  | The deliberation adapter's Polis service token. |
 | `SEARCHAPI_API_KEY` | hosting | secret | no |  | Video adapter: SearchAPI transcripts (second choice). |
 | `SUPADATA_API_KEY` | hosting | secret | no |  | Video adapter: Supadata transcripts (first choice). |
+| `MAPBOX_ACCESS_TOKEN` | hosting | secret | no |  | Optional. The address-suggestions adapter's Mapbox token (used only on the server, never sent to the browser): suggested addresses as a member types theirs to find their district. Unset: members type the whole address and press Find. |
 | `SUPABASE_STORAGE_BUCKET` | engine | string | no | `post-images` | The object store's public bucket for post images (the name predates the adapter; any store uses it). |
 | `CIVIC_OBJECT_STORE` | hosting | string | no | `supabase` | Which object store: "supabase" (Supabase Storage on the database's project) or "memory" (nothing kept across restarts; the run-anywhere CI job). |
 | `LINK_PREVIEW_USER_AGENT` | engine | string | no |  | User-Agent sent when fetching link previews. |
