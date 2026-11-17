@@ -820,13 +820,15 @@ async function enrichProcessCreator(
  * that mark or leave out sample content by process: the feed's badge, the
  * admin digest.
  */
-export async function getSampleProcessIds(): Promise<Set<string>> {
-  const rows = await db()
+export async function getSampleProcessIds(types?: readonly string[]): Promise<Set<string>> {
+  let q = db()
     .from("processes")
     .select<{ id: string }>("id")
     .eq("is_sample", true)
     // A visitor's demo submission is stored as sample but shows no badge.
     .eq("added_in_demo", false);
+  if (types && types.length > 0) q = q.in("type", [...types]);
+  const rows = await q;
   return new Set(rows.map((r) => r.id));
 }
 

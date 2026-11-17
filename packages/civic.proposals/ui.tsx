@@ -1,9 +1,13 @@
 // civic.proposal: an idea residents float for discussion and support
-// (manifest: packages/civic.proposals/manifest.ts).
+// (manifest: packages/civic.proposals/manifest.ts). Its pages are its own
+// (./ui/), built from the SDK's UI entry alone, and load when first opened.
 
-import { NewProposal, ProposalDetail, Propose } from "../../ui/src/lazyPages";
-import { ParticipationValues } from "../../ui/src/pages/settings/pluginFields";
-import type { ProcessUi } from "../../ui/src/processes/types";
+import { lazy } from "react";
+import { ParticipationValues, type ProcessUi } from "@civic-social/plugin-sdk/ui";
+
+const Propose = lazy(() => import("./ui/Propose"));
+const NewProposal = lazy(() => import("./ui/NewProposal"));
+const ProposalDetail = lazy(() => import("./ui/ProposalDetail"));
 
 const proposalUi: ProcessUi = {
   type: "civic.proposal",

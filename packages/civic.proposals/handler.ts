@@ -25,12 +25,11 @@ import {
   closeThroughDispatcher,
   afterActionCommits,
   isPastDeadline,
-  getInputsByProcess,
+  inputs,
   type BriefContent,
-  setDraftStatus,
-  getSettingSync,
-  KEYS,
-} from "@civic-social/plugin-sdk/first-party";
+  draftsOf,
+  hubContext,
+} from "@civic-social/plugin-sdk";
 import { proposalsStore } from "./store.js";
 import {
   createProposal,
@@ -43,12 +42,10 @@ import {
 import { emitProposalClosed } from "./events.js";
 import { proposalAssistantConfig } from "./assistantConfig.js";
 import { proposalDraftKind } from "./draftKind.js";
-import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
 import { PROPOSAL_MANIFEST } from "./manifest.js";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
-const hubNoun = (n: number): string =>
-  participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), n, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
+const hubNoun = (n: number): string => hubContext().participantNoun(n);
 
 /** The actor a deadline close runs as (the hourly job). */
 const AUTO_CLOSE_ACTOR = "system:auto-close";
@@ -62,7 +59,7 @@ const proposalAdapter: ProcessHandler = {
   requiredSchema: [...PROPOSAL_MANIFEST.requiredSchema],
   detailPath: PROPOSAL_MANIFEST.detailPath,
   draftPath: (draftId: string) => `/propose/new?draft=${encodeURIComponent(draftId)}`,
-  reopenDraft: (draftId: string) => setDraftStatus(proposalDraftKind.spec, draftId, "drafting"),
+  reopenDraft: (draftId: string) => draftsOf(proposalDraftKind).setStatus(draftId, "drafting"),
 
   getAssistantConfig: () => proposalAssistantConfig,
 
@@ -233,8 +230,8 @@ const proposalAdapter: ProcessHandler = {
 
     let comments: string[] = [];
     try {
-      const inputs = await getInputsByProcess(process.id);
-      comments = inputs.map((i) => i.body.trim()).filter((b) => b.length > 0);
+      const written = await inputs.forProcess(process.id);
+      comments = written.map((i) => i.body.trim()).filter((b) => b.length > 0);
     } catch {
       // Best-effort — admin can add comments during review.
     }

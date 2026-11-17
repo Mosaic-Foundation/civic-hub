@@ -1,31 +1,34 @@
-import { useApi } from "../hooks/useApi";
 import { useParams } from "react-router-dom";
-import { getCivicProposal, supportCivicProposal, unsupportCivicProposal, type CivicProposalDetail } from "../services/api";
-import { useAction } from "../hooks/useAction";
-import { useAuth } from "../context/authState";
-import { useRequireAuth } from "../hooks/useRequireAuth";
-import AuthModal from "../components/AuthModal";
-import ShareButton from "../components/ShareButton";
-import ShareMoment from "../components/ShareMoment";
-import Creator from "../components/Creator";
-import CommunityInputPanel from "../components/CommunityInputPanel";
-import ProposalCommentForm from "../components/ProposalCommentForm";
-import RelatedProcesses from "../components/RelatedProcesses";
-import DetailActions from "../components/DetailActions";
-import { CloseEarlyButton, ClosedEarlyNote } from "../components/CloseEarly";
-import { BriefPointer } from "../components/BriefPointer";
-import { statusDisplay } from "../components/statusDisplay";
-import ProcessHeader from "../components/ProcessHeader";
-import RichText from "../components/RichText";
-import EditHistory from "../components/EditHistory";
-import SourceLinks from "../components/SourceLinks";
-import { formatDate } from "../utils/dates";
-import ResultsBreakdown from "../components/ResultsBreakdown";
+import {
+  useApi,
+  useAction,
+  useViewer,
+  useRequireAuth,
+  AuthModal,
+  ShareButton,
+  ShareMoment,
+  Creator,
+  CommunityInputPanel,
+  CommentForm,
+  RelatedProcesses,
+  DetailActions,
+  CloseEarlyButton,
+  ClosedEarlyNote,
+  BriefPointer,
+  statusDisplay,
+  ProcessHeader,
+  RichText,
+  EditHistory,
+  SourceLinks,
+  formatDate,
+  ResultsBreakdown,
+} from "@civic-social/plugin-sdk/ui";
+import { getCivicProposal, supportCivicProposal, unsupportCivicProposal, type CivicProposalDetail } from "./api";
 
 
 export default function ProposalDetail() {
   const { id } = useParams<{ id: string }>();
-  const { actorId } = useAuth();
+  const { actorId } = useViewer();
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } = useRequireAuth();
   const action = useAction("Your support didn't go through. Please try again.");
   const supporting = action.busy;
@@ -225,7 +228,7 @@ export default function ProposalDetail() {
 
       {/* Comments — form only for active proposals; read-only list always shown */}
       {(proposal.status === "submitted" || proposal.status === "endorsed") && (
-        <ProposalCommentForm proposalId={proposal.id} />
+        <CommentForm proposalId={proposal.id} />
       )}
       <CommunityInputPanel
         processId={proposal.id}

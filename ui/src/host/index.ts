@@ -77,6 +77,43 @@ export { default as SampleBadge } from "../components/SampleBadge";
 // The kernel's totals by group (districts and demographics): mount it on a finished process's page.
 export { default as ResultsBreakdown } from "../components/ResultsBreakdown";
 export { default as Modal } from "../components/Modal";
+export { default as RichText } from "../components/RichText";
+export { default as SourceLinks } from "../components/SourceLinks";
+export { default as EditHistory } from "../components/EditHistory";
+export { default as DetailActions } from "../components/DetailActions";
+export { CloseEarlyButton, ClosedEarlyNote } from "../components/CloseEarly";
+export { default as ShareMoment } from "../components/ShareMoment";
+// What people wrote on a process, and the form to add to it (every type's page).
+export { default as CommunityInputPanel } from "../components/CommunityInputPanel";
+export { default as CommentForm } from "../components/ProposalCommentForm";
+// Briefs' pointer from a finished process to its brief. Step 3 makes it a
+// contribution Briefs registers (docs/kernel/SURFACE.md, "Event"); until then
+// the page mounts it and it shows nothing while Briefs is off.
+export { BriefPointer } from "../components/BriefPointer";
+export type { ClosedEarly, EarlyCloseOffer } from "../services/api";
+
+// --- A type's list page ----------------------------------------------------------------------
+export { default as ProcessPicker } from "../components/ProcessPicker";
+export { default as StatusFilter } from "../components/StatusFilter";
+export { useStatusFilter, type StatusFilterChoice } from "../components/statusFilterState";
+export { default as ProcessListCard } from "../components/ProcessListCard";
+export { cardDate } from "../components/cardDate";
+
+// --- Drafting: the kernel's draft page, configured by a type's kind, and the parts its form is built from ---
+export { default as DraftPage } from "../pages/draft/DraftPage";
+export type { DraftKindConfig, DraftFormProps, DraftPageContext } from "../pages/draft/types";
+export { DAY_MS, durationLabel } from "../pages/draft/durations";
+export { demoSubmitNote } from "../config/demoCopy";
+export { default as ProcessLinkField } from "../components/ProcessLinkField";
+export { default as MarkdownTextarea } from "../components/MarkdownTextarea";
+export { default as SuggestFooterButton } from "../components/SuggestFooterButton";
+export { default as TitleField } from "../components/TitleField";
+export { default as DraftFooter } from "../components/DraftFooter";
+export { FieldFinding } from "../components/CocFindings";
+export { FieldGuide } from "../components/FieldGuide";
+export { hardFindings } from "../components/cocFindingsState";
+export { useDebouncedFields } from "../hooks/useDebouncedFields";
+export type { AssistantFieldGuidance, DraftCategory, DraftSuggestion, ProposedLink } from "../services/api";
 
 // --- A post's picture and links -----------------------------------------------------------
 export { default as PostFeaturedImage } from "../components/PostFeaturedImage";
@@ -96,6 +133,7 @@ export { safeReturnPath } from "../config/pluginRules";
 export {
   BooleanField,
   ChoiceField,
+  ParticipationValues,
   DateField,
   EmailField,
   HourField,

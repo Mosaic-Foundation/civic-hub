@@ -29,4 +29,18 @@ describe("hubContext()", () => {
   it("serves the hub's zone to anyone", () => {
     expect(isPublicKey("identity.timezone")).toBe(true);
   });
+
+  // Kernel step 1: the scope it serves and what it calls the people taking part.
+  it("knows its place, or 'local' without one", () => {
+    expect(runWithHub(FLOYD_HUB, {}, hubContext).place).toBe(FLOYD_HUB.jurisdiction_code);
+    expect(runWithHub({ ...FLOYD_HUB, jurisdiction_code: null }, {}, hubContext).place).toBe("local");
+  });
+
+  it("names the people taking part as the hub does", () => {
+    const noun = (settings: Record<string, string>, n: number) => runWithHub(FLOYD_HUB, settings, () => hubContext().participantNoun(n));
+    expect(noun({ "identity.hub_kind": "place" }, 1)).toBe("resident");
+    expect(noun({ "identity.hub_kind": "place" }, 3)).toBe("residents");
+    expect(noun({ "identity.hub_kind": "organization" }, 2)).toBe("members");
+    expect(noun({ "identity.hub_kind": "place", "copy.resident_noun": "neighbor" }, 2)).toBe("neighbors");
+  });
 });

@@ -5,20 +5,14 @@
 // direct create route was removed 2026-10-12 (it skipped review).
 // Admin operations are in adminController.ts.
 
-import {
-  ValidationError,
-  route,
-  resolveCallerUser,
-  actOnProcess,
-  readAsPage,
-  viewFor,
-  enrichCreators,
-  getSampleProcessIds,
-} from "@civic-social/plugin-sdk/first-party";
+import { ValidationError, route, resolveCallerId, enrichCreators, processesOf } from "@civic-social/plugin-sdk";
 import {
   listProposals,
   getProposalSummary,
 } from "./service.js";
+
+/** The kernel's view of this package's processes (asked for where used: the SDK binds as the hub loads). */
+const ownProcesses = () => processesOf("civic.proposal");
 
 /**
  * GET /proposals — list all proposals (optionally filtered by status)
@@ -39,11 +33,11 @@ export const handleListProposals = route(async (req, res) => {
   // (no number — each row is a different process).
   const enriched = await enrichCreators(summaries, {
     rawIdField: "submitted_by",
-    audience: (await resolveCallerUser(req)) ? "member" : "public",
+    audience: (await resolveCallerId(req)) ? "member" : "public",
   });
   // Sample content (Phase 7): proposal id === its canonical processes row
   // id, so one lookup marks every seeded row for the badge.
-  const sampleIds = await getSampleProcessIds();
+  const sampleIds = await ownProcesses().sampleIds();
   const withSample =
     sampleIds.size === 0
       ? enriched
@@ -60,22 +54,22 @@ export const handleGetProposal = route(async (req, res) => {
   // The proposal's read model through the shared read path (its adapter
   // builds the page's shape): bylines, "Resident N" for visitors, sample
   // badge and the per-caller has_supported, as every type's page gets them.
-  res.json(await readAsPage(req, req.params.id as string, "civic.proposal", "Proposal not found"));
+  res.json(await ownProcesses().page(req, req.params.id as string, "Proposal not found"));
 });
 
 /**
  * POST /proposals/:id/support and DELETE /proposals/:id/support — support a
  * proposal, or withdraw support: process.support / process.unsupport through
- * the one action path (src/controllers/processController.ts, actOnProcess).
+ * the kernel's one action path (processesOf().actOn).
  */
 export const handleSupportProposal = route(async (req, res) => {
   const id = req.params.id as string;
-  const { result } = await actOnProcess(res, id, "process.support", {}, "civic.proposal");
-  res.json({ support_count: result.support_count, status: result.status, view: await viewFor(res, id) });
+  const { result } = await ownProcesses().actOn(res, id, "process.support");
+  res.json({ support_count: result.support_count, status: result.status, view: await ownProcesses().view(res, id) });
 });
 
 export const handleUnsupportProposal = route(async (req, res) => {
   const id = req.params.id as string;
-  const { result } = await actOnProcess(res, id, "process.unsupport", {}, "civic.proposal");
-  res.json({ support_count: result.support_count, status: result.status, view: await viewFor(res, id) });
+  const { result } = await ownProcesses().actOn(res, id, "process.unsupport");
+  res.json({ support_count: result.support_count, status: result.status, view: await ownProcesses().view(res, id) });
 });

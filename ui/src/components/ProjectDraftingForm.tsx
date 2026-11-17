@@ -2,7 +2,7 @@ import type { AssistantFieldGuidance, ProjectDraft } from "../services/api";
 import { uploadProjectImage } from "../services/api";
 import PostImagePicker from "./PostImagePicker";
 import "./VoteDraftingForm.css";
-import { FieldGuide } from "./DraftingForm";
+import { FieldGuide } from "./FieldGuide";
 import { hardFindings } from "./cocFindingsState";
 import DraftFooter from "./DraftFooter";
 import { useDebouncedFields } from "../hooks/useDebouncedFields";

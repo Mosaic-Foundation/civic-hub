@@ -10,7 +10,7 @@ import type { AssistantFieldGuidance, DeliberationDraft, ProposedLink } from "..
 import ProcessLinkField from "./ProcessLinkField";
 import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
-import { FieldGuide } from "./DraftingForm";
+import { FieldGuide } from "./FieldGuide";
 import { hardFindings } from "./cocFindingsState";
 import DraftFooter from "./DraftFooter";
 import { useDebouncedFields } from "../hooks/useDebouncedFields";

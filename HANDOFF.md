@@ -4,6 +4,25 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 1: Proposals on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Proposals 0.3.0 is a migration** (20261117032553): apply and approve.
+
+- Proposals 0.3.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its list, page and drafting form moved into
+  `packages/civic.proposals/ui/` unchanged (the drafting form `DraftingForm` too: only Proposals used it), its client
+  into `ui/api.ts`.
+- **Kernel, server (SDK v1 gains):** `processesOf()` gains `actOn`, `page`, `view` and `sampleIds` (another type's id
+  is not found through them). `draftsOf(kind)`: a package's own drafts (`get`, `create`, `update`, `setStatus`) and
+  `assistantStore()`, the store the drafting assistant uses, which replaces the four calls each type wired by hand.
+  `inputs` (`forProcess`, `visibleInPhase`, `countVisibleOutsidePhase`). `hubContext()` gains `place` (the scope a
+  space serves, "local" without one) and `participantNoun(n)`. Also `DAY_MS`, `lines`, `AssistantTypeConfig`.
+- **Kernel, UI (`/ui` gains):** the process page parts (`RichText`, `SourceLinks`, `EditHistory`, `DetailActions`,
+  `CloseEarlyButton`, `ClosedEarlyNote`, `ShareMoment`, `CommunityInputPanel`, `CommentForm`), the list page parts
+  (`ProcessPicker`, `StatusFilter`, `useStatusFilter`, `ProcessListCard`, `cardDate`), and drafting: `DraftPage`
+  with a type's `DraftKindConfig`, and the parts a form is built from (`FieldGuide`, now its own file, and the rest).
+  `BriefPointer` is exported until step 3 makes it a contribution Briefs registers.
+- `actOnProcess` and `readAsPage` accept a list of types; `getSampleProcessIds` takes an optional one.
+
 ## Kernel step 1: Announcements on the kernel surface — 2026-11-17
 
 On `kernel-extraction`. **Catalog entry for Announcements 0.4.0 is a migration** (20261117024504): apply and approve.

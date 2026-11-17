@@ -87,6 +87,18 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 1: Proposals 0.3.0 on the kernel surface (2026-11-17)
+
+- **Unit:** `hubContext.test.ts`: `place` (and "local" without one), `participantNoun` by hub kind and the hub's own
+  word. 2,790 passed.
+- **API:** `proposals.test.ts`: another type's id is not found through `/proposals/:id` or its support routes, and
+  support on its own answers with the view. 1,068 passed locally; the same five fail as on dev (`events.test.ts` 4,
+  `leakHarness.test.ts`).
+- **Conformance:** `catalog:add` green for Proposals 0.3.0 (steps 17 and 22 skipped: `MOVED_HUB_PAGES`).
+- **By hand:** the list, a proposal's page and the drafting page render from the package, no console errors.
+
+---
+
 ## Kernel step 1: Announcements 0.4.0 on the kernel surface (2026-11-17)
 
 - **Unit:** `announcementBoardCopy.test.ts`: the package's pinned and urgent rules and the hub's copy have the same

@@ -9,10 +9,18 @@
 //
 // A method joins here when the first package that needs it moves onto SDK
 // version 1 (archive follows with Meeting summaries).
+//
+// Acting and reading for a person (Proposals, 0.x): `actOn` runs one action as
+// the signed-in person through the kernel's one action path, `page` reads one
+// process as its page shows it to the caller, and `view` is the same read
+// model for the signed-in person after an action. Another type's id is not
+// found through any of them.
 
+import type { Request, Response } from "express";
 import type { CreateProcessInput, Process } from "../models/process.js";
 import { ForbiddenError } from "../errors/index.js";
-import { createProcess, getAllProcesses, getArchivedProcesses, getProcess, saveProcessState } from "./processService.js";
+import { createProcess, getAllProcesses, getArchivedProcesses, getProcess, getSampleProcessIds, saveProcessState } from "./processService.js";
+import { actOnProcess, readAsPage, viewFor } from "../controllers/processController.js";
 
 export interface OwnProcesses {
   /** The types this view covers. */
@@ -32,6 +40,27 @@ export interface OwnProcesses {
   create(input: CreateProcessInput): Promise<Process>;
   /** Store a process's status and state as they are now (no event; a status change emits its own). */
   saveState(process: Process): Promise<void>;
+  /**
+   * Run one action as the signed-in person (a route behind requireResident):
+   * who may call it is the type's descriptor; a refusal is a typed error. Not
+   * found for another type's id, or one the person may not see.
+   */
+  actOn(
+    res: Response,
+    id: string,
+    action: string,
+    payload?: Record<string, unknown>,
+  ): Promise<{ process: Process; result: Record<string, unknown> }>;
+  /**
+   * The process as its page shows it to whoever is asking: names for members,
+   * "Resident N" for visitors, the sample badge, the caller's own part. Not
+   * found (with `notFound` as the message) for another type's id.
+   */
+  page(req: Request, id: string, notFound?: string): Promise<Record<string, unknown>>;
+  /** The same read model for the signed-in person, as an action's answer carries it. */
+  view(res: Response, id: string): Promise<Record<string, unknown> | null>;
+  /** The ids of these types' seeded sample processes (they show the sample badge). */
+  sampleIds(): Promise<Set<string>>;
 }
 
 export function processesOf(...types: string[]): OwnProcesses {
@@ -59,5 +88,12 @@ export function processesOf(...types: string[]): OwnProcesses {
       }
       return saveProcessState(process);
     },
+    actOn: (res, id, action, payload = {}) => actOnProcess(res, id, action, payload, frozen),
+    page: (req, id, notFound = "Not found") => readAsPage(req, id, frozen, notFound),
+    async view(res, id) {
+      const process = await getProcess(id);
+      return process && mine.has(process.definition.type) ? viewFor(res, id) : null;
+    },
+    sampleIds: () => getSampleProcessIds(frozen),
   };
 }

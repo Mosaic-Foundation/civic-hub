@@ -4,7 +4,6 @@
 import DraftPage from "./DraftPage";
 import { conversationKind } from "./conversationKind";
 import { projectKind } from "./projectKind";
-import { proposalKind } from "./proposalKind";
 import { voteKind } from "./voteKind";
 
 export function NewConversation() {
@@ -13,10 +12,6 @@ export function NewConversation() {
 
 export function NewProject() {
   return <DraftPage config={projectKind} />;
-}
-
-export function NewProposal() {
-  return <DraftPage config={proposalKind} />;
 }
 
 export function NewVote() {

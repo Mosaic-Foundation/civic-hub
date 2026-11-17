@@ -110,9 +110,13 @@ export {
 export type { Draft, ProposedLink } from "../modules/civic.drafts/index.js";
 export { DAY_MS, lines } from "../processes/draftKinds.js";
 export type { DraftKind } from "../processes/draftKinds.js";
+// A package's own drafting kind, as the kernel keeps it (kernel step 1).
+export { draftsOf } from "../services/ownDrafts.js";
+export type { OwnDrafts } from "../services/ownDrafts.js";
 
 // --- Resident input on a process (src/modules/civic.input/) -----------------------------
 export { getInputsByProcess, listVisibleInPhase, countVisibleOutsidePhase } from "../modules/civic.input/index.js";
+export { inputs } from "../services/processInputs.js";
 
 // --- Events (src/models/event.ts) ------------------------------------------------------
 export type { CivicEvent, CreateEventInput } from "../models/event.js";

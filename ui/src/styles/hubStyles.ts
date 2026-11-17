@@ -46,7 +46,6 @@ import "../components/VoteDraftingForm.css";
 import "../components/ProcessLinkField.css";
 import "../components/HelpButton.css";
 import "../components/PostImagePicker.css";
-import "../pages/Propose.css";
 import "../pages/Projects.css";
 import "../pages/ProjectDetail.css";
 import "../components/PostFeaturedImage.css";

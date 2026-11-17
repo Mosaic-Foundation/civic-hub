@@ -6,7 +6,7 @@
 //
 // GUARDRAIL: This module MUST NOT import from civic.vote.
 
-import { defaultJurisdiction, type CreateEventInput } from "@civic-social/plugin-sdk/first-party";
+import { hubContext, type CreateEventInput } from "@civic-social/plugin-sdk";
 
 export type EmitEventFn = (input: CreateEventInput) => Promise<unknown>;
 
@@ -26,7 +26,7 @@ export async function emitProposalSubmitted(
     event_type: "civic.proposal.submitted",
     actor,
     process_id: ctx.proposal_id,
-    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
+    jurisdiction: ctx.jurisdiction ?? hubContext().place,
     processType: "civic.proposal",
     data: { proposal: data },
   });
@@ -41,7 +41,7 @@ export async function emitProposalSupported(
     event_type: "civic.proposal.supported",
     actor,
     process_id: ctx.proposal_id,
-    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
+    jurisdiction: ctx.jurisdiction ?? hubContext().place,
     processType: "civic.proposal",
     data: { proposal: data },
   });
@@ -56,7 +56,7 @@ export async function emitProposalSupportWithdrawn(
     event_type: "civic.proposal.support_withdrawn",
     actor,
     process_id: ctx.proposal_id,
-    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
+    jurisdiction: ctx.jurisdiction ?? hubContext().place,
     processType: "civic.proposal",
     data: { proposal: data },
   });
@@ -73,7 +73,7 @@ export async function emitProposalClosed(
     event_type: "civic.proposal.closed",
     actor,
     process_id: ctx.proposal_id,
-    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
+    jurisdiction: ctx.jurisdiction ?? hubContext().place,
     processType: "civic.proposal",
     data: { proposal: data },
     timestamp,
@@ -89,7 +89,7 @@ export async function emitProposalEndorsed(
     event_type: "civic.proposal.endorsed",
     actor,
     process_id: ctx.proposal_id,
-    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
+    jurisdiction: ctx.jurisdiction ?? hubContext().place,
     processType: "civic.proposal",
     data: { proposal: data },
   });

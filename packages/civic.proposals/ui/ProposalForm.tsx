@@ -1,7 +1,9 @@
 import { useCallback } from "react";
-import DraftingForm from "../../../components/DraftingForm";
-import type { ProposalDraft } from "../../../services/api";
-import type { DraftFormProps } from "../types";
+import {
+  type DraftFormProps,
+} from "@civic-social/plugin-sdk/ui";
+import DraftingForm from "./DraftingForm";
+import type { ProposalDraft } from "./api";
 
 export default function ProposalForm({ draft, flow, links, onLinksChange, linkTitles, onLinkTitlesChange, onSubmit, disabled }: DraftFormProps<ProposalDraft>) {
   const { queuePatch } = flow;

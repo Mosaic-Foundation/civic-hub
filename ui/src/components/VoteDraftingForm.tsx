@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { AssistantFieldGuidance, VoteDraft } from "../services/api";
 import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
-import { FieldGuide } from "./DraftingForm";
+import { FieldGuide } from "./FieldGuide";
 import { FieldFinding } from "./CocFindings";
 import { hardFindings } from "./cocFindingsState";
 import DraftFooter from "./DraftFooter";

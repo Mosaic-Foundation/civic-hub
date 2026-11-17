@@ -1,8 +1,11 @@
-import type { ProposalDraft } from "../../services/api";
-import { demoSubmitNote } from "../../config/demoCopy";
-import { DAY_MS, durationLabel } from "./durations";
-import type { DraftKindConfig } from "./types";
-import ProposalForm from "./forms/ProposalForm";
+import {
+  demoSubmitNote,
+  DAY_MS,
+  durationLabel,
+  type DraftKindConfig,
+} from "@civic-social/plugin-sdk/ui";
+import type { ProposalDraft } from "./api";
+import ProposalForm from "./ProposalForm";
 
 
 export const proposalKind: DraftKindConfig<ProposalDraft> = {

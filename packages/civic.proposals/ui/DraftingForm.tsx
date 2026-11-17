@@ -1,48 +1,18 @@
 import { useCallback } from "react";
-import type { AssistantFieldGuidance, DraftCategory, ProposalDraft } from "../services/api";
-import "./DraftingForm.css";
-import ProcessLinkField from "./ProcessLinkField";
-import type { ProposedLink } from "../services/api";
-import MarkdownTextarea from "./MarkdownTextarea";
-import SuggestFooterButton from "./SuggestFooterButton";
-import TitleField from "./TitleField";
-import { FieldFinding } from "./CocFindings";
-import { hardFindings } from "./cocFindingsState";
-import DraftFooter from "./DraftFooter";
-import { useDebouncedFields } from "../hooks/useDebouncedFields";
-
-/** Under a field: what the Code of Conduct check flagged in it, if anything,
- *  then the inline hint + example — the same best-practices content the
- *  assistant works from, so manual drafters get the quality lift too. */
-export function FieldGuide({
-  guidance,
-  field,
-}: {
-  guidance?: AssistantFieldGuidance[];
-  field: string;
-}) {
-  const entry = guidance?.find((g) => g.field === field);
-  return (
-    <>
-      <FieldFinding field={field} />
-      {entry && <FieldHint entry={entry} />}
-    </>
-  );
-}
-
-function FieldHint({ entry }: { entry: AssistantFieldGuidance }) {
-  return (
-    <p className="field-guide">
-      {entry.hint}
-      {entry.example && (
-        <>
-          {" "}
-          <span className="field-guide-example">Example: “{entry.example}”</span>
-        </>
-      )}
-    </p>
-  );
-}
+import {
+  ProcessLinkField,
+  MarkdownTextarea,
+  SuggestFooterButton,
+  TitleField,
+  FieldGuide,
+  hardFindings,
+  DraftFooter,
+  useDebouncedFields,
+  type AssistantFieldGuidance,
+  type DraftCategory,
+  type ProposedLink,
+} from "@civic-social/plugin-sdk/ui";
+import type { ProposalDraft } from "./api";
 
 interface Props {
   /** Related processes the author has picked. Optional by design — the
