@@ -26,6 +26,7 @@ import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
 import { getEditPolicy, startProcessEdit, type EditPolicy } from "../services/api";
 import SourceLinks from "../components/SourceLinks";
+import ResultsBreakdown from "../components/ResultsBreakdown";
 
 export default function ProjectDetail() {
   const navigate = useNavigate();
@@ -316,6 +317,9 @@ export default function ProjectDetail() {
           }}
         />
       </div>
+
+      {/* Finished: who took part, by district, age group, race (districts and demographics). */}
+      <ResultsBreakdown processId={project.id} />
 
       <RelatedProcesses
         processId={project.id}

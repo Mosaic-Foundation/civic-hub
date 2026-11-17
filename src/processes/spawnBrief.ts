@@ -14,6 +14,7 @@ import { getProcessFactory, getProcessHandler } from "./registry.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { HubDbError } from "../db/forHub.js";
 import { briefIdForSource } from "../services/processRows.js";
+import { breakdownAsText, breakdownsForClosed } from "../services/breakdowns.js";
 import type { BriefProcessState } from "../../packages/civic.brief/api.js";
 
 /**
@@ -49,6 +50,16 @@ export async function spawnBriefFromClosedProcess(
   // its type (src/services/closeEarly.ts).
   const early = closedEarlyView(source.state);
   if (early) content.closed_early = { line: early.line, note: early.note };
+  // Districts and demographics (2026-11-16): the same tables the process's
+  // page shows, as the brief's own sections (one per group the hub asks
+  // about, every group under 5 hidden), frozen when the brief is made. Never
+  // stops a brief: a failed read leaves them out.
+  try {
+    const tables = await breakdownsForClosed(source);
+    for (const t of tables) content.sections.push({ heading: t.title, body: breakdownAsText(t) });
+  } catch (err) {
+    console.warn(`[brief] breakdowns for ${source.id} left out: ${err instanceof Error ? err.message : "unknown error"}`);
+  }
 
   const factory = getProcessFactory();
   // Insert-or-skip: a source has at most one brief, enforced by a unique

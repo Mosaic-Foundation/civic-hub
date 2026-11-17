@@ -43,7 +43,7 @@ import {
 import type { CivicEvent } from "../../models/event.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { openOrRecentVoteIds } from "../../services/processRows.js";
-import { receiptsStore } from "./store.js";
+import { receiptsStore, type BallotTagRow } from "./store.js";
 import { tagsForMember } from "../civic.about/index.js";
 
 // --- Public API ------------------------------------------------------------
@@ -153,6 +153,15 @@ export async function getBallotChoicesForProcess(
 ): Promise<string[]> {
   const rows = await receiptsStore.get().ballotChoices(processId);
   return rows.map((r) => String(r.choice));
+}
+
+/**
+ * Every ballot's choice and coarse tags (district, age group, race) on a
+ * process, WITHOUT receipts, for totals by group (src/services/breakdowns.ts).
+ * Never served as rows: only counted, with groups under 5 hidden.
+ */
+export async function getBallotTagsForProcess(processId: string): Promise<BallotTagRow[]> {
+  return receiptsStore.get().ballotTags(processId);
 }
 
 /**

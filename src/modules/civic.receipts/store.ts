@@ -20,12 +20,22 @@ export interface ReceiptsStore {
   ballotChoices(processId: string): Promise<Array<{ choice: string }>>;
   /** Every ballot's receipt and choice on a process, in receipt order (paged past 1,000). */
   ballotLog(processId: string): Promise<Array<{ receipt_id: string; choice: string }>>;
+  /** Every ballot's choice and tags on a process, no receipt (paged past 1,000): for totals only. */
+  ballotTags(processId: string): Promise<BallotTagRow[]>;
   /** How many participation rows this user has on this process (0 or 1). */
   countParticipation(userId: string, processId: string): Promise<number>;
   /** How many people have voted on a process. */
   countVoted(processId: string): Promise<number>;
   /** Development and tests only: clear this hub's receipt data. */
   clearAll(): Promise<void>;
+}
+
+/** A ballot's choice and coarse tags, without its receipt (districts and demographics, 2026-11-16). */
+export interface BallotTagRow {
+  choice: string;
+  district_id: string | null;
+  age_bracket: string | null;
+  race: string[] | null;
 }
 
 export const receiptsStore = storeSlot<ReceiptsStore>("civic.receipts");

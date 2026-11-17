@@ -23,6 +23,7 @@ import { statusDisplay } from "../components/statusDisplay";
 import "./WordCloud.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { formatDate } from "../utils/dates";
+import ResultsBreakdown from "../components/ResultsBreakdown";
 
 // The kinds' dark tones (theme.css), so a theme or dark mode recolours the
 // cloud too (design pass, 2026-10-29). Applied as a style, which reads var().
@@ -609,6 +610,9 @@ export default function WordCloud() {
           />
         );
       })}
+
+      {/* Finished: who took part, by district, age group, race (districts and demographics). */}
+      <ResultsBreakdown processId={wc.id} />
 
       {/* Always offer one clear way forward to the feed (Adam, 2026-09-02:
           "add it everywhere"). During onboarding (the ?onboarding=1 param the

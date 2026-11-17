@@ -138,6 +138,13 @@ export type {
   DeliberationSummary,
 } from "../processes/contracts/briefContent.js";
 
+// --- Breakdowns: totals by district, age group or race (districts and demographics) -----
+// One group at a time, every group under 5 hidden. A plugin never receives a
+// member's answers; it may show these tables, and must work the same when
+// there are none (docs/BUILD-A-PLUGIN.md, "Member information").
+export { breakdownsFor, breakdownFor, breakdownAsText, BREAKDOWN_DIMENSIONS } from "../services/breakdowns.js";
+export type { Breakdown, BreakdownRow, BreakdownDimension } from "../services/breakdowns.js";
+
 // --- Reporting (src/utils/reportError.ts) ----------------------------------------------
 export { reportError } from "../utils/reportError.js";
 

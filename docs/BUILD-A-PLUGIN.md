@@ -359,6 +359,47 @@ None of these is required; each has a step in the suite where you use it (`docs/
 
 `kit/conformance/fixtures/sdk-tour` in the hub's repository uses every one of these.
 
+### Member information (districts and demographics)
+
+A hub can ask its members which district they live in, their year of birth and, if the hub chooses, their race or
+ethnicity. Each answer is optional and each member is asked once. The answers belong to the member: only they see
+them, in Settings > About you, and they go when the account is deleted.
+
+**Your plugin never reads a member's answers.** There is no SDK call that returns them, and none will be added. What
+you can have is totals:
+
+```ts
+import { breakdownsFor, breakdownFor, breakdownAsText, type Breakdown } from "@civic-social/plugin-sdk";
+
+// Every table the hub has for a finished process: one per question the hub asks,
+// in the order district, age group, race. One group at a time, never crossed.
+const tables: Breakdown[] = await breakdownsFor(processId);
+
+// Or one: "district", "age" or "race". Null when there is none.
+const byDistrict = await breakdownFor(processId, "district");
+```
+
+What comes back, for each table:
+
+- `kind`: `"results"` for a vote (each group's count for each choice, from the ballots) or `"participants"` for
+  anything else (how many people took part in each group, from your type's `participation` events and the
+  host's comments, matched to the members' answers when the table is made).
+- `title` (for example "Results by district", in the hub's own word for a district), `group_label`, `columns` (the
+  choices; empty for participants) and `rows`. Each row has a `label`, its `cells` (one per column) and its `total`.
+- A `null` cell or total means "Fewer than 5". Every group under 5 people is hidden, zero included, and so is
+  anything that would let someone work a hidden number out from a total that is shown. Print `hidden_label` where
+  you get `null`.
+- Every hub's list ends with a "Not provided" row: people who skipped the question.
+- `breakdownAsText(table)` gives one plain line per group, for an email or a brief.
+
+**Work the same when it returns nothing.** `breakdownsFor` returns an empty list while the process is still open,
+when the hub asks none of the questions, when the process is not shown to the public, and when nobody took part.
+That is the normal case on most hubs. Never make a page, an action or a close wait on it or depend on it.
+
+The hub already shows these tables on every finished process's page and adds them to its brief, so you only need
+them for something of your own (a results email, a summary on your own page). Nothing about a member's answers is
+posted to the fediverse.
+
 ## 5. Tie it together: `index.ts`
 
 ```ts

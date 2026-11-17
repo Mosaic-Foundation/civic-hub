@@ -380,6 +380,8 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /process/:id/edits": {},
   "GET /process/:id/edit-policy": {},
   "GET /process/:id/state": {},
+  // Districts and demographics (2026-11-16): totals by group, under 5 hidden.
+  "GET /process/:id/breakdowns": {},
   "GET /process/:id": {},
   "GET /process/input/identity-mode": {},
   "GET /process/:id/input": {},

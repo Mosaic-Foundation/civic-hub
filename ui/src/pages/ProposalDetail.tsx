@@ -20,6 +20,7 @@ import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
 import SourceLinks from "../components/SourceLinks";
 import { formatDate } from "../utils/dates";
+import ResultsBreakdown from "../components/ResultsBreakdown";
 
 
 export default function ProposalDetail() {
@@ -212,6 +213,9 @@ export default function ProposalDetail() {
           and used the raw URL as the link text. One renderer for every type
           now. */}
       <SourceLinks sources={proposal.optional_links} />
+
+      {/* Finished: who took part, by district, age group, race (districts and demographics). */}
+      <ResultsBreakdown processId={proposal.id} />
 
       <RelatedProcesses
         processId={proposal.id}

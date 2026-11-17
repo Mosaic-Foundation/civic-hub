@@ -4,6 +4,41 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Districts and demographics — 2026-11-16
+
+On dev, unpushed (four commits after 69e0a13). **Two migrations** (20261116030000 member_about, 20261116040000
+ballot tags), so release with `./scripts/release.sh dev`. Design: Adam, 2026-11-16 (artifact Kdww3wg75D15nCUymD8kDL).
+
+- **Settings > Districts** (section `districts`, keys `about.*`, all public; `src/shared/aboutYou.ts`): the district
+  term (unset: by `identity.jurisdiction_type`, District / Ward / School board district), the list (JSON
+  `[{ id, name }]`, kind `district_list`, ids kept on a rename), an optional "Find your district" link, and the
+  questions (district and birth year on, race off). District is asked only when the list has a district.
+- **About you** (`member_about`, module `src/modules/civic.about/`): district, birth year, race, "Prefer not to say"
+  per question (`declined`), `asked_at`. Only the member sees it (`GET/PUT /user/about`, Settings > About you);
+  cascades from `users`; exported with the hub. No member data export exists yet, so "in the member's own export"
+  waits for one.
+- **The one-time card** (`ui/src/components/AboutYouCard.tsx`): `askAboutYouFirst()` in `ui/src/services/aboutYou.ts`
+  is awaited by the api.ts calls that take part (vote, support, comment, draft submit, project sentiment, word cloud,
+  conversation vote and statement). Showing it POSTs `/user/about/asked`; Skip lets the action go on. Events'
+  "going" is in the Events package (its own fetch), so it does not trigger the card.
+- **Find it by address**: `POST /user/about/district-lookup` → the new `geocoder` adapter (`src/hosting/censusGeocoder.ts`,
+  US Census geocoder, `layers=all`, County Subdivisions; fake in `src/adapters/fakes/geocoder.ts`), loose match to
+  the list (`matchDistrict`). The address is not stored, logged or put in an error; 10 lookups an hour per member.
+- **Ballot tags** (`vote_records.district_id`, `age_bracket`, `race`): stamped by civic.receipts from the voter's
+  answers at cast and change, through `cast_ballot_with_tags` (cast_ballot plus `p_tags`; an overload would turn
+  /health red). `cast_ballot` is kept for the code before this release: drop it in a later migration.
+  `reshuffle_ballots` carries the tags; `tests/fixtures/ballotSecrecyRules.ts` allows exactly these columns.
+- **Breakdowns** (`src/services/breakdowns.ts`, SDK v1 and the hub SDK): a finished process's totals by one group;
+  votes from the tags (choices by group), other types from participation events joined to current answers. Every
+  cell under 5 (zero included) is hidden, then secondary hiding until no row or column has exactly one hidden cell.
+  `GET /process/:id/breakdowns`; `ResultsBreakdown` on the vote, proposal, project, conversation and word cloud pages;
+  briefs get the tables as sections at spawn (`spawnBrief.ts`), so the Brief package is unchanged.
+- **Docs:** "Member information" in `docs/BUILD-A-PLUGIN.md`. Help notes for `about.*` are pending and point at
+  `/reference/settings/participation` until a Districts page is published in the docs repo.
+- **Open:** a quasi-identifier risk the design accepted: with the raw database, a ballot's district and age group
+  can be matched to `member_about` and `vote_participation` for a voter who is alone in their group. Results hide
+  it; the raw data does not. Events "going" not gated; no member data export; console Create hub pre-fill not done.
+
 ## Pinned and urgent announcements — 2026-11-15
 
 On dev, unpushed (see the commits after 6fe6ffd). **The catalog entry for Announcements 0.3.0 is a migration**

@@ -3072,3 +3072,29 @@ export interface CalendarEventRow {
 export async function getCalendarEvents(): Promise<CalendarEventRow[]> {
   return (await request<{ events: CalendarEventRow[] }>("GET", "/calendar/events")).events;
 }
+
+// --- Breakdowns: a finished process's totals by group (districts and demographics) ---
+
+export interface BreakdownRow {
+  key: string;
+  label: string;
+  /** One per column; null: fewer than 5. */
+  cells: Array<number | null>;
+  total: number | null;
+}
+
+export interface Breakdown {
+  process_id: string;
+  dimension: "district" | "age" | "race";
+  kind: "results" | "participants";
+  title: string;
+  group_label: string;
+  columns: string[];
+  rows: BreakdownRow[];
+  hidden_label: string;
+}
+
+/** Totals by district, age group or race; empty until the process is finished, or when the hub asks nothing. */
+export function getBreakdowns(processId: string): Promise<{ breakdowns: Breakdown[] }> {
+  return request("GET", `/process/${processId}/breakdowns`);
+}

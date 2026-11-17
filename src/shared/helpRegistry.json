@@ -66,7 +66,7 @@
   },
   "settings.districts": {
     "text": "What the hub calls its districts, the list members choose from, and which questions members are asked about themselves. Results only ever show totals.",
-    "page": "/reference/settings/districts",
+    "page": "/reference/settings/participation",
     "anchor": "settings-districts",
     "pending": true
   },
@@ -574,43 +574,43 @@
   },
   "about.district_term": {
     "text": "The word for one district on this hub, such as District or Ward. Used on the member card and in every results table.",
-    "page": "/reference/settings/districts",
+    "page": "/reference/settings/participation",
     "anchor": "about-district-term",
     "pending": true
   },
   "about.district_term_plural": {
     "text": "The word for more than one. Left empty, it is made from the word above.",
-    "page": "/reference/settings/districts",
+    "page": "/reference/settings/participation",
     "anchor": "about-district-term-plural",
     "pending": true
   },
   "about.districts": {
     "text": "The districts members choose from. Renaming one keeps it the same district in past results.",
-    "page": "/reference/settings/districts",
+    "page": "/reference/settings/participation",
     "anchor": "about-districts",
     "pending": true
   },
   "about.find_district_url": {
     "text": "A page where people can look up their district, such as an official map. Shown when the address lookup finds no match.",
-    "page": "/reference/settings/districts",
+    "page": "/reference/settings/participation",
     "anchor": "about-find-district-url",
     "pending": true
   },
   "about.ask_district": {
     "text": "Ask members which district they live in. On unless switched off; needs at least one district in the list.",
-    "page": "/reference/settings/districts",
+    "page": "/reference/settings/participation",
     "anchor": "about-ask-district",
     "pending": true
   },
   "about.ask_birth_year": {
     "text": "Ask members their year of birth. Results show age groups, never a year.",
-    "page": "/reference/settings/districts",
+    "page": "/reference/settings/participation",
     "anchor": "about-ask-birth-year",
     "pending": true
   },
   "about.ask_race": {
     "text": "Ask members their race or ethnicity. Off unless switched on. Results show totals only, with groups under 5 hidden.",
-    "page": "/reference/settings/districts",
+    "page": "/reference/settings/participation",
     "anchor": "about-ask-race",
     "pending": true
   }
