@@ -1,7 +1,7 @@
 # Privacy Policy
 
 *Last updated: 2026-11-17*
-*Version: 1.4*
+*Version: 1.5*
 
 {{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US privacy law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US privacy law{{/place}} before {THE_HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production.{{/draft}}
 

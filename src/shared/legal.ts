@@ -9,16 +9,19 @@
 // constant, or one of the versions below that a non-material revision
 // replaced. Keep the bump in the same commit as the markdown changes so the
 // version and content stay aligned.
-export const CURRENT_LEGAL_VERSION = "1.4";
+export const CURRENT_LEGAL_VERSION = "1.5";
 
 /**
  * Versions whose acceptance still counts, because every revision since was
- * non-material (Adam's decision, 2026-10-17). 1.4 only renames where to opt
- * out of the digest and close an account ("Your settings") and drops a line
- * from the draft notes, so whoever accepted 1.3 isn't asked again. A material
- * revision empties this list, and everyone is asked, as for 1.3.
+ * non-material. A material revision empties this list, and everyone is asked.
+ *
+ * Empty since 1.5 (Adam, 2026-11-17): the Privacy Policy now says that a
+ * ballot carries the voter's district and age group, and that someone with a
+ * copy of the database could work out how a person voted if they were the
+ * only voter in their group. That changes a promise, so everyone accepts
+ * again. (Before: ["1.3"], because 1.4 only renamed "Your settings".)
  */
-export const LEGAL_VERSIONS_NOT_REQUIRING_REACCEPTANCE: readonly string[] = ["1.3"];
+export const LEGAL_VERSIONS_NOT_REQUIRING_REACCEPTANCE: readonly string[] = [];
 
 /** Has someone who accepted `stored` agreed to the documents as they stand? */
 export function legalAcceptanceIsCurrent(stored: string | null | undefined): boolean {
@@ -27,8 +30,8 @@ export function legalAcceptanceIsCurrent(stored: string | null | undefined): boo
 }
 
 /**
- * The newest "Last updated" line among the three documents. 1.4
- * (2026-10-17): Privacy and Terms name Your settings; the Code of Conduct is
- * unchanged and still says 1.2.
+ * The newest "Last updated" line among the three documents. 1.5
+ * (2026-11-17): the Privacy Policy's About you and ballot tags; Terms stay
+ * 1.4 and the Code of Conduct 1.2.
  */
-export const CURRENT_LEGAL_LAST_UPDATED = "2026-10-17";
+export const CURRENT_LEGAL_LAST_UPDATED = "2026-11-17";

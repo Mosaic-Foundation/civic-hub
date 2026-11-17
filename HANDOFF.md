@@ -39,7 +39,12 @@ ballot tags), so release with `./scripts/release.sh dev`. Design: Adam, 2026-11-
   database could work out how a person voted if they were the only voter in their district or age group (the tags
   against `vote_participation` and `member_about`). Said plainly in the Privacy Policy (In short, and "Your
   ballot"), Settings > About you, the migration and table comment, the receipts module header and BUILD-A-PLUGIN.
-  The policy's version stays 1.4 (no re-acceptance asked); bump `CURRENT_LEGAL_VERSION` if members must accept it.
+  Legal 1.5 (Adam, 2026-11-17): a material revision, so `CURRENT_LEGAL_VERSION` is 1.5 and nothing older counts
+  (`LEGAL_VERSIONS_NOT_REQUIRING_REACCEPTANCE` is empty). Every signed-in person, admins included, gets the blocking
+  "We've updated our Terms" dialog (ReAcceptModal) on their next page load in the hub, except on the legal pages
+  themselves: Continue records 1.5, Sign out leaves. It is the UI only; the API does not refuse older acceptances.
+  Tests and the smoke suite stamp CURRENT_LEGAL_VERSION, so they follow. A hub with its own saved Privacy Policy
+  keeps its text but its members are still asked (the version is shared).
 - **Census fill:** Settings > Districts on a county hub opens with the list filled from the Census Data API (the
   county's subdivisions by its FIPS code from `jurisdictions.census_geoid`), plainly named; the admin saves.
   `GET /admin/hub/districts/census`. Not tried against the live Census in this session.

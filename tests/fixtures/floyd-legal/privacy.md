@@ -1,7 +1,7 @@
 # Privacy Policy
 
 *Last updated: 2026-11-17*
-*Version: 1.4*
+*Version: 1.5*
 
 ## In short
 
