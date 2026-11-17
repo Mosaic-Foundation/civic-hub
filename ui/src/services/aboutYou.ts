@@ -50,6 +50,15 @@ export function lookUpDistrict(address: string): Promise<DistrictLookup> {
   return request("POST", "/user/about/district-lookup", { address });
 }
 
+/**
+ * Addresses matching what the member is typing. Through the hub, which asks
+ * Mapbox with the text alone; neither keeps it. `available` false: this hub
+ * has no suggestions, keep to Find.
+ */
+export function suggestAddresses(text: string): Promise<{ available: boolean; suggestions: string[] }> {
+  return request("POST", "/user/about/address-suggestions", { text });
+}
+
 /** The hub in view's About-you settings. */
 export function currentAboutConfig() {
   return aboutConfig((key) => setting(key));

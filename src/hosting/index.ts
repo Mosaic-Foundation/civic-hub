@@ -34,6 +34,7 @@ import { sentryErrors } from "./sentry.js";
 import { healthchecksHeartbeat } from "./healthchecks.js";
 import { supabaseStorage } from "./supabaseStorage.js";
 import { censusGeocoder } from "./censusGeocoder.js";
+import { mapboxAddresses } from "./mapboxAddresses.js";
 
 /** The implementations for this deployment's settings. */
 export function hostingAdapters(): Adapters {
@@ -46,6 +47,7 @@ export function hostingAdapters(): Adapters {
     heartbeat: healthchecksHeartbeat,
     objectStore: supabaseStorage,
     geocoder: censusGeocoder,
+    addressSuggest: mapboxAddresses,
   };
   const chosen = fake ? { ...fakeAdapters(), objectStore: supabaseStorage } : real;
   return {

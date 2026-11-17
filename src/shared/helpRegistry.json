@@ -573,7 +573,7 @@
     "anchor": "plugin-meeting-summary-wix-fields"
   },
   "about.district_term": {
-    "text": "The word for one district on this hub, such as District or Ward. Used on the member card and in every results table.",
+    "text": "The word for one district on this hub. However your area is divided, for example district, ward, precinct or borough. Left empty, it is District. Used on the member card and in every results table.",
     "page": "/reference/settings/participation",
     "anchor": "about-district-term",
     "pending": true
@@ -585,15 +585,9 @@
     "pending": true
   },
   "about.districts": {
-    "text": "The districts members choose from. Renaming one keeps it the same district in past results.",
+    "text": "The districts members choose from. A county hub with no list of its own uses its county's districts from the US Census. Renaming one keeps it the same district in past results.",
     "page": "/reference/settings/participation",
     "anchor": "about-districts",
-    "pending": true
-  },
-  "about.find_district_url": {
-    "text": "A page where people can look up their district, such as an official map. Shown when the address lookup finds no match.",
-    "page": "/reference/settings/participation",
-    "anchor": "about-find-district-url",
     "pending": true
   },
   "about.ask_district": {

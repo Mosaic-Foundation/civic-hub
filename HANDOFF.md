@@ -4,6 +4,40 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Districts follow-ups — 2026-11-17
+
+On dev after 1a3cb4c, unpushed, no migrations (2f8130c, 9549168, 88e5d0e). From Adam's try on Athens dev.
+
+- **District everywhere** (2f8130c): `DEFAULT_DISTRICT_TERM` replaces `defaultDistrictTerm`; no Ward or School board
+  district guess. The term field's hint names district, ward, precinct or borough.
+- **No "Find your district" link** (9549168): `about.find_district_url` is gone (key, field, help, search, card).
+  A found address that matches no district just asks the member to choose from the list.
+- **County hubs need no admin work** (88e5d0e): `ensureCensusDistricts` (`src/services/districtLookup.ts`) keeps
+  the county's Census list in `about.census_districts` (public, hub-written, `{ county, districts }`), run on the
+  hub config read (waits at most 4 s; rechecks every 6 h per instance; refetches when the county changes; cleared
+  when the hub stops being a county). `aboutConfig` uses it while `about.districts` is empty (`districtSource`).
+  Settings > Districts shows it; the first edit starts the hub's own list with the same ids, and "Use the Census
+  list" clears the own list. Removing every district of an own list also falls back to the Census list: to stop
+  asking, switch the question off.
+- **Athens** (dev): `identity.jurisdiction_type` = town, no `jurisdiction_ocd_id`, districts Agora and Sparta. Its
+  "couldn't tell which one it's in" was `no_match`: the Census found the Floyd address and its subdivision, which
+  matches neither name. Athens gets no Census list (not a county).
+- **Mapbox address suggestions** (Adam approved sending typed addresses to Mapbox, 2026-11-17, in his own words):
+  `POST /user/about/address-suggestions { text }` → `{ available, suggestions }` through the new `addressSuggest`
+  adapter (`src/hosting/mapboxAddresses.ts`, Geocoding v6 forward, autocomplete, `types=address`, `country=us`,
+  limit 5, `proximity` = the hub's place, looked up once per instance by its name; fake
+  `src/adapters/fakes/addressSuggest.ts`). Only the text and the hub's place name go out; nothing is kept or logged;
+  150 asks an hour per member, 3 characters at least. `/hub-config` carries `address_suggestions` so the card knows
+  before anyone types. The card (`AboutYouForm.tsx` AddressLookup): suggestions after a 300 ms pause, arrow keys and
+  Enter, a pick runs the Census lookup at once. **`MAPBOX_ACCESS_TOKEN` is set in Vercel's env** for civic-hub (dev:
+  civic-hub-dev, all three environments; prod when released); unset: available false, type-and-Find as before.
+  Privacy Policy 1.5 now names Mapbox and the US Census Bureau (it named neither before).
+- **Also:** `ui/src/aside/cards.tsx` lint warning fixed (the announcements list memoized, so the layout effect isn't
+  handed a new `[]` each render); `leakHarness` plans `GET /admin/news-sync/items`.
+- **Tests:** API `aboutYou`, `hubConfig`, `breakdowns` pass locally; `leakHarness`'s two known local failures remain
+  (500s on `/admin/hub/sample-content*` and `/admin/hub/mode/readiness`, see the sample-content notes below), its
+  route coverage passes with the news-sync plan.
+
 ## Kernel step 1: Conversations on the kernel surface, and step 1 complete — 2026-11-17
 
 On `kernel-extraction`. **Three migrations to apply**: the catalog entries for Conversations 0.4.0

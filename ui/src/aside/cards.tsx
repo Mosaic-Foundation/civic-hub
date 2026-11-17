@@ -2,7 +2,7 @@
 // About. Each draws nothing when it has nothing to say, so an empty card is
 // never a box with a heading and no rows. Kit surfaces and tokens only.
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button, Card, StatusChip } from "../kit";
 import { useHub } from "../config/hub";
@@ -82,7 +82,9 @@ export function ComingUpCard({ data }: { data: AsideData }) {
 // and urgent ones when there are any, urgent first; else the newest few. Past
 // BOARD_SHOWN rows the list scrolls inside the card.
 export function AnnouncementsCard({ data }: { data: AsideData }) {
-  const list = data.facts?.announcements ?? [];
+  // Memoized so a hub with no announcements doesn't hand the layout effect a new [] every render.
+  const announcements = data.facts?.announcements;
+  const list = useMemo(() => announcements ?? [], [announcements]);
   const scrolls = list.length > BOARD_SHOWN;
   const listRef = useRef<HTMLUListElement>(null);
   // Three rows high, and a sliver of the fourth so the list reads as one to scroll.

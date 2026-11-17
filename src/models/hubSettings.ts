@@ -75,16 +75,18 @@ export const KEYS = {
   FEED_CLOSING_REMINDER_HOURS: "feed.closing_reminder_hours",
 
   // Districts and demographics (Adam, 2026-11-16; src/shared/aboutYou.ts).
-  // What the hub calls a district (unset: by identity.jurisdiction_type,
-  // "District" or "Ward"), its districts (JSON [{ id, name }], ids kept on a
-  // rename), an optional "Find your district" link, and which About-you
+  // What the hub calls a district (unset: "District" on every hub), its districts (JSON [{ id, name }], ids kept on a
+  // rename), and which About-you
   // questions members are asked (district and birth year on, race off). All
   // public: results tables print the term and the names, and the one-time
   // card needs the questions before the member acts.
   ABOUT_DISTRICT_TERM: "about.district_term",
   ABOUT_DISTRICT_TERM_PLURAL: "about.district_term_plural",
   ABOUT_DISTRICTS: "about.districts",
-  ABOUT_FIND_DISTRICT_URL: "about.find_district_url",
+  // The county's districts from the Census, kept by the hub itself
+  // (src/services/districtLookup.ts ensureCensusDistricts), never in a
+  // settings section: used while about.districts is empty (2026-11-17).
+  ABOUT_CENSUS_DISTRICTS: "about.census_districts",
   ABOUT_ASK_DISTRICT: "about.ask_district",
   ABOUT_ASK_BIRTH_YEAR: "about.ask_birth_year",
   ABOUT_ASK_RACE: "about.ask_race",
@@ -382,7 +384,7 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.ABOUT_DISTRICT_TERM,
   KEYS.ABOUT_DISTRICT_TERM_PLURAL,
   KEYS.ABOUT_DISTRICTS,
-  KEYS.ABOUT_FIND_DISTRICT_URL,
+  KEYS.ABOUT_CENSUS_DISTRICTS,
   KEYS.ABOUT_ASK_DISTRICT,
   KEYS.ABOUT_ASK_BIRTH_YEAR,
   KEYS.ABOUT_ASK_RACE,

@@ -38,6 +38,7 @@ const ADDED: Record<string, string> = {
   "PUT /user/about": "Save your About-you answers",
   "POST /user/about/asked": "The one-time About-you card was shown",
   "POST /user/about/district-lookup": "Find your district by address (the Census geocoder; the address is not kept)",
+  "POST /user/about/address-suggestions": "Address suggestions as a member types (Mapbox, through the server; nothing is kept)",
   "GET /admin/hub/districts/census": "Settings > Districts: the county's subdivisions from the Census, to fill the list",
   "GET /process/:id/breakdowns": "A finished process's totals by district, age group or race; groups under 5 hidden",
   // News Sync posts shown as News (2026-11-16): Admin → Announcements' synced rows.

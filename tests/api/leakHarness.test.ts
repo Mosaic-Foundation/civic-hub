@@ -464,6 +464,8 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /announcements": {},
   // Admin → Announcements (pinned and urgent, 2026-11-15): the caller's hub's announcements only.
   "GET /admin/announcements": {},
+  // Admin → News Sync: the caller's hub's synced posts and their From label (2026-11-16).
+  "GET /admin/news-sync/items": {},
   "GET /link-preview/": { query: [] /* filled in below: ?url=<floyd's cached url> */ },
   "GET /search/": { query: [`?q=${MARKER_B}`, "?q=Vote", "?q=Notice&sort=newest", `?q=${MARKER_A}`] },
   "GET /meeting-summary/:id": {},
