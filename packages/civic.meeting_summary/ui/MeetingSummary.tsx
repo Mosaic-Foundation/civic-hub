@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { useApi } from "../hooks/useApi";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  getMeetingSummary,
-  type PublicMeetingSummary,
-} from "../services/api";
-import ShareButton from "../components/ShareButton";
-import AdminArchiveButton from "../components/AdminArchiveButton";
+  AdminArchiveButton,
+  RelatedProcesses,
+  SampleBadge,
+  ShareButton,
+  absoluteDateOfDay,
+  absoluteTime,
+  relativeTime,
+  useApi,
+} from "@civic-social/plugin-sdk/ui";
+import { getMeetingSummary, type PublicMeetingSummary } from "./api";
 import "./MeetingSummary.css";
-import RelatedProcesses from "../components/RelatedProcesses";
-import SampleBadge from "../components/SampleBadge";
-import { absoluteDateOfDay, absoluteTime, relativeTime } from "../utils/dates";
 
 export default function MeetingSummaryPage() {
   const { id } = useParams<{ id: string }>();

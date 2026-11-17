@@ -22,7 +22,8 @@ package, the paths it still imports from `src/` or `ui/src/`).
 | Announcements | 0.4.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
 | Proposals | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
 | Projects | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
-| Meeting summaries, Votes, Briefs, Conversations | not yet | | |
+| Meeting summaries | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
+| Votes, Briefs, Conversations | not yet | | |
 
 Version 1 has gained so far, on the server: `processesOf(...types)` (`get`, `list`, `create`, `saveState`, and
 for a person `actOn`, `page`, `view`; `sampleIds`), `draftsOf(kind)` (`get`, `create`, `update`, `setStatus`,
@@ -30,7 +31,11 @@ for a person `actOn`, `page`, `view`; `sampleIds`), `draftsOf(kind)` (`get`, `cr
 (the kernel's spacePlace) and `participantNoun(n)`, `links.validate`, `ProposedLink`, `DAY_MS`, `lines`, `AssistantTypeConfig`, `DraftField`,
 `assertPassesWordlist`, `requireAuthor` and `authorshipOf` (posting for the space; the author's public role is the
 kernel's accountable role), `resolveCallerIsAdmin`, `enrichCreator`, `enrichCreators`, `PUBLIC_ADMIN_NAME`,
-`extractUrls`, `warmLinkPreviews`, `CreateProcessInput`. On the UI side, the kernel UI surface below
+`extractUrls`, `warmLinkPreviews`, `CreateProcessInput`; since Meeting summaries `settingsOf(pluginId)` (`get(name)`
+for its own `plugin.<id>.*`, `enabled()`, `public(key)` for the hub's public settings), `processesOf().archive`,
+`brokenLinkProblem`, `findBrokenPublications`, `PLATFORM_CONTACT_EMAIL`, `resolveTimeZone`, `TranscriptSegment` and
+`AiSingleTurnInput`. A package tells the admins about a job through the mail adapter's `send` and `adminAddresses`
+(`notifyJobOutcome` left the adapter; Meeting summaries' alert email is its own `alerts.ts`). On the UI side, the kernel UI surface below
 (`ui/src/host/index.ts`). Announcements carries its own copy of the pinned and urgent rules (`board.ts`), kept equal
 to the right column's (`src/shared/announcementBoard.ts`) by a test until step 3 makes the board a contribution. A package's UI files are `ui.tsx` and its `ui/`
 directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `kit/conformance/src/fence.ts`).
@@ -72,7 +77,8 @@ directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `
 | --- | --- |
 | Conversations calls `regenerateBrief`, reads `DeliberationResult`/`DeliberationSummary`, `RegeneratedBrief` | the conversation's closed page reads its own saved result; the kernel's `process.closed` event; Briefs listens (Plugin Dependencies Strategy, case 4) |
 | Briefs reads `DeliberationResult`/`DeliberationSummary` | the `process.result` contract each process type fills; Briefs reads it from the event |
-| Meeting summaries call `isPluginEnabledSync` | `enhancedBy` in its manifest, or the capability it needs |
+| Meeting summaries call `isPluginEnabledSync` | done: `settingsOf("meeting_summary").enabled()`, its own switch |
+| The settings save checks `wix_fields` (a kind only Meeting summaries uses) with `src/shared/wixFields.ts` | a package's own check of its settings (step 3); until then the package keeps an identical copy, tested equal |
 | Conversations call `getProcessHandler`, `getActionDispatcher` | `actOn` (kernel, above) |
 | The kernel's `src/processes/spawnBrief.ts` and the ten files in `PACKAGE_REACH_NOT_YET` | events and contributions (step 3) |
 | The hub's welcome strip shows the onboarding word cloud (`WordcloudTeaser`, over HTTP, the `plugin.wordcloud.onboarding_id` setting) | a contribution Word clouds registers to the strip (step 3) |
@@ -96,6 +102,10 @@ What those pages use from the hub splits the same way:
   type's `DraftKindConfig`, and the parts its form is built from (`FieldGuide`, `TitleField`, `MarkdownTextarea`,
   `ProcessLinkField`, `SuggestFooterButton`, `DraftFooter`, `FieldFinding`, `hardFindings`, `useDebouncedFields`).
   `BriefPointer` is exported until step 3 makes it Briefs' contribution. Since Projects: `apiUpload`,
-  `getEditPolicy`, `startProcessEdit`, `reviewDestination`, `useSpace().participantNoun`.
+  `getEditPolicy`, `startProcessEdit`, `reviewDestination`, `useSpace().participantNoun`. Since Meeting summaries:
+  an admin page's `AdminStickyBar`, `AdminBackButton`, `PublicationStatusChip`, `markAdminQueueSeen`,
+  `notifyAdminQueuesChanged`; `absoluteDateOfDay`, `localShortDateOfDay`, `localDateAtTime`, `formatDuration`,
+  `formatMeetingDate`; `useSpace().governingBodyName`. The admin queue names (`AdminQueue`) are still the hub's list
+  (step 3: a package registers its queue).
 - **Moves with the page**: components only one type uses (`VotePanel`, `ReceiptCode`, `deliberation/*`,
   `ProposalCommentForm`, `BriefRegenerate`, `BriefPointer` goes to Briefs as an enhancement).

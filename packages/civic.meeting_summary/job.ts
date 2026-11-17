@@ -11,30 +11,28 @@
 // Per-meeting failures are isolated: one bad meeting does not abort the batch.
 // Returns a JobOutcome: 200 with the counts (or a skip reason), or 500 with an
 // error when the run could not start or aborted. Runs worth an admin's
-// attention are mailed to the hub's admins (src/services/cronAlerts.ts).
+// attention are mailed to the hub's admins (./alerts.ts).
 // The admin review queue and the public read are the handlers in
 // controller.ts.
 
 import {
   emitEvent,
-  createProcess,
-  getAllProcesses,
-  getArchivedProcesses,
-  saveProcessState,
+  processesOf,
+  settingsOf,
   findBrokenPublications,
   type BrokenPublication,
-  REVISION_NAG_DAYS,
-  type CronOutcome,
-  type FlaggedSummary,
-  type WaitingMeeting,
-  getSettingSync,
-  KEYS,
-  processJurisdiction,
   type AiSingleTurnInput,
   type JobOutcome,
   type JobRunner,
   type PluginAdapters,
-} from "@civic-social/plugin-sdk/first-party";
+} from "@civic-social/plugin-sdk";
+import {
+  notifyCronOutcome as notifyAdmins,
+  REVISION_NAG_DAYS,
+  type CronOutcome,
+  type FlaggedSummary,
+  type WaitingMeeting,
+} from "./alerts.js";
 import {
   approveMeetingSummary,
   effectiveQualityFlag,
@@ -76,24 +74,27 @@ const fetchHtml = (url: string) => web().fetchHtml(url);
 const fetchXml = (url: string) => web().fetchXml(url);
 const fetchJson: ReturnType<typeof web>["fetchJson"] = (...args) => web().fetchJson(...args);
 const fetchPdf: ReturnType<typeof web>["fetchPdf"] = (...args) => web().fetchPdf(...args);
-const notifyCronOutcome: PluginAdapters["mail"]["notifyJobOutcome"] = (...args) =>
-  meetingSummaryHost.get().adapter("mail").notifyJobOutcome(...args);
+const notifyCronOutcome = (outcome: CronOutcome) => notifyAdmins(outcome, meetingSummaryHost.get().adapter("mail"));
+
+/** The kernel's view of this package's processes, and its settings (asked for where used). */
+const ownProcesses = () => processesOf("civic.meeting_summary");
+const setting = (name: string) => settingsOf("meeting_summary").get(name);
 
 const CRON_ACTOR = "system:meeting-summary-cron";
 const DEFAULT_MAX_PER_RUN = 3;
 
 /** How long a meeting may wait for its record before the run reports it (record_grace_days). */
 function recordGraceDays(): number {
-  return daysSetting(getSettingSync(KEYS.PLUGIN_MEETING_RECORD_GRACE_DAYS), RECORD_GRACE_DAYS);
+  return daysSetting(setting("record_grace_days"), RECORD_GRACE_DAYS);
 }
 
 /** How long without a new meeting before the run asks for a check (source_quiet_days). */
 function sourceQuietDays(): number {
-  return daysSetting(getSettingSync(KEYS.PLUGIN_MEETING_SOURCE_QUIET_DAYS), SOURCE_QUIET_DAYS);
+  return daysSetting(setting("source_quiet_days"), SOURCE_QUIET_DAYS);
 }
 
 function maxPerRun(): number {
-  const raw = getSettingSync(KEYS.PLUGIN_MEETING_MAX_PER_RUN)?.trim();
+  const raw = setting("max_per_run")?.trim();
   if (!raw) return DEFAULT_MAX_PER_RUN;
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 1) return DEFAULT_MAX_PER_RUN;
@@ -156,14 +157,14 @@ function modelName(): string {
 }
 
 function autoPublish(): boolean {
-  const v = getSettingSync(KEYS.PLUGIN_MEETING_AUTO_PUBLISH)?.trim().toLowerCase();
+  const v = setting("auto_publish")?.trim().toLowerCase();
   return v === "true";
 }
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function cutoffDate(): string | null {
-  const v = getSettingSync(KEYS.PLUGIN_MEETING_CUTOFF_DATE)?.trim();
+  const v = setting("cutoff_date")?.trim();
   if (!v || !ISO_DATE_RE.test(v)) return null;
   return v;
 }
@@ -350,7 +351,7 @@ export const meetingSummaryJob: JobRunner = async () => {
     // and minutes. Keying on the date alone made the second meeting look like
     // a duplicate of the first, so it was silently skipped and its upgrade
     // would have overwritten the wrong summary.
-    const allProcesses = await getAllProcesses();
+    const allProcesses = await ownProcesses().list();
     const existingSourceIds = new Set<string>();
     // Primary match: a provisional summary carrying this exact source_id.
     const provisionalBySourceId = new Map<string, typeof allProcesses[0]>();
@@ -378,8 +379,8 @@ export const meetingSummaryJob: JobRunner = async () => {
     // An archived summary is one an admin deleted, and the delete must stick
     // (review M5): it counts as "already covered" for every match below, so
     // the meeting is not summarized again, but it is never upgraded.
-    // getAllProcesses() leaves archived rows out, so they are read here.
-    const archivedSummaries = await getArchivedProcesses(["civic.meeting_summary"]);
+    // list() leaves archived rows out, so they are read here.
+    const archivedSummaries = await ownProcesses().list({ archived: true });
     const archivedIds = new Set(archivedSummaries.map((p) => p.id));
     for (const p of [...allProcesses, ...archivedSummaries]) {
       if (p.definition.type !== "civic.meeting_summary") continue;
@@ -443,7 +444,7 @@ export const meetingSummaryJob: JobRunner = async () => {
 
     const perRunCap = maxPerRun();
     const willAutoPublish = autoPublish();
-    const today = todayIso(new Date(), getSettingSync(KEYS.IDENTITY_TIMEZONE));
+    const today = todayIso(new Date(), settingsOf("meeting_summary").public("identity.timezone"));
     const graceDays = recordGraceDays();
     const flagged: FlaggedSummary[] = [];
     const waiting: WaitingMeeting[] = [];
@@ -517,11 +518,10 @@ export const meetingSummaryJob: JobRunner = async () => {
         const createInput = buildCreateInput(entry, summary);
         const description = buildDescription(summary.blocks);
 
-        const newProcess = await createProcess({
+        const newProcess = await ownProcesses().create({
           definition: { type: "civic.meeting_summary", version: "0.1" },
           title: `Meeting summary: ${entry.meeting_date}`,
           description,
-          jurisdiction: processJurisdiction(),
           createdBy: CRON_ACTOR,
           state: createInput as unknown as Record<string, unknown>,
         });
@@ -539,7 +539,7 @@ export const meetingSummaryJob: JobRunner = async () => {
         if (publishNow) {
           await approveMeetingSummary(state, CRON_ACTOR, ctx);
           newProcess.status = "finalized";
-          await saveProcessState(newProcess);
+          await ownProcesses().saveState(newProcess);
         }
         if (state.quality_flag) {
           flagged.push({
@@ -657,7 +657,7 @@ export const meetingSummaryJob: JobRunner = async () => {
           ) {
             existingState.source_minutes_url = entry.source_minutes_url;
             existing.state = existingState as unknown as Record<string, unknown>;
-            await saveProcessState(existing);
+            await ownProcesses().saveState(existing);
             console.log(
               `[meeting-summary] ${entry.source_id} was admin-edited and is not ` +
                 `published (edit_count=${existingState.edit_count}) — attached the ` +
@@ -715,7 +715,7 @@ export const meetingSummaryJob: JobRunner = async () => {
               quality_flag: summary.quality_flag,
             });
             existing.state = state as unknown as Record<string, unknown>;
-            await saveProcessState(existing);
+            await ownProcesses().saveState(existing);
             console.log(
               `[meeting-summary] staged revision for published process=${existing.id} ` +
                 `source_id=${entry.source_id} — awaiting admin review`,
@@ -759,7 +759,7 @@ export const meetingSummaryJob: JobRunner = async () => {
           state.published_at = null;
           state.approved_at = null;
           existing.state = state as unknown as Record<string, unknown>;
-          await saveProcessState(existing);
+          await ownProcesses().saveState(existing);
           console.log(
             `[meeting-summary] upgraded process=${existing.id} source_id=${entry.source_id} duration_ms=${Date.now() - meetingStart}`,
           );
@@ -787,7 +787,7 @@ export const meetingSummaryJob: JobRunner = async () => {
     // pass has had its chance to replace it. Recomputed from storage rather
     // than tracked through the loop so it also catches records this run never
     // touched.
-    const staleSummaries = (await getAllProcesses().catch(() => []))
+    const staleSummaries = (await ownProcesses().list().catch(() => []))
       .filter((p) => p.definition.type === "civic.meeting_summary")
       .map((p) => summaryState(p))
       .filter((st) => summaryPredatesMeeting(st))
@@ -806,7 +806,7 @@ export const meetingSummaryJob: JobRunner = async () => {
     // Revisions nobody has reviewed. Not a failure — the published version is
     // still serving correctly — but an improvement that is not reaching anyone.
     const nowMs = Date.now();
-    const staleRevisions = (await getAllProcesses().catch(() => []))
+    const staleRevisions = (await ownProcesses().list().catch(() => []))
       .filter((p) => p.definition.type === "civic.meeting_summary")
       .map((p) => summaryState(p))
       .filter((st) => st.pending_revision)

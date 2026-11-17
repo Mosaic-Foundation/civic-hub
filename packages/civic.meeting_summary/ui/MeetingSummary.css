@@ -32,7 +32,6 @@
 }
 
 .meeting-header h1 {
-  margin: var(--space-xs) 0 var(--space-sm);
   font-size: var(--font-size-xl);
   line-height: var(--line-height-tight);
 }

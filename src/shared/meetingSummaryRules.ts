@@ -1,7 +1,9 @@
 // What the hub's own reports need from the meeting summary's rules (engine 2,
 // B10): the engine's job describer, its cron alert and the news sync read
 // these here, not in the package (ADR-014's PACKAGE_REACH_NOT_YET list
-// shrinks). The package re-exports them from here, so there is one value.
+// shrinks). The package keeps its own copy (packages/civic.meeting_summary/
+// rules.ts, kernel step 1), equal to this one by
+// tests/unit/meetingSummaryRulesCopy.test.ts until step 3.
 // Plain data and types: shared with the UI.
 
 /**

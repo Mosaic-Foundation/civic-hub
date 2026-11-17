@@ -4,6 +4,25 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 1: Meeting summaries on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Meeting summaries 0.3.0 is a migration** (20261117040237): apply and approve.
+
+- Meeting summaries 0.3.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its public page and admin review
+  queue moved into `packages/civic.meeting_summary/ui/` unchanged, its client into `ui/api.ts`.
+- **Kernel gains:** `settingsOf(pluginId)` (its own settings, its switch, the hub's public settings),
+  `processesOf().archive`, `brokenLinkProblem`, `findBrokenPublications`, `PLATFORM_CONTACT_EMAIL`, `resolveTimeZone`
+  and two adapter types; on the UI side the admin page parts, three date formats, two feed formats and
+  `useSpace().governingBodyName`.
+- `src/services/cronAlerts.ts` became the package's `alerts.ts`; it mails the admins through the mail adapter's
+  `send` and `adminAddresses`, so the adapter's `notifyJobOutcome` is gone. Its connector choices
+  (`connectors/options.ts`) moved in; the Wix column map and its rules are package copies kept identical to the hub's
+  by `tests/unit/meetingSummaryRulesCopy.test.ts` until step 3 (the settings save and the job describer still read
+  the hub's).
+- One cascade fix keeps the look: the page title's margin in `MeetingSummary.css` was always overridden by App.css's
+  `.page h1`, and would win once the package's stylesheet loads later, so it was dropped. Side by side with dev, the
+  public page and the admin list and review render the same.
+
 ## Kernel step 1: Projects on the kernel surface — 2026-11-17
 
 On `kernel-extraction`. **Catalog entry for Projects 0.3.0 is a migration** (20261117033649): apply and approve.

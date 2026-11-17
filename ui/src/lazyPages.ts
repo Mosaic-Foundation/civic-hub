@@ -48,7 +48,6 @@ export const Deliberations = page(() => import("./pages/Deliberations"));
 export const DeliberationDetail = page(() => import("./pages/DeliberationDetail"));
 export const Outcomes = page(() => import("./pages/Outcomes"));
 export const BriefPage = page(() => import("./pages/Brief"));
-export const MeetingSummary = page(() => import("./pages/MeetingSummary"));
 // The kit's gallery (Events 3): admins only, in the public layout.
 export const KitGallery = page(() => import("./pages/KitGallery"));
 
@@ -61,7 +60,6 @@ export const AdminEdits = page(() => import("./pages/AdminEdits"), true);
 export const AdminFeedback = page(() => import("./pages/AdminFeedback"), true);
 export const ContactCivicSocial = page(() => import("./pages/ContactCivicSocial"), true);
 export const AdminBriefs = page(() => import("./pages/AdminBriefs"), true);
-export const AdminMeetingSummaries = page(() => import("./pages/AdminMeetingSummaries"), true);
 
 // A resident's own settings and submissions
 export const Settings = page(() => import("./pages/Settings"));

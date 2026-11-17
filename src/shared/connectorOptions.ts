@@ -1,8 +1,7 @@
-// The connector ids a hub can choose for its meeting summaries and its news
-// feed. Their own file so a process manifest can name them without importing
-// the settings sections (which are built from the manifests).
+// The connector ids a hub can choose for its news feed. Their own file so the
+// hub's features list can name them without importing the settings sections
+// (which are built from the manifests). Meeting summaries keeps its own
+// (packages/civic.meeting_summary/connectors/options.ts).
 
-/** Meeting-summary connector ids (packages/civic.meeting_summary/connectors). */
-export const MEETING_CONNECTOR_OPTIONS = ["auto", "wix-cms", "minutes-page", "youtube-channel"] as const;
 /** News-sync connector ids (src/modules/civic.news_sync/connectors). */
 export const NEWS_CONNECTOR_OPTIONS = ["wix-cms"] as const;

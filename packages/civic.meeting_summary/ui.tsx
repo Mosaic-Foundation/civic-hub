@@ -1,8 +1,8 @@
 // civic.meeting_summary: a plain-language summary of a public meeting
-// (manifest: ./manifest.ts).
+// (manifest: ./manifest.ts). Its pages are its own (./ui/), built from the
+// SDK's UI entry alone, and load when first opened.
 
-import { AdminMeetingSummaries, MeetingSummary } from "../../ui/src/lazyPages";
-import { getMeetingSummary } from "../../ui/src/services/api";
+import { lazy } from "react";
 import {
   BooleanField,
   ChoiceField,
@@ -11,9 +11,15 @@ import {
   TextAreaField,
   TextField,
   UrlField,
-} from "../../ui/src/pages/settings/pluginFields";
-import { formatCount, formatDuration, formatMeetingDate } from "../../ui/src/processes/feedText";
-import type { ProcessUi } from "../../ui/src/processes/types";
+  formatCount,
+  formatDuration,
+  formatMeetingDate,
+  type ProcessUi,
+} from "@civic-social/plugin-sdk/ui";
+import { getMeetingSummary } from "./ui/api";
+
+const MeetingSummary = lazy(() => import("./ui/MeetingSummary"));
+const AdminMeetingSummaries = lazy(() => import("./ui/AdminMeetingSummaries"));
 
 const MEETING_CONNECTOR_LABELS: Record<string, string> = {
   auto: "Automatic (try each source below)",

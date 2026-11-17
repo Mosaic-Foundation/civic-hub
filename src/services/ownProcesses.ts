@@ -8,7 +8,7 @@
 //   const cloud = await processesOf("civic.wordcloud").get(id);   // undefined unless a word cloud
 //
 // A method joins here when the first package that needs it moves onto SDK
-// version 1 (archive follows with Meeting summaries).
+// version 1.
 //
 // Acting and reading for a person (Proposals, 0.x): `actOn` runs one action as
 // the signed-in person through the kernel's one action path, `page` reads one
@@ -18,8 +18,16 @@
 
 import type { Request, Response } from "express";
 import type { CreateProcessInput, Process } from "../models/process.js";
-import { ForbiddenError } from "../errors/index.js";
-import { createProcess, getAllProcesses, getArchivedProcesses, getProcess, getSampleProcessIds, saveProcessState } from "./processService.js";
+import { ForbiddenError, NotFoundError } from "../errors/index.js";
+import {
+  archiveProcess,
+  createProcess,
+  getAllProcesses,
+  getArchivedProcesses,
+  getProcess,
+  getSampleProcessIds,
+  saveProcessState,
+} from "./processService.js";
 import { actOnProcess, readAsPage, viewFor } from "../controllers/processController.js";
 
 export interface OwnProcesses {
@@ -40,6 +48,11 @@ export interface OwnProcesses {
   create(input: CreateProcessInput): Promise<Process>;
   /** Store a process's status and state as they are now (no event; a status change emits its own). */
   saveState(process: Process): Promise<void>;
+  /**
+   * Archive one (an admin's act, with the reason the admin log and the
+   * creator's notice carry). Not found for another type's id.
+   */
+  archive(id: string, adminId: string, reason: string): Promise<Process>;
   /**
    * Run one action as the signed-in person (a route behind requireResident):
    * who may call it is the type's descriptor; a refusal is a typed error. Not
@@ -87,6 +100,11 @@ export function processesOf(...types: string[]): OwnProcesses {
         return Promise.reject(new ForbiddenError(`${process.definition.type} is not one of this package's types`));
       }
       return saveProcessState(process);
+    },
+    async archive(id, adminId, reason) {
+      const process = await getProcess(id);
+      if (!process || !mine.has(process.definition.type)) throw new NotFoundError("Process not found");
+      return archiveProcess(id, adminId, reason);
     },
     actOn: (res, id, action, payload = {}) => actOnProcess(res, id, action, payload, frozen),
     page: (req, id, notFound = "Not found") => readAsPage(req, id, frozen, notFound),

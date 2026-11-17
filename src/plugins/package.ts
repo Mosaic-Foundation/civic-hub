@@ -32,7 +32,6 @@ import type { aiComplete, aiConfigured, aiDefaultModel } from "../adapters/ai.js
 import type { admitAiCall } from "../services/aiBudget.js";
 import type { sendEmail as sendMessage } from "../utils/email.js";
 import type { sendEmail as deliverEmail } from "../services/mailer.js";
-import type { notifyCronOutcome } from "../services/cronAlerts.js";
 import type { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../utils/http.js";
 import type { GrantableAdapter } from "../shared/pluginGrant.js";
 import type { HubQueryBuilder } from "../db/forHub.js";
@@ -87,8 +86,6 @@ export interface PluginAdapters {
     deliver: typeof deliverEmail;
     /** The hub's admins' addresses, for a notice to them (a list the hub keeps; ADR-011). */
     adminAddresses: () => string[];
-    /** A scheduled job's outcome, mailed to the hub's admins when it needs them (src/services/cronAlerts.ts). */
-    notifyJobOutcome: typeof notifyCronOutcome;
   };
   /** Public web pages, through the hub's fetchers (SSRF-guarded, every redirect checked; src/utils/http.ts). */
   web: { fetchHtml: typeof fetchHtml; fetchJson: typeof fetchJson; fetchPdf: typeof fetchPdf; fetchXml: typeof fetchXml };

@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { StatusChip } from "../components/AdminPublicationReview";
-import { AdminBackButton, AdminStickyBar } from "../components/AdminSticky";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
-  adminMarkQueueSeen,
+  AdminBackButton,
+  AdminStickyBar,
+  PublicationStatusChip as StatusChip,
+  localDateAtTime,
+  localShortDateOfDay,
+  markAdminQueueSeen,
   notifyAdminQueuesChanged,
+  useSpace,
+} from "@civic-social/plugin-sdk/ui";
+import {
   adminAcceptMeetingSummaryRevision,
   adminApproveMeetingSummary,
   adminDiscardMeetingSummaryRevision,
@@ -17,10 +23,8 @@ import {
   type MeetingSummaryDetail,
   type MeetingSummarySummary,
   type SummaryBlock,
-} from "../services/api";
-import { useHub } from "../config/hub";
+} from "./api";
 import "./AdminMeetingSummaries.css";
-import { localShortDateOfDay, localDateAtTime } from "../utils/dates";
 
 // No "Approved" filter: approveMeetingSummary() walks pending → approved →
 // published inside one call, so "approved" is a transient in-memory step that
@@ -49,7 +53,7 @@ function filterFromSearch(search: string): SummaryFilter {
 }
 
 export default function AdminMeetingSummaries() {
-  const hub = useHub();
+  const space = useSpace();
   const navigate = useNavigate();
   const location = useLocation();
   const { id: routeId } = useParams<{ id?: string }>();
@@ -59,7 +63,7 @@ export default function AdminMeetingSummaries() {
 
   // Opening this tab: its "new since you last looked" count clears.
   useEffect(() => {
-    adminMarkQueueSeen("meeting_summaries").then(notifyAdminQueuesChanged).catch(() => {});
+    markAdminQueueSeen("meeting_summaries").then(notifyAdminQueuesChanged).catch(() => {});
   }, []);
   const [selected, setSelected] = useState<MeetingSummaryDetail | null>(null);
   const [statusFilter, setStatusFilter] = useState<SummaryFilter>(() =>
@@ -596,7 +600,7 @@ export default function AdminMeetingSummaries() {
               value={meetingTitle}
               onChange={(e) => setMeetingTitle(e.target.value)}
               disabled={!isPending}
-              placeholder={hub.governing_body_name ? `${hub.governing_body_name} Regular Meeting` : "Regular Meeting"}
+              placeholder={space.governingBodyName ? `${space.governingBodyName} Regular Meeting` : "Regular Meeting"}
             />
           </section>
 
@@ -823,7 +827,7 @@ export default function AdminMeetingSummaries() {
       <div className="admin-meeting-summaries-body">
         <h1 className="kit-page-title">Meeting summaries</h1>
         <p className="admin-subtitle kit-page-lede">
-          AI-generated summaries of {hub.governing_body_name ? `${hub.governing_body_name} meetings` : "meetings"}.
+          AI-generated summaries of {space.governingBodyName ? `${space.governingBodyName} meetings` : "meetings"}.
           Review topic blocks and approve to publish to the public feed.
         </p>
 

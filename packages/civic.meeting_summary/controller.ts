@@ -18,13 +18,10 @@ import {
   ValidationError,
   route,
   emitEvent,
-  archiveProcess,
-  getAllProcesses,
-  getProcess,
-  saveProcessState,
   getAuthUser,
   enrichCreator,
-} from "@civic-social/plugin-sdk/first-party";
+  processesOf,
+} from "@civic-social/plugin-sdk";
 import { Request, Response } from "express";
 import {
   approveMeetingSummary,
@@ -43,6 +40,9 @@ import {
 } from "./api.js";
 import { summaryState } from "./job.js";
 
+/** The kernel's view of this package's processes (asked for where used: the SDK binds as the hub loads). */
+const ownProcesses = () => processesOf("civic.meeting_summary");
+
 function isApprovalStatus(s: string): s is MeetingSummaryApprovalStatus {
   return s === "pending" || s === "approved" || s === "published";
 }
@@ -51,7 +51,7 @@ function isApprovalStatus(s: string): s is MeetingSummaryApprovalStatus {
 
 export const handleAdminListMeetingSummaries = route(async (req, res) => {
   const statusFilter = req.query.status as string | undefined;
-  const all = await getAllProcesses();
+  const all = await ownProcesses().list();
   const summaries = all
     .filter((p) => p.definition.type === "civic.meeting_summary")
     .map((p) =>
@@ -88,7 +88,7 @@ export const handleAdminListMeetingSummaries = route(async (req, res) => {
 
 export const handleAdminGetMeetingSummary = route(async (req, res) => {
   const id = req.params.id as string;
-  const record = await getProcess(id);
+  const record = await ownProcesses().get(id);
   if (!record || record.definition.type !== "civic.meeting_summary") {
     throw new NotFoundError("Meeting summary not found");
   }
@@ -107,7 +107,7 @@ export const handleAdminGetMeetingSummary = route(async (req, res) => {
 
 export const handlePatchMeetingSummary = route(async (req, res) => {
   const id = req.params.id as string;
-  const record = await getProcess(id);
+  const record = await ownProcesses().get(id);
   if (!record || record.definition.type !== "civic.meeting_summary") {
     throw new NotFoundError("Meeting summary not found");
   }
@@ -142,7 +142,7 @@ export const handlePatchMeetingSummary = route(async (req, res) => {
   // "Meeting summary: <date>" rather than the meeting_title itself —
   // the meeting_title lives in state and is the primary display name
   // on the admin + public surfaces.
-  await saveProcessState(record);
+  await ownProcesses().saveState(record);
 
   res.json(
     await enrichCreator(
@@ -159,7 +159,7 @@ export const handlePatchMeetingSummary = route(async (req, res) => {
 
 export const handleApproveMeetingSummary = route(async (req, res) => {
   const id = req.params.id as string;
-  const record = await getProcess(id);
+  const record = await ownProcesses().get(id);
   if (!record || record.definition.type !== "civic.meeting_summary") {
     throw new NotFoundError("Meeting summary not found");
   }
@@ -197,7 +197,7 @@ export const handleApproveMeetingSummary = route(async (req, res) => {
   // i.e. "finalized" in the spec's state machine. Skips "closed"
   // (no participation window to close).
   record.status = "finalized";
-  await saveProcessState(record);
+  await ownProcesses().saveState(record);
 
   res.json({
     message: "Meeting summary approved and published.",
@@ -229,7 +229,7 @@ async function withRevision(
   message: string,
 ): Promise<void> {
   const id = req.params.id as string;
-  const record = await getProcess(id);
+  const record = await ownProcesses().get(id);
   if (!record || record.definition.type !== "civic.meeting_summary") {
     throw new NotFoundError("Meeting summary not found");
   }
@@ -252,7 +252,7 @@ async function withRevision(
     throw err;
   }
   record.state = state as unknown as Record<string, unknown>;
-  await saveProcessState(record);
+  await ownProcesses().saveState(record);
   res.json({
     message,
     meeting_summary: await enrichCreator(
@@ -308,7 +308,7 @@ export const handleBatchApproveMeetingSummaries = route(async (req, res) => {
   let flaggedSkipped = 0;
 
   for (const id of ids) {
-    const record = await getProcess(id);
+    const record = await ownProcesses().get(id);
     if (!record || record.definition.type !== "civic.meeting_summary") {
       skipped += 1;
       continue;
@@ -339,7 +339,7 @@ export const handleBatchApproveMeetingSummaries = route(async (req, res) => {
       };
       await approveMeetingSummary(state, actor, ctx);
       record.status = "finalized";
-      await saveProcessState(record);
+      await ownProcesses().saveState(record);
       published += 1;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "unknown";
@@ -383,13 +383,13 @@ export const handleBatchDeleteMeetingSummaries = route(async (req, res) => {
   let skipped = 0;
 
   for (const id of ids) {
-    const record = await getProcess(id);
+    const record = await ownProcesses().get(id);
     if (!record || record.definition.type !== "civic.meeting_summary") {
       skipped += 1;
       continue;
     }
     try {
-      await archiveProcess(id, adminId, reason);
+      await ownProcesses().archive(id, adminId, reason);
       archived += 1;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "unknown";
@@ -413,7 +413,7 @@ export const handleBatchDeleteMeetingSummaries = route(async (req, res) => {
 
 export const handleGetPublicMeetingSummary = route(async (req, res) => {
   const id = req.params.id as string;
-  const record = await getProcess(id);
+  const record = await ownProcesses().get(id);
   if (!record || record.definition.type !== "civic.meeting_summary") {
     throw new NotFoundError("Meeting summary not found");
   }

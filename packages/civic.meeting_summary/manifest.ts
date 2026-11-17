@@ -3,7 +3,7 @@
 // are built from it. The handler (./handler.ts) runs its actions.
 
 import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
-import { MEETING_CONNECTOR_OPTIONS } from "../../src/shared/connectorOptions.js";
+import { MEETING_CONNECTOR_OPTIONS } from "./connectors/options.js";
 
 /**
  * What a meeting summary is (src/processes/descriptor.ts). The meeting

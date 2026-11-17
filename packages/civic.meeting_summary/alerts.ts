@@ -1,4 +1,6 @@
-// The meeting-summary job's alert email to a hub's admins.
+// The meeting-summary job's alert email to a hub's admins (moved from
+// src/services/cronAlerts.ts, kernel step 1: it was this package's, in the
+// kernel). Sent through the mail the package's grant gives it.
 //
 // When: after each run of the "meeting_summary" job (packages/civic.meeting_summary/job.ts),
 // and when a run aborts. Why: cronAlertReason names the reasons a run deserves
@@ -10,12 +12,14 @@
 // for a hub with no row). Best-effort: a bounced notification never fails the
 // run.
 
-import { sendEmail } from "../utils/email.js";
-import { type BrokenPublication } from "./feedHealth.js";
-import { brokenLinkProblem } from "../jobs/describe.js";
-import { getAdminEmailsSync, hubDisplayNameSync } from "./hubSettings.js";
-import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
-import { RECORD_GRACE_DAYS } from "../shared/meetingSummaryRules.js";
+import {
+  brokenLinkProblem,
+  hubContext,
+  PLATFORM_CONTACT_EMAIL,
+  type BrokenPublication,
+  type PluginAdapters,
+} from "@civic-social/plugin-sdk";
+import { RECORD_GRACE_DAYS } from "./rules.js";
 
 /**
  * How long a revision may wait for review before the cron mentions it.
@@ -24,10 +28,6 @@ import { RECORD_GRACE_DAYS } from "../shared/meetingSummaryRules.js";
  * improvement does not sit unread for a whole meeting cycle.
  */
 export const REVISION_NAG_DAYS = 14;
-
-function adminRecipients(): string[] {
-  return getAdminEmailsSync();
-}
 
 export interface CronOutcome {
   discovered: number;
@@ -161,11 +161,11 @@ export function cronAlertReason(outcome: CronOutcome): string | null {
  * Email admins when a run is worth their attention. Best-effort: a bounced
  * notification must never fail the run itself.
  */
-export async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
+export async function notifyCronOutcome(outcome: CronOutcome, mail: PluginAdapters["mail"]): Promise<void> {
   const reason = cronAlertReason(outcome);
   if (!reason) return;
 
-  const recipients = adminRecipients();
+  const recipients = mail.adminAddresses();
   if (recipients.length === 0) {
     console.warn(
       `[meeting-summary] would have alerted admins (${reason}) but ` +
@@ -180,7 +180,7 @@ export async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
       ? `completed with ${outcome.failed} failure(s)`
       : "needs your attention";
 
-  const subject = `[${hubDisplayNameSync()}] Meeting summaries: ${headline}`;
+  const subject = `[${hubContext().name}] Meeting summaries: ${headline}`;
   const failureLines = outcome.failures
     .map((f) => `<li><code>${f.source_id}</code>: ${f.error}</li>`)
     .join("\n");
@@ -220,7 +220,7 @@ export async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
 
   for (const to of recipients) {
     try {
-      await sendEmail({ to, subject, html });
+      await mail.send({ to, subject, html });
     } catch (err) {
       console.warn(
         `[meeting-summary] notification email failed for ${to}: ${err instanceof Error ? err.message : "unknown"}`,

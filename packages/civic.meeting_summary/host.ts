@@ -2,6 +2,6 @@
 // the adapters its job reads meeting pages and recordings, summarizes and tells
 // the admins through.
 
-import { storeSlot, type PluginHost } from "@civic-social/plugin-sdk/first-party";
+import { storeSlot, type PluginHost } from "@civic-social/plugin-sdk";
 
 export const meetingSummaryHost = storeSlot<PluginHost>("civic.meeting_summary host");

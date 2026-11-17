@@ -121,5 +121,21 @@ export { assertPassesWordlist } from "../../src/sdk/index.js";
 // --- Routes of its own, when it needs them ---------------------------------------------------
 export { route, getAuthUser, requireResident, requireAdmin, resolveCallerId, resolveCallerIsAdmin } from "../../src/sdk/index.js";
 
+// --- Its own settings (kernel step 1): plugin.<id>.* as the hub's admins set them, whether
+// it is switched on, and the hub's public settings (its time zone, its governing body) --------
+export { settingsOf } from "../../src/sdk/index.js";
+export type { OwnSettings } from "../../src/sdk/index.js";
+
+// --- Telling the hub's admins a scheduled job needs them (kernel step 1): what a broken
+// published link means to them, the platform's own address as their last resort -------------
+export { brokenLinkProblem, findBrokenPublications, PLATFORM_CONTACT_EMAIL } from "../../src/sdk/index.js";
+export type { BrokenPublication } from "../../src/sdk/index.js";
+
+// --- Adapter shapes a package hands its own code (a video's transcript, one model turn) ------
+export type { TranscriptSegment, AiSingleTurnInput } from "../../src/sdk/index.js";
+
+// --- The hub's time zone, from a setting's raw value (an unset or unknown zone → the default) --
+export { resolveTimeZone } from "../../src/sdk/index.js";
+
 // --- Small utilities -------------------------------------------------------------------------
 export { generateId, str, num } from "../../src/sdk/index.js";

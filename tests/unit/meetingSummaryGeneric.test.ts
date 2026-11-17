@@ -4,7 +4,7 @@
 // as the code did before, so an existing hub sees no change.
 
 import { describe, expect, it } from "vitest";
-import { DEFAULT_WIX_FIELDS, parseWixFields } from "../../src/shared/wixFields.js";
+import { DEFAULT_WIX_FIELDS, parseWixFields } from "../../packages/civic.meeting_summary/wixFields.js";
 import { rowsToMeetings } from "../../packages/civic.meeting_summary/connectors/wixCms.js";
 import { canonicalYouTubeUrl } from "../../packages/civic.meeting_summary/identity.js";
 import { daysSetting, RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS, todayIso } from "../../packages/civic.meeting_summary/readiness.js";

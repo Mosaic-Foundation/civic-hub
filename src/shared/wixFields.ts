@@ -7,8 +7,10 @@
 //   video=recording1, more_video=recording21 recording31
 //
 // A role left out keeps its default, which is the first hub's column, so an
-// unset value reads exactly as before. Shared by the server (the connector
-// and the save's check) and the settings page. Pure.
+// unset value reads exactly as before. The settings save checks a value with
+// it; Meeting summaries' connector reads its own copy
+// (packages/civic.meeting_summary/wixFields.ts), identical until kernel step 3.
+// Pure.
 
 export interface WixFieldMap {
   /** The meeting's date, as Wix displays it ("August 11, 2026"). */

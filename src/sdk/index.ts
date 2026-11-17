@@ -163,6 +163,11 @@ export type { Notice, NoticeReport } from "../services/notices.js";
 export { hubContext } from "../services/pluginHubContext.js";
 export { seal, open as openSealed, sealingAvailable } from "../services/sealedSecrets.js";
 export { privateFetchAllowed } from "../config/devFlags.js";
+// The platform's own contact address (an admin's last resort in a message).
+export { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
+// A package's own settings (plugin.<id>.*) and the hub's public ones (kernel step 1).
+export { settingsOf } from "../services/ownSettings.js";
+export type { OwnSettings } from "../services/ownSettings.js";
 export { guardedFetch } from "../utils/ssrfGuard.js";
 export type { HubContext } from "../services/pluginHubContext.js";
 
@@ -228,9 +233,8 @@ export { getUser } from "../modules/civic.auth/index.js";
 export { findBrokenPublications } from "../services/feedHealth.js";
 export type { BrokenPublication } from "../services/feedHealth.js";
 
-// --- src/services/cronAlerts.ts ----------------------------------------------------------
-export { REVISION_NAG_DAYS } from "../services/cronAlerts.js";
-export type { CronOutcome, FlaggedSummary, WaitingMeeting } from "../services/cronAlerts.js";
+// --- A job's run, in words an admin can act on (src/jobs/describe.ts) ---------------------
+export { brokenLinkProblem } from "../jobs/describe.js";
 
 // --- src/jobs/types.ts -------------------------------------------------------------------
 export type { JobOutcome, JobRunner } from "../jobs/types.js";

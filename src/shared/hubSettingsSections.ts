@@ -143,7 +143,7 @@ export const PLUGIN_SECTION_INFO: readonly PluginSectionInfo[] = PLUGIN_SECTIONS
 /** Every plugin id, in the order the Plugins section lists them (and PLUGIN_IDS is). */
 export const PLUGIN_SECTION_ORDER: readonly PluginId[] = PLUGIN_SECTIONS.map((p) => p.id);
 
-export { MEETING_CONNECTOR_OPTIONS, NEWS_CONNECTOR_OPTIONS } from "./connectorOptions.js";
+export { NEWS_CONNECTOR_OPTIONS } from "./connectorOptions.js";
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
 
 export const SETTINGS_SECTIONS: Readonly<

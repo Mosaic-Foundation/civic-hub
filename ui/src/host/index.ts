@@ -60,6 +60,11 @@ export interface SpaceView {
   timeZone: string;
   /** What the people taking part are called, by count (as the kernel's hubContext().participantNoun). */
   participantNoun: (count: number) => string;
+  /**
+   * The body that governs its place, where the space names one ("Floyd County
+   * Board of Supervisors"); "" when it names none, and a page drops the phrase.
+   */
+  governingBodyName: string;
 }
 
 export function useSpace(): SpaceView {
@@ -71,6 +76,7 @@ export function useSpace(): SpaceView {
     place: hub.place,
     timeZone: hub.timeZone,
     participantNoun: (count) => hub.noun(count),
+    governingBodyName: hub.governing_body_name,
   };
 }
 
@@ -133,10 +139,24 @@ export { default as LinkPreviewCard } from "../components/LinkPreviewCard";
 // --- The right column: tell it something it shows has changed ------------------------------
 export { refreshAside } from "../aside/asideFacts";
 
+// --- An admin page: its pinned filter bar, a review page's way back, a publication's status,
+// and its review queue's "seen" mark (the admin tabs' counts refetch after it) --------------
+export { AdminBackButton, AdminStickyBar } from "../components/AdminSticky";
+export { StatusChip as PublicationStatusChip, type PublicationStatus } from "../components/AdminPublicationReview";
+export { adminMarkQueueSeen as markAdminQueueSeen, notifyAdminQueuesChanged, type AdminQueue } from "../services/api";
+
 // --- Dates, in the space's zone where it takes one ------------------------------------------
-export { absoluteTime, formatDate, localShortDate, relativeTime } from "../utils/dates";
+export {
+  absoluteDateOfDay,
+  absoluteTime,
+  formatDate,
+  localDateAtTime,
+  localShortDate,
+  localShortDateOfDay,
+  relativeTime,
+} from "../utils/dates";
 export { dayFromToday, dayOf, endOfDay, shortDay } from "../components/boardDates";
-export { formatCount } from "../processes/feedText";
+export { formatCount, formatDuration, formatMeetingDate } from "../processes/feedText";
 export { safeReturnPath } from "../config/pluginRules";
 
 // --- A plugin's settings panel: the settings page's own fields ----------------------------

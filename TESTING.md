@@ -87,6 +87,16 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 1: Meeting summaries 0.3.0 on the kernel surface (2026-11-17)
+
+- **Unit:** 2,792 passed. `meetingSummaryRulesCopy.test.ts` also holds the package's Wix column map equal to the
+  hub's. **API:** 1,066 passed locally; the same five fail as on dev.
+- **Conformance:** `catalog:add` green for Meeting summaries 0.3.0 (steps 17 and 22 skipped: `MOVED_HUB_PAGES`).
+- **By hand:** a published summary's page (signed out and as an admin), the admin list and a review page, beside
+  dev's: every element's computed style and position the same, no console errors.
+
+---
+
 ## Kernel step 1: Projects 0.3.0 on the kernel surface (2026-11-17)
 
 - **Unit:** 2,790 passed. **API:** 1,066 passed locally; the same five fail as on dev.

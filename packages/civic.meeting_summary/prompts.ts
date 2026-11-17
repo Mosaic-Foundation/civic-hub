@@ -5,12 +5,11 @@
 // round-tripping through engineering. Exported as string builders so
 // evals / tests can diff them.
 
-import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
-import { getSettingSync, KEYS } from "@civic-social/plugin-sdk/first-party";
+import { hubContext } from "@civic-social/plugin-sdk";
 
 /** The hub's word for the people who read its summaries ("residents", "neighbors", "members"). */
 function hubPeople(): string {
-  return participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), 2, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
+  return hubContext().participantNoun(2);
 }
 
 const DEFAULT_INSTRUCTIONS = `These are official government meeting records. Produce accurate, neutral summaries. Do not speculate. When in doubt about a fact, say the minutes or transcript are unclear rather than inventing detail.`;
