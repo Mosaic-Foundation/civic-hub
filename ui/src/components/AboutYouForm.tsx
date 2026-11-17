@@ -1,6 +1,7 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button, Checkbox, Select } from "../kit";
-import { lookUpDistrict } from "../services/aboutYou";
+import { lookUpDistrict, suggestAddresses } from "../services/aboutYou";
+import { useHub } from "../config/hub";
 import type { AboutFormState } from "./aboutYouState";
 import {
   BIRTH_YEAR_MIN,
@@ -17,6 +18,10 @@ import "./AboutYouForm.css";
  */
 
 const PREFER_NOT = "prefer_not";
+
+/** Suggestions: asked from this many characters, after this long a pause in typing. */
+const SUGGEST_MIN_CHARS = 3;
+const SUGGEST_PAUSE_MS = 300;
 
 export default function AboutYouForm({
   config,
@@ -130,7 +135,14 @@ const LOOKUP_REASON: Record<"not_found" | "no_match" | "unavailable", string> = 
   unavailable: "The lookup isn't working right now.",
 };
 
-/** "Don't know? Look it up by address": the address goes to the server once, to the Census Bureau once, and is kept by neither. */
+/**
+ * "Not sure? Find it by address". Where the hub has Mapbox set up, up to five
+ * addresses are suggested as the member types (after a pause, from three
+ * characters); picking one finds its district at once. Otherwise, or if
+ * suggestions fail, they type the whole address and press Find. The address
+ * goes to the hub, which passes it on (to Mapbox for suggestions, to the
+ * Census Bureau for the district) and keeps it nowhere.
+ */
 function AddressLookup({
   config,
   disabled,
@@ -141,12 +153,45 @@ function AddressLookup({
   onFound: (districtId: string) => void;
 }) {
   const id = useId();
+  const listId = `${id}-suggestions`;
   const [open, setOpen] = useState(false);
   const [address, setAddress] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const hub = useHub();
+  const [suggesting, setSuggesting] = useState(() => hub.config?.address_suggestions === true);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [active, setActive] = useState(-1);
+  // Typed, not picked: only typing asks for suggestions.
+  const typed = useRef(false);
   const term = config.term.singular.toLowerCase();
+
+  useEffect(() => {
+    if (!suggesting || !typed.current) return;
+    const text = address.trim();
+    if (text.length < SUGGEST_MIN_CHARS) {
+      setSuggestions([]);
+      return;
+    }
+    let current = true;
+    const timer = setTimeout(() => {
+      suggestAddresses(text)
+        .then((r) => {
+          if (!current) return;
+          if (!r.available) setSuggesting(false);
+          setSuggestions(r.suggestions);
+          setActive(-1);
+        })
+        .catch(() => {
+          if (current) setSuggestions([]);
+        });
+    }, SUGGEST_PAUSE_MS);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [address, suggesting]);
 
   if (!open) {
     return (
@@ -156,15 +201,17 @@ function AddressLookup({
     );
   }
 
-  async function find() {
+  async function find(value: string = address) {
     setBusy(true);
     setMessage(null);
     setFailed(false);
+    setSuggestions([]);
     try {
-      const r = await lookUpDistrict(address);
+      const r = await lookUpDistrict(value);
       if (r.match) {
         onFound(r.match.id);
         setMessage(`That address is in ${r.match.name}. We've chosen it above; change it if that's wrong.`);
+        typed.current = false;
         setAddress("");
       } else {
         setFailed(true);
@@ -178,6 +225,14 @@ function AddressLookup({
     }
   }
 
+  function pick(value: string) {
+    typed.current = false;
+    setAddress(value);
+    void find(value);
+  }
+
+  const showList = suggestions.length > 0 && !busy;
+
   return (
     <div className="about-form-lookup">
       <label className="form-label" htmlFor={id}>
@@ -189,24 +244,60 @@ function AddressLookup({
           className="form-input"
           type="text"
           autoComplete="street-address"
+          role={suggesting ? "combobox" : undefined}
+          aria-autocomplete={suggesting ? "list" : undefined}
+          aria-expanded={suggesting ? showList : undefined}
+          aria-controls={suggesting ? listId : undefined}
+          aria-activedescendant={showList && active >= 0 ? `${listId}-${active}` : undefined}
           value={address}
           maxLength={200}
           disabled={disabled || busy}
-          onChange={(e) => setAddress(e.target.value)}
+          onChange={(e) => {
+            typed.current = true;
+            setAddress(e.target.value);
+          }}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            if (showList && e.key === "ArrowDown") {
               e.preventDefault();
-              if (address.trim().length >= 5) void find();
+              setActive((i) => Math.min(i + 1, suggestions.length - 1));
+            } else if (showList && e.key === "ArrowUp") {
+              e.preventDefault();
+              setActive((i) => Math.max(i - 1, -1));
+            } else if (showList && e.key === "Escape") {
+              setSuggestions([]);
+            } else if (e.key === "Enter") {
+              e.preventDefault();
+              if (showList && active >= 0) pick(suggestions[active]!);
+              else if (address.trim().length >= 5) void find();
             }
           }}
-          placeholder="Street, town, ZIP"
+          placeholder={suggesting ? "Start typing your address" : "Street, town, ZIP"}
         />
         <Button size="sm" onClick={() => void find()} disabled={disabled || busy || address.trim().length < 5}>
           {busy ? "Looking…" : "Find"}
         </Button>
       </span>
+      {showList && (
+        <ul className="about-form-suggestions" id={listId} role="listbox" aria-label="Suggested addresses">
+          {suggestions.map((s, i) => (
+            <li key={s} id={`${listId}-${i}`} role="option" aria-selected={i === active}>
+              <button
+                type="button"
+                className={`about-form-suggestion${i === active ? " is-active" : ""}`}
+                tabIndex={-1}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pick(s)}
+              >
+                {s}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="form-hint">
-        Your address is sent once to the US Census Bureau to find your {term}. We don't keep it.
+        {suggesting
+          ? `Your address is sent to Mapbox to suggest matches and to the US Census Bureau to find your ${term}. We don't keep it.`
+          : `Your address is sent once to the US Census Bureau to find your ${term}. We don't keep it.`}
       </p>
       {message && (
         <p className={failed ? "form-error" : "settings-message"} role="status">

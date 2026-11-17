@@ -61,6 +61,8 @@ export interface HubConfig {
    * and which (src/shared/hubTimeZone.ts; Events 3). Optional, like plugin_setup.
    */
   time_zone?: { zone: string; source: "set" | "place" | "default" };
+  /** Whether the hub suggests addresses as a member types theirs (Mapbox is set up). Optional, like plugin_setup. */
+  address_suggestions?: boolean;
 }
 
 
