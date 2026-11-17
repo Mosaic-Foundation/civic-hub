@@ -46,6 +46,7 @@
 import { currentHub, currentHubId } from "../config/hubContext.js";
 import { forHub } from "../db/forHub.js";
 import { autoRefreshOn, refreshesSamples } from "../shared/sampleRefresh.js";
+import { tagUntaggedSampleBallots } from "./sampleBallotTags.js";
 import { ValidationError } from "../errors/index.js";
 import { KEYS } from "../models/hubSettings.js";
 import { sampleProcessId } from "../models/sampleContent.js";
@@ -81,6 +82,8 @@ export interface SampleRefreshReport {
   added: string[];
   /** Sample meeting summaries given their minutes (the console button only). */
   minutes_added: string[];
+  /** Sample votes whose untagged ballots were given district and age tags (demo hubs; sampleBallotTags.ts). */
+  ballots_tagged?: string[];
 }
 
 interface LiveRow {
@@ -207,6 +210,12 @@ export async function refreshSamples(
   } else {
     report.added = restored;
   }
+  // A demo hub's closed sample vote seeded before ballots carried tags gets them
+  // (2026-11-17). Closed only: an open sample can hold a visitor's own ballot.
+  const tagged = await tagUntaggedSampleBallots(
+    templates.filter((t) => t.kind === "vote" && t.phase === "closed").map((t) => t.key),
+  );
+  if (tagged.length) report.ballots_tagged = tagged;
   return report;
 }
 
