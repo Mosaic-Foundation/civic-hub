@@ -19,7 +19,8 @@ export default function AboutYouSetting() {
   const on = Boolean(user) && asksAnything(config);
   const [state, setState] = useState<AboutFormState | null>(null);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  // Nothing changed since loading or the last save: the button says Saved and rests (Adam, 2026-11-17).
+  const [saved, setSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,13 +39,12 @@ export default function AboutYouSetting() {
   async function save() {
     if (!state) return;
     setBusy(true);
-    setMessage(null);
     setError(null);
     try {
       const r = await saveAbout(inputFrom(state, config));
       setState(formStateFrom(r.answers));
       noteAboutAsked();
-      setMessage("Saved.");
+      setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save.");
     } finally {
@@ -72,20 +72,27 @@ export default function AboutYouSetting() {
             state={state}
             onChange={(next) => {
               setState(next);
-              setMessage(null);
+              setSaved(false);
             }}
             disabled={busy}
           />
           <div className="about-card-actions" style={{ justifyContent: "flex-start" }}>
-            <Button variant="primary" onClick={() => void save()} disabled={busy}>
-              {busy ? "Saving…" : "Save"}
+            <Button variant="primary" onClick={() => void save()} disabled={busy || saved}>
+              {busy ? (
+                "Saving…"
+              ) : saved ? (
+                <>
+                  <span aria-hidden="true">✓ </span>Saved
+                </>
+              ) : (
+                "Save"
+              )}
             </Button>
           </div>
         </>
       ) : (
         !error && <p className="form-hint">Loading…</p>
       )}
-      {message && <p className="settings-message">{message}</p>}
       {error && <p className="form-error">{error}</p>}
     </section>
   );
