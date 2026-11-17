@@ -15,8 +15,6 @@
 //
 // Plain data, shared with the UI: imports nothing but other shared files.
 
-import type { JurisdictionType } from "./jurisdictionType.js";
-
 /** The setting keys, here as well as in KEYS so the UI can read them without the server's model. */
 export const ABOUT_KEYS = {
   DISTRICT_TERM: "about.district_term",
@@ -99,20 +97,12 @@ export function parseDistricts(raw: string | undefined): District[] {
   }
 }
 
-/** What a district is usually called, by the kind of place (the admin can change it). */
-export function defaultDistrictTerm(type: JurisdictionType | string | undefined): { singular: string; plural: string } {
-  switch (type) {
-    case "city":
-    case "town":
-    case "village":
-    case "borough":
-      return { singular: "Ward", plural: "Wards" };
-    case "school_district":
-      return { singular: "School board district", plural: "School board districts" };
-    default:
-      return { singular: "District", plural: "Districts" };
-  }
-}
+/**
+ * What a district is called when the admin hasn't said: "District", on every
+ * kind of hub (Adam, 2026-11-17: ward, precinct or borough is the admin's to
+ * choose, not ours to guess from the kind of place).
+ */
+export const DEFAULT_DISTRICT_TERM: Readonly<{ singular: string; plural: string }> = { singular: "District", plural: "Districts" };
 
 /** A plural for an admin's own singular: "Precinct" → "Precincts". */
 export function pluralOf(singular: string): string {
@@ -133,7 +123,7 @@ export interface AboutConfig {
 }
 
 export function aboutConfig(read: SettingReader): AboutConfig {
-  const fallback = defaultDistrictTerm(read("identity.jurisdiction_type"));
+  const fallback = DEFAULT_DISTRICT_TERM;
   const singular = read(ABOUT_KEYS.DISTRICT_TERM)?.trim() || fallback.singular;
   const ownSingular = !!read(ABOUT_KEYS.DISTRICT_TERM)?.trim();
   const plural =

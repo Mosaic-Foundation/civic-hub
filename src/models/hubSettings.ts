@@ -75,8 +75,7 @@ export const KEYS = {
   FEED_CLOSING_REMINDER_HOURS: "feed.closing_reminder_hours",
 
   // Districts and demographics (Adam, 2026-11-16; src/shared/aboutYou.ts).
-  // What the hub calls a district (unset: by identity.jurisdiction_type,
-  // "District" or "Ward"), its districts (JSON [{ id, name }], ids kept on a
+  // What the hub calls a district (unset: "District" on every hub), its districts (JSON [{ id, name }], ids kept on a
   // rename), an optional "Find your district" link, and which About-you
   // questions members are asked (district and birth year on, race off). All
   // public: results tables print the term and the names, and the one-time

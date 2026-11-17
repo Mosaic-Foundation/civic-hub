@@ -8,12 +8,11 @@ import HelpButton from "../../components/HelpButton";
 import SectionForm, { type FormApi } from "./SectionForm";
 import { BooleanField, TextField, UrlField } from "./fields";
 import { Button } from "../../kit";
-import { useHub } from "../../config/hub";
 import {
   ABOUT_KEYS,
   DISTRICTS_MAX,
   DISTRICT_NAME_MAX,
-  defaultDistrictTerm,
+  DEFAULT_DISTRICT_TERM,
   districtIdFrom,
   parseDistricts,
   pluralOf,
@@ -21,8 +20,7 @@ import {
 } from "../../../../src/shared/aboutYou";
 
 export default function DistrictsSection() {
-  const hub = useHub();
-  const fallback = defaultDistrictTerm(hub.setting("identity.jurisdiction_type"));
+  const fallback = DEFAULT_DISTRICT_TERM;
   return (
     <SectionForm
       section="districts"
@@ -43,7 +41,7 @@ export default function DistrictsSection() {
               k={ABOUT_KEYS.DISTRICT_TERM}
               label="What a district is called"
               placeholder={fallback.singular}
-              hint={`Used on the member card and in results, as in "Results by ${singular}". Left empty: ${fallback.singular}.`}
+              hint={`However your area is divided, for example district, ward, precinct or borough. Leave it empty to use ${fallback.singular}.`}
               width={280}
             />
             <TextField

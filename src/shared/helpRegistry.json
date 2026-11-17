@@ -573,7 +573,7 @@
     "anchor": "plugin-meeting-summary-wix-fields"
   },
   "about.district_term": {
-    "text": "The word for one district on this hub, such as District or Ward. Used on the member card and in every results table.",
+    "text": "The word for one district on this hub. However your area is divided, for example district, ward, precinct or borough. Left empty, it is District. Used on the member card and in every results table.",
     "page": "/reference/settings/participation",
     "anchor": "about-district-term",
     "pending": true

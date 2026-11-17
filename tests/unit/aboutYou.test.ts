@@ -7,7 +7,7 @@ import {
   aboutConfig,
   ageBracket,
   asksAnything,
-  defaultDistrictTerm,
+  DEFAULT_DISTRICT_TERM,
   districtIdFrom,
   matchDistrict,
   parseDistricts,
@@ -28,17 +28,15 @@ const FLOYD = [
 const reader = (values: Record<string, string>) => (key: string) => values[key];
 
 describe("what a district is called", () => {
-  it("defaults by the kind of place", () => {
-    expect(defaultDistrictTerm("county")).toEqual({ singular: "District", plural: "Districts" });
-    for (const t of ["city", "town", "village", "borough"]) expect(defaultDistrictTerm(t).singular).toBe("Ward");
-    expect(defaultDistrictTerm("school_district").singular).toBe("School board district");
-    expect(defaultDistrictTerm("other").singular).toBe("District");
-    expect(defaultDistrictTerm(undefined).singular).toBe("District");
+  it("is District on every kind of place", () => {
+    expect(DEFAULT_DISTRICT_TERM).toEqual({ singular: "District", plural: "Districts" });
+    for (const t of ["county", "city", "town", "village", "borough", "school_district", "other"]) {
+      expect(aboutConfig(reader({ "identity.jurisdiction_type": t })).term).toEqual({ singular: "District", plural: "Districts" });
+    }
   });
 
   it("takes the admin's word, and makes its plural when none is given", () => {
     expect(aboutConfig(reader({ "about.district_term": "Precinct" })).term).toEqual({ singular: "Precinct", plural: "Precincts" });
-    expect(aboutConfig(reader({ "identity.jurisdiction_type": "town" })).term).toEqual({ singular: "Ward", plural: "Wards" });
     expect(aboutConfig(reader({ "about.district_term": "Ward", "about.district_term_plural": "The wards" })).term.plural).toBe("The wards");
     expect(pluralOf("Borough")).toBe("Boroughs");
     expect(pluralOf("Parish")).toBe("Parishes");
