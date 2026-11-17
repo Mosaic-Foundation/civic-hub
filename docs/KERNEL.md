@@ -115,7 +115,7 @@ exists (`civic-conformance`).
 | Step | What | Status |
 | --- | --- | --- |
 | 0 | This page, ADR-020, the surface inventory | done on `kernel-extraction` |
-| 1 | The eight first-party plugins onto SDK v1 and the kit (no imports of hub pages or engine internals) | in progress: Word clouds and Announcements done (`docs/kernel/SURFACE.md`, Progress) |
+| 1 | The eight first-party plugins onto SDK v1 and the kit (no imports of hub pages or engine internals) | SDK v1: done for all eight (Nov 17). Pages on the kit: not started (`MOVED_HUB_PAGES`) |
 | 2 | Neutral roles and terms; the civic profile file | not started |
 | 3 | Sort the civic modules (table above); replace the kernel's checks of plugins by name with events | not started |
 | 4 | Space types as data (profile, defaults, pins); the deployment picks its type from a setting | not started |
