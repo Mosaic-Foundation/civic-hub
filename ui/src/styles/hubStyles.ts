@@ -22,7 +22,6 @@ import "../components/ProcessPicker.css";
 import "../components/WaitlistForm.css";
 import "../components/ProcessLinkPicker.css";
 import "../components/SampleBadge.css";
-import "../components/ResultBars.css";
 import "../components/Creator.css";
 import "../components/SourceLinks.css";
 import "../components/RichText.css";

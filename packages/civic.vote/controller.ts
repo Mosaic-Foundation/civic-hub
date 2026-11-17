@@ -9,16 +9,11 @@
 //     receipt in the body, so no request log pairs it with an address
 //     (2026-10-10)
 
-import { checkModeOf } from "../../src/shared/checkMode.js";
-import {
-  NotFoundError,
-  ValidationError,
-  route,
-  getVoteLog,
-  verifyReceipt,
-  getProcess,
-  getAuthUser,
-} from "@civic-social/plugin-sdk/first-party";
+import { checkModeOf } from "./checkMode.js";
+import { NotFoundError, ValidationError, route, ballots, processesOf } from "@civic-social/plugin-sdk";
+
+/** The kernel's view of this package's processes (asked for where used: the SDK binds as the hub loads). */
+const ownProcesses = () => processesOf("civic.vote");
 
 /**
  * GET /votes/:id/log
@@ -28,7 +23,7 @@ import {
 export const handleGetVoteLog = route(async (req, res) => {
   const id = req.params.id as string;
 
-  const process = await getProcess(id);
+  const process = await ownProcesses().get(id);
   if (!process) {
     throw new NotFoundError("Process not found");
   }
@@ -50,7 +45,7 @@ export const handleGetVoteLog = route(async (req, res) => {
     return;
   }
 
-  const log = await getVoteLog(id);
+  const log = await ballots.log(id);
   // Counted only: the log lists the codes and nothing that says how any
   // ballot was cast; the totals are on the vote's results (checkMode.ts).
   const mode = checkModeOf(process.state);
@@ -79,7 +74,7 @@ export const handleVerifyReceipt = route(async (req, res) => {
     throw new ValidationError("receipt is required");
   }
 
-  const process = await getProcess(id);
+  const process = await ownProcesses().get(id);
   if (!process) {
     throw new NotFoundError("Process not found");
   }
@@ -98,7 +93,7 @@ export const handleVerifyReceipt = route(async (req, res) => {
     return;
   }
 
-  const result = await verifyReceipt(receiptId, id);
+  const result = await ballots.verify(id, receiptId);
 
   if (result) {
     // Show the choice: "counted in <vote>, for <option>". Counted only:

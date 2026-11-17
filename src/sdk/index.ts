@@ -95,6 +95,8 @@ export {
   VoteRefusedError,
 } from "../modules/civic.receipts/index.js";
 export type { HeldReceipt } from "../modules/civic.receipts/index.js";
+// The same, as a package casts and reads them (kernel step 1): process first.
+export { ballots } from "../services/kernelBallots.js";
 
 // --- Drafts and the drafting assistant (src/modules/civic.drafts/, civic.assistant/) ----
 export type { AssistantTypeConfig, DraftField } from "../modules/civic.assistant/index.js";
@@ -123,9 +125,7 @@ export type { CivicEvent, CreateEventInput } from "../models/event.js";
 
 // --- Settings the hub keeps (src/services/hubSettings.ts) ------------------------------
 export {
-  voteDurationLimitsSync,
   getSupportThreshold,
-  defaultCheckModeSync,
   getSettingSync,
   getVoteResultsRecipients,
   hubDisplayNameSync,
@@ -149,6 +149,10 @@ export type {
   DeliberationResult,
   DeliberationSummary,
 } from "../processes/contracts/briefContent.js";
+
+// --- A submission as the review page shows it, and a source line as a content link -----
+export { describeSubmissionFields } from "../shared/submissionPreview.js";
+export { sourceLineToContentLink } from "../shared/sourceLine.js";
 
 // --- Reporting (src/utils/reportError.ts) ----------------------------------------------
 export { reportError } from "../utils/reportError.js";

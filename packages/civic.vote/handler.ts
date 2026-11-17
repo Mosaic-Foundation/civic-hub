@@ -12,25 +12,22 @@ import {
   emitEvent,
   type CivicEvent,
   type ProcessHandler,
-  recordOrUpdateVote,
-  countVoters,
-  getBallotChoicesForProcess,
-  hasUserVoted,
-  reshuffleBallotsForProcess,
+  ballots as ballotBox,
   VoteRefusedError,
   type HeldReceipt,
   AlreadyVotedError,
   reportError,
-  getInputsByProcess,
+  inputs,
   closeThroughDispatcher,
   afterActionCommits,
-  setDraftStatus,
+  draftsOf,
+  describeSubmissionFields,
   type BriefContent,
   isPastDeadline,
   str,
   num,
   type FeedProcessMeta,
-} from "@civic-social/plugin-sdk/first-party";
+} from "@civic-social/plugin-sdk";
 import { voteAssistantConfig } from "./assistantConfig.js";
 import {
   createVoteState,
@@ -48,8 +45,8 @@ import {
   type VoteProcessState,
   type Ballot,
 } from "./service.js";
-import { describeSubmissionFields } from "../../src/shared/submissionPreview.js";
 import { voteDraftKind } from "./draftKind.js";
+import { checkModeLine, isCheckMode } from "./checkMode.js";
 
 import { VOTE_MANIFEST } from "./manifest.js";
 
@@ -91,7 +88,7 @@ const voteProcess: ProcessHandler = {
   requiredSchema: [...VOTE_MANIFEST.requiredSchema],
   detailPath: VOTE_MANIFEST.detailPath,
   draftPath: (draftId: string) => `/votes/new?draft=${encodeURIComponent(draftId)}`,
-  reopenDraft: (draftId: string) => setDraftStatus(voteDraftKind.spec, draftId, "drafting"),
+  reopenDraft: (draftId: string) => draftsOf(voteDraftKind).setStatus(draftId, "drafting"),
 
   getAssistantConfig: () => voteAssistantConfig,
 
@@ -118,7 +115,9 @@ const voteProcess: ProcessHandler = {
   // generic content walk with those keys so the review previews show the
   // whole ballot as submitted.
   describeSubmission: (source) =>
-    describeSubmissionFields(source, ["method", "options", "config.voting_duration_ms", "check_mode"]),
+    describeSubmissionFields(source, ["method", "options", "config.voting_duration_ms", "check_mode"]).map((f) =>
+      f.key === "check_mode" && isCheckMode(f.value) ? { ...f, kind: "text" as const, value: checkModeLine(f.value) } : f,
+    ),
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     return createVoteState(input) as unknown as Record<string, unknown>;
@@ -170,7 +169,7 @@ const voteProcess: ProcessHandler = {
         // receipt and change key it was given; without them, someone who has
         // voted is refused, and their vote still counts.
         const held = parseHeldReceipt(action.payload.receipt);
-        if (!held && (await hasUserVoted(action.actor, process.id))) {
+        if (!held && (await ballotBox.hasVoted(process.id, action.actor))) {
           const refused = new AlreadyVotedError();
           throw new VoteRefusedError(refused.code, refused.message);
         }
@@ -202,7 +201,7 @@ const voteProcess: ProcessHandler = {
         // only, once; the hub stores its hash.
         const method = getVotingMethod(methodKey);
         const serialized = method.serializeForReceipt(outcome.result.ballot as Ballot);
-        const receipt = await recordOrUpdateVote(process.id, action.actor, serialized, submitted, held);
+        const receipt = await ballotBox.cast(process.id, action.actor, serialized, submitted, held);
 
         result = {
           ...outcome.result,
@@ -219,7 +218,7 @@ const voteProcess: ProcessHandler = {
         // other's events are never written (executeAction, actionScope).
         const methodKey = state.method ?? DEFAULT_METHOD;
         const method = getVotingMethod(methodKey);
-        const ballots = (await getBallotChoicesForProcess(process.id)).map(
+        const ballots = (await ballotBox.choices(process.id)).map(
           (c) => method.parseReceipt(c),
         );
         // A deadline close (the hourly job) happened at the deadline, not
@@ -240,7 +239,7 @@ const voteProcess: ProcessHandler = {
         const closedId = process.id;
         await afterActionCommits(async () => {
           try {
-            await reshuffleBallotsForProcess(closedId);
+            await ballotBox.reshuffle(closedId);
           } catch (err) {
             reportError("vote.close.reshuffle", (err as Error).message, { process_id: closedId });
           }
@@ -277,7 +276,7 @@ const voteProcess: ProcessHandler = {
 
     // Actor-specific bits come from the receipts tables, never from state.
     const hasVoted = actor
-      ? await hasUserVoted(actor, process.id)
+      ? await ballotBox.hasVoted(process.id, actor)
       : null;
 
     // Ballots are only needed when results are visible AND no finalized
@@ -288,7 +287,7 @@ const voteProcess: ProcessHandler = {
       hasVoted === true;
     const ballots =
       resultsVisible && !state.result
-        ? (await getBallotChoicesForProcess(process.id)).map((c) =>
+        ? (await ballotBox.choices(process.id)).map((c) =>
             method.parseReceipt(c),
           )
         : null;
@@ -364,7 +363,7 @@ const voteProcess: ProcessHandler = {
   async generateBrief(process: Process): Promise<BriefContent> {
     const state = getState(process);
     const method = getVotingMethod(state.method ?? DEFAULT_METHOD);
-    const ballots = (await getBallotChoicesForProcess(process.id)).map((c) =>
+    const ballots = (await ballotBox.choices(process.id)).map((c) =>
       method.parseReceipt(c),
     );
     const result = method.computeTally(ballots, state.options);
@@ -380,8 +379,8 @@ const voteProcess: ProcessHandler = {
 
     let comments: string[] = [];
     try {
-      const inputs = await getInputsByProcess(process.id);
-      comments = inputs.map((i) => i.body.trim()).filter((b) => b.length > 0);
+      const written = await inputs.forProcess(process.id);
+      comments = written.map((i) => i.body.trim()).filter((b) => b.length > 0);
     } catch {
       // Best-effort — admin can add comments during review.
     }
@@ -405,7 +404,7 @@ const voteProcess: ProcessHandler = {
   async finalizeAfterBrief(process: Process, actor: string): Promise<void> {
     const vState = getState(process);
     const method = getVotingMethod(vState.method ?? DEFAULT_METHOD);
-    const ballots = (await getBallotChoicesForProcess(process.id)).map((c) => method.parseReceipt(c));
+    const ballots = (await ballotBox.choices(process.id)).map((c) => method.parseReceipt(c));
     await finalizeVote(vState, actor, ballots, {
       process_id: process.id,
       jurisdiction: process.jurisdiction,
@@ -431,7 +430,7 @@ const voteProcess: ProcessHandler = {
   // while the vote runs (unlike the tally, which result visibility may hold
   // until close): that a poll book's length is public is the design.
   async participationCount(process: Process): Promise<number | null> {
-    return countVoters(process.id);
+    return ballotBox.count(process.id);
   },
 };
 

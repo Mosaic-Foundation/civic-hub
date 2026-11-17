@@ -2,8 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
-import { DEADLINE_CLOSE_INPUT } from "../../src/shared/deadlineClose.js";
+import { DEADLINE_CLOSE_INPUT, defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
 
 /**
  * What a vote is (src/processes/descriptor.ts). Residents support while it

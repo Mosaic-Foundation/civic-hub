@@ -41,9 +41,6 @@ export const CodeOfConduct = page(() => import("./pages/CodeOfConduct"));
 export const Feedback = page(() => import("./pages/Feedback"));
 export const Welcome = page(() => import("./pages/Welcome"));
 export const SignInLink = page(() => import("./pages/SignInLink"));
-export const Votes = page(() => import("./pages/Votes"));
-export const Process = page(() => import("./pages/Process"));
-export const VoteLog = page(() => import("./pages/VoteLog"));
 export const Deliberations = page(() => import("./pages/Deliberations"));
 export const DeliberationDetail = page(() => import("./pages/DeliberationDetail"));
 export const Outcomes = page(() => import("./pages/Outcomes"));
@@ -67,4 +64,3 @@ export const MySubmissions = page(() => import("./pages/MySubmissions"));
 
 // Drafting
 export const NewConversation = page(() => draft().then((m) => ({ default: m.NewConversation })));
-export const NewVote = page(() => draft().then((m) => ({ default: m.NewVote })));

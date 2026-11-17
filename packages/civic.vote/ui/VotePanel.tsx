@@ -1,27 +1,28 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import ShareMoment from "./ShareMoment";
-import type { ActionResult, HeldReceiptPayload, ProcessState, VoteState } from "../services/api";
+import {
+  ApiError,
+  AuthModal,
+  ShareMoment,
+  announceInput,
+  resolveActorId,
+  submitInput,
+  useAction,
+  useCommentIdentityMode,
+  useRequireAuth,
+  useSpace,
+} from "@civic-social/plugin-sdk/ui";
+import type { ActionResult, HeldReceiptPayload, ProcessState, VoteState } from "./api";
 import {
   submitVote,
   submitApprovalVote,
   supportVote,
   unsupportVote,
-  submitInput,
-} from "../services/api";
-import { ApiError } from "../utils/httpError";
-import { dropHeldReceipt, getHeldReceipt, isMine, localDay, saveHeldReceipt, type HeldReceipt } from "../services/voteReceipts";
-import { downloadReceipt } from "../services/receiptFile";
-import { getMe } from "../services/auth";
-import { getStoredToken } from "../services/tokenStore";
-import { useRequireAuth } from "../hooks/useRequireAuth";
-import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
-import { useAction } from "../hooks/useAction";
-import { announceInput } from "../services/inputEvents";
-import AuthModal from "./AuthModal";
+} from "./api";
+import { dropHeldReceipt, getHeldReceipt, isMine, localDay, saveHeldReceipt, type HeldReceipt } from "./voteReceipts";
+import { downloadReceipt } from "./receiptFile";
 import ResultBars from "./ResultBars";
 import ReceiptCode from "./ReceiptCode";
-import { useHub } from "../config/hub";
 
 const COMMENT_MAX = 500;
 
@@ -38,7 +39,7 @@ interface Props {
 }
 
 export default function VotePanel({ process, actor, onView }: Props) {
-  const hub = useHub();
+  const space = useSpace();
   // Every action here runs through one runner: one at a time, "…ing" while
   // it runs, the page updated from the answer's view.
   const action = useAction("Your vote didn't go through. Please try again.");
@@ -51,7 +52,7 @@ export default function VotePanel({ process, actor, onView }: Props) {
   function saveReceiptFile(receipt: HeldReceipt) {
     return download.run(() =>
       downloadReceipt({
-        hubName: hub.name,
+        hubName: space.name,
         voteTitle: process.title,
         votedOn: receipt.voted_on ?? localDay(),
         code: receipt.receipt_id,
@@ -152,13 +153,7 @@ export default function VotePanel({ process, actor, onView }: Props) {
   async function keeperId(): Promise<string> {
     const known = actorRef.current;
     if (known && known !== "anonymous") return known;
-    const token = getStoredToken();
-    if (!token) return "";
-    try {
-      return (await getMe(token)).user.id;
-    } catch {
-      return "";
-    }
+    return resolveActorId();
   }
 
   // Voting never moves the page (2026-10-13). A vote folds the comment field
@@ -430,7 +425,7 @@ export default function VotePanel({ process, actor, onView }: Props) {
                 className="vote-comment-textarea"
                 value={comment}
                 onChange={(e) => setComment(e.target.value.slice(0, COMMENT_MAX))}
-                placeholder={`Share concerns, suggestions, context, or any thoughts worth passing on to ${hub.governing_body_ref}. Submitted when you cast your vote.`}
+                placeholder={`Share concerns, suggestions, context, or any thoughts worth passing on to ${space.governingBodyRef}. Submitted when you cast your vote.`}
                 rows={3}
                 maxLength={COMMENT_MAX}
                 disabled={loading}

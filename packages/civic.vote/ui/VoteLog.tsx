@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useApi } from "../hooks/useApi";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   getVoteLog,
@@ -8,9 +7,9 @@ import {
   type VoteLogResponse,
   type ReceiptVerifyResponse,
   type ProcessState,
-} from "../services/api";
-import { useAction } from "../hooks/useAction";
-import ReceiptCode from "../components/ReceiptCode";
+} from "./api";
+import { useAction, useApi } from "@civic-social/plugin-sdk/ui";
+import ReceiptCode from "./ReceiptCode";
 
 function formatChoice(raw: string): string {
   if (raw.startsWith("[")) {

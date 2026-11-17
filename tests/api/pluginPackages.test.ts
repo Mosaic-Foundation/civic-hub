@@ -19,6 +19,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import pg from "pg";
+import { readFileSync } from "node:fs";
 import { call } from "../fixtures/hostCall.js";
 import { mintSession } from "../fixtures/adminSession.js";
 import { approveEntry, archiveHub, catalog, createHub, setRequired, signApproved, withdrawEntry } from "../fixtures/operator.js";
@@ -395,7 +396,9 @@ describe("versions and updates", () => {
     expect((await call("POST", `/process/${id}/action`, HOST, { type: "process.activate", payload: {} }, admin)).status).toBe(200);
     expect((await one("vote")).update_available).toBe(true);
     expect((await call("POST", "/admin/hub/plugins/vote/update", HOST, {}, admin)).status).toBe(200);
-    expect((await record("@civic-social/plugin-vote")).version).toBe("0.3.0");
+    // The release this deployment runs (its package.json), whatever number it has reached.
+    const current = (JSON.parse(readFileSync(new URL("../../packages/civic.vote/package.json", import.meta.url), "utf8")) as { version: string }).version;
+    expect((await record("@civic-social/plugin-vote")).version).toBe(current);
     const read = await call("GET", `/process/${id}/state`, HOST, undefined, admin);
     expect(read.status).toBe(200);
     expect(read.body.status ?? read.body.lifecycle).toBe("active");

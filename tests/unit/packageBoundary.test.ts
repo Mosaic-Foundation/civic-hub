@@ -23,7 +23,7 @@ async function errors(file: string, code: string): Promise<string[]> {
 }
 
 describe("civic/package-boundary", () => {
-  it("lets a package import the SDK by name, shared data, its own files, node: and express", async () => {
+  it("lets a package on SDK version 0 import it by name, shared data, its own files, node: and express", async () => {
     for (const code of [
       `import { emitEvent } from "@civic-social/plugin-sdk/first-party";`,
       `import { assertPassesWordlist } from "../../src/shared/wordlist/index.js";`,
@@ -31,7 +31,7 @@ describe("civic/package-boundary", () => {
       `import { createHash } from "node:crypto";`,
       `import { Router } from "express";`,
     ]) {
-      expect(await errors("packages/civic.vote/x.ts", code), code).toHaveLength(0);
+      expect(await errors("packages/civic.brief/x.ts", code), code).toHaveLength(0);
     }
   });
 

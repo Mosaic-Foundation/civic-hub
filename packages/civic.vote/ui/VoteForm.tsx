@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import VoteDraftingForm from "../../../components/VoteDraftingForm";
-import { getVoteDurationLimits, type VoteDraft, type VoteDurationLimits } from "../../../services/api";
-import { DAY_MS } from "../durations";
-import type { DraftFormProps } from "../types";
+import { DAY_MS, type DraftFormProps } from "@civic-social/plugin-sdk/ui";
+import VoteDraftingForm from "./VoteDraftingForm";
+import { getVoteDurationLimits, type VoteDraft, type VoteDurationLimits } from "./api";
 
 export default function VoteForm({
   draft, saved, flow, links, onLinksChange, linkTitles, onLinkTitlesChange, onSubmit, disabled, kindState, setKindState,

@@ -12,7 +12,7 @@
 // hub's own, whatever the hub's theme and layout; its stylesheet sets layout
 // spacing only (docs/PLUGIN-STYLE.md; conformance step 22).
 
-export type { ProcessUi, ProcessRoute, FeedKindUi } from "../../ui/src/processes/types";
+export type { ProcessUi, ProcessRoute, FeedKindUi, ProcessMeta } from "../../ui/src/processes/types";
 
 export {
   Button,
@@ -99,6 +99,7 @@ export {
   ShareMoment,
   CommunityInputPanel,
   CommentForm,
+  submitInput,
   BriefPointer,
   ProcessPicker,
   StatusFilter,
@@ -125,6 +126,15 @@ export {
   PostImagePicker,
   LinkPreviewCard,
   refreshAside,
+  resolveActorId,
+  participantNoun,
+  qrMatrix,
+  useCommentIdentityMode,
+  announceInput,
+  normalizeSourceLink,
+  detailPathOf,
+  pluginOfType,
+  PluginOff,
   AdminBackButton,
   AdminStickyBar,
   PublicationStatusChip,
@@ -179,4 +189,9 @@ export {
   type ProposedLink,
   type PublicationStatus,
   type AdminQueue,
+  type ActionResult,
+  type CommunityInput,
+  type CommunityInputConfig,
+  type OtherProcessState,
+  type ProcessSummaryBase,
 } from "../../ui/src/host/index";

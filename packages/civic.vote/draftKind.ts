@@ -4,18 +4,15 @@
 
 import {
   ValidationError,
-  currentHubId,
-  voteDurationLimitsSync,
-  getSupportThreshold,
-  defaultCheckModeSync,
   lines,
+  sourceLineToContentLink,
   DAY_MS,
   type Draft,
   type DraftKind,
-} from "@civic-social/plugin-sdk/first-party";
-import { CHECK_MODES, isCheckMode, type CheckMode } from "../../src/shared/checkMode.js";
-import { filledOptions, overlongOption, VOTE_OPTION_MAX } from "../../src/shared/voteOptions.js";
-import { sourceLineToContentLink } from "../../src/shared/sourceLine.js";
+} from "@civic-social/plugin-sdk";
+import { CHECK_MODES, isCheckMode, type CheckMode } from "./checkMode.js";
+import { filledOptions, overlongOption, VOTE_OPTION_MAX } from "./voteOptions.js";
+import { defaultCheckMode, supportThreshold, voteDurationLimits } from "./settings.js";
 import { supportPhaseConfig } from "./service.js";
 
 const VOTE_METHODS = ["yes_no_unsure", "approval"];
@@ -39,7 +36,7 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
         // The allowed range is per hub: plugin.vote.{min,max}_duration_days.
         write: (v) => {
           const ms = Number(v);
-          const { minDays, maxDays } = voteDurationLimitsSync();
+          const { minDays, maxDays } = voteDurationLimits();
           if (!(ms >= minDays * DAY_MS && ms <= maxDays * DAY_MS)) {
             throw new ValidationError(
               `voting_duration_ms must be between ${minDays * DAY_MS} (${minDays} days) and ${maxDays * DAY_MS} (${maxDays} days)`,
@@ -77,8 +74,8 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
       },
     },
     createDefaults: () => ({
-      voting_duration_ms: voteDurationLimitsSync().defaultDays * DAY_MS,
-      check_mode: defaultCheckModeSync(),
+      voting_duration_ms: voteDurationLimits().defaultDays * DAY_MS,
+      check_mode: defaultCheckMode(),
     }),
   },
   // Blank option fields don't count and never block Submit; two filled ones do.
@@ -98,8 +95,8 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
       method,
       voting_duration_ms: d.voting_duration_ms,
       // Fixed from approval on: the vote has no edit path once live.
-      check_mode: d.check_mode ?? defaultCheckModeSync(),
-      ...supportPhaseConfig(await getSupportThreshold(currentHubId())),
+      check_mode: d.check_mode ?? defaultCheckMode(),
+      ...supportPhaseConfig(supportThreshold()),
     };
     if (method === "approval" && Array.isArray(d.custom_options)) {
       const long = overlongOption(d.custom_options);

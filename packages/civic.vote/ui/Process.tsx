@@ -1,33 +1,37 @@
-import { useApi } from "../hooks/useApi";
 import { useParams, Navigate } from "react-router-dom";
-import { getProcessState, type ProcessState, type VoteState } from "../services/api";
-import { useAuth } from "../context/authState";
-import { useRequireAuth } from "../hooks/useRequireAuth";
-import VotePanel from "../components/VotePanel";
-import Creator from "../components/Creator";
-import IssueContent from "../components/IssueContent";
-import CommunityInputPanel from "../components/CommunityInputPanel";
-import ProposalCommentForm from "../components/ProposalCommentForm";
-import AuthModal from "../components/AuthModal";
-import ShareButton from "../components/ShareButton";
-import RelatedProcesses from "../components/RelatedProcesses";
-import DetailActions from "../components/DetailActions";
-import { CloseEarlyButton, ClosedEarlyNote } from "../components/CloseEarly";
-import { BriefPointer } from "../components/BriefPointer";
-import { statusDisplay } from "../components/statusDisplay";
-import ProcessHeader from "../components/ProcessHeader";
-import RichText from "../components/RichText";
-import EditHistory from "../components/EditHistory";
-import { detailPathOf, pluginOfDetailRoute, pluginOfType } from "../processes/display";
-import { useHub } from "../config/hub";
-import { PluginOff } from "../components/PluginOff";
-import { formatDate } from "../utils/dates";
-import ResultsBreakdown from "../components/ResultsBreakdown";
+import {
+  AuthModal,
+  BriefPointer,
+  CloseEarlyButton,
+  ClosedEarlyNote,
+  CommentForm as ProposalCommentForm,
+  CommunityInputPanel,
+  Creator,
+  DetailActions,
+  EditHistory,
+  PluginOff,
+  ProcessHeader,
+  RelatedProcesses,
+  ResultsBreakdown,
+  RichText,
+  ShareButton,
+  detailPathOf,
+  formatDate,
+  pluginOfType,
+  statusDisplay,
+  useApi,
+  useRequireAuth,
+  useSpace,
+  useViewer,
+} from "@civic-social/plugin-sdk/ui";
+import { getProcessState, type ProcessState, type VoteState } from "./api";
+import VotePanel from "./VotePanel";
+import IssueContent from "./IssueContent";
 
 export default function Process() {
-  const hub = useHub();
+  const space = useSpace();
   const { id } = useParams<{ id: string }>();
-  const { actorId } = useAuth();
+  const { actorId } = useViewer();
   const { showAuthModal, closeAuthModal, handleAuthComplete } = useRequireAuth();
   // actorId isn't read by the fetch, but a sign-in/out changes the Bearer
   // token request() sends: read again so has_voted reflects the new session.
@@ -48,8 +52,8 @@ export default function Process() {
 
   // With the plugin whose page this is switched off, the route shows what a
   // switched-off plugin's route shows, as before it stopped being behind it.
-  const routePlugin = pluginOfDetailRoute("/process/");
-  if (routePlugin && !hub.plugins.enabled(routePlugin)) return <PluginOff />;
+  const routePlugin = "vote";
+  if (routePlugin && !space.pluginEnabled(routePlugin)) return <PluginOff />;
 
   if (loading) return <p className="detail-page">Loading...</p>;
   if (error) return (
@@ -73,7 +77,7 @@ export default function Process() {
   const path = detailPathOf(process.type, process.id);
   if (path !== `/process/${process.id}`) return <Navigate to={path} replace />;
   const plugin = pluginOfType(process.type);
-  if (plugin && !hub.plugins.enabled(plugin)) return <PluginOff />;
+  if (plugin && !space.pluginEnabled(plugin)) return <PluginOff />;
 
   const isVote = process.type === "civic.vote";
   const voteState = isVote ? (process as VoteState) : null;

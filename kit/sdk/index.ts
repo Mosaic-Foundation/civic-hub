@@ -50,6 +50,9 @@ export type {
 
 // --- The one emission path: every event a package writes goes through it ------------------
 export { emitEvent } from "../../src/sdk/index.js";
+// An event built but not written, for a kernel call that writes it in its own transaction
+// (a ballot and its vote_submitted event, ballots.cast).
+export { buildEvent } from "../../src/sdk/index.js";
 
 // --- A type residents draft: its kind; the drafts routes, the Code of Conduct gate and the
 // review queue are the hub's (docs/PLUGIN-PACKAGE.md, "drafts") --------------------------------
@@ -136,6 +139,18 @@ export type { TranscriptSegment, AiSingleTurnInput } from "../../src/sdk/index.j
 
 // --- The hub's time zone, from a setting's raw value (an unset or unknown zone → the default) --
 export { resolveTimeZone } from "../../src/sdk/index.js";
+
+// --- Secret ballots (kernel step 1): cast, count, log and check them on its own processes;
+// the kernel keeps them, with no link from a voter to a ballot (the voter holds the receipt) ---
+export { ballots, VoteRefusedError, AlreadyVotedError } from "../../src/sdk/index.js";
+export type { HeldReceipt } from "../../src/sdk/index.js";
+
+// --- What the review page shows of a submission (a type extends the generic walk with its
+// own state keys), and a "Label — url" source line as a content link --------------------------
+export { describeSubmissionFields, sourceLineToContentLink } from "../../src/sdk/index.js";
+
+// --- Telling the operators something went wrong that nobody is waiting on ------------------
+export { reportError } from "../../src/sdk/index.js";
 
 // --- Small utilities -------------------------------------------------------------------------
 export { generateId, str, num } from "../../src/sdk/index.js";

@@ -6,8 +6,8 @@
 // falls back to the plain description.
 
 import React from "react";
-import type { ProcessContent } from "../services/api";
-import { normalizeSourceLink } from "./sourceLinkParsing";
+import { normalizeSourceLink } from "@civic-social/plugin-sdk/ui";
+import type { ProcessContent } from "./api";
 
 interface Props {
   content: ProcessContent;

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { handleGetVoteLog, handleVerifyReceipt } from "./controller.js";
-import { requireResident } from "@civic-social/plugin-sdk/first-party";
+import { requireResident } from "@civic-social/plugin-sdk";
 
 const router = Router();
 

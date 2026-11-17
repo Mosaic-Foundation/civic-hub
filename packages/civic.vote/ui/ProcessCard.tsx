@@ -2,9 +2,8 @@
 // vote's meta line lives with the vote, and the card's shape lives in one
 // place for every type.
 
-import type { VoteSummary } from "../services/api";
-import ProcessListCard from "./ProcessListCard";
-import { cardDate } from "./cardDate";
+import { ProcessListCard, cardDate } from "@civic-social/plugin-sdk/ui";
+import type { VoteSummary } from "./api";
 
 interface Props {
   process: VoteSummary;

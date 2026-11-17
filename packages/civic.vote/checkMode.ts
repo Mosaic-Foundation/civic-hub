@@ -33,3 +33,10 @@ export function checkModeOf(state: unknown): CheckMode {
   const v = (state as Record<string, unknown> | null)?.check_mode;
   return isCheckMode(v) ? v : DEFAULT_CHECK_MODE;
 }
+
+/** The mode as the review page's preview says it (the handler's describeSubmission). */
+export function checkModeLine(mode: CheckMode): string {
+  return mode === "show_choice"
+    ? `${CHECK_MODE_LABELS[mode]}: a receipt code shows how that ballot was cast`
+    : `${CHECK_MODE_LABELS[mode]}: a receipt code shows only that the ballot was counted`;
+}

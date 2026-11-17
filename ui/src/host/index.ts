@@ -10,8 +10,10 @@
 // sign-in state, and the space through useSpace(), not the hub's config.
 
 import { useAuth } from "../context/authState";
-import { useHub } from "../config/hub";
+import hub, { useHub } from "../config/hub";
 import { theName } from "../../../src/shared/hubCopy";
+import { getMe } from "../services/auth";
+import { getStoredToken } from "../services/tokenStore";
 
 // --- Calling the kernel's API: the session, errors as ApiError, the read cache ----------
 export { request as apiRequest, upload as apiUpload } from "../services/http";
@@ -37,6 +39,21 @@ export interface Viewer {
   isAdmin: boolean;
   /** May post for the space: an admin, or someone the admins list as an author (requireAuthor on the server). */
   mayPostForSpace: boolean;
+}
+
+/**
+ * The signed-in viewer's actor id, read from the session when the page has
+ * not loaded it yet (a vote cast before the page knew who was reading); ""
+ * when nobody is signed in.
+ */
+export async function resolveActorId(): Promise<string> {
+  const token = getStoredToken();
+  if (!token) return "";
+  try {
+    return (await getMe(token)).user.id;
+  } catch {
+    return "";
+  }
 }
 
 export function useViewer(): Viewer {
@@ -65,6 +82,22 @@ export interface SpaceView {
    * Board of Supervisors"); "" when it names none, and a page drops the phrase.
    */
   governingBodyName: string;
+  /** Its short form, for pills and running text ("Board of Supervisors"); "" when it names none. */
+  governingBodyShort: string;
+  /** The body in running text: "the Supervisors", else "the governing body". */
+  governingBodyRef: string;
+  /** The place it serves in full ("Floyd County, Virginia"), or its name where it serves no place. */
+  jurisdiction: string;
+  /** Whether a plugin is switched on in this space. */
+  pluginEnabled: (pluginId: string) => boolean;
+}
+
+/**
+ * What the people taking part are called, by count, outside a component (a
+ * feed card's engagement line); a page uses useSpace().participantNoun.
+ */
+export function participantNoun(count: number): string {
+  return hub.noun(count);
 }
 
 export function useSpace(): SpaceView {
@@ -77,6 +110,10 @@ export function useSpace(): SpaceView {
     timeZone: hub.timeZone,
     participantNoun: (count) => hub.noun(count),
     governingBodyName: hub.governing_body_name,
+    governingBodyShort: hub.governing_body_short,
+    governingBodyRef: hub.governing_body_ref,
+    jurisdiction: hub.jurisdiction,
+    pluginEnabled: (pluginId) => hub.plugins.enabled(pluginId as never),
   };
 }
 
@@ -100,6 +137,8 @@ export { default as ShareMoment } from "../components/ShareMoment";
 // What people wrote on a process, and the form to add to it (every type's page).
 export { default as CommunityInputPanel } from "../components/CommunityInputPanel";
 export { default as CommentForm } from "../components/ProposalCommentForm";
+// Adding to it from a type's own panel (a comment cast with a ballot).
+export { submitInput, type CommunityInput } from "../services/api";
 // Briefs' pointer from a finished process to its brief. Step 3 makes it a
 // contribution Briefs registers (docs/kernel/SURFACE.md, "Event"); until then
 // the page mounts it and it shows nothing while Briefs is off.
@@ -107,6 +146,25 @@ export { BriefPointer } from "../components/BriefPointer";
 export type { ClosedEarly, EarlyCloseOffer, UploadedImage } from "../services/api";
 // Editing a live process (a type whose editPolicy allows it): what may change now, and the draft an edit opens.
 export { getEditPolicy, startProcessEdit, type EditPolicy } from "../services/api";
+
+// What the space lets a comment carry (a name, or anonymous), and telling the page's input
+// list a new comment arrived (one cast with a ballot).
+export { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
+export { announceInput } from "../services/inputEvents";
+// A "Label — url" source as a link, or null.
+export { normalizeSourceLink } from "../components/sourceLinkParsing";
+// Where a process's page is, which plugin a type belongs to, and the page a switched-off plugin's route shows.
+export { detailPathOf, pluginOfType } from "../processes/display";
+export { PluginOff } from "../components/PluginOff";
+export type {
+  ActionResult,
+  CommunityInputConfig,
+  OtherProcessState,
+  ProcessSummaryBase,
+} from "../services/api";
+
+// A QR code's modules for text (a receipt file's link to its check page).
+export { qrMatrix } from "../services/qr";
 
 // --- A type's list page ----------------------------------------------------------------------
 export { default as ProcessPicker } from "../components/ProcessPicker";

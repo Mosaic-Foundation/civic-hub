@@ -4,6 +4,24 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 1: Votes on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Votes 0.4.0 is a migration** (20261117041858): apply and approve.
+
+- Votes 0.4.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its list, its page (`/process/:id`), the vote log
+  and receipt check, and its drafting page moved into `packages/civic.vote/ui/` unchanged, with the parts only it uses
+  (the vote panel, results bars, receipt code and file, its drafting form). Its client is `ui/api.ts`.
+- **Secret ballots stay in the kernel** (a change from the step 0 plan; `docs/kernel/SURFACE.md` says why): version
+  1's `ballots` (`cast`, `hasVoted`, `count`, `choices`, `reshuffle`, `log`, `verify`) over
+  `src/modules/civic.receipts/`, unchanged underneath.
+- Its settings are its own (`settings.ts`, through `settingsOf("vote")`); `checkMode.ts` and `voteOptions.ts` moved
+  in; the review preview's check-mode line is the vote handler's now. The kernel's QR code maker (`qrMatrix`) is a
+  `/ui` utility the receipt file uses.
+- The hub's `ProcessSummary`/`ProcessState` types no longer name a vote's shape. No cascade fixes were needed: side by
+  side with dev, the list, a proposed, an open and a finished vote, the log and the drafting page render the same
+  (signed out and as an admin).
+- `tests/api/pluginPackages.test.ts` reads Votes' version from its package.json instead of a fixed number.
+
 ## Kernel step 1: Meeting summaries on the kernel surface — 2026-11-17
 
 On `kernel-extraction`. **Catalog entry for Meeting summaries 0.3.0 is a migration** (20261117040237): apply and approve.

@@ -87,6 +87,18 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 1: Votes 0.4.0 on the kernel surface (2026-11-17)
+
+- **Unit:** 2,792 passed (`pluginGate.test.ts` reads the duration range from Votes' `settings.ts`; `packageBoundary`'s
+  version 0 example is Briefs now). **UI:** 102 passed, typecheck and build clean. **API:** 1,064 passed locally;
+  the same five fail as on dev.
+- **Conformance:** `catalog:add` green for Votes 0.4.0 (steps 17 and 22 skipped: `MOVED_HUB_PAGES`).
+- **By hand:** the list, a proposed, an open and a finished vote, the vote log and the drafting page, signed out and as
+  an admin, beside dev's: every element's computed style and position the same (1px text-width noise), no console
+  errors.
+
+---
+
 ## Kernel step 1: Meeting summaries 0.3.0 on the kernel surface (2026-11-17)
 
 - **Unit:** 2,792 passed. `meetingSummaryRulesCopy.test.ts` also holds the package's Wix column map equal to the

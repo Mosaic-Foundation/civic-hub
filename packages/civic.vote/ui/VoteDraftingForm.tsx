@@ -1,19 +1,21 @@
 import { useState, useEffect } from "react";
-import type { AssistantFieldGuidance, VoteDraft } from "../services/api";
-import "./DraftingForm.css";
-import "./VoteDraftingForm.css";
-import { FieldGuide } from "./FieldGuide";
-import { FieldFinding } from "./CocFindings";
-import { hardFindings } from "./cocFindingsState";
-import DraftFooter from "./DraftFooter";
-import { useDebouncedFields } from "../hooks/useDebouncedFields";
-import SuggestFooterButton from "./SuggestFooterButton";
-import TitleField from "./TitleField";
+// Its styles (DraftingForm.css, VoteDraftingForm.css) are the hub's: Conversations' form shares them.
+import {
+  DraftFooter,
+  FieldFinding,
+  FieldGuide,
+  MarkdownTextarea,
+  ProcessLinkField,
+  SuggestFooterButton,
+  TitleField,
+  hardFindings,
+  useDebouncedFields,
+  type AssistantFieldGuidance,
+  type ProposedLink,
+} from "@civic-social/plugin-sdk/ui";
+import type { VoteDraft, VoteDurationLimits } from "./api";
 import GrowingLineInput from "./GrowingLineInput";
-import { filledOptions, VOTE_OPTION_MAX } from "../../../src/shared/voteOptions";
-import ProcessLinkField from "./ProcessLinkField";
-import type { ProposedLink, VoteDurationLimits } from "../services/api";
-import MarkdownTextarea from "./MarkdownTextarea";
+import { filledOptions, VOTE_OPTION_MAX } from "../voteOptions";
 
 interface Props {
   /** Related processes the author has picked. Optional by design — the

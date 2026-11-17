@@ -1,9 +1,7 @@
-import { type VoteDraft } from "../../services/api";
-import { voteAssistantFields, optionsToText, textToOptions } from "../../services/voteMethods";
-import { demoSubmitNote } from "../../config/demoCopy";
-import { DAY_MS, durationLabel } from "./durations";
-import type { DraftKindConfig } from "./types";
-import VoteForm from "./forms/VoteForm";
+import { DAY_MS, demoSubmitNote, durationLabel, type DraftKindConfig } from "@civic-social/plugin-sdk/ui";
+import { type VoteDraft } from "./api";
+import { voteAssistantFields, optionsToText, textToOptions } from "./voteMethods";
+import VoteForm from "./VoteForm";
 
 
 export const voteKind: DraftKindConfig<VoteDraft> = {

@@ -1,19 +1,26 @@
 import { useMemo, useState } from "react";
-import { useApi } from "../hooks/useApi";
 import { Link, useSearchParams } from "react-router-dom";
-import { useHub } from "../config/hub";
 import {
   listProcesses,
   type ProcessSummary,
   type PublishedVoteResultsSummary,
   type VoteSummary,
-} from "../services/api";
-import ProcessPicker from "../components/ProcessPicker";
-import AuthModal from "../components/AuthModal";
-import { useRequireAuth } from "../hooks/useRequireAuth";
-import ProcessCard from "../components/ProcessCard";
-import StatusFilter from "../components/StatusFilter";
-import { CardList, EmptyState, Group, Page, PageAction, PageHead } from "../kit";
+} from "./api";
+import {
+  AuthModal,
+  CardList,
+  EmptyState,
+  Group,
+  Page,
+  PageAction,
+  PageHead,
+  ProcessPicker,
+  StatusFilter,
+  useApi,
+  useRequireAuth,
+  useSpace,
+} from "@civic-social/plugin-sdk/ui";
+import ProcessCard from "./ProcessCard";
 
 /**
  * Slice 12 — Votes-page filter pills mirror the home-feed pattern.
@@ -43,7 +50,7 @@ function isFilterKey(v: string | null): v is VotesFilterKey {
 const NO_PROCESSES: ProcessSummary[] = [];
 
 export default function Votes() {
-  const hub = useHub();
+  const space = useSpace();
   // CTA-gate (design decision 2026-08-28): the create buttons are
   // visible to everyone, but clicking one runs the sign-up gate first —
   // the picker opens only for signed-in residents. Direct /…/new URLs
@@ -125,7 +132,7 @@ export default function Votes() {
 
       <PageHead
         title="Community Votes"
-        lede={<>Official and proposed advisory votes for {hub.jurisdiction}.</>}
+        lede={<>Official and proposed advisory votes for {space.jurisdiction}.</>}
         action={<PageAction onClick={() => requireAuth(() => setShowPicker(true))}>Suggest a vote</PageAction>}
       />
 
@@ -147,8 +154,8 @@ export default function Votes() {
               {activeVotes.length === 0 ? (
                 <EmptyState>{completedVotes.length === 0
                     ? "No votes yet. When one opens, it will show up here."
-                    : hub.governing_body_short
-                      ? `No active votes right now. When the ${hub.governing_body_short} asks for input, it'll show up here.`
+                    : space.governingBodyShort
+                      ? `No active votes right now. When the ${space.governingBodyShort} asks for input, it'll show up here.`
                       : "No active votes right now. New votes will show up here."}</EmptyState>
               ) : (
                 <CardList>

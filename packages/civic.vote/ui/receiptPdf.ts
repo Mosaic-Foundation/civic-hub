@@ -8,7 +8,7 @@
 // keep it private, since anyone with the code can see how the ballot was
 // cast once the vote closes.
 
-import type { CheckMode } from "./checkMode.js";
+import type { CheckMode } from "../checkMode.js";
 
 export interface ReceiptFileInput {
   hubName: string;

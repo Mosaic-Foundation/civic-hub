@@ -9,7 +9,7 @@
 //   that links a person to a ballot.
 
 import { useState } from "react";
-import { VOTE_OPTION_MAX } from "../../../src/shared/voteOptions";
+import { VOTE_OPTION_MAX } from "../voteOptions";
 
 export default function ResultLabel({ option, mine }: { option: string; mine: boolean }) {
   const [open, setOpen] = useState(false);

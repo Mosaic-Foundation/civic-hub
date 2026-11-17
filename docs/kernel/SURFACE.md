@@ -23,7 +23,8 @@ package, the paths it still imports from `src/` or `ui/src/`).
 | Proposals | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
 | Projects | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
 | Meeting summaries | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
-| Votes, Briefs, Conversations | not yet | | |
+| Votes | 0.4.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
+| Briefs, Conversations | not yet | | |
 
 Version 1 has gained so far, on the server: `processesOf(...types)` (`get`, `list`, `create`, `saveState`, and
 for a person `actOn`, `page`, `view`; `sampleIds`), `draftsOf(kind)` (`get`, `create`, `update`, `setStatus`,
@@ -60,13 +61,15 @@ directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `
 | Events | `buildEvent` | already `emitEvent`; `buildEvent` only where a package must hand an event to a store in one transaction | vote |
 | Operations | `reportError`, `CronOutcome`, `FlaggedSummary`, `WaitingMeeting`, `REVISION_NAG_DAYS`, `BrokenPublication`, `findBrokenPublications` | `reportError`; job outcome types beside `JobOutcome` | meeting_summary, vote |
 | Samples | `sampleDeliverySuppressed` | `isSampleSpace()` | brief |
+| Secret ballots | `recordOrUpdateVote`, `hasUserVoted`, `countVoters`, `getBallotChoicesForProcess`, `reshuffleBallotsForProcess`, `getVoteLog`, `verifyReceipt`, `HeldReceipt`, `VoteRefusedError`, `AlreadyVotedError` | `ballots` (built): `cast`, `hasVoted`, `count`, `choices`, `reshuffle`, `log`, `verify`, process first; the errors and `HeldReceipt` beside it | vote |
+| Review previews, source lines | `describeSubmissionFields`, `sourceLineToContentLink` | the same names (built) | polis, vote |
 
 ## Moves: into the package that owns it
 
 | Code in `src/` today | Into | Names that leave the SDK |
 | --- | --- | --- |
-| `src/modules/civic.receipts/`, `AlreadyVotedError` (`src/db/atomic.ts`) | Votes | `HeldReceipt`, `VoteRefusedError`, `countVoters`, `getBallotChoicesForProcess`, `getVoteLog`, `hasUserVoted`, `recordOrUpdateVote`, `reshuffleBallotsForProcess`, `verifyReceipt`, `AlreadyVotedError` |
-| Vote settings in `src/services/hubSettings.ts` | Votes (its own declared settings) | `getSupportThreshold`, `voteDurationLimitsSync`, `defaultCheckModeSync` |
+| ~~`src/modules/civic.receipts/` to Votes~~ | **Stays in the kernel** (decided Nov 17, with Votes 0.4.0): the kernel's districts and demographics totals, the sample seed, the hourly reshuffle, the debug reset and the secrecy guardrails all read the ballots, and any type that takes a secret ballot (participatory budgeting, a ranked vote) would need the same audited code. Version 1's `ballots` above | none |
+| Vote settings in `src/services/hubSettings.ts` | Votes (done: `packages/civic.vote/settings.ts`, through `settingsOf("vote")`) | `voteDurationLimitsSync`, `defaultCheckModeSync` (gone); `getSupportThreshold` stays for the admins' settings route and the sample seed until step 3 |
 | `src/services/briefRegenerate.ts`, `briefResponses.ts`, `briefFinalize.ts`, `publishedBriefRows`, `briefIdForSource`, `getVoteResultsRecipients` | Briefs | `applyOnApproval`, `discardBriefRevision`, `publishBriefRevision`, `regenerateBrief`, `insertResponse`, `latestAnchorAt`, `listResponsesForBrief`, `responderNames`, `finalizeBriefSource`, `publishedBriefRows`, `briefIdForSource`, `getVoteResultsRecipients` |
 | `src/debug/seedDeliberationMocks.ts` | Conversations | `addMockStatement`, `advanceMockStatement`, `getMockClusters`, `getMockNextStatement`, `isSeedConversation` |
 | `src/shared/` files only one package reads (`checkMode`, `voteOptions`, `announcementBoard`, `meetingSummaryRules`, `wixFields`, `connectorOptions`, `seedStatements`, `officialTypes`) | that package | none (they were plain imports) |
@@ -78,6 +81,9 @@ directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `
 | Conversations calls `regenerateBrief`, reads `DeliberationResult`/`DeliberationSummary`, `RegeneratedBrief` | the conversation's closed page reads its own saved result; the kernel's `process.closed` event; Briefs listens (Plugin Dependencies Strategy, case 4) |
 | Briefs reads `DeliberationResult`/`DeliberationSummary` | the `process.result` contract each process type fills; Briefs reads it from the event |
 | Meeting summaries call `isPluginEnabledSync` | done: `settingsOf("meeting_summary").enabled()`, its own switch |
+| The digest writes a closed vote's count with `voteResultLine` (`src/shared/feedActivity.ts`); Votes' feed card has its own copy | the line rides on the vote's event (step 3) |
+| The review preview names a vote's `method` labels (`src/shared/submissionPreview.ts`, `METHOD_LABELS`) | Votes' `describeSubmission` maps it, as it now does `check_mode` (step 3) |
+| `/process/:id`, the vote's page, also sends an old link for another type to that type's page | the kernel's redirect, apart from the vote's page (step 3) |
 | The settings save checks `wix_fields` (a kind only Meeting summaries uses) with `src/shared/wixFields.ts` | a package's own check of its settings (step 3); until then the package keeps an identical copy, tested equal |
 | Conversations call `getProcessHandler`, `getActionDispatcher` | `actOn` (kernel, above) |
 | The kernel's `src/processes/spawnBrief.ts` and the ten files in `PACKAGE_REACH_NOT_YET` | events and contributions (step 3) |
