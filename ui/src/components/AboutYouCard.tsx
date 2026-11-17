@@ -4,6 +4,7 @@ import { Button } from "../kit";
 import AboutYouForm from "./AboutYouForm";
 import { formStateFrom, inputFrom, type AboutFormState } from "./aboutYouState";
 import { useAboutConfig } from "../hooks/useAboutConfig";
+import { useHub } from "../config/hub";
 import {
   markAboutAsked,
   noteAboutAsked,
@@ -57,6 +58,7 @@ export default function AboutYouCard() {
   }, []);
 
   const config = useAboutConfig();
+  const hub = useHub();
 
   async function save() {
     setSaving(true);
@@ -75,8 +77,8 @@ export default function AboutYouCard() {
       {open && (
         <Modal title="Before you go on: about you" onClose={() => finish(false)} dismissible={!saving} closeLabel="Skip">
           <p className="form-hint about-card-why">
-            So the Board can see what people in each {config.term.singular.toLowerCase()} think. Only you can see
-            your answers; results only show totals.
+            So {hub.governing_body_ref} can see what people in each {config.term.singular.toLowerCase()} think.
+            Only you can see your answers; results only show totals.
           </p>
           <AboutYouForm config={config} state={state} onChange={setState} disabled={saving} />
           {error && <p className="form-error">{error}</p>}

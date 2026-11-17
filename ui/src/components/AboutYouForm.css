@@ -25,7 +25,7 @@
 }
 
 .about-form-year {
-  max-width: 10ch;
+  max-width: 13ch;
 }
 
 .about-form-lookup-open {
@@ -40,7 +40,7 @@
 }
 
 .about-form-lookup .form-input {
-  flex: 1 1 auto;
+  flex: 1;
   min-width: 0;
 }
 

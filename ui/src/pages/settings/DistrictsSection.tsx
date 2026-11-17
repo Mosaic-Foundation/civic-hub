@@ -59,7 +59,9 @@ export default function DistrictsSection() {
               label="Find your district link (optional)"
               hint="A page where people can look up their district, such as an official map. Shown when the address lookup finds no match."
             />
-            <h3 className="settings-subsection-title">Questions members are asked</h3>
+            <h3 className="settings-subsection-title" style={{ marginTop: "var(--space-6)" }}>
+              Questions members are asked
+            </h3>
             <p className="form-hint">
               Asked once, the first time a member takes part in something. Every question can be skipped or answered
               "Prefer not to say".
