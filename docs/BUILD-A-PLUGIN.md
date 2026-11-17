@@ -396,6 +396,11 @@ What comes back, for each table:
 when the hub asks none of the questions, when the process is not shown to the public, and when nobody took part.
 That is the normal case on most hubs. Never make a page, an action or a close wait on it or depend on it.
 
+Results never show a group under 5. The raw data is another matter: a vote's ballots carry each voter's district and
+age group, so someone holding a copy of the hub's database could work out how a person voted if they were the only
+voter in their district or age group. Adam accepted this on 2026-11-17 and the Privacy Policy says so. Nothing your
+plugin does should make it easier: never store a group beside anything that names a person.
+
 The hub already shows these tables on every finished process's page and adds them to its brief, so you only need
 them for something of your own (a results email, a summary on your own page). Nothing about a member's answers is
 posted to the fediverse.

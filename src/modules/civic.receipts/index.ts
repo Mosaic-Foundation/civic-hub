@@ -23,6 +23,13 @@
 // voted. A voter who has lost the receipt (new device, cleared browser)
 // cannot change their vote; it still counts.
 //
+// THE EXCEPTION (districts and demographics; accepted by Adam 2026-11-17):
+// a ballot carries the voter's district and age group (race where the hub
+// asks). Results never show a group under 5, but someone holding a copy of
+// the database could work out how a person voted if they were the only voter
+// in their district or age group, by comparing the tags with
+// vote_participation and member_about. The Privacy Policy says so plainly.
+//
 // GUARDRAIL: vote_records and vote_participation MUST NOT acquire a shared
 // join key, a shared time, or a shared order. tests/api/ballotSecrecy.test.ts
 // and tests/api/ballotSecrecyCatalog.test.ts fail if one comes back.

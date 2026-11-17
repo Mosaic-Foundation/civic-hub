@@ -16,6 +16,12 @@
 -- random order and now carries the tags with them). Results show a tag's
 -- totals only in groups of 5 or more (src/services/breakdowns.ts).
 --
+-- WHAT THIS GIVES UP (accepted by Adam, 2026-11-17): results never show a
+-- group under 5, but someone holding a copy of the hub's database could work
+-- out how a person voted if they were the only voter in their district or age
+-- group, by comparing these tags with vote_participation and member_about.
+-- The Privacy Policy says so.
+--
 -- cast_ballot_with_tags is cast_ballot with a ninth argument, p_tags (jsonb),
 -- under its own name: an overload of cast_ballot would turn /health red
 -- (src/db/functionContract.ts) and could leave PostgREST unable to choose.
@@ -54,7 +60,7 @@ COMMENT ON COLUMN vote_records.race IS
   'The voter''s race or ethnicity, only on hubs that ask; NULL otherwise and when not provided.';
 
 COMMENT ON TABLE vote_records IS
-  'Anonymous ballots: receipt, process, choice, change-key hash, and coarse tags (district, age group, race only if asked). MUST NOT carry a user identifier, a time, or anything that orders it against vote_participation or events. reshuffle_ballots randomizes physical order.';
+  'Anonymous ballots: receipt, process, choice, change-key hash, and coarse tags (district, age group, race only if asked). MUST NOT carry a user identifier, a time, or anything that orders it against vote_participation or events. reshuffle_ballots randomizes physical order. Accepted risk (2026-11-17): results never show a group under 5, but with a copy of the database a voter who is the only one in their district or age group can be worked out from the tags.';
 
 -- 2. Reshuffle carries the tags -----------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.reshuffle_ballots(

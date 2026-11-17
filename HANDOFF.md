@@ -35,9 +35,15 @@ ballot tags), so release with `./scripts/release.sh dev`. Design: Adam, 2026-11-
   briefs get the tables as sections at spawn (`spawnBrief.ts`), so the Brief package is unchanged.
 - **Docs:** "Member information" in `docs/BUILD-A-PLUGIN.md`. Help notes for `about.*` are pending and point at
   `/reference/settings/participation` until a Districts page is published in the docs repo.
-- **Open:** a quasi-identifier risk the design accepted: with the raw database, a ballot's district and age group
-  can be matched to `member_about` and `vote_participation` for a voter who is alone in their group. Results hide
-  it; the raw data does not. Events "going" not gated; no member data export; console Create hub pre-fill not done.
+- **Accepted risk (Adam, 2026-11-17):** results never show a group under 5, but someone holding a copy of the hub's
+  database could work out how a person voted if they were the only voter in their district or age group (the tags
+  against `vote_participation` and `member_about`). Said plainly in the Privacy Policy (In short, and "Your
+  ballot"), Settings > About you, the migration and table comment, the receipts module header and BUILD-A-PLUGIN.
+  The policy's version stays 1.4 (no re-acceptance asked); bump `CURRENT_LEGAL_VERSION` if members must accept it.
+- **Census fill:** Settings > Districts on a county hub opens with the list filled from the Census Data API (the
+  county's subdivisions by its FIPS code from `jurisdictions.census_geoid`), plainly named; the admin saves.
+  `GET /admin/hub/districts/census`. Not tried against the live Census in this session.
+- **Open:** Events "going" not gated; no member data export.
 
 ## Pinned and urgent announcements — 2026-11-15
 
