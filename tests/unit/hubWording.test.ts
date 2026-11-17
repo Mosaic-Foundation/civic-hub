@@ -19,7 +19,8 @@ import { defaultGoverningBody } from "../../src/shared/jurisdictionType.js";
 import { hubDocumentsWithNotes, splitDraftNotes } from "../../src/services/hubDocuments.js";
 import { runWithHub } from "../../src/config/hubContext.js";
 import { renderCodeEmail } from "../../src/modules/civic.auth/otp.js";
-import { onboardingTarget, safeReturnPath } from "../../ui/src/config/pluginRules.js";
+import { safeReturnPath } from "../../ui/src/config/pluginRules.js";
+import { onboardingStop } from "../../packages/civic.wordcloud/ui/onboarding.js";
 import { PLACE_NAME_PATTERNS, COUNTY_WORDING_PATTERNS, findPlaceNameHits } from "../../scripts/check-place-names.js";
 import type { Hub } from "../../src/models/hub.js";
 
@@ -220,11 +221,11 @@ describe("draft notes (review R15)", () => {
 
 describe("sign-up keeps its place (review R24)", () => {
   it("carries the page that asked for sign-in through the onboarding word cloud", () => {
-    expect(onboardingTarget("wc1", true, "/process/abc?x=1")).toBe(
+    expect(onboardingStop("wc1", "/process/abc?x=1")).toBe(
       "/wordcloud/wc1?onboarding=1&return=%2Fprocess%2Fabc%3Fx%3D1",
     );
-    expect(onboardingTarget("wc1", true, "/")).toBe("/wordcloud/wc1?onboarding=1");
-    expect(onboardingTarget("wc1", false, "/process/abc")).toBeNull();
+    expect(onboardingStop("wc1", "/")).toBe("/wordcloud/wc1?onboarding=1");
+    expect(onboardingStop("wc1", null)).toBe("/wordcloud/wc1?onboarding=1");
   });
 
   it("returns only to a page on this site", () => {

@@ -428,6 +428,8 @@ A type can also add to the hub's own pages with `contributes`, drawn only while 
   since the admin last opened it. `queue` is the name your manifest gives `publication.queue`; your admin page calls
   `markAdminQueueSeen(queue)` when it opens.
 - `welcomeStrip`: a component drawn in the strip across the top of the hub's public pages (Word clouds' teaser).
+- `afterSignUp`: where a new member goes right after signing up (Word clouds: the hub's word cloud), given the page
+  they signed up on as a checked local path to come back to, or null.
 
 A page reads its own settings with `useSpace().setting("plugin.<your id>.…")`.
 

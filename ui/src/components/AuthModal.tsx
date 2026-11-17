@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/authState";
 import { officialFrom } from "./authOfficial";
 import { useHub } from "../config/hub";
-import { onboardingTarget } from "../config/pluginRules";
+import { afterSignUpStop } from "./PackageSlots";
 import { NEXT_STEPS_PATH } from "../pages/settings/nextSteps";
 import {
   requestCode,
@@ -310,7 +310,8 @@ export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
         }
         if (needsResidency) {
           const here = `${window.location.pathname}${window.location.search}`;
-          const target = onboardingTarget(hub.onboarding_wordcloud_id, hub.plugins.enabled("wordcloud"), here);
+          // A package may send a new member somewhere first (Word clouds: the hub's word cloud).
+          const target = afterSignUpStop(hub, here);
           if (target) {
             onComplete();
             navigate(target);

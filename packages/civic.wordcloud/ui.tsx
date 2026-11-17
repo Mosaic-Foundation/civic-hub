@@ -3,17 +3,22 @@
 // UI entry alone, and load when first opened.
 
 import { lazy } from "react";
-import { ProcessField, formatCount, type ProcessUi } from "@civic-social/plugin-sdk/ui";
+import { ProcessField, formatCount, spaceNow, type ProcessUi } from "@civic-social/plugin-sdk/ui";
 import { getWordcloud } from "./ui/api";
 import WordcloudTeaser from "./ui/WordcloudTeaser";
+import { onboardingStop } from "./ui/onboarding";
 
 const WordCloud = lazy(() => import("./ui/WordCloud"));
 const CreateWordCloud = lazy(() => import("./ui/CreateWordCloud"));
 
 const wordcloudUi: ProcessUi = {
   type: "civic.wordcloud",
-  // The hub's word cloud in the strip across the top of its pages.
-  contributes: { welcomeStrip: WordcloudTeaser },
+  // The hub's word cloud in the strip across the top of its pages, and where
+  // a new member lands after signing up.
+  contributes: {
+    welcomeStrip: WordcloudTeaser,
+    afterSignUp: (back) => onboardingStop(spaceNow().setting("plugin.wordcloud.onboarding_id"), back),
+  },
   routes: [
     { path: "/wordcloud/new", element: <CreateWordCloud /> },
     { path: "/wordcloud/:id", element: <WordCloud /> },

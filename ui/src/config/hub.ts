@@ -449,14 +449,6 @@ const hub = {
     );
   },
 
-  get onboarding_wordcloud_id(): string {
-    return (
-      setting("plugin.wordcloud.onboarding_id") ??
-      env(import.meta.env.VITE_HUB_ONBOARDING_WORDCLOUD_ID) ??
-      ""
-    );
-  },
-
   /**
    * The served config itself (identity: slug, place code, DID; process
    * types; content flags), or null when the app runs on build-time fallbacks.

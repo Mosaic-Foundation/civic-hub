@@ -4,6 +4,15 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 3, fourth part: sign-up's stop at the word cloud — 2026-11-17
+
+On `kernel-extraction`. `contributes.afterSignUp`: where a new member lands after signing up. Word clouds gives its
+word cloud (`packages/civic.wordcloud/ui/onboarding.ts`, was the hub's `onboardingTarget`); the kernel asks the
+packages that are on (`afterSignUpStop`) and hands them a checked local path back. `hub.onboarding_wordcloud_id` is
+gone. Word clouds 0.3.0's catalog entry regenerated (`20261117204832`). Nothing on screen changes.
+
+---
+
 ## Kernel step 3, third part: what a package adds to the kernel's pages — 2026-11-17
 
 On `kernel-extraction` (PR #22, draft). Dev merged in (through 3377e24). One migration, `20261117200000` (adds

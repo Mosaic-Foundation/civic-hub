@@ -87,6 +87,11 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 3, fourth part: sign-up's stop (2026-11-17)
+
+- **UI:** 110 passed (`PackageSlots.test.tsx`: the stop only while Word clouds is on, never off-site). **Unit:** 2,818
+  passed (`hubWording`, `pluginSwitches` read Word clouds' `onboardingStop`). `catalog:add` green for Word clouds.
+
 ## Kernel step 3, third part: package contributions (2026-11-17)
 
 - **UI:** 109 passed. New `ui/src/components/PackageSlots.test.tsx`: a package's process-page addition, review queue

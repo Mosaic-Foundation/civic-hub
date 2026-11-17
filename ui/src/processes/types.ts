@@ -128,6 +128,13 @@ export interface PackageContributions {
   adminQueue?: AdminQueueTab;
   /** Drawn in the strip across the top of the hub's public pages (Word clouds' teaser). */
   welcomeStrip?: ComponentType;
+  /**
+   * Where a new member goes right after signing up, or null to stay put
+   * (Word clouds: the hub's word cloud). `back` is the page they signed up
+   * on, to come back to: a local path the kernel checked, or null. The first
+   * package with somewhere to send them wins.
+   */
+  afterSignUp?: (back: string | null) => string | null;
 }
 
 /**
