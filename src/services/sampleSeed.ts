@@ -34,7 +34,7 @@ import { sampleNames } from "./sampleNames.js";
 import { processExistsOnHub, processVersionOnHub, stampProcessCreatedAt } from "./processRows.js";
 import { SAMPLE_AUTHORS, fillSample, type SampleNames } from "./sampleTemplates.js";
 import { submitInput } from "../modules/civic.input/index.js";
-import { loadedPackages, packageOfType } from "../plugins/loader.js";
+import type { LoadedPackage } from "../plugins/loader.js";
 import { spaceType } from "../plugins/spaceType.js";
 import type { PluginSampleTemplate, SampleKit, SampleTemplate } from "../plugins/samples.js";
 
@@ -70,9 +70,14 @@ export async function seedSampleContent(
   return withHubScope(hub!, settings, () => seedInScope(opts));
 }
 
+// The loaded packages, read on first use, never as the engine starts: the
+// loader imports every package, and a package imports the SDK by name, which
+// the hub installs only once the engine has loaded (ADR-017).
+let packages: readonly LoadedPackage[] = [];
+
 /** Who seeds samples of a type: the plugin that provides it, when it offers to. */
 function pluginSeeder(type: string) {
-  const p = packageOfType(type);
+  const p = packages.find((x) => x.type === type);
   const samples = p?.server.samples;
   return p && samples ? { plugin: p.plugin, seed: samples.seed.bind(samples) } : null;
 }
@@ -122,7 +127,8 @@ async function seedInScope(opts: { dryRun?: boolean; now?: Date; only?: readonly
   const hubId = currentHubId();
   const space = spaceType();
   const run = new SeedRun(hubId, sampleNames(), opts.now ?? new Date());
-  const defaults = loadedPackages().flatMap((p) => {
+  packages = (await import("../plugins/loader.js")).loadedPackages();
+  const defaults = packages.flatMap((p) => {
     const d = p.server.samples?.defaults?.();
     return d?.length ? [{ type: p.type, templates: d }] : [];
   });
