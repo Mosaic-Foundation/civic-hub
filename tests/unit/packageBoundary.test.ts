@@ -31,7 +31,7 @@ describe("civic/package-boundary", () => {
       `import { createHash } from "node:crypto";`,
       `import { Router } from "express";`,
     ]) {
-      expect(await errors("packages/civic.brief/x.ts", code), code).toHaveLength(0);
+      expect(await errors("packages/civic.polis_deliberation/x.ts", code), code).toHaveLength(0);
     }
   });
 

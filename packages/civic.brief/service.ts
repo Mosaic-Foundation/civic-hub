@@ -6,7 +6,7 @@
 // handler already produced the BriefContent, so generation here is just
 // wrapping it in the process state.
 
-import { ConflictError, ValidationError } from "@civic-social/plugin-sdk/first-party";
+import { ConflictError, ValidationError } from "@civic-social/plugin-sdk";
 import type {
   BriefActionOutcome,
   BriefContent,
@@ -269,7 +269,7 @@ function sanitizeList(items: string[]): string[] {
  *
  *   1. publication_status = approved, approved_at = now
  *   2. deliver email (HALT on a real failure; recipients the hub's mode
- *      holds back are recorded, not fatal: see src/shared/delivery.ts)
+ *      holds back are recorded, not fatal: the kernel's DeliveryReport)
  *   3. record delivered_to / delivered_at / delivered_to_labels / held_back
  *   4. emit outcome_recorded
  *   5. publication_status = published, published_at = now

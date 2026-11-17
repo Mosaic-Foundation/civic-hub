@@ -9,15 +9,14 @@
 // The admin log records who regenerated and who published.
 
 import { useState } from "react";
-import { useAction } from "../hooks/useAction";
+import { useAction, ConfirmDialog } from "@civic-social/plugin-sdk/ui";
 import {
   adminDiscardBriefRevision,
   adminPublishBriefRevision,
   adminRegenerateBrief,
   type BriefContent,
   type BriefDetail,
-} from "../services/api";
-import ConfirmDialog from "./ConfirmDialog";
+} from "./api";
 import "./BriefRegenerate.css";
 
 function when(iso: string): string {

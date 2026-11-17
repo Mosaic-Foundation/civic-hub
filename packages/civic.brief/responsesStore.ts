@@ -1,8 +1,8 @@
-// Brief responses service — storage for official responses to briefs.
+// Brief responses: storage for official responses to briefs.
 //
-// The rules live in packages/civic.brief/responses.ts (pure); this
-// file owns every read and write of the brief_responses table plus the
-// responder-name resolution the public projection needs.
+// The rules live in ./responses.ts (pure); this file owns every read and
+// write of the package's brief_responses table (through the host's granted
+// database) and asks the kernel for the responders' names.
 //
 // Degradation contract (same as the officials service): READS against a
 // database that has not applied 20260828000000_brief_responses.sql log
@@ -10,14 +10,13 @@
 // response section. WRITES fail loudly — silently dropping an official's
 // public statement is worse than a 500.
 
-import { forHub, type HubDb } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
-import { generateId } from "../utils/id.js";
-import type { BriefResponseRecord } from "../../packages/civic.brief/api.js";
+import { generateId, offices } from "@civic-social/plugin-sdk";
+import { briefHost } from "./host.js";
+import type { BriefResponseRecord } from "./responses.js";
 
-/** The hub in scope. Brief responses are only ever read or written inside one. */
-function db(): HubDb {
-  return forHub(currentHubId());
+/** The package's own table, for the hub in scope (the host refuses any other). */
+function responsesTable() {
+  return briefHost.get().db().from("brief_responses");
 }
 
 interface ResponseRow {
@@ -36,8 +35,7 @@ export async function listResponsesForBrief(
   briefId: string,
 ): Promise<BriefResponseRecord[]> {
   try {
-    return await db()
-      .from("brief_responses")
+    return await responsesTable()
       .select<ResponseRow>("*")
       .eq("brief_id", briefId);
   } catch (err) {
@@ -55,8 +53,7 @@ export async function listResponsesForBrief(
  */
 export async function latestAnchorAt(briefId: string): Promise<string | null> {
   try {
-    const row = await db()
-      .from("brief_responses")
+    const row = await responsesTable()
       .select<{ created_at: string }>("created_at")
       .eq("brief_id", briefId)
       .eq("feed_anchor", true)
@@ -82,42 +79,18 @@ export async function insertResponse(input: {
   feed_anchor: boolean;
 }): Promise<BriefResponseRecord> {
   const row = { id: generateId("bresp"), ...input };
-  return await db()
-    .from("brief_responses")
+  return await responsesTable()
     .insert(row)
     .select<ResponseRow>("*")
     .single();
 }
 
 /**
- * Resolve responder display names in one batched query, keyed by user
- * id. Same precedence the rest of the hub renders authors with
- * (full_name ?? display_name), falling back to the office title's
- * holder being nameless — "Official" — rather than leaking an email.
+ * Responder display names in one batched read, keyed by user id: the same
+ * precedence the rest of the hub renders authors with (full_name ??
+ * display_name). A responder with neither is left out and shown as
+ * "Official", never by an email.
  */
-export async function responderNames(
-  responderIds: string[],
-): Promise<Map<string, string>> {
-  const names = new Map<string, string>();
-  const unique = [...new Set(responderIds)];
-  if (unique.length === 0) return names;
-  let rows: Array<{
-    id: string;
-    full_name?: string | null;
-    display_name?: string | null;
-  }>;
-  try {
-    rows = await db()
-      .from("users")
-      .select<{ id: string; full_name?: string | null; display_name?: string | null }>("*")
-      .in("id", unique);
-  } catch (err) {
-    console.error(`[briefResponses] name lookup failed: ${(err as Error).message}`);
-    return names;
-  }
-  for (const row of rows) {
-    const name = row.full_name?.trim() || row.display_name?.trim() || "";
-    if (name) names.set(row.id, name);
-  }
-  return names;
+export function responderNames(responderIds: string[]): Promise<Map<string, string>> {
+  return offices.onRecordNames(responderIds);
 }

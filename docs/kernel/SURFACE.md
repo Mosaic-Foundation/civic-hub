@@ -24,7 +24,8 @@ package, the paths it still imports from `src/` or `ui/src/`).
 | Projects | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
 | Meeting summaries | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
 | Votes | 0.4.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
-| Briefs, Conversations | not yet | | |
+| Briefs | 0.4.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
+| Conversations | not yet | | |
 
 Version 1 has gained so far, on the server: `processesOf(...types)` (`get`, `list`, `create`, `saveState`, and
 for a person `actOn`, `page`, `view`; `sampleIds`), `draftsOf(kind)` (`get`, `create`, `update`, `setStatus`,
@@ -36,7 +37,13 @@ kernel's accountable role), `resolveCallerIsAdmin`, `enrichCreator`, `enrichCrea
 for its own `plugin.<id>.*`, `enabled()`, `public(key)` for the hub's public settings), `processesOf().archive`,
 `brokenLinkProblem`, `findBrokenPublications`, `PLATFORM_CONTACT_EMAIL`, `resolveTimeZone`, `TranscriptSegment` and
 `AiSingleTurnInput`. A package tells the admins about a job through the mail adapter's `send` and `adminAddresses`
-(`notifyJobOutcome` left the adapter; Meeting summaries' alert email is its own `alerts.ts`). On the UI side, the kernel UI surface below
+(`notifyJobOutcome` left the adapter; Meeting summaries' alert email is its own `alerts.ts`). Since Briefs:
+`results` (`source(id)`, `fresh(id)`, `adopt(id, state, by)`, `finalize(id, actor)`: what a closed process of any
+type came to, asked of its own type, and settling it once the result is public), `offices` (`officialOf(res)`,
+`onRecordNames(ids)`, `resultRecipients()`), `requireOfficial`, `recordAdminAct`, `links.countTouching` and
+`links.wireIris`, `publishedMessage`, `sampleDeliverySuppressed`, and the types `OfficialIdentity`,
+`DeliveryReport`, `HeldBackRecipient`, `DeliberationResult`, `DeliberationSummary`, `ResultSource`, `FreshResult`.
+A package's own table is read through its host (`host.db().from("brief_responses")`), never `forHub`. On the UI side, the kernel UI surface below
 (`ui/src/host/index.ts`). Announcements carries its own copy of the pinned and urgent rules (`board.ts`), kept equal
 to the right column's (`src/shared/announcementBoard.ts`) by a test until step 3 makes the board a contribution. A package's UI files are `ui.tsx` and its `ui/`
 directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `kit/conformance/src/fence.ts`).
@@ -60,7 +67,9 @@ directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `
 | Adapters' types | `AiSingleTurnInput`, `TranscriptSegment` | beside `PluginAdapters` (version 1) | meeting_summary |
 | Events | `buildEvent` | already `emitEvent`; `buildEvent` only where a package must hand an event to a store in one transaction | vote |
 | Operations | `reportError`, `CronOutcome`, `FlaggedSummary`, `WaitingMeeting`, `REVISION_NAG_DAYS`, `BrokenPublication`, `findBrokenPublications` | `reportError`; job outcome types beside `JobOutcome` | meeting_summary, vote |
-| Samples | `sampleDeliverySuppressed` | `isSampleSpace()` | brief |
+| Samples | `sampleDeliverySuppressed` | the same name (built, Briefs): a sample's delivery, held back | brief |
+| Results | `finalizeBriefSource`, the source half of `regenerateBrief` (`getProcessHandler(...).regenerateBrief`, `closedEarlyView`, writing the source's new state) | `results` (built, Briefs): `source`, `fresh`, `adopt`, `finalize`; the kernel asks the process's own type and names no package | brief |
+| Offices | `requireOfficial`, `res.locals.officialIdentity`, `responderNames`, `getVoteResultsRecipients`, `recordHubAdminAudit` | `requireOfficial`, `offices` (`officialOf`, `onRecordNames`, `resultRecipients`), `recordAdminAct` (built, Briefs) | brief |
 | Secret ballots | `recordOrUpdateVote`, `hasUserVoted`, `countVoters`, `getBallotChoicesForProcess`, `reshuffleBallotsForProcess`, `getVoteLog`, `verifyReceipt`, `HeldReceipt`, `VoteRefusedError`, `AlreadyVotedError` | `ballots` (built): `cast`, `hasVoted`, `count`, `choices`, `reshuffle`, `log`, `verify`, process first; the errors and `HeldReceipt` beside it | vote |
 | Review previews, source lines | `describeSubmissionFields`, `sourceLineToContentLink` | the same names (built) | polis, vote |
 
@@ -70,7 +79,7 @@ directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `
 | --- | --- | --- |
 | ~~`src/modules/civic.receipts/` to Votes~~ | **Stays in the kernel** (decided Nov 17, with Votes 0.4.0): the kernel's districts and demographics totals, the sample seed, the hourly reshuffle, the debug reset and the secrecy guardrails all read the ballots, and any type that takes a secret ballot (participatory budgeting, a ranked vote) would need the same audited code. Version 1's `ballots` above | none |
 | Vote settings in `src/services/hubSettings.ts` | Votes (done: `packages/civic.vote/settings.ts`, through `settingsOf("vote")`) | `voteDurationLimitsSync`, `defaultCheckModeSync` (gone); `getSupportThreshold` stays for the admins' settings route and the sample seed until step 3 |
-| `src/services/briefRegenerate.ts`, `briefResponses.ts`, `briefFinalize.ts`, `publishedBriefRows`, `briefIdForSource`, `getVoteResultsRecipients` | Briefs | `applyOnApproval`, `discardBriefRevision`, `publishBriefRevision`, `regenerateBrief`, `insertResponse`, `latestAnchorAt`, `listResponsesForBrief`, `responderNames`, `finalizeBriefSource`, `publishedBriefRows`, `briefIdForSource`, `getVoteResultsRecipients` |
+| `src/services/briefRegenerate.ts`, `briefResponses.ts`, `briefFinalize.ts`, `publishedBriefRows`, `briefIdForSource`, `getVoteResultsRecipients` | Briefs (done, 0.4.0: `regenerate.ts`, `responsesStore.ts`; finalizing is the kernel's `results.finalize`; `src/services/briefRegenerate.ts` stays as a forwarder for Conversations' older link, and `briefIdForSource` for Conversations and `spawnBrief`, until Conversations moves) | `applyOnApproval`, `discardBriefRevision`, `publishBriefRevision`, `regenerateBrief`, `insertResponse`, `latestAnchorAt`, `listResponsesForBrief`, `responderNames`, `finalizeBriefSource`, `publishedBriefRows`, `briefIdForSource`, `getVoteResultsRecipients` |
 | `src/debug/seedDeliberationMocks.ts` | Conversations | `addMockStatement`, `advanceMockStatement`, `getMockClusters`, `getMockNextStatement`, `isSeedConversation` |
 | `src/shared/` files only one package reads (`checkMode`, `voteOptions`, `announcementBoard`, `meetingSummaryRules`, `wixFields`, `connectorOptions`, `seedStatements`, `officialTypes`) | that package | none (they were plain imports) |
 
@@ -86,7 +95,9 @@ directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `
 | `/process/:id`, the vote's page, also sends an old link for another type to that type's page | the kernel's redirect, apart from the vote's page (step 3) |
 | The settings save checks `wix_fields` (a kind only Meeting summaries uses) with `src/shared/wixFields.ts` | a package's own check of its settings (step 3); until then the package keeps an identical copy, tested equal |
 | Conversations call `getProcessHandler`, `getActionDispatcher` | `actOn` (kernel, above) |
-| The kernel's `src/processes/spawnBrief.ts` and the ten files in `PACKAGE_REACH_NOT_YET` | events and contributions (step 3) |
+| The kernel's `src/processes/spawnBrief.ts` and the files in `PACKAGE_REACH_NOT_YET` (nine since Briefs) | events and contributions (step 3) |
+| The hub's `BriefPointer` and `BriefSourcePointer` (and `ui/src/services/briefDelivery.ts`, the hub's `getPublicBrief`) | Briefs' contribution to a process page (step 3); Briefs' pages read them through `/ui` until then |
+| The admin queue counts name `briefs` (`AdminQueue`), and `AdminPublicationReview.css` styles Briefs' and Meeting summaries' review pages | a package registers its queue (step 3); the review frame is kernel UI |
 | The hub's welcome strip shows the onboarding word cloud (`WordcloudTeaser`, over HTTP, the `plugin.wordcloud.onboarding_id` setting) | a contribution Word clouds registers to the strip (step 3) |
 
 ## The UI side
@@ -112,6 +123,11 @@ What those pages use from the hub splits the same way:
   an admin page's `AdminStickyBar`, `AdminBackButton`, `PublicationStatusChip`, `markAdminQueueSeen`,
   `notifyAdminQueuesChanged`; `absoluteDateOfDay`, `localShortDateOfDay`, `localDateAtTime`, `formatDuration`,
   `formatMeetingDate`; `useSpace().governingBodyName`. The admin queue names (`AdminQueue`) are still the hub's list
-  (step 3: a package registers its queue).
+  (step 3: a package registers its queue). Since Briefs: a publication's review (`PublicationList`,
+  `PublicationReview`, `ApproveActions`) and `ConfirmDialog`; `absoluteDate`, `formatShortDate`; `typeName`,
+  `manifestOf`, `briefColorSlug`; `spaceNow()` (the space outside a component, for a feed card); `useViewer()`'s
+  `office` and `displayName`; the offices (`authorBadges`, `OFFICIAL_TYPES`, `OFFICIAL_TYPE_LABELS`,
+  `normalizeOfficialType`, `getOfficialsRoster`); `heldBackLine`, `joinNames`, `briefResponseContext`, and
+  `BriefSourcePointer` until step 3.
 - **Moves with the page**: components only one type uses (`VotePanel`, `ReceiptCode`, `deliberation/*`,
   `ProposalCommentForm`, `BriefRegenerate`, `BriefPointer` goes to Briefs as an enhancement).

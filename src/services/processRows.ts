@@ -43,32 +43,6 @@ export async function writeProcessState(processId: string, state: Record<string,
 
 // --- controllers ---
 
-/** One published brief's row, as the public outcomes index reads it. */
-export interface PublishedBriefRow {
-  id: string;
-  title: string | null;
-  state: Record<string, unknown>;
-  is_sample: boolean;
-  added_in_demo: boolean;
-}
-
-/**
- * Every published brief that is still public (not pending review or archived),
- * ordered by id. Paged: a hub can have more than 1,000 of these (PostgREST's cap).
- */
-export async function publishedBriefRows(): Promise<PublishedBriefRow[]> {
-  return readAll((from, to) =>
-    db()
-      .from("processes")
-      .select<PublishedBriefRow>("id, title, state, is_sample, added_in_demo")
-      .eq("type", "civic.brief")
-      .eq("state->>publication_status", "published")
-      .not("status", "in", `(${[...NON_PUBLIC_STATUSES].join(",")})`)
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
-}
-
 /** An announcement marked pinned or urgent, as the right column reads it. */
 export interface AnnouncementBoardRow {
   id: string;

@@ -154,3 +154,17 @@ export { reportError } from "../../src/sdk/index.js";
 
 // --- Small utilities -------------------------------------------------------------------------
 export { generateId, str, num } from "../../src/sdk/index.js";
+
+// --- Results: what a closed process came to, and settling it once public (since Briefs) ----
+// A process of any type says what it came to (the process.result contract); the package
+// that writes results up reads it and settles the process here (docs/kernel/SURFACE.md).
+export { results } from "../../src/sdk/index.js";
+export type { ResultSource, FreshResult, DeliberationResult, DeliberationSummary } from "../../src/sdk/index.js";
+
+// --- Offices: officials going on the record, and who a result goes to (since Briefs) ------
+export { offices, requireOfficial, recordAdminAct } from "../../src/sdk/index.js";
+export type { OfficialIdentity } from "../../src/sdk/index.js";
+
+// --- Delivering a result: the mail adapter's report, and a sample's held-back delivery ----
+export { publishedMessage, sampleDeliverySuppressed } from "../../src/sdk/index.js";
+export type { DeliveryReport, HeldBackRecipient } from "../../src/sdk/index.js";

@@ -532,78 +532,13 @@ export async function getFeed(options: {
   };
 }
 
-// --- Universal briefs (civic.brief) ---
-// The generic, admin-reviewed results for any closed process. Mirrors the
-// vote-results API but with type-agnostic content (headline / summary /
-// sections) instead of vote-specific position breakdowns.
-
-export type BriefPublicationStatus = "pending" | "approved" | "published";
+// --- A published brief, as the hub's BriefPointer reads it (step 3 makes the
+// pointer Briefs' contribution; Briefs' pages have their own client,
+// packages/civic.brief/ui/api.ts) ---
 
 export interface BriefSection {
   heading: string;
   body: string;
-}
-
-export interface BriefContent {
-  title: string;
-  headline: string;
-  summary: string;
-  sections: BriefSection[];
-  participation_label: string | null;
-  participation_count: number | null;
-  comments: string[];
-  admin_notes: string;
-  image_url?: string | null;
-  image_alt?: string | null;
-  /** The source closed before its deadline: the line and the admin's note. */
-  closed_early?: { line: string; note: string } | null;
-}
-
-export interface BriefSummary {
-  id: string;
-  type: "civic.brief";
-  title: string;
-  source_process_id: string;
-  source_process_type: string;
-  publication_status: BriefPublicationStatus;
-  headline: string;
-  participation_count: number | null;
-  summary_preview: string;
-  generated_at: string;
-  approved_at: string | null;
-  published_at: string | null;
-  created_at: string;
-}
-
-/** One delivery recipient picked during review. The email is where the
- *  brief is sent (admin-only); the label is what the published page's
- *  "Sent to …" receipt shows. `group`, when set, bundles this recipient
- *  under one office name on that receipt (all supervisors → "Board of
- *  Supervisors") while each address is still emailed individually. */
-export interface BriefRecipient {
-  email: string;
-  label: string;
-  group?: string;
-}
-
-export interface BriefDetail extends BriefSummary {
-  content: BriefContent;
-  delivered_to: string[];
-  /** Per-review selection: null = never touched (approval falls back to
-   *  the hub-wide setting), [] = explicitly no delivery. */
-  recipients: BriefRecipient[] | null;
-  delivered_at: string | null;
-  delivered_to_labels: string[];
-  /** Recipients held back on purpose (hub mode, sample content), with why. */
-  held_back?: HeldBackRecipient[];
-  held_back_labels?: string[];
-  created_by: string;
-  /** Regenerate: a new version waiting to be published (published briefs). */
-  pending_revision?: { content: BriefContent; generated_at: string } | null;
-  /** Versions it replaced, oldest first. */
-  history?: Array<{ content: BriefContent; generated_at: string; replaced_at: string }>;
-  /** When a regenerated version last replaced the published one. */
-  revised_at?: string | null;
 }
 
 export interface PublicBrief {
@@ -664,73 +599,8 @@ export interface PublicBriefResponse {
   created_at: string;
 }
 
-export interface BriefContentPatch {
-  comments?: string[];
-  admin_notes?: string;
-  headline?: string;
-  summary?: string;
-  image_url?: string | null;
-  image_alt?: string | null;
-  /** Per-review delivery selection; [] means "publish with no email". */
-  recipients?: BriefRecipient[];
-}
-
-export function adminListBriefs(
-  status?: BriefPublicationStatus,
-): Promise<BriefSummary[]> {
-  const params = status ? `?status=${encodeURIComponent(status)}` : "";
-  return request("GET", `/admin/briefs${params}`);
-}
-
-export function adminGetBrief(id: string): Promise<BriefDetail> {
-  return request("GET", `/admin/briefs/${id}`);
-}
-
-export function adminPatchBrief(
-  id: string,
-  patch: BriefContentPatch,
-): Promise<BriefDetail> {
-  return request("PATCH", `/admin/briefs/${id}`, patch);
-}
-
-export function adminApproveBrief(
-  id: string,
-): Promise<{ message: string; brief: BriefDetail }> {
-  return request("POST", `/admin/briefs/${id}/approve`);
-}
-
-/** Make a closed process's brief again: replaces an unpublished one, stages a published one's. */
-export function adminRegenerateBrief(id: string): Promise<{ staged: boolean; brief: BriefDetail }> {
-  return request("POST", `/admin/briefs/${id}/regenerate`);
-}
-
-/** The staged version replaces the published brief, in place. Nobody is emailed. */
-export function adminPublishBriefRevision(id: string): Promise<{ brief: BriefDetail }> {
-  return request("POST", `/admin/briefs/${id}/revision/publish`);
-}
-
-/** Drop the staged version. */
-export function adminDiscardBriefRevision(id: string): Promise<{ brief: BriefDetail }> {
-  return request("POST", `/admin/briefs/${id}/revision/discard`);
-}
-
 export function getPublicBrief(id: string): Promise<PublicBrief> {
   return request("GET", `/brief/${id}`);
-}
-
-/** Post a public official response (official-role accounts only; 403
- *  otherwise). Returns the refreshed response list + status. */
-export function postBriefResponse(
-  id: string,
-  body: string,
-): Promise<{
-  message: string;
-  response_id: string;
-  response_status: "awaiting" | "responded";
-  responded_at: string | null;
-  responses: PublicBriefResponse[];
-}> {
-  return request("POST", `/brief/${id}/response`, { body });
 }
 
 // --- Admin: archive / restore (generic soft-remove) ---
@@ -764,6 +634,14 @@ export function adminRestoreProcess(
   id: string,
 ): Promise<{ message: string; id: string; status: string }> {
   return request("POST", `/admin/processes/${id}/restore`);
+}
+
+// --- The officials roster and the space's result recipients (Officials settings) ---
+
+/** The officials an admin lists, and who a result goes to when a review picks nobody. Admins only. */
+export async function getOfficialsRoster(): Promise<{ officials: Official[]; brief_recipient_emails: string[] }> {
+  const settings = await adminGetSettings();
+  return { officials: settings.officials, brief_recipient_emails: settings.brief_recipient_emails };
 }
 
 // --- Admin: hub settings ---
@@ -1971,42 +1849,6 @@ export function getLinkCandidates(params: {
   if (params.seedDescription) qs.set("seed_description", params.seedDescription);
   for (const id of params.exclude ?? []) qs.append("exclude", id);
   return request("GET", `/process/link-candidates?${qs.toString()}`);
-}
-
-// --- Outcomes index --------------------------------------------------------
-
-export interface OutcomeEntry {
-  id: string;
-  /** Sample content (Phase 7): shows the Sample badge. */
-  is_sample?: boolean;
-  title: string;
-  source_process_id: string;
-  source_process_type: string;
-  headline: string;
-  participation_label: string | null;
-  published_at: string;
-  /** Links on the process this brief summarizes — "does this sit in a thread". */
-  related_count: number;
-}
-
-export interface OutcomesPage {
-  outcomes: OutcomeEntry[];
-  total: number;
-  total_unfiltered: number;
-  filters: { source_types: string[]; years: number[] };
-}
-
-export function getOutcomes(params: {
-  sourceTypes?: string[];
-  year?: number | null;
-  sort?: "newest" | "oldest";
-} = {}): Promise<OutcomesPage> {
-  const qs = new URLSearchParams();
-  for (const t of params.sourceTypes ?? []) qs.append("source_type", t);
-  if (params.year != null) qs.set("year", String(params.year));
-  if (params.sort) qs.set("sort", params.sort);
-  const q = qs.toString();
-  return request("GET", `/brief${q ? `?${q}` : ""}`);
 }
 
 // --- Members and "Share this hub" (members and invites slice, 2026-10-14) ---

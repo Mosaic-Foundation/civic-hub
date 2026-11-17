@@ -1,101 +1,15 @@
-.admin-briefs-page {
-  padding: 0;
-}
-
-.admin-briefs-body {
-  padding: var(--space-4) var(--space-6) var(--space-8);
-}
-
-.admin-briefs-body h1 {
-  margin: 0 0 var(--space-1);
-}
-
-.admin-brief-filters {
-  display: flex;
-  gap: var(--space-2);
-  margin: var(--space-4) 0 var(--space-6);
-  flex-wrap: wrap;
-}
-
-/* A brief or official response in the list: a Daylight card, brief colour on top. */
-.admin-briefs-body .admin-proposal-item {
-  --card-accent: var(--type-brief-fg);
-}
-
-.admin-briefs-body .admin-proposal-list > li + li {
-  margin-top: var(--space-3);
-}
-
-.admin-brief-filter {
-  padding: var(--space-1) var(--space-4);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  border: var(--border-width) solid var(--color-border-strong);
-  border-radius: var(--radius-pill);
-  font-family: inherit;
-  font-size: var(--text-small-size);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: border-color var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default),
-    background var(--duration-fast) var(--ease-default);
-}
-
-.admin-brief-filter:hover {
-  color: var(--color-text);
-  border-color: var(--color-border-hover);
-}
-
-.admin-brief-filter.is-active {
-  color: var(--color-primary-text);
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.admin-brief-filter:focus-visible {
-  outline: var(--border-width-strong) solid var(--color-focus);
-  outline-offset: var(--border-width-strong);
-}
-
 .brief-positions-list {
   margin: 0;
   padding-left: var(--space-5);
   line-height: var(--line-height-relaxed);
 }
 
-/* --- Publication status chips: small pills in status colours --- */
-.admin-brief-status-pending,
-.admin-brief-status-approved,
-.admin-brief-status-published {
-  display: inline-block;
-  padding: var(--space-0-5) var(--space-2-5);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-caption-size);
-  font-weight: var(--font-weight-semibold);
-  white-space: nowrap;
-}
-
-.admin-brief-status-pending {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-}
-
-.admin-brief-status-approved {
-  background: var(--color-info-bg);
-  color: var(--color-info);
-}
-
-.admin-brief-status-published {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-}
-
 /* --- Brief source-type tag + read-only detail sections --- */
+/* Its size, case and spacing are the kit's .status-badge (the hub's sheet,
+   which used to load after this one and set them). */
 .admin-brief-source-tag {
   background: var(--color-info-bg);
   color: var(--color-info);
-  text-transform: uppercase;
-  letter-spacing: var(--text-eyebrow-spacing);
-  font-size: var(--font-size-2xs);
 }
 
 .admin-brief-section-block {

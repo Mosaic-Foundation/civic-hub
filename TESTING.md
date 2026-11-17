@@ -87,6 +87,19 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 1: Briefs 0.4.0 on the kernel surface (2026-11-17)
+
+- **Unit:** 2,792 passed (`packageBoundary`'s version 0 example is Conversations now; the reach list drops
+  `briefResponses.ts`). **UI:** 102 passed, typecheck and build clean. **API:** passes apart from the failures
+  dev also has (`leakHarness`'s missing `GET /admin/news-sync/items` plan) and `events.test.ts`'s four, which need
+  `athens.localhost` to resolve. `pluginPackages.test.ts` reads Briefs' version from its package.json.
+- **Conformance:** `catalog:add` green for Briefs 0.4.0 (steps 17 and 22 skipped: `MOVED_HUB_PAGES`).
+- **By hand:** Outcomes, a published brief signed out, as an official (the response form) and as an admin, the admin
+  list, a pending and a published review, beside dev's: every element's computed style and position the same (1px
+  text-width noise) after the one cascade fix, no console errors.
+
+---
+
 ## Kernel step 1: Votes 0.4.0 on the kernel surface (2026-11-17)
 
 - **Unit:** 2,792 passed (`pluginGate.test.ts` reads the duration range from Votes' `settings.ts`; `packageBoundary`'s

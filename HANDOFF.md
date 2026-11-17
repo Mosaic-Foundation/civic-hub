@@ -4,6 +4,28 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 1: Briefs on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Briefs 0.4.0 is a migration** (20261117044714): apply and approve.
+
+- Briefs 0.4.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its brief page, Outcomes and the admin review
+  (with Regenerate) moved into `packages/civic.brief/ui/` unchanged; its client is `ui/api.ts`.
+- What was Briefs' code in the kernel moved in: `regenerate.ts` (was `src/services/briefRegenerate.ts`) and
+  `responsesStore.ts` (was `briefResponses.ts`, now through the host's granted `brief_responses` table). The outcomes
+  index reads its own processes; `publishedBriefRows` left the kernel.
+- Briefs reaches the process a brief is about only through version 1's new **`results`** (`source`, `fresh`,
+  `adopt`, `finalize`): the kernel asks that process's own type (its handler) and names no package. Finalizing on
+  publish (`briefFinalize.ts`) is `results.finalize` now. **`offices`** (`officialOf`, `onRecordNames`,
+  `resultRecipients`), `requireOfficial` and `recordAdminAct` cover officials going on the record, the fallback
+  recipients and the admin log; `links` gained `countTouching` and `wireIris`.
+- Until Conversations moves: `src/services/briefRegenerate.ts` is a small forwarder for its older "make the summary
+  again" link, and `briefIdForSource` stays. The hub's `BriefPointer` stays until step 3.
+- `AdminVoteResults.css` split: the review frame, filters and status chips (Meeting summaries uses them too) are the
+  hub's `AdminPublicationReview.css`; the rest is Briefs' `AdminBriefs.css`. One cascade fix: the source-type tag's
+  size and spacing come from the kit's `.status-badge`, which always won on dev.
+- Checked end to end on the local stack: approve (held-back delivery, source finalized), an official's response
+  (name, office pill), regenerate unpublished and published, the admin log.
+
 ## Kernel step 1: Votes on the kernel surface — 2026-11-17
 
 On `kernel-extraction`. **Catalog entry for Votes 0.4.0 is a migration** (20261117041858): apply and approve.

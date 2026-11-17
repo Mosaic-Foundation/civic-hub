@@ -1,40 +1,41 @@
 import { useEffect, useState } from "react";
-import BriefRegenerate from "../components/BriefRegenerate";
-import { ClosedEarlyNote } from "../components/CloseEarly";
+import BriefRegenerate from "./BriefRegenerate";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  adminMarkQueueSeen,
+  ClosedEarlyNote,
+  markAdminQueueSeen as adminMarkQueueSeen,
   notifyAdminQueuesChanged,
-  adminListBriefs,
-  adminGetBrief,
-  adminPatchBrief,
-  adminApproveBrief,
-  adminGetSettings,
-  type BriefDetail,
-  type BriefRecipient,
-  type BriefSummary,
+  getOfficialsRoster,
   type Official,
-} from "../services/api";
-import PostImagePicker from "../components/PostImagePicker";
-import {
+  PostImagePicker,
   ApproveActions,
   PublicationList,
   PublicationReview,
-  StatusChip,
-} from "../components/AdminPublicationReview";
-import { useApi } from "../hooks/useApi";
-import { parseCommentsText } from "../utils/commentsText";
-import { useHub } from "../config/hub";
-import {
+  PublicationStatusChip as StatusChip,
+  useApi,
+  useSpace,
   OFFICIAL_TYPES,
   OFFICIAL_TYPE_LABELS,
   normalizeOfficialType,
   type OfficialType,
-} from "../../../src/shared/officialTypes";
-// Reuse the vote-results admin styles — same layout language.
-import "./AdminVoteResults.css";
-import { manifestOf, typeName } from "../processes/display";
-import { localShortDate, localDateAtTime } from "../utils/dates";
+  manifestOf,
+  typeName,
+  localShortDate,
+  localDateAtTime,
+} from "@civic-social/plugin-sdk/ui";
+import {
+  adminListBriefs,
+  adminGetBrief,
+  adminPatchBrief,
+  adminApproveBrief,
+  type BriefDetail,
+  type BriefRecipient,
+  type BriefSummary,
+} from "./api";
+import { parseCommentsText } from "./commentsText";
+// The review page's frame, filters and status chips are the hub's
+// (AdminPublicationReview.css); these are the brief's own rules.
+import "./AdminBriefs.css";
 
 // Human labels for the source process type, shown as a small tag on each
 // brief so the admin can tell a conversation brief from a vote brief.
@@ -72,7 +73,7 @@ function prefillRecipients(
 }
 
 export default function AdminBriefs() {
-  const hub = useHub();
+  const space = useSpace();
   const navigate = useNavigate();
   const { id: routeId } = useParams<{ id?: string }>();
   const view: "list" | "review" = routeId ? "review" : "list";
@@ -88,7 +89,7 @@ export default function AdminBriefs() {
   // label matching) and the hub-wide recipient emails (prefill for a brief
   // whose selection was never made).
   const detail = useApi(routeId ? `admin/briefs/${routeId}` : null, async () => {
-    const [record, settings] = await Promise.all([adminGetBrief(routeId!), adminGetSettings()]);
+    const [record, settings] = await Promise.all([adminGetBrief(routeId!), getOfficialsRoster()]);
     return { record, settings };
   });
   const [selected, setSelectedState] = useState<BriefDetail | null>(null);
@@ -535,7 +536,7 @@ export default function AdminBriefs() {
       intro={
         <>
           Review and approve the brief a process produces when it closes.
-          Approval {hub.governing_body_short ? `delivers it to ${hub.governing_body_ref} and publishes it` : "publishes it"}
+          Approval {space.governingBodyShort ? `delivers it to ${space.governingBodyRef} and publishes it` : "publishes it"}
           to the public feed as the process's final result.
         </>
       }

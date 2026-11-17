@@ -1,27 +1,32 @@
 import { useState } from "react";
-import { useApi } from "../hooks/useApi";
-import { ClosedEarlyNote } from "../components/CloseEarly";
 import { Link, useParams } from "react-router-dom";
+import {
+  useApi,
+  ClosedEarlyNote,
+  absoluteDate,
+  absoluteTime,
+  PostFeaturedImage,
+  ProcessHeader,
+  BriefSourcePointer,
+  ShareButton,
+  useSpace,
+  useAction,
+  useViewer,
+  authorBadges,
+  RelatedProcesses,
+  heldBackLine,
+  joinNames,
+  manifestOf,
+  typeName,
+} from "@civic-social/plugin-sdk/ui";
 import {
   getPublicBrief,
   postBriefResponse,
   type PublicBrief,
-} from "../services/api";
-import { absoluteDate, absoluteTime } from "../utils/dates";
-import PostFeaturedImage from "../components/PostFeaturedImage";
-import ProcessHeader from "../components/ProcessHeader";
-import { BriefSourcePointer } from "../components/BriefPointer";
-import ShareButton from "../components/ShareButton";
-import { useHub } from "../config/hub";
-import { useAction } from "../hooks/useAction";
-import { useAuth } from "../context/authState";
-import { authorBadges } from "../../../src/shared/officialTypes";
+} from "./api";
 // Reuse the vote-results public styling — same page language.
 import "./VoteResults.css";
 import "./Brief.css";
-import RelatedProcesses from "../components/RelatedProcesses";
-import { heldBackLine, joinNames } from "../services/briefDelivery";
-import { manifestOf, typeName } from "../processes/display";
 
 // The noun for the source process: its type's name, lowercased, for a type a
 // brief is made for; anything else is a "process".
@@ -37,9 +42,9 @@ function sourceNoun(type: string): string {
  * published civic.brief records only (pending/approved 404).
  */
 export default function BriefPage() {
-  const hub = useHub();
+  const space = useSpace();
   const { id } = useParams<{ id: string }>();
-  const { official, user } = useAuth();
+  const { office: official, displayName } = useViewer();
   const {
     data: brief,
     loading,
@@ -141,11 +146,11 @@ export default function BriefPage() {
           </time>
           .
         </p>
-      ) : brief.delivered_recipient_count > 0 && brief.approved_at && hub.governing_body_short ? (
+      ) : brief.delivered_recipient_count > 0 && brief.approved_at && space.governingBodyShort ? (
         // No governing body (a non-place hub) means no "delivered to" line
         // (review R29, 2026-10-07).
         <p className="vote-results-delivery">
-          Delivered to the {hub.governing_body_name || hub.governing_body_short} on{" "}
+          Delivered to the {space.governingBodyName || space.governingBodyShort} on{" "}
           {absoluteDate(brief.approved_at)}
           .
         </p>
@@ -216,7 +221,7 @@ export default function BriefPage() {
 
       {brief.comments.length > 0 && (
         <section className="vote-results-section">
-          <h2>In {hub.noun(2)}&apos; words</h2>
+          <h2>In {space.participantNoun(2)}&apos; words</h2>
           <ul className="vote-results-comments">
             {brief.comments.map((c, i) => (
               <li key={i}>{c}</li>
@@ -227,14 +232,14 @@ export default function BriefPage() {
 
       {brief.admin_notes.trim() && (
         <section className="vote-results-section">
-          <h2>Notes from the {hub.name}</h2>
+          <h2>Notes from the {space.name}</h2>
           <p style={{ whiteSpace: "pre-wrap" }}>{brief.admin_notes}</p>
         </section>
       )}
 
       <p className="vote-results-provenance">
         This brief is the final record of a completed {noun} on the{" "}
-        {hub.name}, published{" "}
+        {space.name}, published{" "}
         <time dateTime={brief.published_at} title={absoluteTime(brief.published_at)}>
           {absoluteDate(brief.published_at)}
         </time>
@@ -310,7 +315,7 @@ export default function BriefPage() {
                 disabled={posting}
               />
               <p className="brief-response-form-note">
-                Posting publicly as {user?.full_name || user?.display_name || "you"}{" "}
+                Posting publicly as {displayName || "you"}{" "}
                 — {official.title}. Responses are part of the permanent public
                 record and cannot be edited; post a follow-up to add to them.
               </p>

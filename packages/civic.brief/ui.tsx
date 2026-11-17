@@ -1,14 +1,21 @@
 // civic.brief: the published record of what residents decided, sent to
-// officials (manifest: ./manifest.ts).
+// officials (manifest: ./manifest.ts). Its pages are its own (./ui/), built
+// from the SDK's UI entry alone, and load when first opened.
 
+import { lazy } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import hub from "../../ui/src/config/hub";
-import { getPublicBrief } from "../../ui/src/services/api";
-import { formatCount } from "../../ui/src/processes/feedText";
-import { AdminBriefs, BriefPage, Outcomes } from "../../ui/src/lazyPages";
-import { briefResponseContext } from "../../src/shared/feedActivity";
-import type { ProcessUi } from "../../ui/src/processes/types";
-import { formatShortDate } from "../../ui/src/utils/dates";
+import {
+  briefResponseContext,
+  formatCount,
+  formatShortDate,
+  spaceNow,
+  type ProcessUi,
+} from "@civic-social/plugin-sdk/ui";
+import { getPublicBrief } from "./ui/api";
+
+const AdminBriefs = lazy(() => import("./ui/AdminBriefs"));
+const Outcomes = lazy(() => import("./ui/Outcomes"));
+const BriefPage = lazy(() => import("./ui/Brief"));
 
 /**
  * A vote's results page from before briefs (the retired civic.vote_results,
@@ -39,11 +46,12 @@ const briefUi: ProcessUi = {
     "vote-results": {
       card: ({ id, data, getTitle }) => {
         const headline = typeof data.headline_result === "string" ? data.headline_result : "";
+        const hub = spaceNow();
         return {
           title: getTitle(id) ?? "Vote results",
           summary:
             headline ||
-            (hub.governing_body_short ? `Delivered to the ${hub.governing_body_name || hub.governing_body_short}.` : ""),
+            (hub.governingBodyShort ? `Delivered to the ${hub.governingBodyName || hub.governingBodyShort}.` : ""),
         };
       },
       meta: (id) =>
@@ -60,7 +68,7 @@ const briefUi: ProcessUi = {
         const m = meta.commentsCount ?? 0;
         if (n === 0 && m === 0) return null;
         const parts: string[] = [];
-        if (n > 0) parts.push(`${formatCount(n)} ${hub.noun(n)} voted`);
+        if (n > 0) parts.push(`${formatCount(n)} ${spaceNow().participantNoun(n)} voted`);
         if (m > 0) parts.push(`${formatCount(m)} ${m === 1 ? "comment" : "comments"}`);
         return parts.join(" · ");
       },

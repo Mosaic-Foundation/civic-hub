@@ -9,29 +9,22 @@
 // without an official email list).
 
 import {
-  applyOnApproval,
-  discardBriefRevision,
-  publishBriefRevision,
-  regenerateBrief,
   ConflictError,
   NotFoundError,
   route,
   emitEvent,
   enrichCreator,
-  getAllProcesses,
-  getProcess,
-  saveProcessState,
-  finalizeBriefSource,
-  processWireIris,
+  processesOf,
+  results,
+  links,
+  offices,
   getAuthUser,
+  hubContext,
   sampleDeliverySuppressed,
-  getVoteResultsRecipients,
-  hubDisplayNameSync,
-  currentHubId,
-  uiBaseUrl,
   extractUrls,
-  warmPreviewsInBackground,
-} from "@civic-social/plugin-sdk/first-party";
+  warmLinkPreviews,
+  publishedMessage,
+} from "@civic-social/plugin-sdk";
 import {
   approveBrief,
   editBrief,
@@ -43,16 +36,18 @@ import {
   type BriefPublicationStatus,
 } from "./api.js";
 import { briefHost } from "./host.js";
-import { publishedMessage } from "../../src/shared/delivery.js";
+import { applyOnApproval, discardBriefRevision, publishBriefRevision, regenerateBrief } from "./regenerate.js";
 
 const BRIEF_TYPE = "civic.brief";
+/** The kernel's view of this package's processes (asked for where used: the SDK binds as the hub loads). */
+const ownProcesses = () => processesOf(BRIEF_TYPE);
 
 function briefState(record: { state: Record<string, unknown> }): BriefProcessState {
   return record.state as unknown as BriefProcessState;
 }
 
 function publicBriefUrl(id: string): string {
-  return `${uiBaseUrl()}/brief/${id}`;
+  return `${hubContext().baseUrl}/brief/${id}`;
 }
 
 function isPublicationStatus(s: string): s is BriefPublicationStatus {
@@ -62,8 +57,7 @@ function isPublicationStatus(s: string): s is BriefPublicationStatus {
 /** GET /admin/briefs — list with optional ?status=, pending first. */
 export const handleAdminListBriefs = route(async (req, res) => {
   const statusFilter = req.query.status as string | undefined;
-  const all = await getAllProcesses();
-  const records = all.filter((p) => p.definition.type === BRIEF_TYPE);
+  const records = await ownProcesses().list();
 
   const summaries = records.map((p) =>
     getAdminSummary(briefState(p), {
@@ -94,8 +88,8 @@ export const handleAdminListBriefs = route(async (req, res) => {
 
 /** GET /admin/briefs/:id — full detail for admin review. */
 export const handleAdminGetBrief = route(async (req, res) => {
-  const record = await getProcess(req.params.id as string);
-  if (!record || record.definition.type !== BRIEF_TYPE) {
+  const record = await ownProcesses().get(req.params.id as string);
+  if (!record) {
     throw new NotFoundError("Brief not found");
   }
   const model = await enrichCreator(
@@ -112,8 +106,8 @@ export const handleAdminGetBrief = route(async (req, res) => {
 
 /** PATCH /admin/briefs/:id — edit headline/summary/comments/notes/image. */
 export const handlePatchBrief = route(async (req, res) => {
-  const record = await getProcess(req.params.id as string);
-  if (!record || record.definition.type !== BRIEF_TYPE) {
+  const record = await ownProcesses().get(req.params.id as string);
+  if (!record) {
     throw new NotFoundError("Brief not found");
   }
   const state = briefState(record);
@@ -150,10 +144,10 @@ export const handlePatchBrief = route(async (req, res) => {
   };
 
   await editBrief(state, actor, patch, ctx);
-  await saveProcessState(record);
+  await ownProcesses().saveState(record);
 
   const noteUrls = extractUrls(state.content.admin_notes);
-  if (noteUrls.length > 0) warmPreviewsInBackground(noteUrls);
+  if (noteUrls.length > 0) warmLinkPreviews(noteUrls);
 
   const model = await enrichCreator(
     getAdminReadModel(state, {
@@ -169,8 +163,8 @@ export const handlePatchBrief = route(async (req, res) => {
 
 /** POST /admin/briefs/:id/approve — deliver, publish, finalize the source. */
 export const handleApproveBrief = route(async (req, res) => {
-  const record = await getProcess(req.params.id as string);
-  if (!record || record.definition.type !== BRIEF_TYPE) {
+  const record = await ownProcesses().get(req.params.id as string);
+  if (!record) {
     throw new NotFoundError("Brief not found");
   }
   const state = briefState(record);
@@ -183,7 +177,7 @@ export const handleApproveBrief = route(async (req, res) => {
   // setting is only the fallback for briefs whose review predates the
   // picker. Empty is allowed either way — the brief still publishes to
   // the feed, just without an email.
-  const fallbackRecipients = await getVoteResultsRecipients(currentHubId());
+  const fallbackRecipients = await offices.resultRecipients();
 
   const actor = getAuthUser(res).id;
   const ctx = {
@@ -194,18 +188,18 @@ export const handleApproveBrief = route(async (req, res) => {
 
   await approveBrief(state, actor, ctx, {
     fallbackRecipients,
-    hubLabel: hubDisplayNameSync(),
+    hubLabel: hubContext().name,
     publicBriefUrl: publicBriefUrl(record.id),
     // A sample brief is never delivered (Phase 7).
     sendEmail: record.isSample ? sampleDeliverySuppressed : briefHost.get().adapter("mail").deliver,
-    finalizeSource: finalizeBriefSource,
+    finalizeSource: (sourceId, _sourceType, by) => results.finalize(sourceId, by),
     sourceProcessIri:
-      (await processWireIris([state.source_process_id])).get(state.source_process_id) ?? null,
+      (await links.wireIris([state.source_process_id])).get(state.source_process_id) ?? null,
   });
 
   // A published brief is terminal.
   record.status = "finalized";
-  await saveProcessState(record);
+  await ownProcesses().saveState(record);
   // Regenerated before it was public: its source takes the new summary now.
   await applyOnApproval(record, actor);
 

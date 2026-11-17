@@ -39,6 +39,10 @@ export interface Viewer {
   isAdmin: boolean;
   /** May post for the space: an admin, or someone the admins list as an author (requireAuthor on the server). */
   mayPostForSpace: boolean;
+  /** The office the viewer speaks for (requireOfficial on the server), or null. Since Briefs. */
+  office: { type: string; title: string } | null;
+  /** The name the viewer goes on the record under (full name, else display name), or null. */
+  displayName: string | null;
 }
 
 /**
@@ -57,8 +61,16 @@ export async function resolveActorId(): Promise<string> {
 }
 
 export function useViewer(): Viewer {
-  const { loading, actorId, canParticipate, isAdmin, canPostAnnouncements } = useAuth();
-  return { loading, actorId, canParticipate, isAdmin, mayPostForSpace: canPostAnnouncements };
+  const { loading, actorId, canParticipate, isAdmin, canPostAnnouncements, official, user } = useAuth();
+  return {
+    loading,
+    actorId,
+    canParticipate,
+    isAdmin,
+    mayPostForSpace: canPostAnnouncements,
+    office: official,
+    displayName: user?.full_name || user?.display_name || null,
+  };
 }
 
 /** The space the page is in, as a package's page may know it. */
@@ -101,7 +113,18 @@ export function participantNoun(count: number): string {
 }
 
 export function useSpace(): SpaceView {
-  const hub = useHub();
+  return spaceViewOf(useHub());
+}
+
+/**
+ * The space as it is now, outside a component (a feed card's line); a page
+ * uses useSpace(), which follows a change. Since Briefs.
+ */
+export function spaceNow(): SpaceView {
+  return spaceViewOf(hub);
+}
+
+function spaceViewOf(hub: ReturnType<typeof useHub>): SpaceView {
   const name = hub.name;
   return {
     name,
@@ -154,7 +177,7 @@ export { announceInput } from "../services/inputEvents";
 // A "Label — url" source as a link, or null.
 export { normalizeSourceLink } from "../components/sourceLinkParsing";
 // Where a process's page is, which plugin a type belongs to, and the page a switched-off plugin's route shows.
-export { detailPathOf, pluginOfType } from "../processes/display";
+export { detailPathOf, pluginOfType, typeName, manifestOf, briefColorSlug } from "../processes/display";
 export { PluginOff } from "../components/PluginOff";
 export type {
   ActionResult,
@@ -201,10 +224,15 @@ export { refreshAside } from "../aside/asideFacts";
 // and its review queue's "seen" mark (the admin tabs' counts refetch after it) --------------
 export { AdminBackButton, AdminStickyBar } from "../components/AdminSticky";
 export { StatusChip as PublicationStatusChip, type PublicationStatus } from "../components/AdminPublicationReview";
+// A publication's review queue and page (Briefs): the list, the review frame, its approve buttons.
+export { ApproveActions, PublicationList, PublicationReview } from "../components/AdminPublicationReview";
+export { default as ConfirmDialog } from "../components/ConfirmDialog";
 export { adminMarkQueueSeen as markAdminQueueSeen, notifyAdminQueuesChanged, type AdminQueue } from "../services/api";
 
 // --- Dates, in the space's zone where it takes one ------------------------------------------
 export {
+  absoluteDate,
+  formatShortDate,
   absoluteDateOfDay,
   absoluteTime,
   formatDate,
@@ -232,3 +260,14 @@ export {
   UrlField,
   type FormApi,
 } from "../pages/settings/pluginFields";
+
+// --- Offices and results (since Briefs) ---------------------------------------------------
+// An official's office pill (the kernel's OFFICIAL_TYPES), the officials roster and the
+// space's result recipients (Officials settings), and how a published result's delivery reads.
+export { authorBadges, OFFICIAL_TYPES, OFFICIAL_TYPE_LABELS, normalizeOfficialType, type OfficialType } from "../../../src/shared/officialTypes";
+export { getOfficialsRoster, type Official, type HeldBackRecipient } from "../services/api";
+export { heldBackLine, joinNames } from "../services/briefDelivery";
+// The line a feed card for an official's response carries (the digest writes the same).
+export { briefResponseContext } from "../../../src/shared/feedActivity";
+// The pointer from a result to the process it is about (step 3 makes it Briefs' contribution).
+export { BriefSourcePointer } from "../components/BriefPointer";

@@ -1023,7 +1023,7 @@ const BEFORE_STEP_22 = new Set<string>([]);
  * pages on the kit, which takes its entry out. By name and version; the list
  * only shrinks.
  */
-const MOVED_HUB_PAGES = new Set<string>(["civic.wordcloud@0.3.0", "civic.announcement@0.4.0", "civic.proposal@0.3.0", "civic.project@0.3.0", "civic.meeting_summary@0.3.0", "civic.vote@0.4.0"]);
+const MOVED_HUB_PAGES = new Set<string>(["civic.wordcloud@0.3.0", "civic.announcement@0.4.0", "civic.proposal@0.3.0", "civic.project@0.3.0", "civic.meeting_summary@0.3.0", "civic.vote@0.4.0", "civic.brief@0.4.0"]);
 
 function movedHubPages(type: string): string | null {
   const loaded = loadedPackages().find((p) => p.type === type);

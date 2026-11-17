@@ -67,7 +67,7 @@ export {
   archiveProcess,
   getArchivedProcesses,
 } from "../services/processService.js";
-export { readProcessState, writeProcessState, publishedBriefRows, briefIdForSource } from "../services/processRows.js";
+export { readProcessState, writeProcessState, briefIdForSource } from "../services/processRows.js";
 export { processesOf } from "../services/ownProcesses.js";
 export { warmPreviewsInBackground as warmLinkPreviews } from "../services/linkPreviewCache.js";
 export type { OwnProcesses } from "../services/ownProcesses.js";
@@ -127,7 +127,6 @@ export type { CivicEvent, CreateEventInput } from "../models/event.js";
 export {
   getSupportThreshold,
   getSettingSync,
-  getVoteResultsRecipients,
   hubDisplayNameSync,
   isPluginEnabledSync,
 } from "../services/hubSettings.js";
@@ -193,6 +192,11 @@ export const applyEdit: typeof applyEditNow = async (...args) => (await import("
 
 // --- src/services/sampleContent.ts -------------------------------------------------------
 export { sampleDeliverySuppressed } from "../services/sampleContent.js";
+// A delivery's report and the line an admin reads after publishing (src/shared/delivery.ts).
+export type { DeliveryReport, HeldBackRecipient } from "../shared/delivery.js";
+export { publishedMessage } from "../shared/delivery.js";
+// The office a person speaks for, as requireOfficial finds it (src/shared/officialTypes.ts).
+export type { OfficialIdentity } from "../shared/officialTypes.js";
 
 // --- src/utils/baseUrl.ts ----------------------------------------------------------------
 export { uiBaseUrl } from "../utils/baseUrl.js";
@@ -203,30 +207,13 @@ export { extractUrls } from "../modules/civic.link_preview/index.js";
 // --- src/services/linkPreviewCache.ts ----------------------------------------------------
 export { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
 
-// --- src/services/briefRegenerate.ts -----------------------------------------------------
-export {
-  applyOnApproval,
-  discardBriefRevision,
-  publishBriefRevision,
-  regenerateBrief,
-} from "../services/briefRegenerate.js";
+// --- src/services/briefRegenerate.ts (Conversations' older link, until it moves) ---------
+export { regenerateBrief } from "../services/briefRegenerate.js";
 
-// --- src/services/briefFinalize.ts -------------------------------------------------------
-export { finalizeBriefSource } from "../services/briefFinalize.js";
-
-// --- src/services/processLinks.ts --------------------------------------------------------
-export { processWireIris } from "../services/processLinks.js";
-
-// --- src/services/processLinkCounts.ts ---------------------------------------------------
-export { countLinksTouching } from "../services/processLinkCounts.js";
-
-// --- src/services/briefResponses.ts ------------------------------------------------------
-export {
-  insertResponse,
-  latestAnchorAt,
-  listResponsesForBrief,
-  responderNames,
-} from "../services/briefResponses.js";
+// --- What a closed process came to, and the space's offices (kernel step 1, Briefs) -------
+export { results } from "../services/kernelResults.js";
+export type { ResultSource, FreshResult } from "../services/kernelResults.js";
+export { offices, recordAdminAct } from "../services/kernelOffices.js";
 
 // --- src/modules/civic.auth/ -------------------------------------------------------------
 export { getUser } from "../modules/civic.auth/index.js";

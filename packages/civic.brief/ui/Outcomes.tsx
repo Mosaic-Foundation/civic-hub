@@ -1,17 +1,21 @@
 import { useState } from "react";
-import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
-import { getOutcomes, type OutcomeEntry, type OutcomesPage } from "../services/api";
-import { absoluteDate } from "../utils/dates";
-import { friendlyType } from "../components/processLinkTypes";
-import { useHub } from "../config/hub";
+import {
+  useApi,
+  absoluteDate,
+  typeName as friendlyType,
+  useSpace,
+  SampleBadge,
+  briefColorSlug,
+  ListCard,
+  Page,
+  PageHead,
+} from "@civic-social/plugin-sdk/ui";
+import { getOutcomes, type OutcomeEntry, type OutcomesPage } from "./api";
 import "./Outcomes.css";
-// The filter bar reuses the feed's pill classes so the two surfaces can
-// never drift in style — see .feed-filter-pill--type-* in FeedFilter.css.
-import "../components/FeedFilter.css";
-import SampleBadge from "../components/SampleBadge";
-import { briefColorSlug } from "../processes/display";
-import { ListCard, Page, PageHead } from "../kit";
+// The filter bar reuses the feed's pill classes (.feed-filter-pill--type-*,
+// the hub's FeedFilter.css, loaded with every page) so the two surfaces can
+// never drift in style.
 
 /**
  * Outcomes — the public archive of every completed civic process.
@@ -26,7 +30,7 @@ import { ListCard, Page, PageHead } from "../kit";
  */
 
 export default function Outcomes() {
-  const hub = useHub();
+  const space = useSpace();
   // Single-select, like the feed's filter bar: All, or exactly one type.
   // Always newest first — an archive reads backward from today; the old
   // sort dropdown was removed on purpose (Adam, 2026-08-28).
@@ -62,7 +66,7 @@ export default function Outcomes() {
 
       <PageHead
         title="Outcomes"
-        lede={<>The permanent record of every completed process on the {hub.name} — what was decided, how many took part, and what it connects to.</>}
+        lede={<>The permanent record of every completed process on the {space.name} — what was decided, how many took part, and what it connects to.</>}
       />
 
       <section className="section">

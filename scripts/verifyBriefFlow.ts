@@ -8,7 +8,7 @@ import {
   type BriefProcessState,
 } from "../packages/civic.brief/api.js";
 import { emitEvent } from "../src/events/eventEmitter.js";
-import { finalizeBriefSource } from "../src/services/briefFinalize.js";
+import { results } from "../src/services/kernelResults.js";
 import type { Hub } from "../src/models/hub.js";
 import { withScriptHub } from "./lib/hubScope.js";
 
@@ -73,7 +73,7 @@ async function main(hub: Hub) {
     hubLabel: "Test Hub",
     publicBriefUrl: `https://hub/brief/${briefProc.id}`,
     sendEmail: async () => undefined,
-    finalizeSource: finalizeBriefSource,
+    finalizeSource: (id, _type, actor) => results.finalize(id, actor),
   });
   briefProc.status = "finalized";
   await saveProcessState(briefProc);

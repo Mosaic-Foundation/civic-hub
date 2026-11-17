@@ -6,12 +6,10 @@
 // link to the public brief page. Mirrors civic.vote_results/email.ts.
 
 import type { BriefProcessState } from "./models.js";
-import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
-import { getSettingSync, KEYS } from "@civic-social/plugin-sdk/first-party";
+import { hubContext } from "@civic-social/plugin-sdk";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
-const hubNoun = (n: number): string =>
-  participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), n, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
+const hubNoun = (n: number): string => hubContext().participantNoun(n);
 
 function esc(s: string): string {
   return String(s)

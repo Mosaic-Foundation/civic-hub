@@ -5,6 +5,8 @@
 // checks a proposed set before it stores it on a draft.
 
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
+import { processWireIris } from "./processLinks.js";
+import { countLinksTouching } from "./processLinkCounts.js";
 
 export const links = {
   /**
@@ -13,4 +15,14 @@ export const links = {
    * Throws (a 400) on a bad one.
    */
   validate: validateLinkSet,
+  /**
+   * How many links touch each of these processes, in either direction (since
+   * Briefs: an outcome counts its source's). A failed read throws.
+   */
+  countTouching: countLinksTouching,
+  /**
+   * Each process's IRI, as its activities carry it (`context.id`, ADR-008), by
+   * id. Since Briefs: a result names the process it is about on the wire.
+   */
+  wireIris: processWireIris,
 };

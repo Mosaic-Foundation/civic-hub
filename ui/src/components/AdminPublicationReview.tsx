@@ -6,7 +6,7 @@
  * what is theirs (a brief's headline, summary and recipients; a vote result's
  * positions and the vote it snapshotted).
  *
- * The markup and classes are the pages' own (AdminVoteResults.css), so both
+ * The frame, filters and status chips are styled in AdminPublicationReview.css, so both
  * look as they did.
  */
 

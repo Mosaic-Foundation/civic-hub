@@ -8,12 +8,12 @@
 // derives its "Awaiting response" / "Responded" status, and which
 // response anchors the (at most one per 24h) feed card.
 //
-// Storage lives in src/services/briefResponses.ts; the HTTP surface in
+// Storage lives in ./responsesStore.ts; the HTTP surface in
 // briefController. Like the rest of this module, nothing here imports
 // Express or Supabase, so the whole behaviour is coverable in tests/unit
 // — the layer CI actually runs.
 
-import { ValidationError } from "@civic-social/plugin-sdk/first-party";
+import { ValidationError } from "@civic-social/plugin-sdk";
 import type { BriefProcessState } from "./models.js";
 
 /** Bounds for a response body — mirrors brief_responses_body_bounds. */

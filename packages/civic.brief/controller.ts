@@ -9,18 +9,14 @@ import {
   ForbiddenError,
   NotFoundError,
   route,
-  getProcess,
-  publishedBriefRows,
-  countLinksTouching,
+  processesOf,
+  links,
+  offices,
   emitEvent,
   getAuthUser,
-  insertResponse,
-  latestAnchorAt,
-  listResponsesForBrief,
-  responderNames,
-} from "@civic-social/plugin-sdk/first-party";
-import { Request, Response } from "express";
-import type { OfficialIdentity } from "../../src/shared/officialTypes.js";
+} from "@civic-social/plugin-sdk";
+import { Request } from "express";
+import { insertResponse, latestAnchorAt, listResponsesForBrief, responderNames } from "./responsesStore.js";
 import {
   availableSourceTypes,
   availableYears,
@@ -37,10 +33,13 @@ import {
   type BriefProcessState,
 } from "./api.js";
 
+/** The kernel's view of this package's processes (asked for where used: the SDK binds as the hub loads). */
+const ownProcesses = () => processesOf("civic.brief");
+
 export const handleGetBrief = route(async (req, res) => {
   const id = req.params.id as string;
-  const process = await getProcess(id);
-  if (!process || process.definition.type !== "civic.brief") {
+  const process = await ownProcesses().get(id);
+  if (!process) {
     throw new NotFoundError("Brief not found");
   }
   const model = getPublicReadModel(
@@ -83,15 +82,12 @@ export const handleGetBrief = route(async (req, res) => {
  */
 export const handlePostBriefResponse = route(async (req, res) => {
   const id = req.params.id as string;
-  const official = res.locals.officialIdentity as OfficialIdentity | undefined;
+  const official = offices.officialOf(res);
 
-  const record = await getProcess(id);
-  const state =
-    record && record.definition.type === "civic.brief"
-      ? (record.state as unknown as BriefProcessState)
-      : null;
+  const record = await ownProcesses().get(id);
+  const state = record ? (record.state as unknown as BriefProcessState) : null;
 
-  const gate = respondGate(official ?? null, state);
+  const gate = respondGate(official, state);
   if (gate) {
     if (gate.status === 403) throw new ForbiddenError(gate.error, "official_required");
     if (gate.status === 404) throw new NotFoundError(gate.error);
@@ -184,7 +180,9 @@ export async function listOutcomes(q: OutcomesQuery) {
   // only at the latter — an archived brief stayed on Outcomes while its
   // own page 404'd (Adam, 2026-09-06). Same non-public set every other
   // public read uses.
-  const rows = await publishedBriefRows();
+  const rows = (await ownProcesses().list())
+    .filter((p) => (p.state as { publication_status?: unknown }).publication_status === "published")
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
   // Count links on each brief's SOURCE process, not on the brief itself.
   // A brief owns almost no stored links — its relationships are derived
@@ -196,7 +194,7 @@ export async function listOutcomes(q: OutcomesQuery) {
   const sourceIds = rows
     .map((r) => (r.state as { source_process_id?: unknown }).source_process_id)
     .filter((id): id is string => typeof id === "string" && id.length > 0);
-  const relatedCounts = await countLinksTouching(sourceIds);
+  const relatedCounts = await links.countTouching(sourceIds);
 
   const entries = rows
     .map((r) => {
@@ -207,8 +205,8 @@ export async function listOutcomes(q: OutcomesQuery) {
         typeof sourceId === "string" ? (relatedCounts.get(sourceId) ?? 0) : 0,
       );
       // Sample content (Phase 7): listed, with the Sample badge.
-      // A visitor's demo submission is stored as sample but has no badge.
-      return entry && r.is_sample && !r.added_in_demo ? { ...entry, is_sample: true } : entry;
+      // A visitor's demo submission is stored as sample but has no badge (isSample is false).
+      return entry && r.isSample ? { ...entry, is_sample: true } : entry;
     })
     .filter((e): e is NonNullable<typeof e> => e !== null);
 
