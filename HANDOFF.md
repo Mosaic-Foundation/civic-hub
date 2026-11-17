@@ -22,9 +22,21 @@ On dev after 1a3cb4c, unpushed, no migrations (2f8130c, 9549168, 88e5d0e). From 
 - **Athens** (dev): `identity.jurisdiction_type` = town, no `jurisdiction_ocd_id`, districts Agora and Sparta. Its
   "couldn't tell which one it's in" was `no_match`: the Census found the Floyd address and its subdivision, which
   matches neither name. Athens gets no Census list (not a county).
-- **Mapbox address suggestions: not built.** Partial work is in `git stash` ("mapbox address suggestions"): the
-  adapter, its fake, the Mapbox implementation and Privacy Policy lines. Wiring it in was refused by the permission
-  check pending Adam's own approval of sending typed addresses to Mapbox.
+- **Mapbox address suggestions** (Adam approved sending typed addresses to Mapbox, 2026-11-17, in his own words):
+  `POST /user/about/address-suggestions { text }` → `{ available, suggestions }` through the new `addressSuggest`
+  adapter (`src/hosting/mapboxAddresses.ts`, Geocoding v6 forward, autocomplete, `types=address`, `country=us`,
+  limit 5, `proximity` = the hub's place, looked up once per instance by its name; fake
+  `src/adapters/fakes/addressSuggest.ts`). Only the text and the hub's place name go out; nothing is kept or logged;
+  150 asks an hour per member, 3 characters at least. `/hub-config` carries `address_suggestions` so the card knows
+  before anyone types. The card (`AboutYouForm.tsx` AddressLookup): suggestions after a 300 ms pause, arrow keys and
+  Enter, a pick runs the Census lookup at once. **`MAPBOX_ACCESS_TOKEN` is set in Vercel's env** for civic-hub (dev:
+  civic-hub-dev, all three environments; prod when released); unset: available false, type-and-Find as before.
+  Privacy Policy 1.5 now names Mapbox and the US Census Bureau (it named neither before).
+- **Also:** `ui/src/aside/cards.tsx` lint warning fixed (the announcements list memoized, so the layout effect isn't
+  handed a new `[]` each render); `leakHarness` plans `GET /admin/news-sync/items`.
+- **Tests:** API `aboutYou`, `hubConfig`, `breakdowns` pass locally; `leakHarness`'s two known local failures remain
+  (500s on `/admin/hub/sample-content*` and `/admin/hub/mode/readiness`, see the sample-content notes below), its
+  route coverage passes with the news-sync plan.
 
 ## Districts and demographics — 2026-11-16
 
