@@ -9,18 +9,17 @@ import type { Activity, ActivityKind } from "../../../src/shared/feedActivity";
 import type { CivicEvent, RelationType } from "../services/api";
 import type { FormApi } from "../pages/settings/pluginFields";
 
-/** One page of a type: its path, and who may open it. */
+/**
+ * One page of a type: its path, and who may open it. A type whose page lives
+ * at "/process/:id" (its manifest's detailPath) registers it at that path; the
+ * kernel owns the link and hands it over while the type's plugin is on
+ * (pages/ProcessLink.tsx).
+ */
 export interface ProcessRoute {
   path: string;
   element: ReactElement;
   /** Wrapped in <AdminGuard>. */
   admin?: true;
-  /**
-   * Mounted without the plugin gate: the page itself shows "not found" for a
-   * record whose own plugin is off (the generic /process/:id page, which
-   * hands every type to its own page and so cannot know the plugin up front).
-   */
-  ungated?: true;
 }
 
 /**

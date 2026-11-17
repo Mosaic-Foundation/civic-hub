@@ -1,7 +1,5 @@
-// Meeting summaries' own copy of the Wix column map (kernel step 1). The hub's
-// settings save checks a wix_fields value with src/shared/wixFields.ts until
-// kernel step 3 gives a package's settings their own checks; the two copies'
-// code stays identical until then (tests/unit/meetingSummaryRulesCopy.test.ts).
+// Meeting summaries' Wix column map, and its check of the setting on save
+// (the package's server's checkSetting, kernel step 3).
 //
 // Which columns of a Wix meetings collection hold what (the cleanup slice,
 // 2026-10-16). The wix-cms connector was written against the first hub's

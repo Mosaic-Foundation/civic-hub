@@ -19,6 +19,7 @@
 // refused and nothing in the write is stored.
 
 import { NotFoundError, ValidationError } from "../errors/index.js";
+import { packageSettingProblem } from "../services/packageContributions.js";
 import { route } from "../http/route.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { currentHub, currentHubId } from "../config/hubContext.js";
@@ -206,6 +207,15 @@ export const handlePutHubSettings = route(async (req, res) => {
       ...(result.unknownKeys ? { unknown_keys: result.unknownKeys } : {}),
     });
     return;
+  }
+  // A plugin's own setting is checked by its own package too (its server's
+  // checkSetting, kernel step 3): Meeting summaries reads its Wix columns.
+  for (const e of result.entries) {
+    const problem = packageSettingProblem(e.key, e.value);
+    if (problem) {
+      res.status(400).json({ error: `${e.key}: ${problem}`, code: "invalid_settings" });
+      return;
+    }
   }
 
   // A document saved exactly as its shared template is stored as "" — the

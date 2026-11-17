@@ -15,7 +15,7 @@ import {
   type ProcessUi,
 } from "@civic-social/plugin-sdk/ui";
 import { getProcessState, type VoteState } from "./ui/api";
-import { voteResultLine } from "./ui/resultLine";
+import { voteResultLine } from "./resultLine";
 
 const Votes = lazy(() => import("./ui/Votes"));
 const Process = lazy(() => import("./ui/Process"));
@@ -70,9 +70,9 @@ const voteUi: ProcessUi = {
   type: "civic.vote",
   routes: [
     { path: "/votes", element: <Votes /> },
-    // The generic page: it hands every other type to its own page, so it checks
-    // the record's plugin itself (pages/Process.tsx).
-    { path: "/process/:id", element: <Process />, ungated: true },
+    // The vote's page is the kernel's /process/:id link: the kernel hands the
+    // link here while Votes is on, and sends it on itself otherwise.
+    { path: "/process/:id", element: <Process /> },
     { path: "/votes/new", element: <NewVote /> },
     { path: "/votes/:id/log", element: <VoteLog /> },
   ],

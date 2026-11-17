@@ -50,7 +50,7 @@ export type SettingFieldKind =
   | "date"
   /** A whole number within the spec's `min`–`max`, or empty. */
   | "number"
-  /** Which Wix collection columns hold what (src/shared/wixFields.ts), or empty. */
+  /** Which Wix collection columns hold what (Meeting summaries' wixFields.ts checks it, kernel step 3), or empty. */
   | "wix_fields"
   /** #rrggbb. */
   | "color"

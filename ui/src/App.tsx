@@ -25,6 +25,7 @@ import HubBanner from "./components/HubBanner";
 import WordcloudTeaser from "./components/WordcloudTeaser";
 import FeedVotesTabs from "./components/FeedVotesTabs";
 import Home from "./pages/Home";
+import ProcessLink, { type ProcessLinkPage } from "./pages/ProcessLink";
 import {
   About,
   AdminArchived,
@@ -117,7 +118,7 @@ function processRoutes() {
     // The type's detail page (its manifest's detailPath) carries the
     // framework's archive control (components/archiveSlot.tsx).
     const detail = detailPathOf(ui.type, ":id");
-    return ui.routes.map((r) => {
+    return ui.routes.filter((r) => r.path !== PROCESS_LINK).map((r) => {
       const element =
         r.path === detail && !r.admin ? (
           <ArchiveSlotProvider type={ui.type} row={DetailActions}>
@@ -127,9 +128,36 @@ function processRoutes() {
           r.element
         );
       const page = r.admin ? <AdminGuard>{element}</AdminGuard> : element;
-      return <Route key={`${ui.type} ${r.path}`} path={r.path} element={r.ungated || !plugin ? page : whenPlugin(plugin, page)} />;
+      return <Route key={`${ui.type} ${r.path}`} path={r.path} element={!plugin ? page : whenPlugin(plugin, page)} />;
     });
   });
+}
+
+/**
+ * /process/:id is the kernel's (pages/ProcessLink.tsx): a type whose page
+ * lives there registers it, and the kernel hands the link to it while its
+ * plugin is on, else sends the link to the process's own type's page.
+ */
+const PROCESS_LINK = "/process/:id";
+const processLinkPages: ProcessLinkPage[] = PROCESS_UI.flatMap((ui) =>
+  ui.routes
+    .filter((r) => r.path === PROCESS_LINK && !r.admin)
+    .map((r) => ({
+      type: ui.type,
+      plugin: pluginOfType(ui.type),
+      element:
+        detailPathOf(ui.type, ":id") === PROCESS_LINK ? (
+          <ArchiveSlotProvider type={ui.type} row={DetailActions}>
+            {r.element}
+          </ArchiveSlotProvider>
+        ) : (
+          r.element
+        ),
+    })),
+);
+
+function processLinkRoute() {
+  return <Route key="process-link" path={PROCESS_LINK} element={<ProcessLink pages={processLinkPages} />} />;
 }
 
 /** Every feature package's pages (ui/src/features.ts), each behind its feature's switch. */
@@ -286,6 +314,7 @@ function AppContent() {
             <Suspense fallback={<p className="page-loading" aria-busy="true">Loading…</p>}>
               <Routes>
                 <Route path="/" element={<Home />} />
+                {processLinkRoute()}
                 {processRoutes()}
                 {featureRoutes()}
                 <Route path="/my-submissions" element={<MySubmissions />} />

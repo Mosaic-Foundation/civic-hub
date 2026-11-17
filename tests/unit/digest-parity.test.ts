@@ -45,6 +45,13 @@ function assemble(events: DigestEvent[], titles: Record<string, string> = {}) {
 }
 
 describe("digest ↔ feed parity (Phase 3)", () => {
+  it("a closed vote's row gives the count the vote itself says (its handler's resultLine, kernel step 3)", () => {
+    const out = assemble([
+      ev("civic.process.result_published", { process: { type: "civic.vote", title: "Park" }, results_at_close: true, result: { tally: { No: 2, Yes: 5 } } }),
+    ]);
+    expect(out?.text).toContain("Final count: Yes 5 · No 2.");
+  });
+
   it("wordcloud started is no longer mislabeled as a vote", () => {
     // Before Phase 3, filter.ts returned 'vote_opened' for every started event.
     expect(

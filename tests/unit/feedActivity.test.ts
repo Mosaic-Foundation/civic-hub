@@ -3,7 +3,6 @@ import {
   FEED_EVENT_TYPES,
   briefResponseContext,
   classifyActivity,
-  voteResultLine,
   type ClassifierEvent,
 } from "../../src/shared/feedActivity.js";
 
@@ -246,7 +245,8 @@ describe("classifyActivity — result_published discrimination", () => {
     });
   });
 
-  it("voteResultLine: most votes first, empty without a tally", () => {
+  it("voteResultLine (Votes' own, kernel step 3): most votes first, empty without a tally", async () => {
+    const { voteResultLine } = await import("../../packages/civic.vote/resultLine.js");
     expect(voteResultLine({ result: { tally: { No: 1, Yes: 3, Unsure: 0 } } })).toBe("Yes 3 · No 1 · Unsure 0");
     expect(voteResultLine({})).toBe("");
     expect(voteResultLine({ result: { tally: { Yes: 0, No: 0 } } })).toBe("");

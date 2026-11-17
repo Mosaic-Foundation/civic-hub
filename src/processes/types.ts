@@ -400,6 +400,13 @@ export interface ProcessHandler {
   commentPhase?: "vote" | "comment";
 
   /**
+   * What one of its result events came to, as one line for a digest row
+   * ("Yes 12 · No 5"), read from the event's data; "" when there is nothing
+   * to say (kernel step 3: the digest used to keep the vote's own copy).
+   */
+  resultLine?(data: Record<string, unknown> | undefined): string;
+
+  /**
    * Whether a process waiting for an admin's review is flagged for a closer
    * look (kernel step 3): a meeting summary whose quality check failed. The
    * admin digest counts these; default false.

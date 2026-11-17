@@ -14,7 +14,7 @@
 import {
   briefResponseContext,
   classifyActivity,
-  voteResultLine,
+  classifiedType,
   DECLARED_COLORS,
   DECLARED_FEED_KINDS,
   type Activity,
@@ -23,6 +23,7 @@ import {
   type ClassifierEvent,
 } from "../../shared/feedActivity.js";
 import { sortDigestItems } from "./filter.js";
+import { getProcessHandler } from "../../processes/registry.js";
 import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
 import { getSettingSync } from "../../services/hubSettings.js";
 import { KEYS } from "../../models/hubSettings.js";
@@ -216,7 +217,9 @@ function digestTitleSummary(
       return { title: rawTitle ?? "New vote open", summary: "New vote now open — cast your ballot." };
 
     case "vote-closed": {
-      const line = voteResultLine(event.data as Record<string, unknown> | undefined);
+      // The vote says its own count (its handler's resultLine, kernel step 3).
+      const type = classifiedType(event as ClassifierEvent);
+      const line = (type && getProcessHandler(type)?.resultLine?.(event.data as Record<string, unknown> | undefined)) || "";
       return {
         title: rawTitle ?? "Vote results",
         summary: line ? `Voting has closed. Final count: ${line}.` : "Voting has closed. No votes were cast.",

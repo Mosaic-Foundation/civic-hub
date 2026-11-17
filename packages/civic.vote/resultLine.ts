@@ -1,6 +1,6 @@
-// A closed vote's final count as one line, for its feed card. The kernel's
-// digest keeps its own copy (src/shared/feedActivity.ts, voteResultLine)
-// until step 3 gives the digest the vote's line from the event.
+// A closed vote's final count as one line, for its feed card and the digest's
+// row (the handler's resultLine, kernel step 3). Pure: the server and the
+// package's UI both read it.
 
 /**
  * One line of a vote's final count for a card or digest row, most votes

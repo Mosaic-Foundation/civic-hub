@@ -88,12 +88,16 @@ const METHOD_LABELS: Record<string, string> = {
   approval: "Choose all options you approve of",
 };
 
+import { voteResultLine } from "./resultLine.js";
+
 const voteProcess: ProcessHandler = {
   type: "civic.vote",
   descriptor: VOTE_MANIFEST.descriptor,
   // A vote's comment list draws a divider between its comments and the ones
   // carried over from its proposal (kernel step 3: the kernel named the vote).
   commentPhase: "vote",
+  // The digest's row for a closed vote: its final count (kernel step 3).
+  resultLine: (data) => voteResultLine(data),
   requiredSchema: [...VOTE_MANIFEST.requiredSchema],
   detailPath: VOTE_MANIFEST.detailPath,
   draftPath: (draftId: string) => `/votes/new?draft=${encodeURIComponent(draftId)}`,

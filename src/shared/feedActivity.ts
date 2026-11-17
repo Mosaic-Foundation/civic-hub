@@ -327,13 +327,27 @@ export const FEED_META_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(
  * digest all share. Default-closed: an event no rule names makes no card.
  */
 export function classifyActivity(event: ClassifierEvent): Activity | null {
+  const pick = pickRule(event);
+  return pick ? cardFor(pick, event, event.data ?? {}) : null;
+}
+
+/**
+ * The process type whose card rule classified this event (the vote, for its
+ * closing count), or undefined when no card is made. The digest asks that
+ * type's handler for its own line (kernel step 3).
+ */
+export function classifiedType(event: ClassifierEvent): string | undefined {
+  return pickRule(event)?.type;
+}
+
+function pickRule(event: ClassifierEvent): TableRule | undefined {
   // Review-lifecycle events are restricted admin/creator correspondence —
   // admins receive them on the events endpoint for the moderation log, but
   // they are never public activity. Excluded regardless of viewer.
-  if (event.event_type.startsWith("civic.review.")) return null;
+  if (event.event_type.startsWith("civic.review.")) return undefined;
 
   const rules = RULES.get(event.event_type);
-  if (!rules) return null;
+  if (!rules) return undefined;
   const data = event.data ?? {};
   const processType = processTypeOf(event);
   const holds = (r: TableRule) => !r.when || Object.entries(r.when).every(([k, v]) => data[k] === v);
@@ -348,7 +362,7 @@ export function classifyActivity(event: ClassifierEvent): Activity | null {
     (processType !== undefined ? rules.find((r) => r.match !== "event" && r.type === processType && holds(r)) : undefined) ??
     rules.find((r) => r.match !== "event" && hasLegacy(r) && holds(r)) ??
     (processType === undefined ? rules.find((r) => r.untypedDefault && holds(r)) : undefined);
-  return pick ? cardFor(pick, event, data) : null;
+  return pick;
 }
 
 function cardFor(rule: TableRule, event: ClassifierEvent, data: Record<string, unknown>): Activity {
@@ -443,22 +457,3 @@ function abbreviateGovernment(label: string): string {
   return label.replace(/\bGovernment\b/gi, "Gov");
 }
 
-/**
- * One line of a vote's final count for a card or digest row, most votes
- * first: "Yes 12 · No 5 · Unsure 1". Empty when the event carries no tally
- * or nobody voted.
- * Options are stored by their label, so the keys read as written.
- */
-export function voteResultLine(data: Record<string, unknown> | undefined): string {
-  const result = (data?.result ?? {}) as { tally?: unknown };
-  const tally = result.tally;
-  if (!tally || typeof tally !== "object") return "";
-  const counts = Object.entries(tally as Record<string, unknown>).filter(
-    (e): e is [string, number] => typeof e[1] === "number",
-  );
-  if (counts.every(([, n]) => n === 0)) return "";
-  return counts
-    .sort((a, b) => b[1] - a[1])
-    .map(([option, count]) => `${option} ${count}`)
-    .join(" · ");
-}

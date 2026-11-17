@@ -50,11 +50,6 @@ export default function Process() {
 
   const currentActor = actorId ?? "anonymous";
 
-  // With the plugin whose page this is switched off, the route shows what a
-  // switched-off plugin's route shows, as before it stopped being behind it.
-  const routePlugin = "vote";
-  if (routePlugin && !space.pluginEnabled(routePlugin)) return <PluginOff />;
-
   if (loading) return <p className="detail-page">Loading...</p>;
   if (error) return (
     <div className="page detail-page">
@@ -70,10 +65,10 @@ export default function Process() {
     </div>
   );
 
-  // This is the vote's page (its manifest's detailPath). Any other type has a
-  // page of its own: a proposal's is /proposal/:id, a brief's /brief/:id.
-  // The route is not behind the vote plugin, so the type's own plugin is
-  // checked here once the type is known.
+  // This is the vote's page (its manifest's detailPath), and the kernel's
+  // /process/:id link while Votes is on (the kernel's pages/ProcessLink.tsx).
+  // Any other type has a page of its own: a proposal's is /proposal/:id, a
+  // brief's /brief/:id; its own plugin is checked once the type is known.
   const path = detailPathOf(process.type, process.id);
   if (path !== `/process/${process.id}`) return <Navigate to={path} replace />;
   const plugin = pluginOfType(process.type);

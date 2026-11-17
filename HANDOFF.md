@@ -4,6 +4,26 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 3, second part: the digest's vote line, a package's own settings check, the kernel's /process link — 2026-11-17
+
+On `kernel-extraction` (PR #22, draft). Catalog entries regenerated at the same versions for Votes 0.4.0 and Meeting
+summaries 0.3.0 (Votes now `20261117192502`, Meeting summaries `20261117192512`; the old files are deleted). Nothing
+on screen changes.
+
+- **A type's own closed line (`resultLine`).** The handler hook gives the one line a closed process's event shows in
+  the digest. Votes' line (`packages/civic.vote/resultLine.ts`, moved from its `ui/` folder) is the only copy; the
+  kernel's `voteResultLine` is gone, and the digest asks the event's classified type (`classifiedType`).
+- **A package checks its own settings (`PluginServer.checkSetting`).** The settings save asks the loaded package whose
+  plugin a `plugin.<id>.` key names (`packageSettingProblem`, `src/services/packageContributions.ts`), on or off.
+  Meeting summaries checks its Wix field list; `src/shared/wixFields.ts` is deleted, and the kernel's `wix_fields`
+  kind is a plain one-line text check.
+- **`/process/:id` is the kernel's** (`ui/src/pages/ProcessLink.tsx`). Votes registers its page there and gets the link
+  while Votes is on, read once as before; otherwise the kernel reads the process and sends the link to its type's own
+  page. An old link to a proposal or a brief now works with Votes off (it showed "Page not found"). `ungated` on a
+  route is gone.
+
+---
+
 ## Kernel step 3, first part: "process closed", and packages say what they offer — 2026-11-17
 
 On `kernel-extraction` (PR #22, draft). Four catalog entries regenerated at the same versions (Briefs 0.4.0 now

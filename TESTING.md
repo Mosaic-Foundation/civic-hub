@@ -87,6 +87,15 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 3, second part: closed line, settings check, /process link (2026-11-17)
+
+- **Unit:** 2,815 passed. `digest-parity.test.ts`: a closed vote's digest row reads its final count from Votes'
+  `resultLine`. `meetingSummaryGeneric.test.ts`: a bad Wix field list is refused by the package's own `checkSetting`.
+  **UI:** new `ui/src/pages/ProcessLink.test.tsx`: the link is the vote's page with Votes on, sends a proposal's old
+  link to its page with Votes off, and shows "Page not found" for a vote with Votes off.
+  **API:** 1,065 passed; the 4 failures are `events.test.ts`'s sandbox-only ones. `catalog:add` green for Votes and
+  Meeting summaries.
+
 ## Kernel step 3, first part: "process closed" and package contributions (2026-11-17)
 
 - **Unit:** 2,815 passed. `processManifest.test.ts`: a grant may listen for `process.closed`, and the Install words say

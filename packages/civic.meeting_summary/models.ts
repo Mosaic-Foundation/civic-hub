@@ -317,7 +317,7 @@ export interface MeetingSummaryConfig {
   collection_name?: string;
   /**
    * `plugin.meeting_summary.wix_fields`: which collection columns hold the
-   * date, type, documents and recordings (src/shared/wixFields.ts). Empty
+   * date, type, documents and recordings (./wixFields.ts). Empty
    * reads as the defaults.
    */
   wix_fields?: string;

@@ -27,3 +27,20 @@ export async function inputTargetPhase(id: string): Promise<"proposal" | null> {
 export async function resetPackagesForDev(): Promise<void> {
   for (const p of loadedPackages()) await p.server.dev?.reset?.();
 }
+
+/**
+ * What the package that owns a plugin setting (`plugin.<id>.<name>`) says is
+ * wrong with this value, or null (PluginServer.checkSetting, kernel step 3).
+ * Asked of the loaded package whether or not it is switched on: an admin may
+ * set a plugin up before turning it on.
+ */
+export function packageSettingProblem(key: string, value: string): string | null {
+  const m = /^plugin\.([a-z0-9_]+)\./.exec(key);
+  if (!m) return null;
+  for (const p of loadedPackages()) {
+    if (p.plugin !== m[1] || !p.server.checkSetting) continue;
+    const problem = p.server.checkSetting(key, value);
+    if (problem) return problem;
+  }
+  return null;
+}

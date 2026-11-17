@@ -68,6 +68,12 @@ export interface PluginServer {
    * comment under `phase`.
    */
   inputTargets?: { phase: "proposal"; exists(id: string): Promise<boolean> };
+  /**
+   * What is wrong with a value of one of its own settings (`plugin.<id>.*`),
+   * or null, checked on save after the kernel's check of the field's kind
+   * (kernel step 3).
+   */
+  checkSetting?(key: string, value: string): string | null;
   /** The development reset (debug routes only, never production): empty its own records. */
   dev?: { reset?(): Promise<void> };
   /**
