@@ -18,6 +18,10 @@ export function fakeGeocoder(): DistrictGeocoder & { lookups: number } {
       const m = /\bin (.+)$/i.exec(address.trim());
       return { countySubdivision: m ? m[1]!.trim() : "Court House district", county: "Test County" };
     },
+    async countySubdivisions(countyGeoid: string): Promise<string[] | null> {
+      if (countyGeoid === "00000") return null;
+      return ["Burks Fork district", "Court House district", "Indian Valley district", "Little River district", "Locust Grove district"];
+    },
   };
   return fake;
 }

@@ -40,6 +40,29 @@ export function placeFromCensus(body: unknown): AddressPlace | null {
   return { countySubdivision, county };
 }
 
+/**
+ * The names in a Census Data API answer for county subdivisions: a header row
+ * then [NAME, state, county, county subdivision]. "Court House district,
+ * Floyd County, Virginia" → "Court House district". The Census's
+ * placeholder for land in no subdivision ("County subdivisions not defined")
+ * is dropped. Pure; exported for its unit test.
+ */
+export function subdivisionNamesFromCensus(body: unknown): string[] | null {
+  if (!Array.isArray(body) || body.length < 2 || !Array.isArray(body[0])) return null;
+  const at = (body[0] as unknown[]).indexOf("NAME");
+  if (at < 0) return null;
+  const names = new Set<string>();
+  for (const row of body.slice(1)) {
+    const full = Array.isArray(row) && typeof row[at] === "string" ? (row[at] as string) : "";
+    const name = full.split(",")[0]!.trim();
+    if (name && !/not defined/i.test(name)) names.add(name);
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+/** The Census Data API (no key needed at this volume): the 2020 census's county subdivisions. */
+const SUBDIVISIONS_ENDPOINT = "https://api.census.gov/data/2020/dec/pl";
+
 export const censusGeocoder: DistrictGeocoder = {
   name: "census",
   configured: () => true,
@@ -65,5 +88,24 @@ export const censusGeocoder: DistrictGeocoder = {
       throw new Error("The Census geocoder could not be reached.");
     }
     return placeFromCensus(body);
+  },
+  async countySubdivisions(countyGeoid: string): Promise<string[] | null> {
+    if (!/^\d{5}$/.test(countyGeoid)) return null;
+    const params = new URLSearchParams({
+      get: "NAME",
+      for: "county subdivision:*",
+      in: `state:${countyGeoid.slice(0, 2)} county:${countyGeoid.slice(2)}`,
+    });
+    try {
+      const res = await guardedFetch(`${SUBDIVISIONS_ENDPOINT}?${params.toString()}`, {
+        headers: { accept: "application/json" },
+        signal: AbortSignal.timeout(10_000),
+        maxBytes: 2_000_000,
+      });
+      if (!res.ok) return null;
+      return subdivisionNamesFromCensus(await res.json());
+    } catch {
+      return null;
+    }
   },
 };

@@ -45,6 +45,7 @@ import {
   handleForwardFeedback,
 } from "../controllers/adminFeedbackController.js";
 import { requireAdmin } from "../middleware/auth.js";
+import { handleCensusDistricts } from "../controllers/aboutController.js";
 import {
   handleGetModeReadiness,
   handleRequestModeChangeCode,
@@ -159,6 +160,8 @@ router.post("/hub/setup-card", handlePostSetupCard);
 router.get("/hub/settings", handleGetHubSettings);
 router.put("/hub/settings", handlePutHubSettings);
 router.get("/hub/settings/template/:key", handleGetSettingTemplate);
+// Districts and demographics: the county's subdivisions from the Census, to fill Settings > Districts.
+router.get("/hub/districts/census", handleCensusDistricts);
 // Live items per plugin, for the Plugins page's switch-off warning.
 router.get("/hub/plugins/live", handleGetPluginLiveCounts);
 // Plugin packages' installs: Install, Remove (Stop now or Wind down) (ADR-014), Update (ADR-015).

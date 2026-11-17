@@ -91,6 +91,27 @@ export async function stateNameForHub(hubId: string): Promise<string | null> {
 }
 
 /**
+ * The Census code (state and county FIPS, five digits) of a hub's listed
+ * county, for filling its district list from the Census (districts and
+ * demographics, 2026-11-16). Null when the hub's listed place is not a county
+ * or it has none.
+ */
+export async function countyGeoidForHub(hubId: string): Promise<string | null> {
+  try {
+    const db = getDb();
+    const { data: hub } = await db.from("hubs").select("jurisdiction_ocd_id").eq("id", hubId).maybeSingle();
+    const ocdId = (hub as { jurisdiction_ocd_id: string | null } | null)?.jurisdiction_ocd_id;
+    if (!ocdId) return null;
+    const { data } = await db.from("jurisdictions").select("census_geoid, type").eq("ocd_id", ocdId).maybeSingle();
+    const row = data as { census_geoid: string | null; type: string } | null;
+    return row?.type === "county" && /^\d{5}$/.test(row.census_geoid ?? "") ? row.census_geoid : null;
+  } catch (err) {
+    console.error(`[hubs] county of ${hubId} could not be read`, err);
+    return null;
+  }
+}
+
+/**
  * Drop every cached miss. Call after creating a hub or changing a hostname,
  * so this instance finds the new address at once. (Other changes need no
  * call: a found hub is read fresh on every request.)

@@ -23,4 +23,11 @@ export interface DistrictGeocoder {
   configured(): boolean;
   /** Where an address is, or null when it can't be found. Throws (without the address) when the service fails. */
   locate(address: string): Promise<AddressPlace | null>;
+  /**
+   * The county subdivisions of one county (state and county FIPS, "51063"),
+   * by name as the Census writes them ("Court House district"), or null when
+   * they can't be had. Fills a hub's district list without anyone uploading
+   * a map.
+   */
+  countySubdivisions(countyGeoid: string): Promise<string[] | null>;
 }

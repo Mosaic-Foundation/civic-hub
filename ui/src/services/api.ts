@@ -3098,3 +3098,8 @@ export interface Breakdown {
 export function getBreakdowns(processId: string): Promise<{ breakdowns: Breakdown[] }> {
   return request("GET", `/process/${processId}/breakdowns`);
 }
+
+/** Admins: the hub's county's subdivisions from the Census, to fill Settings > Districts (null when none can be had). */
+export function adminCensusDistricts(): Promise<{ districts: Array<{ id: string; name: string }> | null }> {
+  return request("GET", "/admin/hub/districts/census");
+}

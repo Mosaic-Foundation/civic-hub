@@ -2,7 +2,8 @@
 // from, where to look one up, and which About-you questions are asked
 // (districts and demographics, Adam 2026-11-16; src/shared/aboutYou.ts).
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { adminCensusDistricts } from "../../services/api";
 import HelpButton from "../../components/HelpButton";
 import SectionForm, { type FormApi } from "./SectionForm";
 import { BooleanField, TextField, UrlField } from "./fields";
@@ -92,6 +93,27 @@ function DistrictListField({ f, singular }: { f: FormApi; singular: string }) {
   const list = parseDistricts(f.value(ABOUT_KEYS.DISTRICTS));
   const [draft, setDraft] = useState("");
   const save = (next: District[]) => f.set(ABOUT_KEYS.DISTRICTS, next.length ? JSON.stringify(next) : "");
+  // The county's subdivisions from the Census (Adam, 2026-11-16: nobody should
+  // have to upload a map). An empty list is filled from it once, on opening;
+  // the admin checks the names and saves.
+  const [census, setCensus] = useState<District[] | null>(null);
+  const [filled, setFilled] = useState(false);
+  const tried = useRef(false);
+  const empty = list.length === 0;
+  useEffect(() => {
+    if (tried.current) return;
+    tried.current = true;
+    adminCensusDistricts()
+      .then((r) => {
+        if (!r.districts?.length) return;
+        setCensus(r.districts);
+        if (empty) {
+          f.set(ABOUT_KEYS.DISTRICTS, JSON.stringify(r.districts));
+          setFilled(true);
+        }
+      })
+      .catch(() => undefined);
+  }, [empty, f]);
   const add = () => {
     const name = draft.trim();
     if (!name || list.length >= DISTRICTS_MAX) return;
@@ -110,6 +132,11 @@ function DistrictListField({ f, singular }: { f: FormApi; singular: string }) {
       <p className="form-hint">
         The {singular.toLowerCase()} names members choose from. Renaming one keeps it the same in past results.
       </p>
+      {filled && (
+        <p className="settings-message" role="status">
+          Filled in from the US Census for your county. Check the names, then save.
+        </p>
+      )}
       {list.length > 0 && (
         <ul className="settings-district-list" style={{ listStyle: "none", padding: 0, margin: "0 0 var(--space-2)" }}>
           {list.map((d, i) => (
@@ -158,6 +185,19 @@ function DistrictListField({ f, singular }: { f: FormApi; singular: string }) {
         <Button size="sm" disabled={f.disabled || !draft.trim()} onClick={add}>
           Add
         </Button>
+        {census && !filled && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={f.disabled}
+            onClick={() => {
+              save(census);
+              setFilled(true);
+            }}
+          >
+            Use the Census list
+          </Button>
+        )}
       </span>
     </div>
   );

@@ -12,7 +12,15 @@
 import { CivicError, ValidationError } from "../errors/index.js";
 import { HOUR_MS, takeRateLimit } from "../db/rateLimit.js";
 import { adapters } from "../adapters/index.js";
-import { matchDistrict, type AboutConfig, type District } from "../shared/aboutYou.js";
+import {
+  DISTRICTS_MAX,
+  DISTRICT_NAME_MAX,
+  districtIdFrom,
+  matchDistrict,
+  type AboutConfig,
+  type District,
+} from "../shared/aboutYou.js";
+import { countyGeoidForHub } from "../db/hubs.js";
 
 export const ADDRESS_MAX = 200;
 export const LOOKUPS_PER_HOUR = 10;
@@ -48,4 +56,36 @@ export async function lookUpDistrict(userId: string, rawAddress: unknown, config
   if (!place?.countySubdivision) return { match: null, reason: "not_found" };
   const match = matchDistrict(place.countySubdivision, config.districts);
   return match ? { match, reason: null } : { match: null, reason: "no_match" };
+}
+
+/**
+ * A district name as people say it, from the Census's: "Court House district"
+ * → "Court House", "Locust Grove magisterial district" → "Locust Grove".
+ * Adam, 2026-11-16: the plain word is District, not "magisterial district".
+ */
+export function plainDistrictName(censusName: string): string {
+  const plain = censusName
+    .replace(/\s+(magisterial|election|supervisor|council|voting)?\s*(district|ward|precinct)$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return plain || censusName.trim();
+}
+
+/**
+ * The hub's districts as the Census lists them, ready to save: its county's
+ * subdivisions, plainly named, each with an id. Null when the hub's place is
+ * not a county the Census knows, or the Census can't be reached. Nothing is
+ * saved here: the admin sees the list and saves it (Settings > Districts).
+ */
+export async function districtsFromCensus(hubId: string): Promise<District[] | null> {
+  const geoid = await countyGeoidForHub(hubId);
+  if (!geoid) return null;
+  const names = await adapters().geocoder.countySubdivisions(geoid);
+  if (!names || names.length === 0) return null;
+  const out: District[] = [];
+  for (const name of names.map(plainDistrictName)) {
+    if (out.some((d) => d.name.toLowerCase() === name.toLowerCase())) continue;
+    out.push({ id: districtIdFrom(name, out.map((d) => d.id)), name: name.slice(0, DISTRICT_NAME_MAX) });
+  }
+  return out.slice(0, DISTRICTS_MAX);
 }

@@ -159,3 +159,30 @@ describe("reading the Census geocoder's answer", () => {
     expect(placeFromCensus(null)).toBeNull();
   });
 });
+
+describe("filling the district list from the Census", () => {
+  it("reads a county's subdivisions from a Census Data API answer", async () => {
+    const { subdivisionNamesFromCensus } = await import("../../src/hosting/censusGeocoder.js");
+    const body = [
+      ["NAME", "state", "county", "county subdivision"],
+      ["Little River district, Floyd County, Virginia", "51", "063", "91664"],
+      ["Burks Fork district, Floyd County, Virginia", "51", "063", "90880"],
+      ["County subdivisions not defined, Floyd County, Virginia", "51", "063", "00000"],
+    ];
+    expect(subdivisionNamesFromCensus(body)).toEqual(["Burks Fork district", "Little River district"]);
+    expect(subdivisionNamesFromCensus({ error: "x" })).toBeNull();
+  });
+
+  it("names a district as people say it", async () => {
+    const { plainDistrictName } = await import("../../src/services/districtLookup.js");
+    expect(plainDistrictName("Court House district")).toBe("Court House");
+    expect(plainDistrictName("Locust Grove magisterial district")).toBe("Locust Grove");
+    expect(plainDistrictName("Ward 3")).toBe("Ward 3");
+    expect(plainDistrictName("district")).toBe("district");
+  });
+
+  it("still matches a plain name the admin renamed, to the Census's name for it", () => {
+    const listed = [{ id: "court-house", name: "Courthouse" }];
+    expect(matchDistrict("Court House district", listed)?.id).toBe("court-house");
+  });
+});

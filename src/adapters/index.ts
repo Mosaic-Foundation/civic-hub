@@ -78,7 +78,7 @@ export function noneAdapters(): Adapters {
       listAll: async () => null,
       remove: async () => {},
     },
-    geocoder: { name: "none", configured: () => false, locate: async () => null },
+    geocoder: { name: "none", configured: () => false, locate: async () => null, countySubdivisions: async () => null },
   };
 }
 
