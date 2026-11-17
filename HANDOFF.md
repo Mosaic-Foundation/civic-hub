@@ -23,7 +23,7 @@ On `kernel-extraction`. **Catalog entry for Announcements 0.4.0 is a migration**
 
 On `kernel-extraction` (from dev 69e0a13; not merged). Plan: `docs/KERNEL.md`; the inventory:
 `docs/kernel/SURFACE.md` (`npx tsx scripts/kernel-surface.ts`). **The catalog entry for Word clouds 0.3.0 is a
-migration** (20261117021613): apply it and approve it in the console, or Word clouds is not mounted.
+migration** (20261117030347): apply it and approve it in the console, or Word clouds is not mounted.
 
 - **Word clouds 0.3.0** imports only `@civic-social/plugin-sdk` (version 1), `/manifest` and `/ui`. Its pages moved
   from `ui/src/pages/` into `packages/civic.wordcloud/ui/` unchanged (styles too), its API client into
@@ -41,6 +41,57 @@ migration** (20261117021613): apply it and approve it in the console, or Word cl
 - **Conformance:** `MOVED_HUB_PAGES` skips steps 17 and 22 for `civic.wordcloud@0.3.0` only. Its next release
   rebuilds the pages on the kit (a visible change: Adam's eye first).
 - **Left in the hub:** the welcome strip's cloud (`WordcloudTeaser`, over HTTP); step 3 makes it a contribution.
+
+## Districts and demographics — 2026-11-16
+
+On dev, unpushed (four commits after 69e0a13). **Two migrations** (20261116030000 member_about, 20261116040000
+ballot tags), so release with `./scripts/release.sh dev`. Design: Adam, 2026-11-16 (artifact Kdww3wg75D15nCUymD8kDL).
+
+- **Settings > Districts** (section `districts`, keys `about.*`, all public; `src/shared/aboutYou.ts`): the district
+  term (unset: by `identity.jurisdiction_type`, District / Ward / School board district), the list (JSON
+  `[{ id, name }]`, kind `district_list`, ids kept on a rename), an optional "Find your district" link, and the
+  questions (district and birth year on, race off). District is asked only when the list has a district.
+- **About you** (`member_about`, module `src/modules/civic.about/`): district, birth year, race, "Prefer not to say"
+  per question (`declined`), `asked_at`. Only the member sees it (`GET/PUT /user/about`, Settings > About you);
+  cascades from `users`; exported with the hub. No member data export exists yet, so "in the member's own export"
+  waits for one.
+- **The one-time card** (`ui/src/components/AboutYouCard.tsx`): `askAboutYouFirst()` in `ui/src/services/aboutYou.ts`
+  is awaited by the api.ts calls that take part (vote, support, comment, draft submit, project sentiment, word cloud,
+  conversation vote and statement). Showing it POSTs `/user/about/asked`; Skip lets the action go on. Events'
+  "going" is in the Events package (its own fetch), so it does not trigger the card.
+- **Find it by address**: `POST /user/about/district-lookup` → the new `geocoder` adapter (`src/hosting/censusGeocoder.ts`,
+  US Census geocoder, `layers=all`, County Subdivisions; fake in `src/adapters/fakes/geocoder.ts`), loose match to
+  the list (`matchDistrict`). The address is not stored, logged or put in an error; 10 lookups an hour per member.
+- **Ballot tags** (`vote_records.district_id`, `age_bracket`, `race`): stamped by civic.receipts from the voter's
+  answers at cast and change, through `cast_ballot_with_tags` (cast_ballot plus `p_tags`; an overload would turn
+  /health red). `cast_ballot` is kept for the code before this release: drop it in a later migration.
+  `reshuffle_ballots` carries the tags; `tests/fixtures/ballotSecrecyRules.ts` allows exactly these columns.
+- **Breakdowns** (`src/services/breakdowns.ts`, internal: not in the plugin SDK, Adam 2026-11-17): a finished process's totals by one group;
+  votes from the tags (choices by group), other types from participation events joined to current answers. Every
+  cell under 5 (zero included) is hidden, then secondary hiding until no row or column has exactly one hidden cell.
+  `GET /process/:id/breakdowns`; `ResultsBreakdown` on the vote, proposal, project, conversation and word cloud pages;
+  briefs get the tables as sections at spawn (`spawnBrief.ts`), so the Brief package is unchanged.
+- **Per type:** votes get "Results by district" and "Results by age group" (each choice's count per group, from the
+  ballot tags); proposals, projects and word clouds get "Who took part, by district" and "by age group"
+  (participation events plus comments, against current answers); conversations (participation "elsewhere") and
+  types with none get no table. Briefs exist for votes, proposals, projects and conversations, so only the first
+  three get breakdown sections. Race tables join each where the hub asks.
+- **Docs:** "Member information" in `docs/BUILD-A-PLUGIN.md`: plugins get nothing and need do nothing. Help notes for `about.*` are pending and point at
+  `/reference/settings/participation` until a Districts page is published in the docs repo.
+- **Accepted risk (Adam, 2026-11-17):** results never show a group under 5, but someone holding a copy of the hub's
+  database could work out how a person voted if they were the only voter in their district or age group (the tags
+  against `vote_participation` and `member_about`). Said plainly in the Privacy Policy (In short, and "Your
+  ballot"), Settings > About you, the migration and table comment, the receipts module header and BUILD-A-PLUGIN.
+  Legal 1.5 (Adam, 2026-11-17): a material revision, so `CURRENT_LEGAL_VERSION` is 1.5 and nothing older counts
+  (`LEGAL_VERSIONS_NOT_REQUIRING_REACCEPTANCE` is empty). Every signed-in person, admins included, gets the blocking
+  "We've updated our Terms" dialog (ReAcceptModal) on their next page load in the hub, except on the legal pages
+  themselves: Continue records 1.5, Sign out leaves. It is the UI only; the API does not refuse older acceptances.
+  Tests and the smoke suite stamp CURRENT_LEGAL_VERSION, so they follow. A hub with its own saved Privacy Policy
+  keeps its text but its members are still asked (the version is shared).
+- **Census fill:** Settings > Districts on a county hub opens with the list filled from the Census Data API (the
+  county's subdivisions by its FIPS code from `jurisdictions.census_geoid`), plainly named; the admin saves.
+  `GET /admin/hub/districts/census`. Not tried against the live Census in this session.
+- **Open:** Events "going" not gated; no member data export.
 
 ## Pinned and urgent announcements — 2026-11-15
 

@@ -70,6 +70,7 @@ export const HOST_TABLES = [
   "hub_settings",
   "job_runs",
   "link_previews",
+  "member_about",
   "process_links",
   "process_reviews",
   "processes",

@@ -31,6 +31,10 @@ const FORM_DEFAULTS: Readonly<Record<string, string>> = {
   "plugin.fediverse.post_mode": "each",
   // DEFAULT_DIGEST_SEND_HOUR in src/controllers/digestController.ts.
   "plugin.digest.send_hour": "13",
+  // QUESTION_DEFAULTS in src/shared/aboutYou.ts: district and birth year on, race off.
+  "about.ask_district": "true",
+  "about.ask_birth_year": "true",
+  "about.ask_race": "false",
 };
 
 /** What a field component needs from its form. */

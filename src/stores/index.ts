@@ -24,6 +24,8 @@ import { receiptsStore } from "../modules/civic.receipts/store.js";
 import { receiptsStoreImpl } from "./receipts.js";
 import { authStore } from "../modules/civic.auth/store.js";
 import { authStoreImpl } from "./auth.js";
+import { aboutStore } from "../modules/civic.about/store.js";
+import { aboutStoreImpl } from "./about.js";
 
 export function installStores(): void {
   draftsStore.bind(draftsStoreImpl);
@@ -33,4 +35,5 @@ export function installStores(): void {
   reviewStore.bind(reviewStoreImpl);
   receiptsStore.bind(receiptsStoreImpl);
   authStore.bind(authStoreImpl);
+  aboutStore.bind(aboutStoreImpl);
 }

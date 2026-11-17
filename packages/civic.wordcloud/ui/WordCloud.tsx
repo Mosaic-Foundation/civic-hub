@@ -4,6 +4,7 @@ import {
   AdminArchiveButton,
   AuthModal,
   ProcessHeader,
+  ResultsBreakdown,
   formatDate,
   safeReturnPath,
   statusDisplay,
@@ -610,6 +611,9 @@ export default function WordCloud() {
           />
         );
       })}
+
+      {/* Finished: who took part, by district, age group, race (districts and demographics). */}
+      <ResultsBreakdown processId={wc.id} />
 
       {/* Always offer one clear way forward to the feed (Adam, 2026-09-02:
           "add it everywhere"). During onboarding (the ?onboarding=1 param the

@@ -54,6 +54,9 @@
  * activity_iri. Only those. Then image_url and image_alt. Only those.
  * And (2026-11-15, Fediverse phase 3): fediverse_replies and
  * fediverse_reactions (both exported) and their requirements. Only those.
+ * And (2026-11-16, districts and demographics): the host gains member_about
+ * (exported, keyed by user_id) and its requirement. Only those (checked
+ * by script before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

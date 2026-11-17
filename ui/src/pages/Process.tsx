@@ -22,6 +22,7 @@ import { detailPathOf, pluginOfDetailRoute, pluginOfType } from "../processes/di
 import { useHub } from "../config/hub";
 import { PluginOff } from "../components/PluginOff";
 import { formatDate } from "../utils/dates";
+import ResultsBreakdown from "../components/ResultsBreakdown";
 
 export default function Process() {
   const hub = useHub();
@@ -169,6 +170,9 @@ export default function Process() {
           config={voteState?.content?.community_input}
         />
       )}
+
+      {/* Finished: totals by district, age group, race (districts and demographics). */}
+      {id && <ResultsBreakdown processId={id} />}
 
       {/* Related processes — universal panel. Renders both the links this
           process authored and the backlinks pointing at it, from the same

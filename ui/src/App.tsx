@@ -53,6 +53,7 @@ import IntroPopup from "./components/IntroPopup";
 import { hasSeenIntro } from "./components/introSeen";
 import ReAcceptModal from "./components/ReAcceptModal";
 import HubReadyDialog from "./components/HubReadyDialog";
+import AboutYouCard from "./components/AboutYouCard";
 import { arrivingFromStartPage, hubJustCreated } from "./utils/hubJustCreated";
 import BetaBanner from "./components/BetaBanner";
 import DemoBanner from "./components/DemoBanner";
@@ -260,6 +261,8 @@ function AppContent() {
         <IntroPopup onDismiss={() => setShowIntro(false)} />
       )}
       {showReady && <HubReadyDialog email={user?.email ?? ""} onDismiss={() => setReadyClosed(true)} />}
+      {/* The one-time About-you card, shown before a member first takes part (districts and demographics). */}
+      <AboutYouCard />
 
       {!bannersInColumn && hubBanners}
 

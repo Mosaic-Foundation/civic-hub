@@ -81,6 +81,7 @@ export const NOT_PROCESS_CONTENT: Readonly<Record<string, string>> = {
   hub_settings: "configuration",
   job_runs: "the scheduled jobs' run log",
   link_previews: "a cache of other sites' metadata",
+  member_about: "a member's own About-you answers; never seeded, and a sample account's go with it (ON DELETE CASCADE)",
   project_drafts: "a resident's unsubmitted draft; the seed writes none",
   proposal_drafts: "a resident's unsubmitted draft; the seed writes none",
   sign_in_codes: "sign-in codes",

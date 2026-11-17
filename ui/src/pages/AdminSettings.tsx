@@ -26,6 +26,7 @@ import PeopleSection from "./settings/PeopleSection";
 import OfficialsSection from "./settings/OfficialsSection";
 import ParticipationSection from "./settings/ParticipationSection";
 import PluginsSection from "./settings/PluginsSection";
+import DistrictsSection from "./settings/DistrictsSection";
 import SettingsSearch from "./settings/SettingsSearch";
 import "./AdminSettings.css";
 
@@ -52,6 +53,7 @@ const RENDER: Record<SettingsNavId, () => React.ReactNode> = {
   people: () => <PeopleSection />,
   officials: () => <OfficialsSection />,
   participation: () => <ParticipationSection />,
+  districts: () => <DistrictsSection />,
   plugins: () => <PluginsSection />,
 };
 

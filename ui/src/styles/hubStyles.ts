@@ -71,6 +71,8 @@ import "../components/deliberation/DeliberationPanel.css";
 import "../components/deliberation/CompletedDeliberation.css";
 import "../pages/DeliberationDetail.css";
 import "../components/SeedStatementRows.css";
+import "../components/AboutYouForm.css";
+import "../components/ResultsBreakdown.css";
 import "../components/ShareBanner.css";
 import "../components/AdminMenu.css";
 import "../components/SharePanel.css";

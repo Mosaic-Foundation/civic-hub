@@ -359,6 +359,20 @@ None of these is required; each has a step in the suite where you use it (`docs/
 
 `kit/conformance/fixtures/sdk-tour` in the hub's repository uses every one of these.
 
+### Member information (districts and demographics)
+
+A hub can ask its members which district they live in, their year of birth and, if the hub chooses, their race or
+ethnicity. Each answer is optional and each member is asked once. The answers belong to the member: only they see
+them, in Settings > About you, and they go when the account is deleted.
+
+**Plugins never get members' answers, and never get the breakdowns made from them.** There is no SDK call for either.
+
+**Your plugin needs to do nothing.** When a process finishes, the hub itself adds results by district and by age
+group (and by race, where the hub asks) to its page, and to its brief if it has one. It counts the people who took
+part from the `participation` events your manifest declares, plus the hub's own comments, so declare those
+accurately. Every group under 5 people is hidden. Your plugin works the same whether a hub asks these questions or
+not.
+
 ## 5. Tie it together: `index.ts`
 
 ```ts

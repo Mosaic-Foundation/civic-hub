@@ -21,6 +21,8 @@ export { useAction, type ActionRunner } from "../hooks/useAction";
 
 // --- Signing in before acting ------------------------------------------------------------
 export { useRequireAuth } from "../hooks/useRequireAuth";
+// Taking part (a vote, a response, a submission): the one-time About-you card first.
+export { askAboutYouFirst } from "../services/aboutYou";
 export { default as AuthModal } from "../components/AuthModal";
 
 /** Who is reading the page, as a package's page may know it. */
@@ -72,6 +74,8 @@ export { default as Creator } from "../components/Creator";
 export { default as ShareButton, type ShareButtonProps, type ShareNudge } from "../components/ShareButton";
 export { default as RelatedProcesses } from "../components/RelatedProcesses";
 export { default as SampleBadge } from "../components/SampleBadge";
+// The kernel's totals by group (districts and demographics): mount it on a finished process's page.
+export { default as ResultsBreakdown } from "../components/ResultsBreakdown";
 export { default as Modal } from "../components/Modal";
 
 // --- A post's picture and links -----------------------------------------------------------

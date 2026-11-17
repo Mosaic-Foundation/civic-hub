@@ -41,6 +41,7 @@ import {
   digestUnsubscribeRouter,
   userSettingsRouter,
 } from "./routes/digestRoutes.js";
+import { aboutRouter } from "./routes/aboutRoutes.js";
 import { cronKillSwitch } from "./config/cron.js";
 import { assertSpaceIdentityConfigured } from "./config/hub.js";
 import { ensureSeeded } from "./debug/autoSeed.js";
@@ -248,6 +249,7 @@ app.use("/internal", cronKillSwitch);
 app.use("/internal", jobRouter);
 app.use("/unsubscribe", digestUnsubscribeRouter);
 app.use("/user/settings", userSettingsRouter);
+app.use("/user/about", aboutRouter);
 
 // --- Primary public interfaces ---
 // Events are the PRIMARY public interface of the hub. /events serves the AS2

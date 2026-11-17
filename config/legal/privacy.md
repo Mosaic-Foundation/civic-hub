@@ -1,7 +1,7 @@
 # Privacy Policy
 
-*Last updated: 2026-10-17*
-*Version: 1.4*
+*Last updated: 2026-11-17*
+*Version: 1.5*
 
 {{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US privacy law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US privacy law{{/place}} before {THE_HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production.{{/draft}}
 
@@ -11,6 +11,7 @@
 - Your email address, to sign you in and, if you choose, to send you a digest.
 - Your name. Members who are signed in see it on what you post; anyone who isn't signed in sees a plain label instead.
 - What you post, and the fact that you took part in a vote.
+- If you choose to tell us: your district, your year of birth and, on hubs that ask, your race or ethnicity ("About you"). Only you can see these answers.
 
 **What we never keep**
 - A password. There isn't one: you sign in with a code we email you.
@@ -19,7 +20,7 @@
 - Your network (IP) address, except as a scrambled counter, kept for about two days, that stops anyone flooding the sign-in form.
 
 **How anonymity works**
-- **Your vote.** We record that you voted, and, separately, the ballot. Nothing links the two. Ballots carry no time and are shuffled.
+- **Your vote.** We record that you voted, and, separately, the ballot. Nothing links the two. Ballots carry no time and are shuffled. If you tell the hub your district or year of birth, your ballot also carries your district and age group, never your name. Results never show a group of fewer than 5 people. But someone holding a copy of the hub's database could work out how you voted if you were the only voter in your district or age group.
 - **Your receipt.** After voting you get a receipt code that lets you check your ballot was counted. Keep it private: depending on how the vote was set up, anyone holding the code may see the choice it recorded.
 - **Anonymous comments.** Where a {{#place}}resident{{/place}}{{^place}}participant{{/place}} chooses to comment anonymously, other people don't see their name. The hub's admins can still see who wrote it, so they can act on reports under the Code of Conduct.
 - **The automatic check.** When you submit something, its text (never your name or email) is checked by an AI model against the Code of Conduct.
@@ -45,6 +46,7 @@ We try to collect only what's needed to run the Hub. Specifically:
 **When you participate:**
 - That you took part in a vote, and when, linked to your account, so that each person votes once.
 - Your ballot, kept apart from your account: your choice and a receipt code. The receipt code is stored with the ballot, never with you, so no record links you or your email address to a choice. Ballots carry no time and are kept in shuffled order, so they can't be matched to voters by when or in what order they were cast.
+- If you have told the hub your district or year of birth (Settings > About you), your ballot also carries your district and your age group (such as 35 to 49) at the time you voted, and on hubs that ask, your race or ethnicity. Never your name, your account or the year itself. These are used only to show results by district and by age group, and results never show a group of fewer than 5 people. But someone holding a copy of the hub's database could compare these with who voted and with members' answers, and work out how a person voted if they were the only voter in their district or age group. If that worries you, leave those questions unanswered or choose "Prefer not to say".
 - Backups made on or before 11 October 2026, when ballots were separated from accounts, may still hold the earlier records that linked a voter to a receipt, until those backups age out. Our backups are kept for 7 days (hourly copies) or 90 days (daily copies), so the last of these is deleted by mid-January 2027.
 - If you voted before 11 October 2026 in a vote that is still open, a record linking your account to your receipt is kept until you next open that vote while signed in or it closes, whichever comes first, and is deleted then.
 - Any comments you submit, linked to your account.

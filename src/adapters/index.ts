@@ -21,6 +21,7 @@ import type { DeliberationService } from "./deliberation.js";
 import type { ErrorSink } from "./errors.js";
 import type { HeartbeatSink } from "./heartbeat.js";
 import type { ObjectStore } from "./objectStore.js";
+import type { DistrictGeocoder } from "./geocoder.js";
 import { guardedFetch } from "../utils/ssrfGuard.js";
 import { DEFAULT_POLIS_URL } from "../shared/polisUrl.js";
 
@@ -32,6 +33,7 @@ export interface Adapters {
   errors: ErrorSink;
   heartbeat: HeartbeatSink;
   objectStore: ObjectStore;
+  geocoder: DistrictGeocoder;
 }
 
 export type AdapterName = keyof Adapters;
@@ -76,6 +78,7 @@ export function noneAdapters(): Adapters {
       listAll: async () => null,
       remove: async () => {},
     },
+    geocoder: { name: "none", configured: () => false, locate: async () => null, countySubdivisions: async () => null },
   };
 }
 

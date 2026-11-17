@@ -13,6 +13,7 @@ import { setAppearance as saveAppearance, setDigestFrequency, setNoticesEmail } 
 import { RadioCards } from "../kit";
 import { applyAppearance, type Appearance } from "../config/appearance";
 import MastodonHandleSetting from "../components/MastodonHandleSetting";
+import AboutYouSetting from "../components/AboutYouSetting";
 import { useHub } from "../config/hub";
 import {
   deleteAccount as deleteAccountApi,
@@ -387,6 +388,8 @@ export default function Settings() {
           />
           {appearanceError && <p className="form-error">{appearanceError}</p>}
         </section>
+
+        <AboutYouSetting />
 
         <MastodonHandleSetting />
 

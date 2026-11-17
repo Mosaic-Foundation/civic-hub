@@ -2,7 +2,7 @@
 // (@civic-social/plugin-sdk/ui): its own routes under /wordcloud, and the
 // kernel's process routes (/process, /process/:id/action) for the rest.
 
-import { apiRequest } from "@civic-social/plugin-sdk/ui";
+import { apiRequest, askAboutYouFirst } from "@civic-social/plugin-sdk/ui";
 
 export interface WordcloudCloudEntry {
   text: string;
@@ -95,11 +95,13 @@ export async function createWordcloudProcess(input: {
   return process;
 }
 
-export function submitWordcloudResponse(
+export async function submitWordcloudResponse(
   processId: string,
   promptId: string,
   text: string,
 ): Promise<unknown> {
+  // Responding is taking part: the one-time About-you card first.
+  await askAboutYouFirst();
   return apiRequest("POST", `/process/${processId}/action`, {
     type: "process.submit",
     actor: "unused",

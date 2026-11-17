@@ -8,7 +8,7 @@ import { forHub, type HubDb } from "../db/forHub.js";
 import { ballotByReceipt, castBallot, reshuffleBallots } from "../db/atomic.js";
 import { readAll } from "../db/readAll.js";
 import { currentHubId } from "../config/hubContext.js";
-import type { ReceiptsStore } from "../modules/civic.receipts/store.js";
+import type { BallotTagRow, ReceiptsStore } from "../modules/civic.receipts/store.js";
 
 /** The hub in scope. Votes are only ever cast, read or cleared inside one. */
 function db(): HubDb {
@@ -46,6 +46,18 @@ export const receiptsStoreImpl: ReceiptsStore = {
       db()
         .from("vote_records")
         .select<{ receipt_id: string; choice: string }>("receipt_id, choice")
+        .eq("process_id", processId)
+        .order("receipt_id", { ascending: true })
+        .range(from, to),
+    );
+  },
+
+  async ballotTags(processId) {
+    // No receipt: totals by group only (src/services/breakdowns.ts). Paged.
+    return readAll((from, to) =>
+      db()
+        .from("vote_records")
+        .select<BallotTagRow>("choice, district_id, age_bracket, race")
         .eq("process_id", processId)
         .order("receipt_id", { ascending: true })
         .range(from, to),

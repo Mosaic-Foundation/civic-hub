@@ -116,6 +116,18 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Districts and demographics (2026-11-16)
+- **Unit:** `tests/unit/aboutYou.test.ts` (terms, questions, age groups, the Census name match, the district list
+  setting, a member's tags, reading a Census answer), `tests/unit/breakdowns.test.ts` (the suppression rule, with a
+  seeded random sweep: no row or column with exactly one hidden cell).
+- **API:** `tests/api/aboutYou.test.ts` (own answers only, asked once, deleted with the account, the address lookup
+  through the fake geocoder), `tests/api/ballotTags.test.ts` (tags on cast and change, kept by the reshuffle, race
+  only when asked; reads the local Postgres), `tests/api/breakdowns.test.ts` (nothing while open, results by district
+  and age group after close, small groups hidden, the brief's sections, nothing when every question is off).
+- **Changed:** `ballotSecrecyRules` allows `district_id`, `age_bracket`, `race` on a ballot and checks both ballot
+  writers; `functionGrants` lists `cast_ballot_with_tags`; the leak harness walks `GET /user/about/` and
+  `GET /process/:id/breakdowns`; `pluginRoutes` lists the five new routes.
+
 ## Pinned and urgent announcements (2026-11-15)
 
 - **Unit** `tests/unit/announcementBoard.test.ts` (7): pinned/urgent now, end dates passed or ahead, the end-date

@@ -116,7 +116,8 @@ export async function transitionProcess(input: {
 
 /**
  * Cast or change one ballot: participation, ballot and the vote_submitted
- * event, in one transaction (cast_ballot, 20261010000000). A first vote
+ * event, in one transaction (cast_ballot_with_tags, 20261116040000; cast_ballot,
+ * 20261010000000, without the tags). A first vote
  * stores the hash of a new change key; a change presents the receipt and the
  * hash of the key the voter's browser holds. No row links voter and receipt.
  */
@@ -130,10 +131,15 @@ export async function castBallot(input: {
   held: { receipt_id: string; key_hash: string } | null;
   /** A first vote: the sha256 of the new change key. */
   newKeyHash: string;
+  /**
+   * The voter's coarse groups, stamped on the ballot (districts and
+   * demographics, 20261116040000): never a person or a time.
+   */
+  tags: { district_id: string | null; age_bracket: string | null; race: string[] | null };
 }): Promise<{ receipt_id: string; updated: boolean; unchanged: boolean }> {
   try {
     const out = await forHub(input.hubId).rpc<{ receipt_id: string; updated: boolean; unchanged: boolean }>(
-      "cast_ballot",
+      "cast_ballot_with_tags",
       {
         p_process_id: input.processId,
         p_user_id: input.userId,
@@ -142,6 +148,7 @@ export async function castBallot(input: {
         p_receipt: input.held?.receipt_id ?? null,
         p_key_hash: input.held?.key_hash ?? null,
         p_new_key_hash: input.newKeyHash,
+        p_tags: input.tags,
       },
     );
     if (!out.unchanged) logged(input.event);

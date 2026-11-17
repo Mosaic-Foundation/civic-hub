@@ -22,6 +22,7 @@ import { BriefPointer } from "../components/BriefPointer";
 import "./DeliberationDetail.css";
 import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
+import ResultsBreakdown from "../components/ResultsBreakdown";
 
 export default function DeliberationDetail() {
   const [participatedState, setParticipated] = useState(false);
@@ -138,6 +139,9 @@ export default function DeliberationDetail() {
           )}
         </div>
       )}
+
+      {/* Finished: who took part, by district, age group, race (districts and demographics). */}
+      <ResultsBreakdown processId={process.process_id} />
 
       <RelatedProcesses
         processId={process.process_id}

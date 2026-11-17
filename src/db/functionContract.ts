@@ -33,11 +33,14 @@ export const FUNCTION_CONTRACT: readonly FunctionRequirement[] = [
       "p_expected_status text, p_expected_version bigint, p_events jsonb",
     owner: "db/atomic",
   },
+  // cast_ballot with the ballot's tags (districts and demographics,
+  // 20261116040000). cast_ballot itself stays in the database for the code
+  // before this release, and leaves this list: nothing here calls it.
   {
-    name: "cast_ballot",
+    name: "cast_ballot_with_tags",
     args:
       "p_hub_id text, p_process_id text, p_user_id text, p_choice text, p_event jsonb, p_receipt text, " +
-      "p_key_hash text, p_new_key_hash text",
+      "p_key_hash text, p_new_key_hash text, p_tags jsonb",
     owner: "db/atomic",
   },
   { name: "reshuffle_ballots", args: "p_hub_id text, p_process_id text", owner: "db/atomic" },
