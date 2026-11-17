@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAction } from "../../hooks/useAction";
+import { useAction } from "@civic-social/plugin-sdk/ui";
 import "./StatementSubmission.css";
 
 interface Props {

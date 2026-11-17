@@ -406,6 +406,17 @@ export interface ProcessHandler {
   regenerateBrief?(process: Process): Promise<RegeneratedBrief | null>;
 
   /**
+   * Optional: what the process keeps from its result once that result is
+   * written up (kernel step 1, Conversations 0.3.0): the state it takes from
+   * the content, or null for nothing. A conversation keeps the summary its
+   * result was written into, so its own closed page shows it with no other
+   * package's help. The kernel asks it when a result is first written and
+   * when a new version is made (src/services/kernelResults.ts); omit it and
+   * the process keeps nothing.
+   */
+  keepResult?(process: Process, content: BriefContent): Record<string, unknown> | null;
+
+  /**
    * Optional: what the source process becomes when its brief is published
    * (src/services/briefFinalize.ts). Omit it and the source is simply set to
    * "finalized" (conversations, proposals, projects). A vote finalizes

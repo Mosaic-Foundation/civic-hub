@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireResident, requireAdmin } from "@civic-social/plugin-sdk/first-party";
+import { requireResident, requireAdmin } from "@civic-social/plugin-sdk";
 import * as ctrl from "./controller.js";
 
 const router = Router();
@@ -20,6 +20,5 @@ router.get("/:processId/participate/next", requireResident, ctrl.getNextStatemen
 router.post("/", requireResident, ctrl.handleCreateDeliberation);
 router.post("/:processId/start", requireAdmin, ctrl.handleStartDeliberation);
 router.post("/:processId/close", requireAdmin, ctrl.closeDeliberation);
-router.post("/:processId/regenerate", requireAdmin, ctrl.regenerateSummary);
 
 export default router;

@@ -1,7 +1,6 @@
-import type { DeliberationReadModel } from "../../services/api";
-import SourceLinks from "../SourceLinks";
+import { SourceLinks, formatShortDate } from "@civic-social/plugin-sdk/ui";
+import type { DeliberationReadModel } from "./api";
 import "./CompletedDeliberation.css";
-import { formatShortDate } from "../../utils/dates";
 
 interface Props {
   process: DeliberationReadModel;
@@ -37,7 +36,9 @@ export default function CompletedDeliberation({ process: proc, showTopic }: Prop
             <p className="completed-no-summary">
               {summary.narrative === "not_allowed"
                 ? "No written summary: this hub has not allowed briefs to use AI."
-                : "The written summary could not be made. An admin can make it again from the brief."}
+                : summary.narrative === "unwritten"
+                  ? "No written summary."
+                  : "The written summary could not be made. An admin can make it again from the brief."}
             </p>
           )}
 

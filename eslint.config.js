@@ -371,7 +371,6 @@ export const PACKAGE_REACH_NOT_YET = {
   "src/services/sampleSeed.ts": "seeds every type's sample content by calling its service; each package should contribute its own samples",
   "src/debug/seedData.ts": "the debug seed writes a sample conversation's state in the conversation package's type",
   "src/processes/spawnBrief.ts": "makes the pending brief when a process closes: its state type (BriefProcessState) and its aggregation event (emitBriefAggregationCompleted)",
-  "src/services/briefRegenerate.ts": "forwards Conversations' older \"make the summary again\" link to Briefs' regenerate until Conversations is on SDK version 1",
   "src/debug/autoSeed.ts": "seeds an announcement's published state and events (emitPublicationEvents, AnnouncementProcessState) for the development scenarios",
   "src/jobs/newsSync.ts": "posts each news item as an announcement: its result-published event (emitAnnouncementResultPublished) and its state types",
   "src/modules/civic.admin_digest/service.ts": "the admin digest sorts summaries waiting for review by their quality flag (effectiveQualityFlag)",

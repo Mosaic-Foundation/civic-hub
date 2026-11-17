@@ -6,17 +6,21 @@
 // form fields outside the assistant's reach.
 
 import { useCallback } from "react";
-import type { AssistantFieldGuidance, DeliberationDraft, ProposedLink } from "../services/api";
-import ProcessLinkField from "./ProcessLinkField";
-import "./DraftingForm.css";
-import "./VoteDraftingForm.css";
-import { FieldGuide } from "./FieldGuide";
-import { hardFindings } from "./cocFindingsState";
-import DraftFooter from "./DraftFooter";
-import { useDebouncedFields } from "../hooks/useDebouncedFields";
-import SuggestFooterButton from "./SuggestFooterButton";
-import TitleField from "./TitleField";
-import MarkdownTextarea from "./MarkdownTextarea";
+// Its styles (DraftingForm.css, VoteDraftingForm.css) are the hub's, shared
+// with Votes' form; its seed rows' are its own (./SeedStatementRows.css).
+import {
+  DraftFooter,
+  FieldGuide,
+  hardFindings,
+  MarkdownTextarea,
+  ProcessLinkField,
+  SuggestFooterButton,
+  TitleField,
+  useDebouncedFields,
+  type AssistantFieldGuidance,
+  type ProposedLink,
+} from "@civic-social/plugin-sdk/ui";
+import type { DeliberationDraft } from "./api";
 import SeedStatementRows from "./SeedStatementRows";
 
 interface Props {

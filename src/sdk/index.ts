@@ -67,7 +67,7 @@ export {
   archiveProcess,
   getArchivedProcesses,
 } from "../services/processService.js";
-export { readProcessState, writeProcessState, briefIdForSource } from "../services/processRows.js";
+export { readProcessState, writeProcessState } from "../services/processRows.js";
 export { processesOf } from "../services/ownProcesses.js";
 export { warmPreviewsInBackground as warmLinkPreviews } from "../services/linkPreviewCache.js";
 export type { OwnProcesses } from "../services/ownProcesses.js";
@@ -207,13 +207,15 @@ export { extractUrls } from "../modules/civic.link_preview/index.js";
 // --- src/services/linkPreviewCache.ts ----------------------------------------------------
 export { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
 
-// --- src/services/briefRegenerate.ts (Conversations' older link, until it moves) ---------
-export { regenerateBrief } from "../services/briefRegenerate.js";
-
 // --- What a closed process came to, and the space's offices (kernel step 1, Briefs) -------
 export { results } from "../services/kernelResults.js";
 export type { ResultSource, FreshResult } from "../services/kernelResults.js";
 export { offices, recordAdminAct } from "../services/kernelOffices.js";
+
+// --- What a package checks and serves for a submission (kernel step 1, Conversations) -----
+export { codeOfConduct } from "../services/kernelCodeOfConduct.js";
+export type { CodeOfConductFinding } from "../services/kernelCodeOfConduct.js";
+export { samples } from "../services/kernelSamples.js";
 
 // --- src/modules/civic.auth/ -------------------------------------------------------------
 export { getUser } from "../modules/civic.auth/index.js";
@@ -258,29 +260,3 @@ export type {
   PublicActivityPage,
 } from "../plugins/feature.js";
 
-// --- The conversation's (packages/civic.polis_deliberation/) -------------------------------
-// Acting on a process through the hub's one action path, and reading one as closed.
-export { executeAction, readsAsClosed } from "../services/processService.js";
-// A registered type's handler (the conversation list summarizes through its own).
-export { getProcessHandler } from "../processes/registry.js";
-// The authorization seam's yes-or-no questions (ADR-011): a package asks, never decides.
-export { can } from "../authz/canActor.js";
-export { getActor } from "../middleware/auth.js";
-// The hub's own moderation of what residents write: the Code of Conduct check
-// (the hub's, run on a statement before it reaches Polis) and its refusal.
-export { checkTextAgainstCoC, getHubConfig } from "../modules/civic.assistant/index.js";
-// Counting that check against the hub's AI limits before it runs, as the hub's
-// own drafting flows do: the check is the hub's, not the package's (no AI grant needed).
-export { admitCodeOfConductCheck } from "../services/aiBudget.js";
-export { AiLimitError } from "../services/aiBudget.js";
-// A creator's submission into the hub's review flow, and its mailbox.
-export { submitAsCreator, reviewMailbox } from "../modules/civic.review/index.js";
-export { personFallbackName } from "../services/creatorDisplay.js";
-// Development only: the seeded sample conversations' stand-in Polis answers.
-export {
-  isSeedConversation,
-  getMockClusters,
-  getMockNextStatement,
-  advanceMockStatement,
-  addMockStatement,
-} from "../debug/seedDeliberationMocks.js";

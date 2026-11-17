@@ -1,8 +1,6 @@
-import type { DeliberationDraft } from "../../services/api";
-import { demoSubmitNote } from "../../config/demoCopy";
-import { DAY_MS, durationLabel } from "./durations";
-import type { DraftKindConfig } from "./types";
-import ConversationForm from "./forms/ConversationForm";
+import { DAY_MS, demoSubmitNote, durationLabel, type DraftKindConfig } from "@civic-social/plugin-sdk/ui";
+import type { DeliberationDraft } from "./api";
+import ConversationForm from "./ConversationForm";
 
 
 /**

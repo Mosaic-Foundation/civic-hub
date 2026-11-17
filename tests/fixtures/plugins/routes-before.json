@@ -65,7 +65,6 @@
  "POST /deliberations/",
  "POST /deliberations/:processId/start",
  "POST /deliberations/:processId/close",
- "POST /deliberations/:processId/regenerate",
  "GET /wordcloud/:id/cloud",
  "GET /wordcloud/:id/responses",
  "GET /wordcloud/:id",

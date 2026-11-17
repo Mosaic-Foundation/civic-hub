@@ -1,32 +1,35 @@
 import { useState } from "react";
-import { useApi } from "../hooks/useApi";
 import { useParams } from "react-router-dom";
-import { useAction } from "../hooks/useAction";
-import { useAuth } from "../context/authState";
+import {
+  BriefPointer,
+  CloseEarlyButton,
+  ClosedEarlyNote,
+  DetailActions,
+  EditHistory,
+  ProcessHeader,
+  RelatedProcesses,
+  ResultsBreakdown,
+  RichText,
+  ShareButton,
+  ShareMoment,
+  SourceLinks,
+  statusDisplay,
+  useAction,
+  useApi,
+  useViewer,
+} from "@civic-social/plugin-sdk/ui";
 import {
   getDeliberation,
   startDeliberation,
   type DeliberationReadModel,
-} from "../services/api";
-import DeliberationPanel from "../components/deliberation/DeliberationPanel";
-import CompletedDeliberation from "../components/deliberation/CompletedDeliberation";
-import { statusDisplay } from "../components/statusDisplay";
-import ProcessHeader from "../components/ProcessHeader";
-import ShareButton from "../components/ShareButton";
-import ShareMoment from "../components/ShareMoment";
-import SourceLinks from "../components/SourceLinks";
-import RelatedProcesses from "../components/RelatedProcesses";
-import DetailActions from "../components/DetailActions";
-import { CloseEarlyButton, ClosedEarlyNote } from "../components/CloseEarly";
-import { BriefPointer } from "../components/BriefPointer";
+} from "./api";
+import DeliberationPanel from "./DeliberationPanel";
+import CompletedDeliberation from "./CompletedDeliberation";
 import "./DeliberationDetail.css";
-import RichText from "../components/RichText";
-import EditHistory from "../components/EditHistory";
-import ResultsBreakdown from "../components/ResultsBreakdown";
 
 export default function DeliberationDetail() {
   const [participatedState, setParticipated] = useState(false);
-  const { isAdmin } = useAuth();
+  const { isAdmin } = useViewer();
   const { id } = useParams<{ id: string }>();
   // Back in view after a while: read it again (a second tab catches up).
   const {

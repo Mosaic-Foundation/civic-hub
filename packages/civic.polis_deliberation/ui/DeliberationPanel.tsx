@@ -1,20 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
-import { useAuth } from "../../context/authState";
-import SourceLinks from "../SourceLinks";
-import type { DeliberationReadModel, ClusterState, VoteDirection } from "../../services/api";
+import { RichText, SourceLinks, useViewer } from "@civic-social/plugin-sdk/ui";
+import type { DeliberationReadModel, ClusterState, VoteDirection } from "./api";
 import {
   getDeliberation,
   getDeliberationClusters,
   deliberationGetNext,
   deliberationVote,
   deliberationSubmitStatement,
-} from "../../services/api";
+} from "./api";
 import StatementCard from "./StatementCard";
 import StatementSubmission from "./StatementSubmission";
 import ClusterView from "./ClusterView";
 import "./DeliberationPanel.css";
-import RichText from "../RichText";
 
 interface Props {
   processId: string;
@@ -36,7 +34,7 @@ interface Props {
 type Tab = "participate" | "clusters";
 
 export default function DeliberationPanel({ processId, showTopic, onParticipated, afterVoting }: Props) {
-  const { user } = useAuth();
+  const { actorId } = useViewer();
   const [process, setProcess] = useState<DeliberationReadModel | null>(null);
   const [clusters, setClusters] = useState<ClusterState | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -81,7 +79,7 @@ export default function DeliberationPanel({ processId, showTopic, onParticipated
 
   // Signing in or out re-reads the process: has_submitted is the signed-in
   // visitor's (userId is the re-run trigger, not read in the effect).
-  const userId = user?.id;
+  const userId = actorId ?? undefined;
   useEffect(() => {
     async function init() {
       setLoading(true);

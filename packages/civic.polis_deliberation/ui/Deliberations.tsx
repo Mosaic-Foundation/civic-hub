@@ -1,20 +1,26 @@
 import { useState } from "react";
-import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/authState";
-import type { DeliberationSummary } from "../services/api";
+import {
+  AuthModal,
+  CardList,
+  cardDate,
+  Group,
+  Page,
+  PageAction,
+  PageHead,
+  ProcessListCard,
+  ProcessPicker,
+  StatusFilter,
+  useApi,
+  useRequireAuth,
+  useStatusFilter,
+  useViewer,
+} from "@civic-social/plugin-sdk/ui";
+import type { DeliberationSummary } from "./api";
 import {
   listDeliberations,
-} from "../services/api";
-import ProcessPicker from "../components/ProcessPicker";
-import AuthModal from "../components/AuthModal";
-import { useRequireAuth } from "../hooks/useRequireAuth";
-import StatusFilter from "../components/StatusFilter";
-import { useStatusFilter } from "../components/statusFilterState";
+} from "./api";
 import "./Deliberations.css";
-import ProcessListCard from "../components/ProcessListCard";
-import { cardDate } from "../components/cardDate";
-import { CardList, Group, Page, PageAction, PageHead } from "../kit";
 
 const FILTER_CHOICES = [
   { key: "all", label: "All" },
@@ -29,7 +35,7 @@ export default function Deliberations() {
   // keep the softer buffer-then-gate flow for shared links.
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } =
     useRequireAuth();
-  const { isAdmin } = useAuth();
+  const { isAdmin } = useViewer();
   const [showPicker, setShowPicker] = useState(false);
   // No conversations yet, or the read failed: the empty state.
   const { data, loading } = useApi<DeliberationSummary[]>("/deliberations", () => listDeliberations(), {

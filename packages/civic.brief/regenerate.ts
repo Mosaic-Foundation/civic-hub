@@ -15,11 +15,11 @@
 // the brief's civic.process.updated, and the hub admin audit log records who
 // regenerated and who published.
 //
-// One summary per process (2026-10-13): a type whose regenerated brief brings
-// new state for the process itself (a conversation's summary) hands it over
-// with the version; when that version is published (Publish this version, or
-// approving a brief regenerated before it was public) the process takes it,
-// keeps what it replaced, and emits its own civic.process.updated.
+// One summary per process (2026-10-13): what a process keeps from its
+// written-up result (a conversation's summary, the kernel's results.kept) goes
+// with the version. A brief not yet public: the process keeps it at once. A
+// published brief: the process takes it when that version is published, keeps
+// what it replaced, and emits its own civic.process.updated.
 
 import {
   ConflictError,
@@ -56,10 +56,12 @@ async function freshContent(
   const content = await finalizeBriefContent(fresh.content);
   if (fresh.closed_early) content.closed_early = fresh.closed_early;
   // The same normalization a new brief gets (fields, lists, image).
-  return {
-    content: createBriefState({ source_process_id: source.id, source_process_type: source.type, content }).content,
-    ...(fresh.source_state ? { source_state: fresh.source_state } : {}),
-  };
+  const made = createBriefState({ source_process_id: source.id, source_process_type: source.type, content }).content;
+  // What the process keeps from the written-up result (a conversation, its
+  // summary) goes with the version, beside what its type handed over.
+  const kept = await results.kept(source.id, made);
+  const sourceState = fresh.source_state || kept ? { ...fresh.source_state, ...kept } : null;
+  return { content: made, ...(sourceState ? { source_state: sourceState } : {}) };
 }
 
 /**
@@ -115,8 +117,11 @@ export async function regenerateBrief(
     keep(state, now);
     state.content = fresh.content;
     state.generated_at = now;
-    // Not public yet: the source takes it when the brief is approved.
+    // Not public yet: the source takes what its type hands over when the
+    // brief is approved, and keeps the written-up result now, as it did when
+    // the brief was first made.
     state.source_state_on_publish = fresh.source_state ?? null;
+    await results.keep(source.id, fresh.content, { resultId: record.id, at: now });
   }
   await emitBriefUpdated(ctx(record), admin.id, state);
   await ownProcesses().saveState(record);

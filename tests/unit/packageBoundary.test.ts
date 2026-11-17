@@ -23,15 +23,16 @@ async function errors(file: string, code: string): Promise<string[]> {
 }
 
 describe("civic/package-boundary", () => {
-  it("lets a package on SDK version 0 import it by name, shared data, its own files, node: and express", async () => {
+  it("lets a package on SDK version 0 import it by name, shared data, its own files and node:", async () => {
     for (const code of [
       `import { emitEvent } from "@civic-social/plugin-sdk/first-party";`,
       `import { assertPassesWordlist } from "../../src/shared/wordlist/index.js";`,
       `import { x } from "./service.js";`,
       `import { createHash } from "node:crypto";`,
-      `import { Router } from "express";`,
     ]) {
-      expect(await errors("packages/civic.polis_deliberation/x.ts", code), code).toHaveLength(0);
+      // Every package here is on version 1 since Conversations (kernel step 1);
+      // a package without the SDK as a peer dependency is still held to version 0.
+      expect(await errors("packages/civic.v0_example/x.ts", code), code).toHaveLength(0);
     }
   });
 

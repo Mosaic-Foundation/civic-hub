@@ -85,6 +85,16 @@ export async function spawnBriefFromClosedProcess(
     throw err;
   }
 
+  // The source keeps what its type keeps from the written-up result (a
+  // conversation, its summary), so its own page shows it whether or not this
+  // brief is ever published. Best effort: the brief is made either way.
+  try {
+    const { results } = await import("../services/kernelResults.js");
+    await results.keep(source.id, content, { resultId: brief.id, at: new Date().toISOString() });
+  } catch (err) {
+    console.warn(`[brief] ${source.id} did not keep its written result: ${err instanceof Error ? err.message : "unknown error"}`);
+  }
+
   // civic.process.created is already emitted by the generic factory; emit
   // only the aggregation_completed pair (mirrors the vote-results spawn).
   const briefState = brief.state as unknown as BriefProcessState;

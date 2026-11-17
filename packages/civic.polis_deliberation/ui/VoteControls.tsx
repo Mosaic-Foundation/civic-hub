@@ -1,4 +1,4 @@
-import type { VoteDirection } from "../../services/api";
+import type { VoteDirection } from "./api";
 
 interface Props {
   onVote: (direction: VoteDirection) => void;

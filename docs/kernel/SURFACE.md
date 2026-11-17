@@ -25,7 +25,10 @@ package, the paths it still imports from `src/` or `ui/src/`).
 | Meeting summaries | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
 | Votes | 0.4.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
 | Briefs | 0.4.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
-| Conversations | not yet | | |
+| Conversations | 0.4.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
+
+Step 1 is complete: every package here imports SDK version 1 only. Version 0 (`/first-party`) stays for a package
+outside this repository that still uses it; none here does.
 
 Version 1 has gained so far, on the server: `processesOf(...types)` (`get`, `list`, `create`, `saveState`, and
 for a person `actOn`, `page`, `view`; `sampleIds`), `draftsOf(kind)` (`get`, `create`, `update`, `setStatus`,
@@ -43,6 +46,13 @@ type came to, asked of its own type, and settling it once the result is public),
 `onRecordNames(ids)`, `resultRecipients()`), `requireOfficial`, `recordAdminAct`, `links.countTouching` and
 `links.wireIris`, `publishedMessage`, `sampleDeliverySuppressed`, and the types `OfficialIdentity`,
 `DeliveryReport`, `HeldBackRecipient`, `DeliberationResult`, `DeliberationSummary`, `ResultSource`, `FreshResult`.
+Since Conversations: `processesOf().actAsSystem(id, action, "system:…")` (an action as the hub itself, after a close
+commits) and `processesOf().submit(res, input, { cocPassed })` (the one creation path, outside a draft),
+`codeOfConduct.check(res, fields)` (the hub's automated check on submitted text), `samples` (`template(key)`,
+`fill(text)`: a sample's template, for a type that serves more than its row), `results.kept`/`results.keep` with the
+handler hook `keepResult(process, content)` (what a process keeps from its written-up result: a conversation keeps
+its summary, so its closed page reads only itself, Briefs on or off), and the types `CodeOfConductFinding`,
+`RegeneratedBrief`. A conversation's summary without a write-up says why with `narrative: "unwritten"`.
 A package's own table is read through its host (`host.db().from("brief_responses")`), never `forHub`. On the UI side, the kernel UI surface below
 (`ui/src/host/index.ts`). Announcements carries its own copy of the pinned and urgent rules (`board.ts`), kept equal
 to the right column's (`src/shared/announcementBoard.ts`) by a test until step 3 makes the board a contribution. A package's UI files are `ui.tsx` and its `ui/`
@@ -72,6 +82,9 @@ directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `
 | Offices | `requireOfficial`, `res.locals.officialIdentity`, `responderNames`, `getVoteResultsRecipients`, `recordHubAdminAudit` | `requireOfficial`, `offices` (`officialOf`, `onRecordNames`, `resultRecipients`), `recordAdminAct` (built, Briefs) | brief |
 | Secret ballots | `recordOrUpdateVote`, `hasUserVoted`, `countVoters`, `getBallotChoicesForProcess`, `reshuffleBallotsForProcess`, `getVoteLog`, `verifyReceipt`, `HeldReceipt`, `VoteRefusedError`, `AlreadyVotedError` | `ballots` (built): `cast`, `hasVoted`, `count`, `choices`, `reshuffle`, `log`, `verify`, process first; the errors and `HeldReceipt` beside it | vote |
 | Review previews, source lines | `describeSubmissionFields`, `sourceLineToContentLink` | the same names (built) | polis, vote |
+| Moderation and review | `checkTextAgainstCoC`, `getHubConfig`, `admitCodeOfConductCheck`, `AiLimitError`, `submitAsCreator`, `reviewMailbox`, `personFallbackName`, `can`, `getActor` | `codeOfConduct.check(res, fields)`, `processesOf().submit(res, input, opts)` (built, Conversations) | polis |
+| A process's written result | Conversations reading its brief (`briefIdForSource`, `getProcess`) | `keepResult` on the handler; `results.kept`, `results.keep` (built, Conversations); the kernel's brief spawn and Briefs' regenerate ask it | brief, polis |
+| Acting as the hub | `getActionDispatcher`, `executeAction` | `processesOf().actAsSystem` (built, Conversations) | polis |
 
 ## Moves: into the package that owns it
 
@@ -79,22 +92,22 @@ directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `
 | --- | --- | --- |
 | ~~`src/modules/civic.receipts/` to Votes~~ | **Stays in the kernel** (decided Nov 17, with Votes 0.4.0): the kernel's districts and demographics totals, the sample seed, the hourly reshuffle, the debug reset and the secrecy guardrails all read the ballots, and any type that takes a secret ballot (participatory budgeting, a ranked vote) would need the same audited code. Version 1's `ballots` above | none |
 | Vote settings in `src/services/hubSettings.ts` | Votes (done: `packages/civic.vote/settings.ts`, through `settingsOf("vote")`) | `voteDurationLimitsSync`, `defaultCheckModeSync` (gone); `getSupportThreshold` stays for the admins' settings route and the sample seed until step 3 |
-| `src/services/briefRegenerate.ts`, `briefResponses.ts`, `briefFinalize.ts`, `publishedBriefRows`, `briefIdForSource`, `getVoteResultsRecipients` | Briefs (done, 0.4.0: `regenerate.ts`, `responsesStore.ts`; finalizing is the kernel's `results.finalize`; `src/services/briefRegenerate.ts` stays as a forwarder for Conversations' older link, and `briefIdForSource` for Conversations and `spawnBrief`, until Conversations moves) | `applyOnApproval`, `discardBriefRevision`, `publishBriefRevision`, `regenerateBrief`, `insertResponse`, `latestAnchorAt`, `listResponsesForBrief`, `responderNames`, `finalizeBriefSource`, `publishedBriefRows`, `briefIdForSource`, `getVoteResultsRecipients` |
-| `src/debug/seedDeliberationMocks.ts` | Conversations | `addMockStatement`, `advanceMockStatement`, `getMockClusters`, `getMockNextStatement`, `isSeedConversation` |
+| `src/services/briefRegenerate.ts`, `briefResponses.ts`, `briefFinalize.ts`, `publishedBriefRows`, `briefIdForSource`, `getVoteResultsRecipients` | Briefs (done, 0.4.0: `regenerate.ts`, `responsesStore.ts`; finalizing is the kernel's `results.finalize`; the forwarder left with Conversations 0.4.0, and `briefIdForSource` is the kernel's `spawnBrief` alone now) | `applyOnApproval`, `discardBriefRevision`, `publishBriefRevision`, `regenerateBrief`, `insertResponse`, `latestAnchorAt`, `listResponsesForBrief`, `responderNames`, `finalizeBriefSource`, `publishedBriefRows`, `briefIdForSource`, `getVoteResultsRecipients` |
+| `src/debug/seedDeliberationMocks.ts` | Conversations (done, 0.4.0: `mocks.ts`, its sample templates through the kernel's `samples`) | `addMockStatement`, `advanceMockStatement`, `getMockClusters`, `getMockNextStatement`, `isSeedConversation` |
 | `src/shared/` files only one package reads (`checkMode`, `voteOptions`, `announcementBoard`, `meetingSummaryRules`, `wixFields`, `connectorOptions`, `seedStatements`, `officialTypes`) | that package | none (they were plain imports) |
 
 ## Event: couplings that go
 
 | Coupling | Replaced by |
 | --- | --- |
-| Conversations calls `regenerateBrief`, reads `DeliberationResult`/`DeliberationSummary`, `RegeneratedBrief` | the conversation's closed page reads its own saved result; the kernel's `process.closed` event; Briefs listens (Plugin Dependencies Strategy, case 4) |
+| Conversations calls `regenerateBrief`, reads `DeliberationResult`/`DeliberationSummary`, `RegeneratedBrief` | done for step 1 (0.4.0): its closed page reads only itself (the summary it kept, `keepResult`, else its own result's figures); its older `POST /deliberations/:id/regenerate` link is gone (Regenerate is the brief's), and it no longer `requires` Briefs. Step 3: the kernel's `process.closed` event carries the result; Briefs listens (Plugin Dependencies Strategy, case 4) |
 | Briefs reads `DeliberationResult`/`DeliberationSummary` | the `process.result` contract each process type fills; Briefs reads it from the event |
 | Meeting summaries call `isPluginEnabledSync` | done: `settingsOf("meeting_summary").enabled()`, its own switch |
 | The digest writes a closed vote's count with `voteResultLine` (`src/shared/feedActivity.ts`); Votes' feed card has its own copy | the line rides on the vote's event (step 3) |
 | The review preview names a vote's `method` labels (`src/shared/submissionPreview.ts`, `METHOD_LABELS`) | Votes' `describeSubmission` maps it, as it now does `check_mode` (step 3) |
 | `/process/:id`, the vote's page, also sends an old link for another type to that type's page | the kernel's redirect, apart from the vote's page (step 3) |
 | The settings save checks `wix_fields` (a kind only Meeting summaries uses) with `src/shared/wixFields.ts` | a package's own check of its settings (step 3); until then the package keeps an identical copy, tested equal |
-| Conversations call `getProcessHandler`, `getActionDispatcher` | `actOn` (kernel, above) |
+| Conversations call `getProcessHandler`, `getActionDispatcher` | done (0.4.0): `actOn`, `actAsSystem`, and its own handler for its list and its deadline read |
 | The kernel's `src/processes/spawnBrief.ts` and the files in `PACKAGE_REACH_NOT_YET` (nine since Briefs) | events and contributions (step 3) |
 | The hub's `BriefPointer` and `BriefSourcePointer` (and `ui/src/services/briefDelivery.ts`, the hub's `getPublicBrief`) | Briefs' contribution to a process page (step 3); Briefs' pages read them through `/ui` until then |
 | The admin queue counts name `briefs` (`AdminQueue`), and `AdminPublicationReview.css` styles Briefs' and Meeting summaries' review pages | a package registers its queue (step 3); the review frame is kernel UI |
@@ -128,6 +141,6 @@ What those pages use from the hub splits the same way:
   `manifestOf`, `briefColorSlug`; `spaceNow()` (the space outside a component, for a feed card); `useViewer()`'s
   `office` and `displayName`; the offices (`authorBadges`, `OFFICIAL_TYPES`, `OFFICIAL_TYPE_LABELS`,
   `normalizeOfficialType`, `getOfficialsRoster`); `heldBackLine`, `joinNames`, `briefResponseContext`, and
-  `BriefSourcePointer` until step 3.
+  `BriefSourcePointer` until step 3. Since Conversations: nothing new; its pages use what is above.
 - **Moves with the page**: components only one type uses (`VotePanel`, `ReceiptCode`, `deliberation/*`,
   `ProposalCommentForm`, `BriefRegenerate`, `BriefPointer` goes to Briefs as an enhancement).

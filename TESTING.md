@@ -87,6 +87,22 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 1: Conversations 0.4.0 on the kernel surface, step 1 complete (2026-11-17)
+
+- **Unit:** 2,792 passed. `packageBoundary`'s version 0 example is a package that does not exist (none here is on
+  version 0 now); `pluginRoutes`' fixture drops `POST /deliberations/:processId/regenerate`, gone on purpose; the
+  place-name check exempts the moved development mocks as it did under `src/debug/`. **UI:** 102 passed, typecheck
+  and build clean. **API:** 1,064 passed; the 5 failures are the ones dev also has (`leakHarness`'s missing news-sync plan, `events.test.ts`'s four that need `athens.localhost`); `briefRegenerate.test.ts` now checks that the conversation
+  keeps its brief's summary, takes a staged one on Publish (keeping the one it replaced), shows its result's figures
+  (`narrative: "unwritten"`) when no summary was kept, and closes with Briefs off showing its own figures and no
+  brief. `conversationSummary.spec.ts` (Playwright) expects the kept summary.
+- **Conformance:** `catalog:add` green for Conversations 0.4.0 and, again, Briefs 0.4.0 (its regenerate changed).
+- **By hand:** the conversations list, an active seeded conversation (its mock statements), one closed early with
+  its summary, a finalized one, and the drafting page, beside dev's on Athens at 1100 and 390 px: every element's
+  computed style and position the same apart from sub-pixel text widths.
+
+---
+
 ## Kernel step 1: Briefs 0.4.0 on the kernel surface (2026-11-17)
 
 - **Unit:** 2,792 passed (`packageBoundary`'s version 0 example is Conversations now; the reach list drops

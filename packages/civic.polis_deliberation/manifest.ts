@@ -3,8 +3,7 @@
 // are built from it. The host wiring (src/processes/deliberationBoot.ts)
 // pairs it with the portable handler (./handler.ts).
 
-import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
-import { DEADLINE_CLOSE_INPUT } from "../../src/shared/deadlineClose.js";
+import { DEADLINE_CLOSE_INPUT, defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
 
 /**
  * What a Polis conversation is (src/processes/descriptor.ts). Residents take

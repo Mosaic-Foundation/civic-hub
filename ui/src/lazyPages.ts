@@ -20,8 +20,6 @@ function page(load: Loader, admin = false) {
   return lazy(load);
 }
 
-const draft = () => import("./pages/draft/kindPages");
-
 /** Fetch the pages' code in the background: the resident pages, and an admin's too. */
 export function preloadPages(admin: boolean): void {
   for (const load of [...residentLoaders, ...(admin ? adminLoaders : [])]) {
@@ -41,8 +39,6 @@ export const CodeOfConduct = page(() => import("./pages/CodeOfConduct"));
 export const Feedback = page(() => import("./pages/Feedback"));
 export const Welcome = page(() => import("./pages/Welcome"));
 export const SignInLink = page(() => import("./pages/SignInLink"));
-export const Deliberations = page(() => import("./pages/Deliberations"));
-export const DeliberationDetail = page(() => import("./pages/DeliberationDetail"));
 // The kit's gallery (Events 3): admins only, in the public layout.
 export const KitGallery = page(() => import("./pages/KitGallery"));
 
@@ -58,6 +54,3 @@ export const ContactCivicSocial = page(() => import("./pages/ContactCivicSocial"
 // A resident's own settings and submissions
 export const Settings = page(() => import("./pages/Settings"));
 export const MySubmissions = page(() => import("./pages/MySubmissions"));
-
-// Drafting
-export const NewConversation = page(() => draft().then((m) => ({ default: m.NewConversation })));

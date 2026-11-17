@@ -1,4 +1,4 @@
-import type { ClusterState } from "../../services/api";
+import type { ClusterState } from "./api";
 import ClusterCard from "./ClusterCard";
 import "./ClusterView.css";
 

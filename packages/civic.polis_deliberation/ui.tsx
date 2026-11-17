@@ -1,18 +1,20 @@
 // civic.polis_deliberation: a structured group conversation
-// (manifest: src/shared/polis_deliberation/manifest.ts). The conversation plugin.
+// (manifest: packages/civic.polis_deliberation/manifest.ts). Its pages are its
+// own (./ui/), built from the SDK's UI entry alone, and load when first opened.
 
-import { DeliberationDetail, Deliberations, NewConversation } from "../../ui/src/lazyPages";
-import { getProcessState } from "../../ui/src/services/api";
-import { UrlField } from "../../ui/src/pages/settings/pluginFields";
-import type { FeedKindUi, ProcessUi } from "../../ui/src/processes/types";
+import { lazy } from "react";
+import { apiRequest, UrlField, type FeedKindUi, type ProcessUi } from "@civic-social/plugin-sdk/ui";
+
+const Deliberations = lazy(() => import("./ui/Deliberations"));
+const NewConversation = lazy(() => import("./ui/NewConversation"));
+const DeliberationDetail = lazy(() => import("./ui/DeliberationDetail"));
 
 // Polis conversations expose their subject as `topic`/`framing` in
 // the read model, not `title`/`description` — map them so the feed
 // card keeps the original conversation topic instead of falling
 // back to the literal "Conversation results".
 const conversationMeta: FeedKindUi["meta"] = (id) =>
-  getProcessState(id).then((state) => {
-    const s = state as unknown as Record<string, unknown>;
+  apiRequest<Record<string, unknown>>("GET", `/process/${id}/state`).then((s) => {
     return {
       title: (s.title ?? s.topic) as string | undefined,
       description: (s.description ?? s.framing) as string | undefined,

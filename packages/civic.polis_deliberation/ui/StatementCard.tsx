@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useAction } from "../../hooks/useAction";
-import type { StatementRecord, VoteDirection } from "../../services/api";
+import { useAction } from "@civic-social/plugin-sdk/ui";
+import type { StatementRecord, VoteDirection } from "./api";
 import VoteControls from "./VoteControls";
 import "./StatementCard.css";
 

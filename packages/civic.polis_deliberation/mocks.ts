@@ -3,9 +3,23 @@
 // returns this data instead of calling the real Polis API. This lets us
 // demo the full UI without a running Polis instance.
 
-import { currentHubIdOrNull } from "../config/hubContext.js";
-import { SAMPLE_TEMPLATES, fillSample, type SampleDeliberation } from "../services/sampleTemplates.js";
-import { sampleNames } from "../services/sampleNames.js";
+//
+// Moved here from the hub (src/debug/seedDeliberationMocks.ts) in kernel step
+// 1: a sample conversation's template comes from the kernel's `samples`.
+
+import { hubContext, samples } from "@civic-social/plugin-sdk";
+
+/** A sample conversation's template, as the kernel's sample content writes it. */
+interface SampleDeliberation {
+  key: string;
+  kind: "deliberation";
+  statements: readonly string[];
+  picture: {
+    participants: number;
+    groups: ReadonlyArray<{ size: number; agree: readonly number[]; disagree: readonly number[] }>;
+    consensus: ReadonlyArray<{ statement: number; agree_rate: number; votes: number }>;
+  };
+}
 
 interface MockStatement {
   id: number;
@@ -659,16 +673,16 @@ const SAMPLE_PREFIX = "seed-sample-";
 const sampleConversations = new Map<string, MockConversation>();
 
 function sampleConversation(conversationId: string): MockConversation | null {
-  const t = SAMPLE_TEMPLATES.find(
-    (x): x is SampleDeliberation => x.kind === "deliberation" && `${SAMPLE_PREFIX}${x.key}` === conversationId,
-  );
-  if (!t) return null;
-  const cacheKey = `${currentHubIdOrNull() ?? ""}:${conversationId}`;
+  if (!conversationId.startsWith(SAMPLE_PREFIX)) return null;
+  const found = samples.template(conversationId.slice(SAMPLE_PREFIX.length));
+  if (!found || found.kind !== "deliberation") return null;
+  const t = found as unknown as SampleDeliberation;
+  // One per hub: its address tells the hubs one server serves apart.
+  const cacheKey = `${hubContext().baseUrl}:${conversationId}`;
   const cached = sampleConversations.get(cacheKey);
   if (cached) return cached;
 
-  const names = sampleNames();
-  const texts = t.statements.map((s) => fillSample(s, names));
+  const texts = t.statements.map((s) => samples.fill(s));
   const created = new Date().toISOString();
   const conv: MockConversation = {
     statements: texts.map((text, i) => ({ id: i + 1, text, is_seed: true, created })),

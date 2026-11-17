@@ -168,3 +168,10 @@ export type { OfficialIdentity } from "../../src/sdk/index.js";
 // --- Delivering a result: the mail adapter's report, and a sample's held-back delivery ----
 export { publishedMessage, sampleDeliverySuppressed } from "../../src/sdk/index.js";
 export type { DeliveryReport, HeldBackRecipient } from "../../src/sdk/index.js";
+
+// --- Submitting outside a draft, and serving a sample (since Conversations) ---------------
+// The hub's automated Code of Conduct check on text a person submits (processesOf(...).submit
+// takes its answer), and the hub's sample content a type serves beyond its row.
+export { codeOfConduct, samples } from "../../src/sdk/index.js";
+export type { CodeOfConductFinding } from "../../src/sdk/index.js";
+export type { RegeneratedBrief } from "../../src/sdk/index.js";

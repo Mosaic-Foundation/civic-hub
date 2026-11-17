@@ -29,6 +29,11 @@ import {
   saveProcessState,
 } from "./processService.js";
 import { actOnProcess, readAsPage, viewFor } from "../controllers/processController.js";
+import { getActionDispatcher } from "../processes/serviceSlots.js";
+import { getActor, getAuthUser } from "../middleware/auth.js";
+import { can } from "../authz/canActor.js";
+import { personFallbackName } from "./creatorDisplay.js";
+import { reviewMailbox, submitAsCreator } from "../modules/civic.review/index.js";
 
 export interface OwnProcesses {
   /** The types this view covers. */
@@ -74,6 +79,31 @@ export interface OwnProcesses {
   view(res: Response, id: string): Promise<Record<string, unknown> | null>;
   /** The ids of these types' seeded sample processes (they show the sample badge). */
   sampleIds(): Promise<Set<string>>;
+  /**
+   * Run one action as the hub itself (a job, or work after a close commits),
+   * through the kernel's one action path. The actor names the part of the
+   * package that acted and starts with "system:" (Civic Activity Spec
+   * §2.2.1). Not found for another type's id.
+   */
+  actAsSystem(
+    id: string,
+    action: string,
+    actor: `system:${string}`,
+    payload?: Record<string, unknown>,
+  ): Promise<{ process: Process; result: Record<string, unknown> }>;
+  /**
+   * Submit a new process for review as the signed-in person (a route behind
+   * requireResident): the kernel's one creation path. An admin's own
+   * submission goes live at once; anyone else's waits for an admin.
+   * `cocPassed`: the automated Code of Conduct check ran on exactly this text
+   * and found nothing (codeOfConduct.check). A type outside the view is
+   * refused.
+   */
+  submit(
+    res: Response,
+    input: { type: string; title: string; description: string; state: Record<string, unknown> },
+    opts: { cocPassed: boolean },
+  ): Promise<{ review_id: string; process_id: string; auto_approved: boolean }>;
 }
 
 export function processesOf(...types: string[]): OwnProcesses {
@@ -113,5 +143,27 @@ export function processesOf(...types: string[]): OwnProcesses {
       return process && mine.has(process.definition.type) ? viewFor(res, id) : null;
     },
     sampleIds: () => getSampleProcessIds(frozen),
+    async actAsSystem(id, action, actor, payload = {}) {
+      if (!actor.startsWith("system:")) throw new ForbiddenError("A system action's actor starts with \"system:\"");
+      const process = await getProcess(id);
+      if (!process || !mine.has(process.definition.type)) throw new NotFoundError("Process not found");
+      return getActionDispatcher()(id, { type: action, actor, payload });
+    },
+    async submit(res, input, opts) {
+      if (!mine.has(input.type)) throw new ForbiddenError(`${input.type} is not one of this package's types`);
+      const user = getAuthUser(res);
+      return submitAsCreator(
+        {
+          process_type: input.type,
+          title: input.title,
+          description: input.description,
+          creator_id: user.id,
+          creator_name: user.full_name || user.display_name || personFallbackName(),
+          creator_email: reviewMailbox(user.email),
+          state: input.state,
+        },
+        { cocPassed: opts.cocPassed, creatorIsAdmin: await can(getActor(res), "hub.administer") },
+      );
+    },
   };
 }

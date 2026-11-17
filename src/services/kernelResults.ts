@@ -76,6 +76,45 @@ export const results = {
   },
 
   /**
+   * What the process keeps from this written-up result, as its type says
+   * (its handler's keepResult), or null for nothing.
+   */
+  async kept(id: string, content: BriefContent): Promise<Record<string, unknown> | null> {
+    const source = await getProcess(id);
+    if (!source) return null;
+    const keep = getProcessHandler(source.definition.type)?.keepResult;
+    const state = keep ? keep(source, content) : null;
+    return state && Object.keys(state).length > 0 ? state : null;
+  },
+
+  /**
+   * The process keeps what its type keeps from this written-up result, at
+   * once and quietly: the result was written up as the process closed (or an
+   * unpublished version was made again), so no event. A value it replaces is
+   * kept on the process (`brief_revisions`), as `adopt` keeps it. Nothing
+   * happens when the type keeps nothing or it is already in place.
+   */
+  async keep(id: string, content: BriefContent, by: { resultId: string; at: string }): Promise<void> {
+    const kept = await results.kept(id, content);
+    if (!kept) return;
+    const source = await getProcess(id);
+    if (!source) return;
+    const state = source.state as Record<string, unknown>;
+    if (Object.entries(kept).every(([k, v]) => JSON.stringify(state[k]) === JSON.stringify(v))) return;
+    const replaced = Object.keys(kept).filter((k) => state[k] !== undefined && state[k] !== null);
+    const previous = Object.fromEntries(replaced.map((k) => [k, state[k]]));
+    const history = Array.isArray(state.brief_revisions) ? (state.brief_revisions as unknown[]) : [];
+    source.state = {
+      ...state,
+      ...kept,
+      ...(replaced.length > 0
+        ? { brief_revisions: [...history, { brief_id: by.resultId, replaced_at: by.at, previous }] }
+        : {}),
+    };
+    await saveProcessState(source);
+  },
+
+  /**
    * The process takes the state a published result brought (a conversation's
    * new summary). The values it replaces are kept on the process
    * (`brief_revisions`), and it emits civic.process.updated. Nothing happens

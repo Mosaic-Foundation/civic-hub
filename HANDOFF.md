@@ -4,9 +4,33 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 1: Conversations on the kernel surface, and step 1 complete — 2026-11-17
+
+On `kernel-extraction`. **Three migrations to apply**: the catalog entries for Conversations 0.4.0
+(20261117051754) and Briefs 0.4.0 (20261117050917, regenerated: it replaces 20261117044714), both to approve, and
+20261117051500, which copies each brief's summary onto its conversation (data only, idempotent).
+
+- Every package here now imports SDK version 1 only. Conversations 0.4.0's list, page and drafting page moved into
+  `packages/civic.polis_deliberation/ui/` unchanged, with `deliberation/*`, its drafting form and seed rows; its
+  client is `ui/api.ts`. The development seed's stand-in Polis answers moved in (`mocks.ts`), reading sample
+  templates through version 1's new `samples`; `seedStatements.ts` moved in.
+- **A closed conversation's page reads only the conversation.** When its result is written up (Briefs writes the
+  summary with the AI), the conversation keeps that summary on its own state: a new handler hook, `keepResult`,
+  asked by the kernel (`results.kept`/`results.keep`) when the brief is made and when an admin makes it again
+  (at once while the brief is unpublished, on Publish once it is). With Briefs off, or before a write-up, the page
+  shows the result's own figures and "No written summary." (`narrative: "unwritten"`, the one new line of text).
+  The package no longer `requires` Briefs.
+- Its older `POST /deliberations/:id/regenerate` link is gone (it reached into Briefs; nothing in the pages
+  called it). Regenerate is the brief's. `src/services/briefRegenerate.ts` and its `PACKAGE_REACH_NOT_YET` entry are
+  gone.
+- Also new in version 1: `processesOf().submit` (the one creation path outside a draft), `processesOf().actAsSystem`,
+  `codeOfConduct.check`. Version 0 lost every name only Conversations used.
+- Checked: computed styles and positions match dev on Athens (list, active, closed, finalized, new) at 1100 and 390
+  px, apart from sub-pixel text widths; a Briefs-off close shows the figures; API test for it added.
+
 ## Kernel step 1: Briefs on the kernel surface — 2026-11-17
 
-On `kernel-extraction`. **Catalog entry for Briefs 0.4.0 is a migration** (20261117044714): apply and approve.
+On `kernel-extraction`. **Catalog entry for Briefs 0.4.0 is a migration** (20261117050917 since Conversations moved; it replaced 20261117044714): apply and approve.
 
 - Briefs 0.4.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its brief page, Outcomes and the admin review
   (with Regenerate) moved into `packages/civic.brief/ui/` unchanged; its client is `ui/api.ts`.

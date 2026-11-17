@@ -15,6 +15,11 @@
  * are gone on purpose). `GET /vote-results/:id` stays in it: the same route is
  * now the civic.brief package's legacy redirect (301 to ../brief/:id,
  * packages/civic.brief/legacyRoutes.ts), so old shared API links keep working.
+ *
+ * Kernel step 1, Conversations 0.4.0 (2026-11-17): POST
+ * /deliberations/:processId/regenerate left the list. It reached into Briefs
+ * (a conversation's summary is made again as its brief, POST
+ * /admin/briefs/:id/regenerate), and nothing in the hub's pages called it.
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync } from "node:fs";
