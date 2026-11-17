@@ -4,6 +4,28 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Districts follow-ups — 2026-11-17
+
+On dev after 1a3cb4c, unpushed, no migrations (2f8130c, 9549168, 88e5d0e). From Adam's try on Athens dev.
+
+- **District everywhere** (2f8130c): `DEFAULT_DISTRICT_TERM` replaces `defaultDistrictTerm`; no Ward or School board
+  district guess. The term field's hint names district, ward, precinct or borough.
+- **No "Find your district" link** (9549168): `about.find_district_url` is gone (key, field, help, search, card).
+  A found address that matches no district just asks the member to choose from the list.
+- **County hubs need no admin work** (88e5d0e): `ensureCensusDistricts` (`src/services/districtLookup.ts`) keeps
+  the county's Census list in `about.census_districts` (public, hub-written, `{ county, districts }`), run on the
+  hub config read (waits at most 4 s; rechecks every 6 h per instance; refetches when the county changes; cleared
+  when the hub stops being a county). `aboutConfig` uses it while `about.districts` is empty (`districtSource`).
+  Settings > Districts shows it; the first edit starts the hub's own list with the same ids, and "Use the Census
+  list" clears the own list. Removing every district of an own list also falls back to the Census list: to stop
+  asking, switch the question off.
+- **Athens** (dev): `identity.jurisdiction_type` = town, no `jurisdiction_ocd_id`, districts Agora and Sparta. Its
+  "couldn't tell which one it's in" was `no_match`: the Census found the Floyd address and its subdivision, which
+  matches neither name. Athens gets no Census list (not a county).
+- **Mapbox address suggestions: not built.** Partial work is in `git stash` ("mapbox address suggestions"): the
+  adapter, its fake, the Mapbox implementation and Privacy Policy lines. Wiring it in was refused by the permission
+  check pending Adam's own approval of sending typed addresses to Mapbox.
+
 ## Districts and demographics — 2026-11-16
 
 On dev, unpushed (four commits after 69e0a13). **Two migrations** (20261116030000 member_about, 20261116040000
