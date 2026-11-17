@@ -37,6 +37,7 @@ export {
   applyOnApproval,
   archiveProcess,
   assertPassesWordlist,
+  authorshipOf,
   briefIdForSource,
   buildEvent,
   can,
@@ -109,6 +110,7 @@ export {
   regenerateBrief,
   reportError,
   requireAdmin,
+  requireAuthor,
   requireBoardOrAdmin,
   requireOfficial,
   requireResident,
@@ -135,6 +137,7 @@ export {
   verifyReceipt,
   viewFor,
   voteDurationLimitsSync,
+  warmLinkPreviews,
   warmPreviewsInBackground,
   writeProcessState,
 } from "../../src/sdk/index.js";

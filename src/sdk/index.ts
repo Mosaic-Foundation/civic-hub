@@ -26,7 +26,7 @@ export {
 } from "../errors/index.js";
 
 // --- The process contract ------------------------------------------------------------
-export type { Process, ProcessAction, ProcessStatus } from "../models/process.js";
+export type { Process, ProcessAction, ProcessStatus, CreateProcessInput } from "../models/process.js";
 export type { ProcessHandler, RegeneratedBrief, EditPolicy, EditChangeSet } from "../processes/types.js";
 export type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 export { storeSlot, type StoreSlot } from "../processes/storeSlot.js";
@@ -48,6 +48,9 @@ export {
   resolveCallerIsAdmin,
   requireBoardOrAdmin,
   requireAdmin,
+  requireAuthor,
+  authorshipOf,
+  type AuthorOf,
 } from "../middleware/auth.js";
 export { KEYS } from "../models/hubSettings.js";
 
@@ -66,6 +69,7 @@ export {
 } from "../services/processService.js";
 export { readProcessState, writeProcessState, publishedBriefRows, briefIdForSource } from "../services/processRows.js";
 export { processesOf } from "../services/ownProcesses.js";
+export { warmPreviewsInBackground as warmLinkPreviews } from "../services/linkPreviewCache.js";
 export type { OwnProcesses } from "../services/ownProcesses.js";
 // The instant-post civility check (src/shared/wordlist): slurs and strong profanity refused.
 export { assertPassesWordlist } from "../shared/wordlist/index.js";

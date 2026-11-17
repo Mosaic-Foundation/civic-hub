@@ -13,7 +13,12 @@ export default defineConfig({
       // package directly enters the engine through it, and vitest leaves a
       // re-exporting module empty until the cycle it starts completes.
       { find: /^@civic-social\/plugin-sdk\/first-party$/, replacement: fileURLToPath(new URL("./src/sdk/index.ts", import.meta.url)) },
-      { find: /^@civic-social\/plugin-sdk$/, replacement: `${SDK}index.ts` },
+      // Version 1 too, for the same reason, now that the repository's own
+      // packages move onto it (kernel step 1): kit/sdk/index.ts only re-exports
+      // the engine's SDK, so the values are the same; which names a package
+      // may use is held by the types (tsconfig.json's paths to kit/sdk) and
+      // lint, not by this alias.
+      { find: /^@civic-social\/plugin-sdk$/, replacement: fileURLToPath(new URL("./src/sdk/index.ts", import.meta.url)) },
       { find: /^@civic-social\/plugin-sdk\/(.+)$/, replacement: `${SDK}$1.ts` },
     ],
   },

@@ -86,17 +86,31 @@ export type { HubContext } from "../../src/sdk/index.js";
 // --- Its own records, on the database its host hands it (its granted tables only) ----------
 export { storeSlot, HubDbError, readAll, readProcessState, writeProcessState } from "../../src/sdk/index.js";
 export type { StoreSlot } from "../../src/sdk/index.js";
+export type { CreateProcessInput } from "../../src/sdk/index.js";
 
 // --- Its own processes (kernel step 1): read only those of the types it declares ---------
 export { processesOf } from "../../src/sdk/index.js";
 export type { OwnProcesses } from "../../src/sdk/index.js";
+
+// --- Posting for the space (kernel step 1): an administrator or a listed author, and the
+// byline the admins set for them; the author's public role is the kernel's accountable role ---
+export { requireAuthor, authorshipOf } from "../../src/sdk/index.js";
+export type { AuthorOf } from "../../src/sdk/index.js";
+
+// --- People shown (kernel step 1): a record's creator as this reader may see them, the raw
+// account id redacted; the name the public sees for an administrator ------------------------
+export { enrichCreator, enrichCreators, PUBLIC_ADMIN_NAME } from "../../src/sdk/index.js";
+
+// --- Link previews (kernel step 1): the URLs in a text, and fetching their previews ahead
+// of the first reader, in the background ------------------------------------------------------
+export { extractUrls, warmLinkPreviews } from "../../src/sdk/index.js";
 
 // --- Moderation of instant posts: the space's word list (slurs and strong profanity);
 // a refusal is a ValidationError the hub answers with its message ---------------------------
 export { assertPassesWordlist } from "../../src/sdk/index.js";
 
 // --- Routes of its own, when it needs them ---------------------------------------------------
-export { route, getAuthUser, requireResident, requireAdmin, resolveCallerId } from "../../src/sdk/index.js";
+export { route, getAuthUser, requireResident, requireAdmin, resolveCallerId, resolveCallerIsAdmin } from "../../src/sdk/index.js";
 
 // --- Small utilities -------------------------------------------------------------------------
 export { generateId, str, num } from "../../src/sdk/index.js";

@@ -7,12 +7,10 @@ import {
   NotFoundError,
   ValidationError,
   route,
-  getProcess,
-  saveProcessState,
+  processesOf,
   emitEvent,
   getAuthUser,
-  getAllProcesses,
-} from "@civic-social/plugin-sdk/first-party";
+} from "@civic-social/plugin-sdk";
 import {
   boardView,
   getAdminReadModel,
@@ -23,13 +21,16 @@ import {
 
 import type { Request, Response } from "express";
 import { applyPin, readPin } from "./controller.js";
-import { PINNED_MAX } from "../../src/shared/announcementBoard.js";
+import { PINNED_MAX } from "./board.js";
 
 function readReason(body: unknown): string {
   const b = body as { reason?: unknown } | null | undefined;
   if (!b || typeof b.reason !== "string") return "";
   return b.reason;
 }
+
+/** Announcements' own processes, through the kernel (called where used: ADR-017). */
+const announcements = () => processesOf("civic.announcement");
 
 function getState(record: { state: Record<string, unknown> }): AnnouncementProcessState {
   return record.state as unknown as AnnouncementProcessState;
@@ -42,8 +43,8 @@ export const handleRemoveAnnouncement = route(async (req, res) => {
   if (!reason || reason.trim().length === 0) {
     throw new ValidationError("reason is required (string)");
   }
-  const record = await getProcess(id);
-  if (!record || record.definition.type !== "civic.announcement") {
+  const record = await announcements().get(id);
+  if (!record) {
     throw new NotFoundError("Announcement not found");
   }
   const state = getState(record);
@@ -52,7 +53,7 @@ export const handleRemoveAnnouncement = route(async (req, res) => {
     jurisdiction: record.jurisdiction,
     emit: emitEvent,
   });
-  await saveProcessState(record);
+  await announcements().saveState(record);
   res.json(
     getAdminReadModel(state, { id: record.id, createdAt: record.createdAt }),
   );
@@ -61,8 +62,8 @@ export const handleRemoveAnnouncement = route(async (req, res) => {
 export const handleRestoreAnnouncement = route(async (req, res) => {
   const admin = getAuthUser(res);
   const id = req.params.id as string;
-  const record = await getProcess(id);
-  if (!record || record.definition.type !== "civic.announcement") {
+  const record = await announcements().get(id);
+  if (!record) {
     throw new NotFoundError("Announcement not found");
   }
   const state = getState(record);
@@ -71,7 +72,7 @@ export const handleRestoreAnnouncement = route(async (req, res) => {
     jurisdiction: record.jurisdiction,
     emit: emitEvent,
   });
-  await saveProcessState(record);
+  await announcements().saveState(record);
   res.json(
     getAdminReadModel(state, { id: record.id, createdAt: record.createdAt }),
   );
@@ -88,7 +89,7 @@ const ADMIN_LIST_MAX = 100;
  * `recent` the newest others, for pinning. Removed ones are left out.
  */
 export const handleAdminListAnnouncements = route(async (_req, res) => {
-  const all = await getAllProcesses(["civic.announcement"]);
+  const all = await announcements().list();
   const now = Date.now();
   const rows = all
     .filter((p) => !getState(p).moderation?.removed)
@@ -122,13 +123,13 @@ export const handleAdminListAnnouncements = route(async (_req, res) => {
 async function pinRoute(req: Request, res: Response, pinned: boolean) {
   const admin = getAuthUser(res);
   const id = req.params.id as string;
-  const record = await getProcess(id);
-  if (!record || record.definition.type !== "civic.announcement") {
+  const record = await announcements().get(id);
+  if (!record) {
     throw new NotFoundError("Announcement not found");
   }
   const pin = pinned ? readPin({ ...(req.body ?? {}), pinned: true }) ?? { pinned: true, until: null } : { pinned: false, until: null };
   const changed = await applyPin(record, admin.id, pin);
-  if (changed) await saveProcessState(record);
+  if (changed) await announcements().saveState(record);
   res.json(getAdminReadModel(getState(record), { id: record.id, createdAt: record.createdAt }));
 }
 
