@@ -43,4 +43,14 @@ describe("hubContext()", () => {
     expect(noun({ "identity.hub_kind": "organization" }, 2)).toBe("members");
     expect(noun({ "identity.hub_kind": "place", "copy.resident_noun": "neighbor" }, 2)).toBe("neighbors");
   });
+
+  // Kernel step 2: the kernel's words, as the civic profile names them.
+  it("names the kernel's words as the hub does: term()", async () => {
+    const { term } = await import("../../src/sdk/index.js");
+    const at = (settings: Record<string, string>, f: () => string) => runWithHub(FLOYD_HUB, settings, f);
+    expect(at({}, () => hubContext().term("member", 2))).toBe("residents");
+    expect(at({ "copy.resident_noun": "neighbor" }, () => term("member"))).toBe("neighbor");
+    expect(at({}, () => term("accountable", 2))).toBe("officials");
+    expect(at({ "identity.hub_kind": "issue" }, () => term("space"))).toBe("hub");
+  });
 });

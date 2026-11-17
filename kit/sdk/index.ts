@@ -92,7 +92,7 @@ export { notify } from "../../src/sdk/index.js";
 export type { Notice, NoticeReport } from "../../src/sdk/index.js";
 
 // --- The hub in scope (Events 2, E3): its name, the origin its pages are at, its time zone --------
-export { hubContext } from "../../src/sdk/index.js";
+export { hubContext, term } from "../../src/sdk/index.js";
 export type { HubContext } from "../../src/sdk/index.js";
 
 // --- Its own records, on the database its host hands it (its granted tables only) ----------
@@ -175,3 +175,9 @@ export type { DeliveryReport, HeldBackRecipient } from "../../src/sdk/index.js";
 export { codeOfConduct, samples } from "../../src/sdk/index.js";
 export type { CodeOfConductFinding } from "../../src/sdk/index.js";
 export type { RegeneratedBrief } from "../../src/sdk/index.js";
+
+// --- The kernel's roles and words (kernel step 2): member, moderator, admin, accountable; and
+// the words a space type's profile names ("resident", "official", "hub" on a Civic Hub).
+// term("member", 2) reads the space's own word, else its profile's, else the neutral word.
+export { KERNEL_ROLES, KERNEL_TERMS, namesRole } from "../../src/sdk/index.js";
+export type { KernelRole, KernelTerm } from "../../src/sdk/index.js";

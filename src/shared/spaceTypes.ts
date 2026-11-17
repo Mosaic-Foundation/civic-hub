@@ -13,6 +13,9 @@
 //
 // Shared by the server and the UI. Pure.
 
+import type { SpaceProfile } from "./spaceProfile.js";
+import { CIVIC_PROFILE } from "./profiles/civic.js";
+
 export interface SpaceSender {
   /**
    * The hosting setting holding the address (`Name <addr>` or a bare
@@ -42,13 +45,15 @@ export interface SpaceType {
   maintainer: string;
   /** The set of email templates its mail is written from. */
   templateSet: string;
+  /** What it calls the kernel's roles and words (kernel step 2). Its `space` names the noun above. */
+  profile: SpaceProfile;
 }
 
 export const CIVIC_HUB: SpaceType = {
   id: "civic_hub",
   displayName: "Civic Hub",
-  noun: "hub",
-  nounPlural: "hubs",
+  noun: CIVIC_PROFILE.space.one,
+  nounPlural: CIVIC_PROFILE.space.many,
   domainPattern: "*.civic.social",
   memberSender: { setting: "RESEND_FROM", domain: "civic.social" },
   supportAddress: "contact@civic.social",
@@ -57,6 +62,7 @@ export const CIVIC_HUB: SpaceType = {
   operatorSender: { setting: "CIVIC_OPERATOR_MAIL_FROM", domain: "civic.social" },
   maintainer: "Civic.Social",
   templateSet: "civic-hub",
+  profile: CIVIC_PROFILE,
 };
 
 /** Every space type, by id. One today. */

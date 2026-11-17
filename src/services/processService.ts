@@ -85,6 +85,7 @@ import type { PluginId } from "../models/hubSettings.js";
 import { readAll } from "../db/readAll.js";
 import { getUser } from "../modules/civic.auth/index.js";
 import { notifyCreatorArchived } from "../modules/civic.review/email.js";
+import { namesRole } from "../shared/spaceProfile.js";
 
 /** The hub in scope. Processes are only ever read or written inside one. */
 function db(): HubDb {
@@ -362,7 +363,7 @@ async function attemptAction(
   // everything else is an admin's or the hub's. Checked before the status, so
   // a refused caller learns nothing about where the process is.
   const declared = declaredAction(handler.type, action.type);
-  const official = caller === "resident" && Boolean(declared?.callers.includes("official")) && (await subjectIsOfficial(action.actor));
+  const official = caller === "member" && namesRole(declared?.callers, "accountable") && (await subjectIsOfficial(action.actor));
   if (!callerMayCall(caller, declared, process, action.actor, official)) {
     throw new ActionNotAllowedError(action.type);
   }
@@ -382,7 +383,7 @@ async function attemptAction(
   // as closed, so a resident gets what a closed one answers: the type's own
   // refusal (its manifest's deadlineRefusal). Admin and hub actions go on to
   // the handler as before (the job's close, an admin's late close).
-  if (caller === "resident" && handler.descriptor.deadline && (await asRead(process)) !== process) {
+  if (caller === "member" && handler.descriptor.deadline && (await asRead(process)) !== process) {
     const refusal = getManifest(handler.type)?.deadlineRefusal;
     throw new ConflictError(refusal?.message ?? "This has closed.", refusal?.code ?? "process_closed");
   }

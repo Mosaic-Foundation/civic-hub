@@ -89,6 +89,8 @@ import {
   type ProcessHandler,
   type ProcessStatus,
   type ProcessTypeDescriptor,
+  memberCreation,
+  namesRole,
 } from "@civic-social/plugin-sdk/testing";
 import { hostFacts } from "./hostFacts.js";
 import { scanDir, scannableFiles } from "./tokenScan.js";
@@ -190,7 +192,7 @@ export function runConformance(options: ConformanceOptions): void {
             ? [...decl!.creation, ...decl!.closing, ...decl!.outcome, ...(decl!.withdrawal ?? [])]
             : [...decl!.participation, ...decl!.creation, ...decl!.closing, ...decl!.outcome, ...(decl!.withdrawal ?? [])],
         );
-        for (const a of d!.actions.filter((x) => x.callers.includes("resident") || x.callers.includes("creator") || (x.callers as readonly string[]).includes("official"))) {
+        for (const a of d!.actions.filter((x) => namesRole(x.callers, "member") || x.callers.includes("creator") || namesRole(x.callers, "accountable"))) {
           if (a.emits.length === 0) continue;
           expect(
             a.emits.some((e) => counted.has(e)),
@@ -199,7 +201,7 @@ export function runConformance(options: ConformanceOptions): void {
         }
       });
       if (!d) return;
-      if (!d.creation.resident && !d.creation.admin) {
+      if (!memberCreation(d.creation) && !d.creation.admin) {
         // Made only by the hub itself (a brief on a close, a meeting summary
         // from a job). Its static checks ran above; the walks of the types
         // that make one cover it in use (a brief: step 5 of every type with
@@ -227,7 +229,7 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
   const touched: Array<{ id: string; hub: Hub }> = [];
   const walked: Walked = { paths: new Map(), processIds: [] };
 
-  if (d.creation.resident) {
+  if (memberCreation(d.creation)) {
     describe("2. creation through a draft", () => {
       // Submit runs the Code of Conduct check (Submit and Save, 2026-10-12),
       // through the one drafts path every type shares. The hub runs the fake
@@ -285,7 +287,7 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
         expect(first.status, JSON.stringify(first.body)).toBe(201);
         touched.push({ id: first.processId, hub: BETA });
         const again = await Promise.all(
-          [0, 1, 2].map(() => call("POST", `${d.creation.resident!.drafts}/${first.draftId}/submit`, BETA.host, {}, token)),
+          [0, 1, 2].map(() => call("POST", `${memberCreation(d.creation)!.drafts}/${first.draftId}/submit`, BETA.host, {}, token)),
         );
         for (const r of again) expect(r.status).toBe(409);
         expect(await reviewOf(first.processId)).toHaveLength(1);
@@ -454,7 +456,7 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
         // what a closed one answers.
         const refusal = getManifest(d.type)?.deadlineRefusal;
         const residentAction = d.actions.find(
-          (a) => a.name !== close.name && a.callers.includes("resident") && a.from.includes(stored as ProcessStatus),
+          (a) => a.name !== close.name && namesRole(a.callers, "member") && a.from.includes(stored as ProcessStatus),
         );
         const voter = await resident(BETA);
         const refused = residentAction
@@ -573,7 +575,7 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
       expect((await processRow(id)).status).toBe("archived");
       expect((await call("GET", `/process/${id}/state`, BETA.host)).status).toBe(404);
       const { token } = await resident(BETA);
-      for (const a of d.actions.filter((x) => x.callers.includes("resident"))) {
+      for (const a of d.actions.filter((x) => namesRole(x.callers, "member"))) {
         expect((await act(BETA, id, a.name, examplePayload(d, a.name, await processRow(id)), token)).status).toBe(404);
       }
       const restored = await call("POST", `/admin/processes/${id}/restore`, BETA.host, {}, adminToken);
@@ -607,8 +609,8 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
       }
       const listed = await call("GET", `/process?type=${d.type}`, DEMO.host);
       expect(JSON.stringify(listed.body)).not.toContain(id);
-      if (d.creation.resident) {
-        expect((await call("POST", d.creation.resident.drafts, DEMO.host, {}, token)).status).toBeGreaterThanOrEqual(400);
+      if (memberCreation(d.creation)) {
+        expect((await call("POST", memberCreation(d.creation)!.drafts, DEMO.host, {}, token)).status).toBeGreaterThanOrEqual(400);
       }
       const manifest = await call("GET", "/.well-known/civic.json", DEMO.host);
       expect((manifest.body.processes as string[]).includes(d.type)).toBe(false);
@@ -712,7 +714,7 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
         expect((await call("GET", `/process/${id}/state`, other.host)).status).toBe(404);
         expect((await call("GET", `/process/${id}`, other.host)).status).toBe(404);
         const { token } = await resident(other);
-        for (const a of d.actions.filter((x) => x.callers.includes("resident"))) {
+        for (const a of d.actions.filter((x) => namesRole(x.callers, "member"))) {
           expect((await act(other, id, a.name, {}, token)).status).toBe(404);
         }
         const feed = await call("GET", `/events?process_id=${id}`, other.host);
@@ -736,7 +738,7 @@ function sdkSurfaceSteps(d: ProcessTypeDescriptor, facts: HostFacts, touched: Ar
 
   describe("11. edits through the hub's edit path", () => {
     it("the creator edits a live one: flagged text is refused and nothing changes; a clean edit is applied and recorded; a stranger may not", async () => {
-      if (!d.creation.resident) return;
+      if (!memberCreation(d.creation)) return;
       const { token } = await resident(DEMO);
       const id = await liveAs(d, facts, DEMO, token);
       touched.push({ id, hub: DEMO });
@@ -750,7 +752,7 @@ function sdkSurfaceSteps(d: ProcessTypeDescriptor, facts: HostFacts, touched: Ar
       const started = await call("POST", `/process/${id}/edit`, DEMO.host, {}, token);
       expect(started.status, JSON.stringify(started.body)).toBe(200);
       const draftId = started.body.draft_id as string;
-      const path = d.creation.resident.drafts;
+      const path = memberCreation(d.creation)!.drafts;
       const before = (await call("GET", `/process/${id}/state`, DEMO.host)).body;
       const renamed = uniqueTitle("Edited");
 
@@ -772,7 +774,7 @@ function sdkSurfaceSteps(d: ProcessTypeDescriptor, facts: HostFacts, touched: Ar
     // another write landed in between, so its every other effect waits for
     // the commit (afterActionCommits): however its calls interleave, its
     // events are written once per call that won.
-    const retrySafe = d.actions.filter((x) => x.retry_safe && x.callers.includes("resident"));
+    const retrySafe = d.actions.filter((x) => x.retry_safe && namesRole(x.callers, "member"));
     if (retrySafe.length === 0) it.skip("none of its resident actions is declared retry-safe", () => {});
     for (const a of retrySafe) {
       it(`${a.name}: two calls at once by one person write its events once`, async () => {
@@ -878,8 +880,8 @@ function sdkSurfaceSteps(d: ProcessTypeDescriptor, facts: HostFacts, touched: Ar
 
   describe("16. the official caller", () => {
     it("an action open to officials: an official may call it, a resident may not; officials' submissions skip the wait where declared", async () => {
-      const forOfficials = d.actions.filter((x) => (x.callers as readonly string[]).includes("official") && !x.callers.includes("resident"));
-      const atOnce = d.creation.resident?.publish_at_once?.includes("official");
+      const forOfficials = d.actions.filter((x) => namesRole(x.callers, "accountable") && !namesRole(x.callers, "member"));
+      const atOnce = namesRole(memberCreation(d.creation)?.publish_at_once, "accountable");
       if (forOfficials.length === 0 && !atOnce) return;
       const official = await resident(BETA);
       const officialId = await accountIdOf(BETA.host, official.token);
@@ -1078,7 +1080,7 @@ beforeAll(async () => {
 
 /** A live process created by `creatorToken` (a resident) where the type allows; otherwise by an admin. */
 async function liveAs(d: ProcessTypeDescriptor, facts: HostFacts, hub: Hub, creatorToken: string): Promise<string> {
-  if (!d.creation.resident) return liveProcess(d, facts, hub);
+  if (!memberCreation(d.creation)) return liveProcess(d, facts, hub);
   const s = await submitDraft(d, facts, hub, creatorToken, { check: "unavailable" });
   if (s.status !== 201) throw new Error(`${d.type}: submit answered ${s.status} ${JSON.stringify(s.body)}`);
   const ok = await approve(hub, await admin(hub), s.reviewId);
@@ -1094,7 +1096,7 @@ async function tokenFor(as: Step["as"], hub: Hub, creatorToken: string): Promise
 
 /** Who calls an action in the walk: a resident if it is theirs, else the creator, else an admin. */
 function walker(a: ActionDescriptor): Step["as"] | null {
-  if (a.callers.includes("resident")) return "resident";
+  if (namesRole(a.callers, "member")) return "resident";
   if (a.callers.includes("creator")) return "creator";
   if (a.callers.includes("admin")) return "admin";
   return null; // system only: the hub's, never a caller's
@@ -1104,7 +1106,7 @@ function walker(a: ActionDescriptor): Step["as"] | null {
 async function refusals(d: ProcessTypeDescriptor, hub: Hub, id: string, status: ProcessStatus, creatorToken: string) {
   const stranger = (await resident(hub)).token;
   for (const a of d.actions.filter((x) => x.from.includes(status))) {
-    if (a.callers.includes("resident")) continue;
+    if (namesRole(a.callers, "member")) continue;
     const res = await act(hub, id, a.name, examplePayload(d, a.name, await processRow(id)), stranger);
     expect(res.status, `${d.type} ${a.name} as a resident: ${JSON.stringify(res.body)}`).toBe(403);
     expect(res.body.code).toBe("admin_required");

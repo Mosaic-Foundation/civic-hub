@@ -480,11 +480,11 @@ export type ActionDispatcher = (
 ) => Promise<{ process: Process; result: Record<string, unknown> }>;
 
 /**
- * Who is calling executeAction. "resident" is held to the actions its
- * descriptor opens to residents (or to the process's creator, when the
- * resident is the creator); "admin" (a hub admin, checked by the caller) and
- * "system" (the hub acting on its own: a deadline close, an approval's
- * activation, a seed) to the actions open to them. A required argument, so no
- * call site gets a default.
+ * Who is calling executeAction, in the kernel's role names (kernel step 2).
+ * "member" is held to the actions its descriptor opens to members (or to the
+ * process's creator, when the member is the creator); "admin" (a space admin,
+ * checked by the caller) and "system" (the space acting on its own: a
+ * deadline close, an approval's activation, a seed) to the actions open to
+ * them. A required argument, so no call site gets a default.
  */
-export type ActionCaller = "resident" | "admin" | "system";
+export type ActionCaller = "member" | "admin" | "system";

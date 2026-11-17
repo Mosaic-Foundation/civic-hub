@@ -87,6 +87,17 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 2: neutral roles and terms, the civic profile (2026-11-17)
+
+- **Unit:** 2,813 passed. New `tests/unit/spaceProfile.test.ts`: the four roles and the old names read as two of them;
+  word resolution in order (own word, profile by kind, profile, neutral); a bad profile refused; the civic profile
+  gives the same participant words as before for every kind of hub; `memberCreation` reads either name and every
+  shipped type names exactly one. `canActor.test.ts`: either role name opens an action; the caller is `member`.
+  `hubContext.test.ts`: `term()`. `authzParity` maps the old rules' `resident` caller to `member`. **UI:** 102 passed,
+  typecheck clean. **API:** 1,065 passed; the 4 failures are `events.test.ts`'s, which need `athens.localhost`
+  (sandbox only). Conformance for every shipped type passes in the API suite; `kit/scripts/prove.ts` (the SDK tour on
+  the new names) could not install in the sandbox (an npm bug), so CI runs it.
+
 ## Kernel step 1: Conversations 0.4.0 on the kernel surface, step 1 complete (2026-11-17)
 
 - **Unit:** 2,792 passed. `packageBoundary`'s version 0 example is a package that does not exist (none here is on

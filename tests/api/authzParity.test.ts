@@ -171,14 +171,15 @@ async function walk(hubId: string, people: Person[]): Promise<string[]> {
               const newCaller = d.allowed ? d.caller : `refused:${d.error.code}`;
               // A demo session never reaches actOnProcess as an admin today
               // (civic.auth refuses demo sessions for privileged addresses).
-              if (assurance === "code") note(`${label} caller`, oldCaller, newCaller);
-              const callerNow = d.allowed ? d.caller! : "resident";
+              // The old rules called a non-admin "resident"; the kernel calls them "member" (kernel step 2).
+              if (assurance === "code") note(`${label} caller`, oldCaller === "resident" ? "member" : oldCaller, newCaller);
+              const callerNow = d.allowed ? d.caller! : "member";
               // The one deliberate addition (engine 2, A6): an action a type
               // opens to officials, for an account holding a managed office.
               const isOfficial = await subjectIsOfficial(p.row.id);
               const opensToOfficial = (declared.callers as readonly string[]).includes("official") && isOfficial;
               const oldMay = oldCaller !== "resident" || old.residentMayCall(declared, mine ? p.row.id : "user_someone_else", p.row.id) || opensToOfficial;
-              const official = callerNow === "resident" && (declared.callers as readonly string[]).includes("official") && isOfficial;
+              const official = callerNow === "member" && (declared.callers as readonly string[]).includes("official") && isOfficial;
               if (assurance === "code") note(`${label} may call`, oldMay, callerMayCall(callerNow, declared, process, p.row.id, official));
               // process.see_unpublished: an admin finds a non-public process.
               if (assurance === "code" && declared === m.descriptor.actions[0] && !mine) {

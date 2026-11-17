@@ -53,6 +53,10 @@ commits) and `processesOf().submit(res, input, { cocPassed })` (the one creation
 handler hook `keepResult(process, content)` (what a process keeps from its written-up result: a conversation keeps
 its summary, so its closed page reads only itself, Briefs on or off), and the types `CodeOfConductFinding`,
 `RegeneratedBrief`. A conversation's summary without a write-up says why with `narrative: "unwritten"`.
+Since step 2 (neutral roles and terms): `term(t, n)` and `hubContext().term` (the kernel's words, as the space type's
+profile names them: "resident", "official", "hub" on a Civic Hub), `KERNEL_ROLES`, `KERNEL_TERMS`, `namesRole`, and the
+types `KernelRole`, `KernelTerm`; on the UI side `useSpace().term`. Descriptors name `member` and `accountable` (and
+`creation.member`); the older `resident`/`official` still read.
 A package's own table is read through its host (`host.db().from("brief_responses")`), never `forHub`. On the UI side, the kernel UI surface below
 (`ui/src/host/index.ts`). Announcements carries its own copy of the pinned and urgent rules (`board.ts`), kept equal
 to the right column's (`src/shared/announcementBoard.ts`) by a test until step 3 makes the board a contribution. A package's UI files are `ui.tsx` and its `ui/`

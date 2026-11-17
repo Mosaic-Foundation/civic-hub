@@ -23,6 +23,7 @@ import { AS2_TERMS } from "../shared/as2Terms.js";
 import type { FeedDeclaration } from "../shared/feedActivity.js";
 import { grantProblem, type PluginCapabilities } from "../shared/pluginGrant.js";
 import { participationProblem, type ParticipationDeclaration } from "../shared/participation.js";
+import { namesRole } from "../shared/spaceProfile.js";
 
 /**
  * One scheduled job of a type: src/jobs/registry.ts's HubJobSpec, with the
@@ -623,5 +624,5 @@ export function wireObjectProblem(w: unknown): string | null {
 
 /** The actions a resident may call, from the descriptor's callers (the A3 allowlist). */
 export function residentActions(m: Pick<ProcessManifest, "descriptor">): string[] {
-  return m.descriptor.actions.filter((a) => a.callers.includes("resident")).map((a) => a.name);
+  return m.descriptor.actions.filter((a) => namesRole(a.callers, "member")).map((a) => a.name);
 }

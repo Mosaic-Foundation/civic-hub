@@ -34,6 +34,8 @@ import { hubTimeZone } from "./hubClock";
 import { pluginEnabled, pluginSetup, pluginShown, processTypeEnabled, processTypeShown } from "./plugins";
 import { feedbackContactEmail } from "../../../src/shared/platform";
 import { hubKindOf, participantNoun, personLabel, type HubKind } from "../../../src/shared/hubKind";
+import { resolveTerm, type KernelTerm } from "../../../src/shared/spaceProfile";
+import { currentSpaceType } from "../../../src/shared/spaceTypes";
 import {
   defaultBetaBanner,
   defaultIntroBody,
@@ -220,6 +222,16 @@ const hub = {
    */
   noun(count: number): string {
     return participantNoun(hubKindOf(setting("identity.hub_kind")), count, setting("copy.resident_noun"));
+  },
+
+  /**
+   * A kernel word (docs/KERNEL.md §3) for this hub, by count: its own word,
+   * else the civic profile's, else the kernel's neutral word. `noun(n)` is
+   * `term("member", n)`.
+   */
+  term(t: KernelTerm, count = 1): string {
+    const own = t === "member" ? setting("copy.resident_noun") : null;
+    return resolveTerm(t, currentSpaceType().profile, { kind: hubKindOf(setting("identity.hub_kind")), own }, count);
   },
 
   /** The byline of someone whose name is not shown: "Resident", "Member"… */

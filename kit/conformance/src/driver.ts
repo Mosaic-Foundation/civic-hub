@@ -20,6 +20,8 @@ import {
   type HostFacts,
   type HubModel,
   type ProcessTypeDescriptor,
+  memberCreation,
+  namesRole,
 } from "@civic-social/plugin-sdk/testing";
 
 export const DB_URL =
@@ -115,7 +117,7 @@ export async function submitDraft(
     tellAdmins?: { note?: string };
   },
 ): Promise<Submitted> {
-  const path = d.creation.resident!.drafts;
+  const path = memberCreation(d.creation)!.drafts;
   const title = opts.title ?? uniqueTitle(String(d.examples.draft!.title ?? d.type));
   const made = await call("POST", path, hub.host, {}, token);
   if (made.status !== 201) throw new Error(`${d.type}: new draft at ${path} answered ${made.status} ${JSON.stringify(made.body)}`);
@@ -145,12 +147,12 @@ export function tellAdmins(
   draftId: string,
   note?: string,
 ): Promise<HostResponse> {
-  return call("POST", `${d.creation.resident!.drafts}/${draftId}/submit`, hub.host, { tell_admins: true, ...(note ? { note } : {}) }, token);
+  return call("POST", `${memberCreation(d.creation)!.drafts}/${draftId}/submit`, hub.host, { tell_admins: true, ...(note ? { note } : {}) }, token);
 }
 
 /** A draft as its owner reads it. */
 export function draftOf(d: ProcessTypeDescriptor, hub: Hub, token: string, draftId: string): Promise<HostResponse> {
-  return call("GET", `${d.creation.resident!.drafts}/${draftId}`, hub.host, undefined, token);
+  return call("GET", `${memberCreation(d.creation)!.drafts}/${draftId}`, hub.host, undefined, token);
 }
 
 /** The reviews made from a draft, with their flag and their first turn's note. */
@@ -187,7 +189,7 @@ export async function adminCreate(d: ProcessTypeDescriptor, hub: Hub): Promise<{
  * is made: a resident's draft approved by an admin, or an admin's create.
  */
 export async function liveProcess(d: ProcessTypeDescriptor, host: HostFacts, hub: Hub): Promise<string> {
-  if (d.creation.resident) {
+  if (memberCreation(d.creation)) {
     const { token } = await resident(hub);
     const s = await submitDraft(d, host, hub, token, { check: "unavailable" });
     if (s.status !== 201) throw new Error(`${d.type}: submit answered ${s.status} ${JSON.stringify(s.body)}`);

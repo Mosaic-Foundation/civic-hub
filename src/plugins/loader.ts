@@ -57,6 +57,7 @@ import { applyRequiredVersion, readApprovedCatalog, type CatalogRow } from "../d
 import { reportError } from "../utils/reportError.js";
 import { pluginsUnverifiedEnabled } from "../config/devFlags.js";
 import { deploymentKeys, signatureVerifies, type CatalogKeys } from "./signature.js";
+import { memberCreation } from "../processes/descriptorTypes.js";
 
 /** Why a configured package was refused at startup. */
 export class PackageError extends Error {
@@ -109,7 +110,7 @@ export function loadPackages(list: readonly ConfiguredPackage[]): LoadedPackage[
       throw new PackageError(entry, `its handler is for ${server.handler.type}, its manifest for ${m.descriptor.type}`);
     }
     if (server.handler.descriptor !== m.descriptor) throw new PackageError(entry, "its handler declares another descriptor than its manifest's");
-    const draftsPath = m.descriptor.creation.resident?.drafts;
+    const draftsPath = memberCreation(m.descriptor.creation)?.drafts;
     if (Boolean(server.drafts) !== Boolean(draftsPath)) {
       throw new PackageError(entry, draftsPath ? `residents draft it (${draftsPath}) but server(host) gives no draft kind` : "it gives a draft kind but residents do not draft it");
     }

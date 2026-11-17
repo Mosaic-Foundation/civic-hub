@@ -12,6 +12,8 @@
 import { useAuth } from "../context/authState";
 import hub, { useHub } from "../config/hub";
 import { theName } from "../../../src/shared/hubCopy";
+import type { KernelTerm } from "../../../src/shared/spaceProfile";
+export type { KernelTerm, KernelRole } from "../../../src/shared/spaceProfile";
 import { getMe } from "../services/auth";
 import { getStoredToken } from "../services/tokenStore";
 
@@ -90,6 +92,11 @@ export interface SpaceView {
   /** What the people taking part are called, by count (as the kernel's hubContext().participantNoun). */
   participantNoun: (count: number) => string;
   /**
+   * A kernel word by count (as the kernel's hubContext().term): "resident",
+   * "official" and "hub" on a Civic Hub, the space's own word where it set one.
+   */
+  term: (term: KernelTerm, count?: number) => string;
+  /**
    * The body that governs its place, where the space names one ("Floyd County
    * Board of Supervisors"); "" when it names none, and a page drops the phrase.
    */
@@ -132,6 +139,7 @@ function spaceViewOf(hub: ReturnType<typeof useHub>): SpaceView {
     place: hub.place,
     timeZone: hub.timeZone,
     participantNoun: (count) => hub.noun(count),
+    term: (t, count) => hub.term(t, count),
     governingBodyName: hub.governing_body_name,
     governingBodyShort: hub.governing_body_short,
     governingBodyRef: hub.governing_body_ref,

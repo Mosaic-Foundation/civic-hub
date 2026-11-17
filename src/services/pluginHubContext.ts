@@ -7,7 +7,9 @@
 
 import { getSettingSync, hubDisplayNameSync } from "./hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
-import { hubKindOf, participantNoun } from "../shared/hubKind.js";
+import { hubKindOf } from "../shared/hubKind.js";
+import { resolveTerm, type KernelTerm } from "../shared/spaceProfile.js";
+import { currentSpaceType } from "../shared/spaceTypes.js";
 import { defaultJurisdiction } from "../config/hub.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { hubTimeZone } from "./hubTimeZone.js";
@@ -30,6 +32,19 @@ export interface HubContext {
    * "members", or the hub's own word (`copy.resident_noun`). Read when called, for the hub in scope then.
    */
   participantNoun(count: number): string;
+  /**
+   * A kernel word (docs/KERNEL.md §3), for `count` of them: the hub's own
+   * word, else the space type's profile ("resident", "official", "hub" on a
+   * Civic Hub), else the kernel's neutral word. `participantNoun(n)` is
+   * `term("member", n)`.
+   */
+  term(term: KernelTerm, count?: number): string;
+}
+
+/** A kernel word for the hub in scope (hubContext().term). */
+export function term(t: KernelTerm, count = 1): string {
+  const own = t === "member" ? getSettingSync(KEYS.COPY_RESIDENT_NOUN) : null;
+  return resolveTerm(t, currentSpaceType().profile, { kind: hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), own }, count);
 }
 
 export function hubContext(): HubContext {
@@ -38,7 +53,7 @@ export function hubContext(): HubContext {
     baseUrl: uiBaseUrl(),
     timeZone: hubTimeZone(),
     place: defaultJurisdiction(),
-    participantNoun: (count) =>
-      participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), count, getSettingSync(KEYS.COPY_RESIDENT_NOUN)),
+    participantNoun: (count) => term("member", count),
+    term,
   };
 }

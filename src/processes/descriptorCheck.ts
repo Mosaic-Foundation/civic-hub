@@ -15,6 +15,8 @@ import {
 } from "./descriptor.js";
 import type { ProcessHandler } from "./types.js";
 import type { ProcessStatus } from "../models/process.js";
+import { memberCreation } from "./descriptorTypes.js";
+import { namesRole } from "../shared/spaceProfile.js";
 
 /** Every status a process row may hold (src/models/process.ts). */
 export const PROCESS_STATUSES: readonly ProcessStatus[] = [
@@ -90,7 +92,7 @@ export function checkDescriptor(handler: ProcessHandler, host: HostFacts): strin
     for (const e of a.emits) {
       if (!declaredEmits.has(e)) add(`action ${a.name} emits ${e}, which the type's emits does not list`);
     }
-    if ((a.callers.includes("resident") || a.callers.includes("official")) && !a.input_schema) {
+    if ((namesRole(a.callers, "member") || namesRole(a.callers, "accountable")) && !a.input_schema) {
       add(`resident action ${a.name} has no input_schema (with examples) for callers and the conformance suite`);
     }
     if (a.input_schema && !Array.isArray(a.input_schema.examples)) {
@@ -113,19 +115,25 @@ export function checkDescriptor(handler: ProcessHandler, host: HostFacts): strin
     if (!d.tables.includes(req.table)) add(`requiredSchema names ${req.table}, which tables does not list`);
   }
 
-  // Creation.
-  const kind = host.draftKinds.find((k) => k.processType === t);
-  if (d.creation.resident) {
-    if (!kind) add(`says residents draft it at ${d.creation.resident.drafts}, but no draft kind makes it`);
-    else if (!d.tables.includes(kind.table)) add(`its drafts table ${kind.table} is not in tables`);
-    if (!handler.reopenDraft || !handler.draftPath) add(`residents draft it, but the handler has no draftPath/reopenDraft`);
-  } else if (kind) {
-    add(`a draft kind makes it, but creation.resident is null`);
+  // Creation. `member` is the kernel's name, `resident` the name before step 2: one or the other.
+  if (d.creation.member !== undefined && d.creation.resident !== undefined) {
+    add(`creation names both member and resident: write member only`);
   }
-  if (d.creation.resident && !d.examples.draft) add(`residents draft it, but examples.draft is missing`);
+  if (d.creation.member === undefined && d.creation.resident === undefined) {
+    add(`creation names no member entry: write member (null when members cannot create it)`);
+  }
+  const kind = host.draftKinds.find((k) => k.processType === t);
+  if (memberCreation(d.creation)) {
+    if (!kind) add(`says members draft it at ${memberCreation(d.creation)!.drafts}, but no draft kind makes it`);
+    else if (!d.tables.includes(kind.table)) add(`its drafts table ${kind.table} is not in tables`);
+    if (!handler.reopenDraft || !handler.draftPath) add(`members draft it, but the handler has no draftPath/reopenDraft`);
+  } else if (kind) {
+    add(`a draft kind makes it, but creation.member is null`);
+  }
+  if (memberCreation(d.creation) && !d.examples.draft) add(`members draft it, but examples.draft is missing`);
   if (d.creation.admin && !d.examples.create) add(`admins create it, but examples.create is missing`);
-  if (!d.creation.resident && !d.creation.admin && !d.creation.system) {
-    add(`nothing creates it: creation is resident null, admin false, system false`);
+  if (!memberCreation(d.creation) && !d.creation.admin && !d.creation.system) {
+    add(`nothing creates it: creation is member null, admin false, system false`);
   }
 
   // Display: what residents read (navigation slice, 2026-10-14).
@@ -157,7 +165,7 @@ export function checkDescriptor(handler: ProcessHandler, host: HostFacts): strin
     add(d.brief ? `declares a brief but the handler has no generateBrief` : `the handler makes a brief but brief is false`);
   }
   if (handler.activationOnApproval) {
-    if (!d.creation.resident && !d.creation.admin) add(`activates on approval but nothing submits it for review`);
+    if (!memberCreation(d.creation) && !d.creation.admin) add(`activates on approval but nothing submits it for review`);
     for (const activation of approvalSamples(handler)) {
       if (!reachable.has(activation.status as ProcessStatus)) {
         add(`approval lands it at ${activation.status}, which is not one of its states`);

@@ -20,6 +20,7 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { hashPackage } from "../src/plugins/hash.js";
 import type { PluginPackage } from "../src/plugins/package.js";
+import { memberCreation } from "../src/processes/descriptorTypes.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const FILE = "supabase/migrations/20261025000200_shipped_plugins.sql";
@@ -44,7 +45,7 @@ async function main(): Promise<void> {
   const pkgs = loadedPackages() as Array<{ dir: string; pkg: PluginPackage; type: string; plugin: string }>;
   const rows = pkgs.map((p) => {
     const m = p.pkg.manifest;
-    const walked = m.descriptor.creation.resident !== null || m.descriptor.creation.admin;
+    const walked = memberCreation(m.descriptor.creation) !== null || m.descriptor.creation.admin;
     const conformance = { result: "passed", ran_at: ranAt, commit, walked };
     return (
       `  (${lit(p.pkg.name)}, ${lit(p.pkg.version)}, ${lit(hashPackage(join(ROOT, p.dir)))}, ${lit(p.pkg.displayName)}, ` +

@@ -58,8 +58,17 @@ Kernel roles: **member**, **moderator**, **admin**, and **accountable** (a perso
 for it: the civic profile calls them "official"; a club might say "coach"). Profiles name them; they cannot add a
 role the kernel does not know.
 
-Kernel terms (the terms service, `term("group")`; resolved space setting, then space type, then profile, then the
-kernel's neutral word): `member`, `group`, `accountable`, `space`, `outcome`. Add a term only when two plugins need it.
+Kernel terms (the terms service, `term("member", n)`; resolved space setting, then the profile's word for the space's
+kind, then the profile's word, then the kernel's neutral word): `member`, `accountable`, `space`. `group` and
+`outcome` are planned and join when two plugins need them. Add a term only when two plugins need it.
+
+Built in step 2 (Nov 17): the roles, terms and resolution are `src/shared/spaceProfile.ts` (kernel, pure, shared by
+server and UI); the civic profile is `src/shared/profiles/civic.ts`, hung on the Civic Hub space type
+(`src/shared/spaceTypes.ts`, `profile`). Packages read words through SDK v1's `term()` (also `hubContext().term`,
+and `useSpace().term` on a page). A process descriptor writes `member` and `accountable` in `callers` and
+`publish_at_once`, and `creation.member`; `resident`, `official` and `creation.resident` are the names before step
+2, still read (`namesRole`, `memberCreation`) until SDK 2.0. The kernel's caller is `"member"` (`ActionCaller`).
+There is no moderator grant yet: admins moderate, and the role is named so a profile can call it something.
 
 The civic profile file (step 2) starts with only: the space noun and plural, the name for each kernel role, and the
 terms above. Credential types join it with identity phase 3. A field is added only when two space types need it or a
@@ -116,7 +125,7 @@ exists (`civic-conformance`).
 | --- | --- | --- |
 | 0 | This page, ADR-020, the surface inventory | done on `kernel-extraction` |
 | 1 | The eight first-party plugins onto SDK v1 and the kit (no imports of hub pages or engine internals) | SDK v1: done for all eight (Nov 17). Pages on the kit: not started (`MOVED_HUB_PAGES`) |
-| 2 | Neutral roles and terms; the civic profile file | not started |
+| 2 | Neutral roles and terms; the civic profile file | done (Nov 17): `src/shared/spaceProfile.ts`, `src/shared/profiles/civic.ts`, `term()`; packages move their descriptors to `member`/`accountable` at their next release |
 | 3 | Sort the civic modules (table above); replace the kernel's checks of plugins by name with events | not started |
 | 4 | Space types as data (profile, defaults, pins); the deployment picks its type from a setting | not started |
 | 5 | Split into `mosaic-kernel` (after identity phases 1 and 2 merge); rename packages `@mosaic/...` | not started |

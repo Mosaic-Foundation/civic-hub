@@ -4,6 +4,32 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 2: neutral roles and terms, the civic profile — 2026-11-17
+
+On `kernel-extraction` (PR #22, draft; Adam merges once at the end). No migrations, no package version changes, nothing
+on screen changes.
+
+- **Roles and words** (`src/shared/spaceProfile.ts`): the kernel's roles `member`, `moderator`, `admin`, `accountable`;
+  its words `member`, `accountable`, `space` (`group` and `outcome` wait until two plugins need them); `resolveTerm`
+  (the space's own word, then the profile's for the space's kind, then the profile's, then the neutral word);
+  `profileProblems` refuses a profile naming a role or term the kernel does not know.
+- **The civic profile** (`src/shared/profiles/civic.ts`): hub/hubs; resident, moderator, admin, official; member is
+  resident on a place hub, member on an organization or community, participant elsewhere (as before). The Civic Hub
+  space type carries it (`profile`) and takes its noun from it. `participantNoun`/`personLabel` now resolve through it,
+  with the same words for every kind of hub (tests/unit/spaceProfile.test.ts).
+- **SDK v1:** `term(t, n)`, `hubContext().term`, `KERNEL_ROLES`, `KERNEL_TERMS`, `namesRole`, `KernelRole`,
+  `KernelTerm`; UI `useSpace().term`. Testing entry: `namesRole`, `memberCreation`.
+- **Descriptors:** `callers` and `publish_at_once` take `member`/`accountable`; `creation.member` replaces
+  `creation.resident`. The old names still read everywhere (canActor, executeAction, the registry, the loader, the
+  conformance suite, catalog scripts). The descriptor check refuses a descriptor that names both or neither. The SDK
+  tour fixture uses the new names; the eight packages keep theirs until their next release (changing a manifest
+  changes its catalog hash).
+- **Caller:** `ActionCaller` is `"member" | "admin" | "system"` (was `"resident"`).
+- Not done: a `requireRole(...)` gate (planned in SURFACE.md; no package needs one yet), a moderator grant (admins
+  moderate).
+
+---
+
 ## Districts follow-ups — 2026-11-17
 
 On dev after 1a3cb4c, unpushed, no migrations (2f8130c, 9549168, 88e5d0e). From Adam's try on Athens dev.

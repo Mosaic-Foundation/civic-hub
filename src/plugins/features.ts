@@ -32,6 +32,7 @@ import type {
 } from "./feature.js";
 import type { GrantedDb } from "./package.js";
 import { refuseReach } from "./grant.js";
+import { memberCreation } from "../processes/descriptorTypes.js";
 
 /** PostgREST answers at most this many rows; a range that fills it is split. */
 const ROW_LIMIT = 1000;
@@ -56,7 +57,7 @@ const summaryOf = (m: (typeof MANIFEST_LIST)[number]): ProcessTypeSummary => ({
   type: m.descriptor.type,
   label: ownName(m) ?? m.descriptor.display.label,
   plural: ownName(m) ? (ownName(m)!.endsWith("s") ? ownName(m)! : `${ownName(m)}s`) : m.descriptor.display.plural,
-  residentCreated: m.descriptor.creation.resident !== null,
+  residentCreated: memberCreation(m.descriptor.creation) !== null,
   participation: (m.participation as ParticipationDeclaration | undefined) ?? null,
 });
 

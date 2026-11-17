@@ -163,7 +163,10 @@ export { enrichCreator, enrichCreators, PUBLIC_ADMIN_NAME } from "../services/cr
 export { namesFor } from "../services/disclosedNames.js";
 export { notify } from "../services/notices.js";
 export type { Notice, NoticeReport } from "../services/notices.js";
-export { hubContext } from "../services/pluginHubContext.js";
+export { hubContext, term } from "../services/pluginHubContext.js";
+// --- The kernel's roles and words (kernel step 2, docs/KERNEL.md §3) ----------------------
+export { KERNEL_ROLES, KERNEL_TERMS, namesRole } from "../shared/spaceProfile.js";
+export type { KernelRole, KernelTerm } from "../shared/spaceProfile.js";
 export { seal, open as openSealed, sealingAvailable } from "../services/sealedSecrets.js";
 export { privateFetchAllowed } from "../config/devFlags.js";
 // The platform's own contact address (an admin's last resort in a message).
