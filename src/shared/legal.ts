@@ -31,7 +31,9 @@ export function legalAcceptanceIsCurrent(stored: string | null | undefined): boo
 
 /**
  * The newest "Last updated" line among the three documents. 1.5
- * (2026-11-17): the Privacy Policy's About you and ballot tags; Terms stay
- * 1.4 and the Code of Conduct 1.2.
+ * (2026-11-17): the Privacy Policy's About you and ballot tags; both it and
+ * the Terms now say a change is shown on the next visit and accepted before
+ * going on (no email promised), so the Terms are 1.5 too. The Code of
+ * Conduct stays 1.2.
  */
 export const CURRENT_LEGAL_LAST_UPDATED = "2026-11-17";

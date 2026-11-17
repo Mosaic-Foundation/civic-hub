@@ -1,7 +1,7 @@
 # Terms of Service
 
-*Last updated: 2026-10-17*
-*Version: 1.4*
+*Last updated: 2026-11-17*
+*Version: 1.5*
 
 {{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US consumer law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US consumer law{{/place}} before {THE_HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production.{{/draft}}
 
@@ -33,7 +33,7 @@ We'll:
 - Protect your information as described in our Privacy Policy.
 - Apply the Code of Conduct consistently and transparently.
 - Keep civic records (votes, vote results, meeting summaries, announcements) accurate to the best of our ability.
-- Tell you about material changes to these Terms before they take effect.
+- Show you any change to these Terms and ask you to accept it before you go on.
 
 ## What we expect from you
 
@@ -96,7 +96,7 @@ We can suspend or close your account, remove your content, or restrict your acce
 
 ## Changes to these Terms
 
-We may update these Terms as the Hub evolves. Material changes will be announced on the Hub and, if you have an account, by email. Continued use after the notice period means you accept the updated Terms. If you don't accept them, close your account.
+We may update these Terms as the Hub evolves. When we change these Terms or the Privacy Policy, you will see a notice the next time you visit the Hub, and you will be asked to accept the new version before you go on. If you don't accept them, close your account.
 
 ## Governing law
 

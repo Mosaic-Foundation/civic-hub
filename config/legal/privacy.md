@@ -148,7 +148,7 @@ We take reasonable precautions to protect your information: encrypted connection
 
 ## Changes to this policy
 
-We may update this policy as the Hub evolves. Material changes will be announced on the Hub and, if the change affects how we use your data, we'll email you before it takes effect. The "Last updated" date at the top of this document always reflects the most recent revision.
+We may update this policy as the Hub evolves. When we change it or the Terms, you will see a notice the next time you visit the Hub, and you will be asked to accept the new version before you go on. The "Last updated" date at the top of this document always reflects the most recent revision.
 
 ## Contact
 
