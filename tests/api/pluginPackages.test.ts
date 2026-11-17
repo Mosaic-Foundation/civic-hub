@@ -199,7 +199,7 @@ describe("a hub's plugin packages", () => {
     expect(civic.status).toBe(200);
     const listed = civic.body.plugins as Array<{ package: string; version: string; type: string; signed: boolean }>;
     expect(listed.length).toBeGreaterThanOrEqual(9);
-    expect(listed).toContainEqual(expect.objectContaining({ package: WORDCLOUD, version: "0.2.0", type: "civic.wordcloud" }));
+    expect(listed).toContainEqual(expect.objectContaining({ package: WORDCLOUD, version: "0.3.0", type: "civic.wordcloud" }));
     // Signed approvals (ADR-015): with a catalog key, every package listed runs on a verified signature.
     const health = await call("GET", "/health", HOST);
     if (health.body.plugins.signatures.key) {

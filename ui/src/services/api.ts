@@ -2505,6 +2505,10 @@ export function adminListFeedback(
 }
 
 // --- Word Cloud ---
+// The welcome strip's cloud (components/WordcloudTeaser.tsx) reads the
+// onboarding word cloud over HTTP. Word clouds' own client is in their package
+// (packages/civic.wordcloud/ui/api.ts). Kernel step 3: the strip becomes a
+// contribution Word clouds registers, and this goes.
 
 export interface WordcloudCloudEntry {
   text: string;
@@ -2518,37 +2522,6 @@ export interface WordcloudPromptCloud {
   total_submissions: number;
 }
 
-export interface WordcloudState {
-  id: string;
-  type: "civic.wordcloud";
-  title: string;
-  description: string;
-  status: string;
-  prompts: Array<{ id: string; text: string; max_length?: number }>;
-  lifecycle_mode: "fixed" | "evergreen";
-  config: {
-    max_submission_length: number;
-    display_threshold: number;
-  };
-  submission_count: number;
-  clouds: WordcloudPromptCloud[];
-  jurisdiction: string;
-  created_at: string;
-  created_by: string;
-  has_submitted: boolean;
-  /** Seeded sample content (Phase 7): present and true for planted rows. */
-  is_sample?: boolean;
-}
-
-/**
- * The actor is resolved from the session token the request wrapper already
- * sends — never from a query param, which let any caller read another
- * resident's per-actor fields by passing their user id.
- */
-export function getWordcloud(id: string): Promise<WordcloudState> {
-  return request("GET", `/wordcloud/${id}`);
-}
-
 export function getWordcloudCloud(
   id: string,
 ): Promise<{
@@ -2558,55 +2531,6 @@ export function getWordcloudCloud(
   clouds: WordcloudPromptCloud[];
 }> {
   return request("GET", `/wordcloud/${id}/cloud`);
-}
-
-export interface WordcloudResponse {
-  id: string;
-  body: string;
-  submitted_at: string;
-  prompt_id: string;
-}
-
-export function getWordcloudResponses(
-  id: string,
-  promptId?: string,
-): Promise<{ responses: WordcloudResponse[] }> {
-  const qs = promptId ? `?prompt_id=${promptId}` : "";
-  return request("GET", `/wordcloud/${id}/responses${qs}`);
-}
-
-export async function createWordcloudProcess(input: {
-  title: string;
-  description: string;
-  promptText: string;
-}): Promise<{ id: string }> {
-  const promptId = `prompt-${Date.now()}`;
-  const process = await request<{ id: string }>("POST", "/process", {
-    definition: { type: "civic.wordcloud" },
-    title: input.title,
-    description: input.description,
-    state: {
-      prompts: [{ id: promptId, text: input.promptText }],
-      lifecycle_mode: "evergreen",
-    },
-  });
-  await request("POST", `/process/${process.id}/action`, {
-    type: "process.activate",
-    payload: {},
-  });
-  return process;
-}
-
-export function submitWordcloudResponse(
-  processId: string,
-  promptId: string,
-  text: string,
-): Promise<ActionResult> {
-  return request("POST", `/process/${processId}/action`, {
-    type: "process.submit",
-    actor: "unused",
-    payload: { prompt_id: promptId, text },
-  });
 }
 
 // --- Process reviews (collaborative admin review) ---

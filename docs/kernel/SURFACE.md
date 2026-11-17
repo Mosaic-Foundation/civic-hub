@@ -10,13 +10,26 @@ offer. Events already uses version 1 only. Each name is decided here as one of:
 - **Event**: a plugin reaching into another plugin or the kernel naming a plugin. Replaced by an event or a
   contribution the plugin registers (docs/KERNEL.md §2).
 
-Inventory taken at `69e0a13` (dev, Nov 16). Regenerate: `npx tsx scripts/kernel-surface.ts`.
+Inventory taken at `69e0a13` (dev, Nov 16). Regenerate: `npx tsx scripts/kernel-surface.ts` (`--count` adds, per
+package, the paths it still imports from `src/` or `ui/src/`).
+
+## Progress
+
+| Package | On version 1 | Pages in the package | Pages on the kit |
+| --- | --- | --- | --- |
+| Events | 0.4.0 | yes | yes |
+| Word clouds | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES` in the conformance suite until then) |
+| Announcements, Proposals, Projects, Meeting summaries, Votes, Briefs, Conversations | not yet | | |
+
+Version 1 has gained so far: `processesOf(...types)` (`get`, `list`) and `assertPassesWordlist` on the server; the
+kernel UI surface below (`ui/src/host/index.ts`) on the UI side. A package's UI files are `ui.tsx` and its `ui/`
+directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `kit/conformance/src/fence.ts`).
 
 ## Kernel: version 1 gains these
 
 | Area | Names today | Version 1 shape | Used by |
 | --- | --- | --- | --- |
-| Processes | `getProcess`, `getAllProcesses`, `getArchivedProcesses`, `createProcess`, `saveProcessState`, `archiveProcess`, `readsAsClosed`, `getSampleProcessIds` | `processes.get/list/create/saveState/archive`, `readsAsClosed`, `isSample`; a package lists and changes **its own types only** | announcement, brief, meeting_summary, polis, projects, proposals, vote, wordcloud |
+| Processes | `getProcess`, `getAllProcesses`, `getArchivedProcesses`, `createProcess`, `saveProcessState`, `archiveProcess`, `readsAsClosed`, `getSampleProcessIds` | `processesOf(...types)`: `get`, `list` (built), `create`, `saveState`, `archive` (with Announcements); `readsAsClosed`, `isSample`; a package lists and changes **its own types only** | announcement, brief, meeting_summary, polis, projects, proposals, vote, wordcloud |
 | Acting and reading | `actOnProcess`, `executeAction`, `readAsPage`, `viewFor` | `actOn`, `processView` (the read model the page shows) | polis, projects, proposals |
 | Callers | `resolveCallerUser`, `resolveCallerIsAdmin`, `getActor`, `can`, `getUser`, `requireBoardOrAdmin`, `requireOfficial` | `caller(req)`, `can(actor, action)`, `requireRole("admin" \| "moderator" \| "accountable")` | announcement, brief, polis, projects, proposals |
 | People shown | `enrichCreator`, `enrichCreators`, `personFallbackName`, `PUBLIC_ADMIN_NAME` | folded into `namesFor` (already version 1) | announcement, brief, meeting_summary, polis, projects, proposals |
@@ -52,14 +65,18 @@ Inventory taken at `69e0a13` (dev, Nov 16). Regenerate: `npx tsx scripts/kernel-
 | Meeting summaries call `isPluginEnabledSync` | `enhancedBy` in its manifest, or the capability it needs |
 | Conversations call `getProcessHandler`, `getActionDispatcher` | `actOn` (kernel, above) |
 | The kernel's `src/processes/spawnBrief.ts` and the ten files in `PACKAGE_REACH_NOT_YET` | events and contributions (step 3) |
+| The hub's welcome strip shows the onboarding word cloud (`WordcloudTeaser`, over HTTP, the `plugin.wordcloud.onboarding_id` setting) | a contribution Word clouds registers to the strip (step 3) |
 
 ## The UI side
 
 A package's `ui.tsx` imports only `@civic-social/plugin-sdk/ui`. Its pages move from `ui/src/pages/` into the package.
 What those pages use from the hub splits the same way:
 
-- **Kernel UI, exported by `/ui`**: the API client and hooks (`useApi`, `useAction`, `useRequireAuth`, the signed-in
-  state), the hub's config and clock, and the process page parts every process type shares (`ProcessHeader`,
+- **Kernel UI, exported by `/ui`** (from `ui/src/host/index.ts`; built so far: `apiRequest`, `ApiError`, `useApi`,
+  `useAction`, `useRequireAuth`, `AuthModal`, `useViewer`, `useSpace`, `ProcessHeader`, `statusDisplay`,
+  `AdminArchiveButton`, `formatDate`, `formatCount`, `safeReturnPath`, the settings fields): the API client and hooks
+  (`useApi`, `useAction`, `useRequireAuth`, the viewer, not the hub's whole sign-in state), the space (name, place)
+  and clock, and the process page parts every process type shares (`ProcessHeader`,
   `ShareButton`, `RelatedProcesses`, `Creator`, `CloseEarly`, `EditHistory`, `DetailActions`, `RichText`,
   `AuthModal`, `StatusFilter`, `ProcessListCard`, `SourceLinks`, `SampleBadge`, the settings fields).
 - **Moves with the page**: components only one type uses (`VotePanel`, `ReceiptCode`, `deliberation/*`,

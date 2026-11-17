@@ -4,6 +4,29 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 1 begins: Word clouds on the kernel surface — 2026-11-17
+
+On `kernel-extraction` (from dev 69e0a13; not merged). Plan: `docs/KERNEL.md`; the inventory:
+`docs/kernel/SURFACE.md` (`npx tsx scripts/kernel-surface.ts`). **The catalog entry for Word clouds 0.3.0 is a
+migration** (20261117021613): apply it and approve it in the console, or Word clouds is not mounted.
+
+- **Word clouds 0.3.0** imports only `@civic-social/plugin-sdk` (version 1), `/manifest` and `/ui`. Its pages moved
+  from `ui/src/pages/` into `packages/civic.wordcloud/ui/` unchanged (styles too), its API client into
+  `ui/api.ts`. It peer-depends on the SDK, so lint holds it to the outside rule.
+- **Kernel, server (SDK v1 gains):** `processesOf(...types)` (`src/services/ownProcesses.ts`): a package reads only
+  the processes of its own types (`get`, `list`; create/saveState/archive join with Announcements). Call it where
+  used, not at module load. `assertPassesWordlist` (the instant-post word list).
+- **Kernel, UI (`@civic-social/plugin-sdk/ui` gains, from `ui/src/host/index.ts`):** `apiRequest`, `ApiError`,
+  `useApi`, `useAction`, `useRequireAuth`, `AuthModal`, `useViewer` (loading, actorId, canParticipate, isAdmin:
+  not the whole sign-in state), `useSpace` (name, theName, place), `ProcessHeader`, `statusDisplay`,
+  `AdminArchiveButton`, `formatDate`, `formatCount`, `safeReturnPath`, the settings fields.
+- **Fences:** lint and `fence.ts` let a package's `ui/` directory import `/ui` and React; a package on version 1 can
+  no longer reach `/first-party` through its peer dependency. `tsconfig*.json` exclude `packages/*/ui/**` from the
+  server build.
+- **Conformance:** `MOVED_HUB_PAGES` skips steps 17 and 22 for `civic.wordcloud@0.3.0` only. Its next release
+  rebuilds the pages on the kit (a visible change: Adam's eye first).
+- **Left in the hub:** the welcome strip's cloud (`WordcloudTeaser`, over HTTP); step 3 makes it a contribution.
+
 ## Pinned and urgent announcements — 2026-11-15
 
 On dev, unpushed (see the commits after 6fe6ffd). **The catalog entry for Announcements 0.3.0 is a migration**

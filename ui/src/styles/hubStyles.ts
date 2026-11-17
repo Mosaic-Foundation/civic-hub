@@ -74,8 +74,6 @@ import "../components/deliberation/DeliberationPanel.css";
 import "../components/deliberation/CompletedDeliberation.css";
 import "../pages/DeliberationDetail.css";
 import "../components/SeedStatementRows.css";
-import "../pages/WordCloud.css";
-import "../pages/CreateWordCloud.css";
 import "../components/ShareBanner.css";
 import "../components/AdminMenu.css";
 import "../components/SharePanel.css";

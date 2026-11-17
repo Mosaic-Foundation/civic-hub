@@ -87,6 +87,23 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 1: Word clouds on the kernel surface, Word clouds 0.3.0 (2026-11-17)
+
+- **Unit:**
+  - `packageBoundary.test.ts`: the version 0 cases now use Votes (Word clouds is on version 1). New: a package on
+    SDK version 1 is held to the outside rule, `/first-party` refused even though it peer-depends on the SDK, and
+    only its UI files (`ui.tsx`, `ui/`) take `@civic-social/plugin-sdk/ui` and React.
+  - `kitPortable.test.ts`: `HOST_PROVIDED` names `ui/src/host/index.ts`, the kernel's UI surface for a package's pages.
+- **API:** `pluginPackages.test.ts` expects Word clouds 0.3.0 in `civic.json`. Run locally on the run-anywhere stack
+  (Postgres 16 and PostgREST without Docker): 1,049 passed; `events.test.ts` (4) and `leakHarness.test.ts`
+  (`GET /admin/news-sync/items` has no plan) fail the same way on the commit before this one.
+- **Conformance:** `catalog:add` green for Word clouds 0.3.0: 22 passed, steps 17 and 22 skipped for this one
+  release (`MOVED_HUB_PAGES`: its pages are the hub's, moved as they were). Step 17 now reads the pages in `ui/`
+  too, and the ink-on-primary check every stylesheet in the package.
+- **By hand:** the word cloud page and Create page render from the package (headless Chromium, no console errors).
+
+---
+
 ## Pinned and urgent announcements (2026-11-15)
 
 - **Unit** `tests/unit/announcementBoard.test.ts` (7): pinned/urgent now, end dates passed or ahead, the end-date

@@ -3,7 +3,7 @@
 // database its host hands it (its granted tables only), bound when the hub
 // loads the package (./index.ts).
 
-import { storeSlot } from "@civic-social/plugin-sdk/first-party";
+import { storeSlot } from "@civic-social/plugin-sdk";
 
 /** A stored submission, as the table has it. */
 export interface SubmissionRow {

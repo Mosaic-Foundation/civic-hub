@@ -1,11 +1,13 @@
 // civic.wordcloud's UI module: one-word answers gathered into a cloud
-// (manifest: ./manifest.ts). Its pages are the hub's (ui/src/pages/), for now.
+// (manifest: ./manifest.ts). Its pages are its own (./ui/), built from the SDK's
+// UI entry alone, and load when first opened.
 
-import { CreateWordCloud, WordCloud } from "../../ui/src/lazyPages";
-import { getWordcloud } from "../../ui/src/services/api";
-import { ProcessField } from "../../ui/src/pages/settings/pluginFields";
-import { formatCount } from "../../ui/src/processes/feedText";
-import type { ProcessUi } from "../../ui/src/processes/types";
+import { lazy } from "react";
+import { ProcessField, formatCount, type ProcessUi } from "@civic-social/plugin-sdk/ui";
+import { getWordcloud } from "./ui/api";
+
+const WordCloud = lazy(() => import("./ui/WordCloud"));
+const CreateWordCloud = lazy(() => import("./ui/CreateWordCloud"));
 
 const wordcloudUi: ProcessUi = {
   type: "civic.wordcloud",

@@ -8,9 +8,8 @@
 // Lifecycle: draft → active → closed (subset per ADR-003).
 // Evergreen mode stays in active indefinitely; admin can snapshot or close.
 
-import { ConflictError, ValidationError, generateId } from "@civic-social/plugin-sdk/first-party";
+import { ConflictError, ValidationError, assertPassesWordlist, generateId } from "@civic-social/plugin-sdk";
 import { wordcloudStore, type ResponseRow, type SubmissionRow } from "./store.js";
-import { assertPassesWordlist } from "../../src/shared/wordlist/index.js";
 import { aggregateSubmissions } from "./aggregation.js";
 import type {
   WordcloudProcessState,

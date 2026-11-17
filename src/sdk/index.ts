@@ -65,6 +65,10 @@ export {
   getArchivedProcesses,
 } from "../services/processService.js";
 export { readProcessState, writeProcessState, publishedBriefRows, briefIdForSource } from "../services/processRows.js";
+export { processesOf } from "../services/ownProcesses.js";
+export type { OwnProcesses } from "../services/ownProcesses.js";
+// The instant-post civility check (src/shared/wordlist): slurs and strong profanity refused.
+export { assertPassesWordlist } from "../shared/wordlist/index.js";
 
 // --- Storage helpers (over host.db()) ---------------------------------------------------
 export { HubDbError } from "../db/forHub.js";

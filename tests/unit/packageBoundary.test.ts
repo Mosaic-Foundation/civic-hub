@@ -31,7 +31,7 @@ describe("civic/package-boundary", () => {
       `import { createHash } from "node:crypto";`,
       `import { Router } from "express";`,
     ]) {
-      expect(await errors("packages/civic.wordcloud/x.ts", code), code).toHaveLength(0);
+      expect(await errors("packages/civic.vote/x.ts", code), code).toHaveLength(0);
     }
   });
 
@@ -45,21 +45,42 @@ describe("civic/package-boundary", () => {
       `import { listHubs } from "../../src/operator/hubs.js";`,
       `import type { HubDb } from "../../src/db/forHub.js";`,
       `import { createClient } from "@supabase/supabase-js";`,
-      `import x from "../civic.vote/service.js";`,
+      `import x from "../civic.proposals/service.js";`,
     ]) {
-      expect(await errors("packages/civic.wordcloud/x.ts", code), code).toHaveLength(1);
+      expect(await errors("packages/civic.vote/x.ts", code), code).toHaveLength(1);
     }
   });
 
   it("refuses the SDK by path now that it has a name (ADR-017)", async () => {
-    expect(await errors("packages/civic.wordcloud/x.ts", `import { emitEvent } from "../../src/sdk/index.js";`)).toHaveLength(1);
-    expect(await errors("packages/civic.wordcloud/manifest.ts", `import { defineManifest } from "../../src/processes/manifest.js";`)).toHaveLength(1);
+    expect(await errors("packages/civic.vote/x.ts", `import { emitEvent } from "../../src/sdk/index.js";`)).toHaveLength(1);
+    expect(await errors("packages/civic.vote/manifest.ts", `import { defineManifest } from "../../src/processes/manifest.js";`)).toHaveLength(1);
   });
 
   it("keeps a manifest plain: src/shared/ and the manifest contract only", async () => {
-    expect(await errors("packages/civic.wordcloud/manifest.ts", `import { defineManifest } from "@civic-social/plugin-sdk/manifest";`)).toHaveLength(0);
-    expect(await errors("packages/civic.wordcloud/manifest.ts", `import { emitEvent } from "../../src/sdk/index.js";`)).toHaveLength(1);
-    expect(await errors("packages/civic.wordcloud/manifest.ts", `import { Router } from "express";`)).toHaveLength(1);
+    expect(await errors("packages/civic.vote/manifest.ts", `import { defineManifest } from "@civic-social/plugin-sdk/manifest";`)).toHaveLength(0);
+    expect(await errors("packages/civic.vote/manifest.ts", `import { emitEvent } from "../../src/sdk/index.js";`)).toHaveLength(1);
+    expect(await errors("packages/civic.vote/manifest.ts", `import { Router } from "express";`)).toHaveLength(1);
+  });
+
+  it("holds a package on SDK version 1 to the outside rule: the SDK's entries only, and React in its UI files (kernel step 1)", async () => {
+    const pkg = "packages/civic.wordcloud";
+    for (const code of [
+      `import { emitEvent } from "@civic-social/plugin-sdk";`,
+      `import { x } from "./service.js";`,
+      `import { Router } from "express";`,
+    ]) {
+      expect(await errors(`${pkg}/x.ts`, code), code).toHaveLength(0);
+    }
+    for (const code of [
+      `import { emitEvent } from "@civic-social/plugin-sdk/first-party";`,
+      `import { assertPassesWordlist } from "../../src/shared/wordlist/index.js";`,
+      `import { useApi } from "@civic-social/plugin-sdk/ui";`,
+      `import { useState } from "react";`,
+    ]) {
+      expect(await errors(`${pkg}/x.ts`, code), code).toHaveLength(1);
+    }
+    expect(await errors(`${pkg}/ui/api.ts`, `import { apiRequest } from "@civic-social/plugin-sdk/ui";`)).toHaveLength(0);
+    expect(await errors(`${pkg}/ui/api.ts`, `import { request } from "../../../ui/src/services/http";`)).toHaveLength(1);
   });
 
   it("lets a file on the reach list load a package only on first use: types statically, values by await import() (ADR-017)", async () => {

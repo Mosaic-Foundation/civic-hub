@@ -87,6 +87,14 @@ export type { HubContext } from "../../src/sdk/index.js";
 export { storeSlot, HubDbError, readAll, readProcessState, writeProcessState } from "../../src/sdk/index.js";
 export type { StoreSlot } from "../../src/sdk/index.js";
 
+// --- Its own processes (kernel step 1): read only those of the types it declares ---------
+export { processesOf } from "../../src/sdk/index.js";
+export type { OwnProcesses } from "../../src/sdk/index.js";
+
+// --- Moderation of instant posts: the space's word list (slurs and strong profanity);
+// a refusal is a ValidationError the hub answers with its message ---------------------------
+export { assertPassesWordlist } from "../../src/sdk/index.js";
+
 // --- Routes of its own, when it needs them ---------------------------------------------------
 export { route, getAuthUser, requireResident, requireAdmin, resolveCallerId } from "../../src/sdk/index.js";
 

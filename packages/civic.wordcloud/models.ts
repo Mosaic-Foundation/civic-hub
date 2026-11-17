@@ -3,7 +3,7 @@
 // A lightweight civic process: free-text submissions aggregate into
 // a live word cloud. Non-deliberative — no Civic Brief, no Board delivery.
 
-import type { ProcessStatus } from "@civic-social/plugin-sdk/first-party";
+import type { ProcessStatus } from "@civic-social/plugin-sdk";
 
 export interface WordcloudPrompt {
   id: string;

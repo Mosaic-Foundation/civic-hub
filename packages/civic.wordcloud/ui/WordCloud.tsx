@@ -1,6 +1,18 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { useApi } from "../hooks/useApi";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import {
+  AdminArchiveButton,
+  AuthModal,
+  ProcessHeader,
+  formatDate,
+  safeReturnPath,
+  statusDisplay,
+  useAction,
+  useApi,
+  useRequireAuth,
+  useSpace,
+  useViewer,
+} from "@civic-social/plugin-sdk/ui";
 import {
   getWordcloud,
   submitWordcloudResponse,
@@ -10,19 +22,8 @@ import {
   type WordcloudPromptCloud,
   type WordcloudCloudEntry,
   type WordcloudResponse,
-} from "../services/api";
-import { useAuth } from "../context/authState";
-import AuthModal from "../components/AuthModal";
-import { useRequireAuth } from "../hooks/useRequireAuth";
-import { useAction } from "../hooks/useAction";
-import { useHub } from "../config/hub";
-import { safeReturnPath } from "../config/pluginRules";
-import { theName } from "../../../src/shared/hubCopy";
-import ProcessHeader from "../components/ProcessHeader";
-import { statusDisplay } from "../components/statusDisplay";
+} from "./api";
 import "./WordCloud.css";
-import AdminArchiveButton from "../components/AdminArchiveButton";
-import { formatDate } from "../utils/dates";
 
 // The kinds' dark tones (theme.css), so a theme or dark mode recolours the
 // cloud too (design pass, 2026-10-29). Applied as a style, which reads var().
@@ -270,7 +271,7 @@ function SubmitForm({
   onSubmitted: () => void;
   onRevealed: () => void;
 }) {
-  const { actorId } = useAuth();
+  const { actorId } = useViewer();
   const { showAuthModal, closeAuthModal, handleAuthComplete, requireAuth } =
     useRequireAuth();
   const [text, setText] = useState("");
@@ -493,11 +494,11 @@ function PromptSection({
 }
 
 export default function WordCloud() {
-  const hub = useHub();
+  const space = useSpace();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { actorId, loading: authLoading } = useAuth();
+  const { actorId, loading: authLoading } = useViewer();
   const isOnboarding = searchParams.get("onboarding") === "1";
   // The page that asked the new account to sign in (review R24), else home.
   const returnPath = isOnboarding ? safeReturnPath(searchParams.get("return")) : null;
@@ -568,7 +569,7 @@ export default function WordCloud() {
           <h2>One quick thing before you dive in</h2>
           <p>
             This is optional — tell us in a few words what you love about{" "}
-            {hub.place}, or skip straight {returnPath ? "back to where you were" : "to the feed"}.
+            {space.place}, or skip straight {returnPath ? "back to where you were" : "to the feed"}.
           </p>
         </div>
       )}
@@ -626,7 +627,7 @@ export default function WordCloud() {
           className="wordcloud-proceed-btn"
           onClick={() => navigate(exitTo)}
         >
-          {returnPath ? <>Back to where you were &rarr;</> : <>Continue to {theName(hub.name)} &rarr;</>}
+          {returnPath ? <>Back to where you were &rarr;</> : <>Continue to {space.theName()} &rarr;</>}
         </button>
       </div>
 

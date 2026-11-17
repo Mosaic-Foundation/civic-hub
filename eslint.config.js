@@ -391,6 +391,9 @@ const FEATURES_DIR = "features/";
 // name. kit/conformance checks the same rule for a submitted package.
 const OUTSIDE_DIR = "examples/";
 const OUTSIDE_SDK = ["@civic-social/plugin-sdk", "@civic-social/plugin-sdk/manifest"];
+// A package's UI files (ui.tsx and its ui/ directory) also take the SDK's UI
+// entry and the React the hub runs (kernel step 1; kit/conformance/src/fence.ts).
+const OUTSIDE_UI = ["@civic-social/plugin-sdk/ui", "react", "react-router-dom"];
 const FEATURE_LIST_READERS = {
   "src/plugins/features.ts": "config/features.ts",
   "src/shared/featureManifests.ts": "config/featureManifests.ts",
@@ -453,6 +456,7 @@ const packageBoundaryRule = {
     if (inOutside) {
       const dir = rel.split("/").slice(0, 2).join("/");
       const manifest = rel === `${dir}/manifest.ts`;
+      const uiFile = rel === `${dir}/ui.tsx` || rel.startsWith(`${dir}/ui/`);
       const checkOutside = (node, spec) => {
         if (typeof spec !== "string") return;
         if (spec.startsWith(".")) {
@@ -460,15 +464,20 @@ const packageBoundaryRule = {
           if (!target.startsWith(`${dir}/`)) context.report({ node, message: `"${spec}": a package imports only its own files and the SDK by name (ADR-015).` });
           return;
         }
+        // The SDK by one of its entries, never another path under its name: a peer
+        // dependency on the SDK does not open version 0 (/first-party).
+        const sdkPath = spec.startsWith("@civic-social/plugin-sdk/");
         const allowed = manifest
           ? spec === "@civic-social/plugin-sdk/manifest"
-          : OUTSIDE_SDK.includes(spec) || spec.startsWith("node:") || peerDependencies(dir).includes(spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0]);
+          : OUTSIDE_SDK.includes(spec) ||
+            (uiFile && OUTSIDE_UI.includes(spec)) ||
+            (!sdkPath && (spec.startsWith("node:") || peerDependencies(dir).includes(spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0])));
         if (!allowed) {
           context.report({
             node,
             message: manifest
               ? `"${spec}": a manifest is plain data; it imports only @civic-social/plugin-sdk/manifest (ADR-015).`
-              : `"${spec}": a package written outside the hub imports @civic-social/plugin-sdk (and /manifest), node: built-ins and its peerDependencies (ADR-015).`,
+              : `"${spec}": a package written outside the hub imports @civic-social/plugin-sdk (and /manifest; its UI files /ui and React), node: built-ins and its peerDependencies (ADR-015).`,
           });
         }
       };

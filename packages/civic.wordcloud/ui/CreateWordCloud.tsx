@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/authState";
-import { createWordcloudProcess } from "../services/api";
+import { useViewer } from "@civic-social/plugin-sdk/ui";
+import { createWordcloudProcess } from "./api";
 import "./CreateWordCloud.css";
 
 const TITLE_MAX = 200;
@@ -10,7 +10,7 @@ const PROMPT_MAX = 500;
 
 export default function CreateWordCloud() {
   const navigate = useNavigate();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, loading: authLoading } = useViewer();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");

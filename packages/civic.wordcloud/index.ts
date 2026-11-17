@@ -1,7 +1,7 @@
 // The word cloud plugin package (docs/PLUGIN-PACKAGE.md): its manifest, and
 // what the hub runs when it loads it.
 
-import type { PluginPackage } from "@civic-social/plugin-sdk/first-party";
+import type { PluginPackage } from "@civic-social/plugin-sdk";
 import manifest from "./manifest.js";
 import handler from "./handler.js";
 import routes from "./routes.js";
@@ -10,7 +10,7 @@ import { createWordcloudStore } from "./storeImpl.js";
 
 const wordcloudPackage: PluginPackage = {
   name: "@civic-social/plugin-wordcloud",
-  version: "0.2.0",
+  version: "0.3.0",
   displayName: "Word clouds",
   manifest,
   server(host) {

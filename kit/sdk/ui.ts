@@ -66,3 +66,40 @@ export { default as DraftShell } from "../../ui/src/components/DraftShell";
 // card is shown in (the setting, else the place's zone, else UTC).
 export { hubTimeZone } from "../../ui/src/config/hubClock";
 export { dayHeading, dayKey, groupByDay, shiftDay } from "../../ui/src/kit/dates";
+// The kernel's UI surface (kernel step 1, docs/kernel/SURFACE.md): calling the
+// API, signing in before acting, the viewer and the space, the parts every
+// process page shares, and the settings fields a plugin's panel is built from.
+// Host-provided: the hub's app supplies them (ui/src/host/index.ts).
+export {
+  apiRequest,
+  ApiError,
+  useApi,
+  useAction,
+  useRequireAuth,
+  AuthModal,
+  useViewer,
+  useSpace,
+  ProcessHeader,
+  statusDisplay,
+  AdminArchiveButton,
+  formatDate,
+  formatCount,
+  safeReturnPath,
+  BooleanField,
+  ChoiceField,
+  DateField,
+  EmailField,
+  HourField,
+  NumberField,
+  ProcessField,
+  TextAreaField,
+  TextField,
+  UrlField,
+  type ApiState,
+  type UseApiOptions,
+  type ActionRunner,
+  type Viewer,
+  type SpaceView,
+  type StatusDisplay,
+  type FormApi,
+} from "../../ui/src/host/index";

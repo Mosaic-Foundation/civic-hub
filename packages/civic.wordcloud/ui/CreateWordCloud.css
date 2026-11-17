@@ -4,9 +4,6 @@
   margin: 0 auto;
 }
 
-.create-wordcloud-page h1 {
-  margin: 0 0 var(--space-sm);
-}
 
 .create-wordcloud-status {
   color: var(--color-text-subtle);
