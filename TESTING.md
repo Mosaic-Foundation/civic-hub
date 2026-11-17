@@ -87,6 +87,15 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel step 1: Projects 0.3.0 on the kernel surface (2026-11-17)
+
+- **Unit:** 2,790 passed. **API:** 1,066 passed locally; the same five fail as on dev.
+- **Conformance:** `catalog:add` green for Projects 0.3.0 (steps 17 and 22 skipped: `MOVED_HUB_PAGES`).
+- **By hand:** the list, a project's page and the drafting page, and Proposals' three pages, screenshotted beside
+  dev's: the same, no console errors.
+
+---
+
 ## Kernel step 1: Proposals 0.3.0 on the kernel surface (2026-11-17)
 
 - **Unit:** `hubContext.test.ts`: `place` (and "local" without one), `participantNoun` by hub kind and the hub's own

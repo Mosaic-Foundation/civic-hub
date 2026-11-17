@@ -1,17 +1,11 @@
-import {
-  ValidationError,
-  route,
-  resolveCallerUser,
-  enrichCreators,
-  getSampleProcessIds,
-  actOnProcess,
-  readAsPage,
-  viewFor,
-} from "@civic-social/plugin-sdk/first-party";
+import { ValidationError, route, resolveCallerId, enrichCreators, processesOf } from "@civic-social/plugin-sdk";
 import {
   listProjects,
   getProjectSummary,
 } from "./service.js";
+
+/** The kernel's view of this package's processes (asked for where used: the SDK binds as the hub loads). */
+const ownProcesses = () => processesOf("civic.project");
 
 /**
  * POST /projects/:id/complete — mark a project complete (its creator or an
@@ -20,11 +14,11 @@ import {
  */
 export const handleCompleteProject = route(async (req, res) => {
   const id = req.params.id as string;
-  await actOnProcess(res, id, "process.complete", {}, "civic.project");
+  await ownProcesses().actOn(res, id, "process.complete");
   res.json({
     ok: true,
     message: "Project marked complete. A brief was created for admin review.",
-    view: await viewFor(res, id),
+    view: await ownProcesses().view(res, id),
   });
 });
 
@@ -43,11 +37,11 @@ export const handleListProjects = route(async (req, res) => {
   // surface: public callers see plain "Resident" (no number).
   const enriched = await enrichCreators(summaries, {
     rawIdField: "user_id",
-    audience: (await resolveCallerUser(req)) ? "member" : "public",
+    audience: (await resolveCallerId(req)) ? "member" : "public",
   });
   // Sample content (Phase 7): project id === its canonical processes row
   // id, so one lookup marks every seeded row for the badge.
-  const sampleIds = await getSampleProcessIds();
+  const sampleIds = await ownProcesses().sampleIds();
   const withSample =
     sampleIds.size === 0
       ? enriched
@@ -61,7 +55,7 @@ export const handleGetProject = route(async (req, res) => {
   // The project's read model through the shared read path (its adapter
   // builds the page's shape): bylines, "Resident N" for visitors, sample
   // badge, the caller's own sentiment, and is_owner (never the raw id).
-  res.json(await readAsPage(req, req.params.id as string, "civic.project", "Project not found"));
+  res.json(await ownProcesses().page(req, req.params.id as string, "Project not found"));
 });
 
 
@@ -69,6 +63,6 @@ export const handleGetProject = route(async (req, res) => {
 export const handleSetSentiment = route(async (req, res) => {
   const { sentiment } = req.body ?? {};
   const id = req.params.id as string;
-  const { result } = await actOnProcess(res, id, "process.sentiment", { sentiment }, "civic.project");
-  res.json({ ...result, view: await viewFor(res, id) });
+  const { result } = await ownProcesses().actOn(res, id, "process.sentiment", { sentiment });
+  res.json({ ...result, view: await ownProcesses().view(res, id) });
 });

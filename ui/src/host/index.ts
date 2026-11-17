@@ -14,7 +14,7 @@ import { useHub } from "../config/hub";
 import { theName } from "../../../src/shared/hubCopy";
 
 // --- Calling the kernel's API: the session, errors as ApiError, the read cache ----------
-export { request as apiRequest } from "../services/http";
+export { request as apiRequest, upload as apiUpload } from "../services/http";
 export { ApiError } from "../utils/httpError";
 export { useApi, type ApiState, type UseApiOptions } from "../hooks/useApi";
 export { useAction, type ActionRunner } from "../hooks/useAction";
@@ -58,12 +58,20 @@ export interface SpaceView {
   place: string;
   /** Its IANA time zone, the one every time is shown in (as hubTimeZone()). */
   timeZone: string;
+  /** What the people taking part are called, by count (as the kernel's hubContext().participantNoun). */
+  participantNoun: (count: number) => string;
 }
 
 export function useSpace(): SpaceView {
   const hub = useHub();
   const name = hub.name;
-  return { name, theName: (capital = false) => theName(name, capital), place: hub.place, timeZone: hub.timeZone };
+  return {
+    name,
+    theName: (capital = false) => theName(name, capital),
+    place: hub.place,
+    timeZone: hub.timeZone,
+    participantNoun: (count) => hub.noun(count),
+  };
 }
 
 // --- The parts every process page shares ---------------------------------------------------
@@ -90,7 +98,9 @@ export { default as CommentForm } from "../components/ProposalCommentForm";
 // contribution Briefs registers (docs/kernel/SURFACE.md, "Event"); until then
 // the page mounts it and it shows nothing while Briefs is off.
 export { BriefPointer } from "../components/BriefPointer";
-export type { ClosedEarly, EarlyCloseOffer } from "../services/api";
+export type { ClosedEarly, EarlyCloseOffer, UploadedImage } from "../services/api";
+// Editing a live process (a type whose editPolicy allows it): what may change now, and the draft an edit opens.
+export { getEditPolicy, startProcessEdit, type EditPolicy } from "../services/api";
 
 // --- A type's list page ----------------------------------------------------------------------
 export { default as ProcessPicker } from "../components/ProcessPicker";
@@ -101,7 +111,7 @@ export { cardDate } from "../components/cardDate";
 
 // --- Drafting: the kernel's draft page, configured by a type's kind, and the parts its form is built from ---
 export { default as DraftPage } from "../pages/draft/DraftPage";
-export type { DraftKindConfig, DraftFormProps, DraftPageContext } from "../pages/draft/types";
+export { reviewDestination, type DraftKindConfig, type DraftFormProps, type DraftPageContext } from "../pages/draft/types";
 export { DAY_MS, durationLabel } from "../pages/draft/durations";
 export { demoSubmitNote } from "../config/demoCopy";
 export { default as ProcessLinkField } from "../components/ProcessLinkField";

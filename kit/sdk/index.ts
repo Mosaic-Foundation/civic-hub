@@ -53,13 +53,16 @@ export { emitEvent } from "../../src/sdk/index.js";
 
 // --- A type residents draft: its kind; the drafts routes, the Code of Conduct gate and the
 // review queue are the hub's (docs/PLUGIN-PACKAGE.md, "drafts") --------------------------------
-export type { Draft, DraftKind, OwnDrafts, AssistantTypeConfig, DraftField } from "../../src/sdk/index.js";
+export type { Draft, DraftKind, OwnDrafts, AssistantTypeConfig, DraftField, ProposedLink } from "../../src/sdk/index.js";
 // Its drafts (draftsOf(kind): get, create, update, setStatus, and the store the drafting
 // assistant uses), and the assistant config it declares.
 export { draftsOf, DAY_MS, lines } from "../../src/sdk/index.js";
 
 // --- What people wrote on a process (comments, updates), as the kernel keeps it -------------------
 export { inputs } from "../../src/sdk/index.js";
+
+// --- Links between processes: a proposed set, checked ------------------------------------------
+export { links } from "../../src/sdk/index.js";
 
 // --- Deadlines: the hub drives them; a package closes through the hub's action path --------
 export { closeThroughDispatcher, isPastDeadline } from "../../src/sdk/index.js";

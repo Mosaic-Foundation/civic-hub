@@ -18,18 +18,15 @@ import {
   afterActionCommits,
   readProcessState,
   writeProcessState,
-  validateLinkSet,
+  links as processLinks,
   emitEvent,
   type BriefContent,
-  createDraft,
-  setDraftStatus,
-  updateDraft,
-  getSettingSync,
-  KEYS,
+  draftsOf,
+  hubContext,
   str,
   num,
   type FeedProcessMeta,
-} from "@civic-social/plugin-sdk/first-party";
+} from "@civic-social/plugin-sdk";
 import { projectsStore } from "./store.js";
 import {
   createProject,
@@ -43,12 +40,13 @@ import {
 import { emitProjectCompleted, emitProjectUpdated } from "./events.js";
 import { projectAssistantConfig } from "./assistantConfig.js";
 import { projectDraftKind } from "./draftKind.js";
-import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
 import { PROJECT_MANIFEST, SENTIMENTS } from "./manifest.js";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
-const hubNoun = (n: number): string =>
-  participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), n, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
+const hubNoun = (n: number): string => hubContext().participantNoun(n);
+
+/** This type's drafts, as the kernel keeps them. */
+const drafts = () => draftsOf(projectDraftKind);
 
 const projectAdapter: ProcessHandler = {
   type: "civic.project",
@@ -56,7 +54,7 @@ const projectAdapter: ProcessHandler = {
   requiredSchema: [...PROJECT_MANIFEST.requiredSchema],
   detailPath: PROJECT_MANIFEST.detailPath,
   draftPath: (draftId: string) => `/projects/new?draft=${encodeURIComponent(draftId)}`,
-  reopenDraft: (draftId: string) => setDraftStatus(projectDraftKind.spec, draftId, "drafting"),
+  reopenDraft: (draftId: string) => drafts().setStatus(draftId, "drafting"),
 
   // Creator edits (the only type that allows them — Adam, 2026-09-03):
   // while the project is active; the title locks once anyone supports it,
@@ -73,27 +71,27 @@ const projectAdapter: ProcessHandler = {
   draftFromProcess: async (process, editorId, links) => {
     const project = await getProject(process.id);
     const content = (process.content ?? {}) as Record<string, unknown>;
-    const draft = await createDraft(projectDraftKind.spec, editorId);
-    await updateDraft(projectDraftKind.spec, draft.id, {
+    const draft = await drafts().create(editorId);
+    await drafts().update(draft.id, {
       title: process.title,
       description: project?.description ?? process.description ?? "",
       sources: (project?.sources ?? (content.sources as string[] | undefined) ?? []).join("\n"),
       banner_image_url: project?.banner_image_url ?? (content.banner_image_url as string | null) ?? null,
       banner_image_alt: project?.banner_image_alt ?? (content.banner_image_alt as string | null) ?? null,
-      links: validateLinkSet(process.id, links),
+      links: processLinks.validate(process.id, links),
     });
     return draft.id;
   },
   syncDraftFromProcess: async (draftId, process, links) => {
     const project = await getProject(process.id);
     const content = (process.content ?? {}) as Record<string, unknown>;
-    await updateDraft(projectDraftKind.spec, draftId, {
+    await drafts().update(draftId, {
       title: process.title,
       description: project?.description ?? process.description ?? "",
       sources: (project?.sources ?? (content.sources as string[] | undefined) ?? []).join("\n"),
       banner_image_url: project?.banner_image_url ?? (content.banner_image_url as string | null) ?? null,
       banner_image_alt: project?.banner_image_alt ?? (content.banner_image_alt as string | null) ?? null,
-      links: validateLinkSet(process.id, links),
+      links: processLinks.validate(process.id, links),
     });
     // Fresh start: no stale check result, and the check must run again.
     await projectsStore.get().resetDraftReview(draftId);

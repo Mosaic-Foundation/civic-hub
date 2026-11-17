@@ -4,6 +4,19 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel step 1: Projects on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Projects 0.3.0 is a migration** (20261117033649): apply and approve.
+
+- Projects 0.3.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its list, page and drafting form moved into
+  `packages/civic.projects/ui/` unchanged, its client (and its banner upload) into `ui/api.ts`.
+- **Kernel gains:** `links.validate(fromId, proposed)` (a proposed set of related-process links, checked) and the
+  `ProposedLink` type; on the UI side `apiUpload`, `getEditPolicy`, `startProcessEdit`, `reviewDestination`, and
+  `useSpace().participantNoun(n)`.
+- One cascade fix keeps the look: `.status-active` in `Projects.css` was always overridden by App.css's, and would
+  win once the package's stylesheet loads later, so it was dropped. Side by side with dev, the list, a project and
+  the drafting page render the same.
+
 ## Kernel step 1: Proposals on the kernel surface — 2026-11-17
 
 On `kernel-extraction`. **Catalog entry for Proposals 0.3.0 is a migration** (20261117032553): apply and approve.

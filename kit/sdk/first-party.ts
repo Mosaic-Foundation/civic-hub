@@ -91,6 +91,7 @@ export {
   isSeedConversation,
   latestAnchorAt,
   lines,
+  links,
   listResponsesForBrief,
   listVisibleInPhase,
   namesFor,

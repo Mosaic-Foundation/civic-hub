@@ -21,12 +21,13 @@ package, the paths it still imports from `src/` or `ui/src/`).
 | Word clouds | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES` in the conformance suite until then) |
 | Announcements | 0.4.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
 | Proposals | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
-| Projects, Meeting summaries, Votes, Briefs, Conversations | not yet | | |
+| Projects | 0.3.0 (Nov 17) | yes, moved as they were | next release (`MOVED_HUB_PAGES`) |
+| Meeting summaries, Votes, Briefs, Conversations | not yet | | |
 
 Version 1 has gained so far, on the server: `processesOf(...types)` (`get`, `list`, `create`, `saveState`, and
 for a person `actOn`, `page`, `view`; `sampleIds`), `draftsOf(kind)` (`get`, `create`, `update`, `setStatus`,
 `assistantStore()`), `inputs` (`forProcess`, `visibleInPhase`, `countVisibleOutsidePhase`), `hubContext()`'s `place`
-(the kernel's spacePlace) and `participantNoun(n)`, `DAY_MS`, `lines`, `AssistantTypeConfig`, `DraftField`,
+(the kernel's spacePlace) and `participantNoun(n)`, `links.validate`, `ProposedLink`, `DAY_MS`, `lines`, `AssistantTypeConfig`, `DraftField`,
 `assertPassesWordlist`, `requireAuthor` and `authorshipOf` (posting for the space; the author's public role is the
 kernel's accountable role), `resolveCallerIsAdmin`, `enrichCreator`, `enrichCreators`, `PUBLIC_ADMIN_NAME`,
 `extractUrls`, `warmLinkPreviews`, `CreateProcessInput`. On the UI side, the kernel UI surface below
@@ -94,6 +95,7 @@ What those pages use from the hub splits the same way:
   `useStatusFilter`, `cardDate`, `askAboutYouFirst`, `ResultsBreakdown`, and drafting: `DraftPage` configured by a
   type's `DraftKindConfig`, and the parts its form is built from (`FieldGuide`, `TitleField`, `MarkdownTextarea`,
   `ProcessLinkField`, `SuggestFooterButton`, `DraftFooter`, `FieldFinding`, `hardFindings`, `useDebouncedFields`).
-  `BriefPointer` is exported until step 3 makes it Briefs' contribution.
+  `BriefPointer` is exported until step 3 makes it Briefs' contribution. Since Projects: `apiUpload`,
+  `getEditPolicy`, `startProcessEdit`, `reviewDestination`, `useSpace().participantNoun`.
 - **Moves with the page**: components only one type uses (`VotePanel`, `ReceiptCode`, `deliberation/*`,
   `ProposalCommentForm`, `BriefRegenerate`, `BriefPointer` goes to Briefs as an enhancement).

@@ -4,9 +4,8 @@ import {
   NotFoundError,
   ValidationError,
   generateId,
-  listVisibleInPhase,
-  countVisibleOutsidePhase,
-} from "@civic-social/plugin-sdk/first-party";
+  inputs,
+} from "@civic-social/plugin-sdk";
 import { projectsStore, type ProjectRow } from "./store.js";
 import type {
   Project,
@@ -152,7 +151,7 @@ export async function markProjectCompleted(id: string): Promise<void> {
 export async function listProjectUpdates(
   projectId: string,
 ): Promise<ProjectUpdate[]> {
-  const data = await listVisibleInPhase(projectId, "update");
+  const data = await inputs.visibleInPhase(projectId, "update");
   return data.map((r) => ({
     id: r.id,
     project_id: r.process_id,
@@ -230,7 +229,7 @@ export async function getProjectReadModel(
   const updates = await listProjectUpdates(id);
   const userSentiment = actor ? await getUserSentiment(id, actor) : null;
 
-  const commentCount = await countVisibleOutsidePhase(id, "update");
+  const commentCount = await inputs.countVisibleOutsidePhase(id, "update");
 
   return {
     ...project,

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import ProjectDraftingForm from "../../../components/ProjectDraftingForm";
-import { getProjectDetail, type ProjectDraft } from "../../../services/api";
-import { type DraftFormProps } from "../types";
+import {
+  type DraftFormProps,
+} from "@civic-social/plugin-sdk/ui";
+import ProjectDraftingForm from "./ProjectDraftingForm";
+import { getProjectDetail, type ProjectDraft } from "./api";
 
 export default function ProjectForm({ draft, flow, ctx, links, onLinksChange, linkTitles, onLinkTitlesChange, onSubmit, disabled }: DraftFormProps<ProjectDraft>) {
   const { queuePatch } = flow;

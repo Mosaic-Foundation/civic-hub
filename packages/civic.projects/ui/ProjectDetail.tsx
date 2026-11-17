@@ -1,32 +1,36 @@
 import { useEffect, useState } from "react";
-import { useApi } from "../hooks/useApi";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useAction } from "../hooks/useAction";
-import { useAuth } from "../context/authState";
+
+import "./ProjectDetail.css";
+import {
+  useApi,
+  useAction,
+  useViewer,
+  ShareButton,
+  ShareMoment,
+  Creator,
+  CommentForm,
+  CommunityInputPanel,
+  RelatedProcesses,
+  BriefPointer,
+  DetailActions,
+  statusDisplay,
+  ProcessHeader,
+  RichText,
+  EditHistory,
+  getEditPolicy,
+  startProcessEdit,
+  type EditPolicy,
+  SourceLinks,
+  ResultsBreakdown,
+} from "@civic-social/plugin-sdk/ui";
 import {
   getProjectDetail,
   setProjectSentiment,
   completeProject,
   type ProjectDetail as ProjectDetailType,
   type SentimentValue,
-} from "../services/api";
-
-import ShareButton from "../components/ShareButton";
-import ShareMoment from "../components/ShareMoment";
-import Creator from "../components/Creator";
-import ProposalCommentForm from "../components/ProposalCommentForm";
-import CommunityInputPanel from "../components/CommunityInputPanel";
-import RelatedProcesses from "../components/RelatedProcesses";
-import { BriefPointer } from "../components/BriefPointer";
-import "./ProjectDetail.css";
-import DetailActions from "../components/DetailActions";
-import { statusDisplay } from "../components/statusDisplay";
-import ProcessHeader from "../components/ProcessHeader";
-import RichText from "../components/RichText";
-import EditHistory from "../components/EditHistory";
-import { getEditPolicy, startProcessEdit, type EditPolicy } from "../services/api";
-import SourceLinks from "../components/SourceLinks";
-import ResultsBreakdown from "../components/ResultsBreakdown";
+} from "./api";
 
 export default function ProjectDetail() {
   const navigate = useNavigate();
@@ -56,7 +60,7 @@ export default function ProjectDetail() {
   }, []);
   // While "See what changed" is open, the diff stands in for the description.
   const [historyOpen, setHistoryOpen] = useState(false);
-  const { user, isAdmin } = useAuth();
+  const { actorId, isAdmin } = useViewer();
 
   // A sign-in or out reads it again (is_owner, your sentiment) and so does the
   // tab coming back into view (a second tab catches up).
@@ -68,7 +72,7 @@ export default function ProjectDetail() {
     setData: setProject,
   } = useApi<ProjectDetailType>(id ? `projects/${id}` : null, () => getProjectDetail(id!), {
     refreshOnVisible: true,
-    rereadOn: user?.id,
+    rereadOn: actorId ?? undefined,
   });
   // The editor failing to open replaces the page with the error, as a failed read does.
   const [startEditError, setStartEditError] = useState<string | null>(null);
@@ -86,7 +90,7 @@ export default function ProjectDetail() {
   // locked); we only ask when the viewer could plausibly be allowed. Hooks
   // live up here, above the loading/error returns, so their order is stable.
   const [editStarting, setEditStarting] = useState(false);
-  const viewerIsCreator = project?.is_owner ?? (!!user?.id && user?.id === project?.user_id);
+  const viewerIsCreator = project?.is_owner ?? (!!actorId && actorId === project?.user_id);
   const mayAsk = !!project && viewerIsCreator && project.status === "active";
   const projectId = project?.id;
   const { data: editPolicy } = useApi<EditPolicy>(
@@ -143,7 +147,7 @@ export default function ProjectDetail() {
 
   // Ownership is decided server-side (is_owner) so the raw user_id is never
   // sent to the client; fall back to the id compare only if is_owner is absent.
-  const isCreator = project.is_owner ?? (!!user?.id && user.id === project.user_id);
+  const isCreator = project.is_owner ?? (!!actorId && actorId === project.user_id);
   const canComplete = (isCreator || isAdmin) && project.status === "active";
 
   async function handleComplete() {
@@ -230,7 +234,7 @@ export default function ProjectDetail() {
             type="button"
             className={`sentiment-btn${project.user_sentiment === "support" ? " is-active-support" : ""}`}
             onClick={() => onSentimentClick("support")}
-            disabled={!user || sentimentLoading}
+            disabled={!actorId || sentimentLoading}
             aria-busy={sentimentLoading}
           >
             Support {project.support_count > 0 && `(${project.support_count})`}
@@ -239,12 +243,12 @@ export default function ProjectDetail() {
             type="button"
             className={`sentiment-btn${project.user_sentiment === "oppose" ? " is-active-oppose" : ""}`}
             onClick={() => onSentimentClick("oppose")}
-            disabled={!user || sentimentLoading}
+            disabled={!actorId || sentimentLoading}
             aria-busy={sentimentLoading}
           >
             Oppose {project.oppose_count > 0 && `(${project.oppose_count})`}
           </button>
-          {!user && (
+          {!actorId && (
             <span className="sentiment-counts">Sign in to show your support</span>
           )}
           {sentiment.error && <p className="form-error" role="alert">{sentiment.error}</p>}
@@ -279,7 +283,7 @@ export default function ProjectDetail() {
           carry the same word list and admin hide as everything else. */}
       <div className="project-updates">
         {isCreator && project.status === "active" && (
-          <ProposalCommentForm
+          <CommentForm
             proposalId={project.id}
             phase="update"
             heading="Post an update"
@@ -303,7 +307,7 @@ export default function ProjectDetail() {
       {/* Comments — the same form and panel as proposals and votes. */}
       <div className="project-comments">
         {project.status === "active" && (
-          <ProposalCommentForm
+          <CommentForm
             proposalId={project.id}
             placeholder="Add a comment..."
           />

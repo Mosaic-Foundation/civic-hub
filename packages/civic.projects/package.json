@@ -1,10 +1,11 @@
 {
   "name": "@civic-social/plugin-project",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Projects: community projects with updates, comments and sentiment. A Civic Hub plugin package (docs/PLUGIN-PACKAGE.md).",
   "peerDependencies": {
+    "@civic-social/plugin-sdk": "^0.1.0",
     "express": "^4.22.3"
   }
 }

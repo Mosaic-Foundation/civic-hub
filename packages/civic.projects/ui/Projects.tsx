@@ -1,17 +1,24 @@
 import { useState } from "react";
-import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
-import { listProjects, type ProjectSummary } from "../services/api";
-import ProcessPicker from "../components/ProcessPicker";
-import AuthModal from "../components/AuthModal";
-import { useRequireAuth } from "../hooks/useRequireAuth";
-import Creator from "../components/Creator";
 import "./Projects.css";
-import StatusFilter from "../components/StatusFilter";
-import { useStatusFilter } from "../components/statusFilterState";
-import ProcessListCard from "../components/ProcessListCard";
-import { cardDate } from "../components/cardDate";
-import { CardList, EmptyState, Group, Page, PageAction, PageHead } from "../kit";
+import {
+  useApi,
+  ProcessPicker,
+  AuthModal,
+  useRequireAuth,
+  Creator,
+  StatusFilter,
+  useStatusFilter,
+  ProcessListCard,
+  cardDate,
+  CardList,
+  EmptyState,
+  Group,
+  Page,
+  PageAction,
+  PageHead,
+} from "@civic-social/plugin-sdk/ui";
+import { listProjects, type ProjectSummary } from "./api";
 
 const FILTER_CHOICES = [
   { key: "all", label: "All" },

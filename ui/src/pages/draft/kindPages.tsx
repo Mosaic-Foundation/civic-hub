@@ -3,15 +3,10 @@
 
 import DraftPage from "./DraftPage";
 import { conversationKind } from "./conversationKind";
-import { projectKind } from "./projectKind";
 import { voteKind } from "./voteKind";
 
 export function NewConversation() {
   return <DraftPage config={conversationKind} />;
-}
-
-export function NewProject() {
-  return <DraftPage config={projectKind} />;
 }
 
 export function NewVote() {

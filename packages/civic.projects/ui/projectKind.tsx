@@ -1,7 +1,10 @@
-import { type ProjectDraft } from "../../services/api";
-import { demoSubmitNote } from "../../config/demoCopy";
-import { reviewDestination, type DraftKindConfig } from "./types";
-import ProjectForm from "./forms/ProjectForm";
+import {
+  demoSubmitNote,
+  reviewDestination,
+  type DraftKindConfig,
+} from "@civic-social/plugin-sdk/ui";
+import type { ProjectDraft } from "./api";
+import ProjectForm from "./ProjectForm";
 
 
 export const projectKind: DraftKindConfig<ProjectDraft> = {

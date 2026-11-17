@@ -174,6 +174,7 @@ export { defaultJurisdiction, processJurisdiction } from "../config/hub.js";
 
 // --- src/modules/civic.process_links/ ----------------------------------------------------
 export { validateLinkSet } from "../modules/civic.process_links/index.js";
+export { links } from "../services/kernelLinks.js";
 
 // --- Edits of a live process (src/services/processEdits.ts) ------------------------------
 // Loaded on the first call, not with the SDK: the process handlers import their

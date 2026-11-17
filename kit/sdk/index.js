@@ -30,6 +30,7 @@ export const hubContext = e.hubContext;
 export const inputs = e.inputs;
 export const isPastDeadline = e.isPastDeadline;
 export const lines = e.lines;
+export const links = e.links;
 export const namesFor = e.namesFor;
 export const notify = e.notify;
 export const num = e.num;

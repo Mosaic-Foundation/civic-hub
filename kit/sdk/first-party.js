@@ -84,6 +84,7 @@ export const isPluginEnabledSync = e.isPluginEnabledSync;
 export const isSeedConversation = e.isSeedConversation;
 export const latestAnchorAt = e.latestAnchorAt;
 export const lines = e.lines;
+export const links = e.links;
 export const listResponsesForBrief = e.listResponsesForBrief;
 export const listVisibleInPhase = e.listVisibleInPhase;
 export const namesFor = e.namesFor;

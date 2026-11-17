@@ -30,8 +30,3 @@
 .sentiment-oppose {
   color: var(--color-error);
 }
-
-.status-active {
-  background: var(--type-project-bg);
-  color: var(--type-project-fg);
-}

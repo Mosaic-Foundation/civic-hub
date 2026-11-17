@@ -1,17 +1,18 @@
-import type { AssistantFieldGuidance, ProjectDraft } from "../services/api";
-import { uploadProjectImage } from "../services/api";
-import PostImagePicker from "./PostImagePicker";
-import "./VoteDraftingForm.css";
-import { FieldGuide } from "./FieldGuide";
-import { hardFindings } from "./cocFindingsState";
-import DraftFooter from "./DraftFooter";
-import { useDebouncedFields } from "../hooks/useDebouncedFields";
-import SuggestFooterButton from "./SuggestFooterButton";
-import TitleField from "./TitleField";
-import ProcessLinkField from "./ProcessLinkField";
-import type { ProposedLink } from "../services/api";
-import MarkdownTextarea from "./MarkdownTextarea";
-import { useHub } from "../config/hub";
+import {
+  PostImagePicker,
+  FieldGuide,
+  hardFindings,
+  DraftFooter,
+  useDebouncedFields,
+  SuggestFooterButton,
+  TitleField,
+  ProcessLinkField,
+  MarkdownTextarea,
+  useSpace,
+  type AssistantFieldGuidance,
+  type ProposedLink,
+} from "@civic-social/plugin-sdk/ui";
+import { uploadProjectImage, type ProjectDraft } from "./api";
 
 interface Props {
   /** Related processes the author has picked. Optional by design — the
@@ -74,7 +75,7 @@ export default function ProjectDraftingForm({
   onCancel,
   submitLabel = "Submit project",
 }: Props) {
-  const hub = useHub();
+  const space = useSpace();
   const titleLocked = lockedFields.includes("title");
   const { handleChange, flush } = useDebouncedFields(onFieldChange);
 
@@ -104,7 +105,7 @@ export default function ProjectDraftingForm({
           )}
           {titleLocked && (
             <p id="draft-title-locked" className="form-hint">
-              The title is locked because {hub.noun(2)} have already supported this project under it.
+              The title is locked because {space.participantNoun(2)} have already supported this project under it.
             </p>
           )}
           <FieldGuide guidance={fieldGuidance} field="title" />

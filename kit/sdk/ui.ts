@@ -72,6 +72,7 @@ export { dayHeading, dayKey, groupByDay, shiftDay } from "../../ui/src/kit/dates
 // Host-provided: the hub's app supplies them (ui/src/host/index.ts).
 export {
   apiRequest,
+  apiUpload,
   ApiError,
   useApi,
   useAction,
@@ -105,6 +106,9 @@ export {
   ProcessListCard,
   cardDate,
   DraftPage,
+  reviewDestination,
+  getEditPolicy,
+  startProcessEdit,
   DAY_MS,
   durationLabel,
   demoSubmitNote,
@@ -153,6 +157,8 @@ export {
   type ShareNudge,
   type ClosedEarly,
   type EarlyCloseOffer,
+  type UploadedImage,
+  type EditPolicy,
   type StatusFilterChoice,
   type DraftKindConfig,
   type DraftFormProps,
