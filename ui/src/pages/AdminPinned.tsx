@@ -1,5 +1,5 @@
 // Admin → Community → Pinned (Adam, 2026-11-18; src/services/pins.ts): every
-// item pinned to the right column's card, of any type, and every urgent
+// item on the Pinned card, of any type, and every urgent
 // announcement, in the card's order (urgent first). Unpin, or change a pin's
 // end date, without going to each item. The hub's own page, there while the
 // Pinning switch is on, whatever plugins are; urgent is the Announcements
@@ -59,8 +59,8 @@ export default function AdminPinned() {
     <div className="page admin-page admin-announcements-page">
       <h1 className="kit-page-title">Pinned</h1>
       <p className="admin-page-description kit-page-lede">
-        Everything pinned to the Pinned card in the right column, of any kind. Pin an item from its own page: the Pin
-        button sits at the bottom, beside Archive. A pin stays until you unpin it or its end date passes. Urgent
+        Everything on the Pinned card, of any kind. Only admins pin. Pin an item from its own page: the Pin button sits
+        at the bottom, beside Archive. A pin stays until you unpin it or its end date passes. Urgent
         announcements are listed first; whoever posts an announcement marks it urgent on its form. Pinning doesn't move
         anything in the feed and isn't sent to the Fediverse.
       </p>

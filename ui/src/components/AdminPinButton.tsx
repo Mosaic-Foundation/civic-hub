@@ -1,8 +1,8 @@
-// Pin any item to the right column's card, or unpin it (Adam, 2026-11-18;
+// Pin any item to the Pinned card, or unpin it (Adam, 2026-11-18;
 // src/services/pins.ts). Admins only, while the hub's Pinning switch is on;
 // drawn by the archive slot on every type's detail page (archiveSlot.tsx), so
 // a type added later has it too. Whether the item is pinned now is read from
-// the right column's facts (the card lists every pinned item), and they are
+// the layout's card facts (the card lists every pinned item), and they are
 // read again after a change. Pinning asks for an optional end date, as
 // Admin → Pinned and Admin → Announcements do.
 
@@ -64,7 +64,7 @@ export default function AdminPinButton({ processId }: { processId: string }) {
           }}
         >
           <label className="admin-archive-label">
-            Pin it to the right column until <span className="optional">(optional)</span>
+            Keep it on the Pinned card until <span className="optional">(optional)</span>
             <input
               className="admin-archive-reason-input"
               type="date"
@@ -93,7 +93,7 @@ export default function AdminPinButton({ processId }: { processId: string }) {
             disabled={action.busy}
             aria-busy={action.busy}
           >
-            {pinned ? "Unpin" : "Pin to the right column"}
+            {pinned ? "Unpin" : "Pin"}
           </button>
           {action.error && <p className="form-error">{action.error}</p>}
         </>

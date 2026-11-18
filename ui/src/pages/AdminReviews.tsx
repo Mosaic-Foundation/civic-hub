@@ -23,8 +23,6 @@ import RelatedProcesses from "../components/RelatedProcesses";
 import SubmissionPreview from "../components/SubmissionPreview";
 import { formatShortDateTime } from "../utils/dates";
 import { AdminBackButton, AdminStickyBar } from "../components/AdminSticky";
-import { useHub } from "../config/hub";
-import { dayFromToday, endOfDay } from "../components/boardDates";
 
 const STATUS_FILTERS: Array<{ id: "all" | ReviewStatus; label: string }> = [
   { id: "all", label: "All" },
@@ -77,11 +75,6 @@ export default function AdminReviews() {
 
   // Action states
   const [showChangesForm, setShowChangesForm] = useState(false);
-  // "Pin it once approved" (2026-11-18): the hub asks here for any type, while Pinning is on.
-  const hub = useHub();
-  const pinningOn = hub.plugins.enabled("pinning");
-  const [pinOnApprove, setPinOnApprove] = useState(false);
-  const [pinUntil, setPinUntil] = useState("");
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [noteText, setNoteText] = useState("");
   // One runner for approve / request changes / decline: only one may run.
@@ -190,16 +183,8 @@ export default function AdminReviews() {
     setError(null);
     await action.run(
       async () => {
-        const done = await adminApproveReview(
-          routeId,
-          pinningOn && pinOnApprove ? { until: endOfDay(pinUntil, hub.timeZone) } : undefined,
-        );
-        const pinNote = pinningOn && pinOnApprove
-          ? done.pin_error
-            ? ` It wasn't pinned: ${done.pin_error}`
-            : " It's pinned to the right column."
-          : "";
-        backToListWith(`Approved: “${reviewTitle()}” is live.${pinNote}`);
+        await adminApproveReview(routeId);
+        backToListWith(`Approved: “${reviewTitle()}” is live.`);
       },
       {
         onError: (err) => {
@@ -365,32 +350,6 @@ export default function AdminReviews() {
               {/* Admin actions (only if pending_review) */}
               {isPending && !actionMessage && (
                 <>
-                  {!showChangesForm && !showDeclineForm && pinningOn && (
-                    <div className="review-pin-option">
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={pinOnApprove}
-                          onChange={(e) => setPinOnApprove(e.target.checked)}
-                          disabled={acting}
-                        />{" "}
-                        Pin it to the right column once approved
-                      </label>
-                      {pinOnApprove && (
-                        <label className="review-pin-until">
-                          Until <span className="optional">(optional)</span>
-                          <input
-                            className="form-input"
-                            type="date"
-                            value={pinUntil}
-                            min={dayFromToday(0, hub.timeZone)}
-                            onChange={(e) => setPinUntil(e.target.value)}
-                            disabled={acting}
-                          />
-                        </label>
-                      )}
-                    </div>
-                  )}
                   {!showChangesForm && !showDeclineForm && (
                     <div className="review-actions">
                       <button

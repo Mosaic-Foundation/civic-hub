@@ -122,7 +122,7 @@
     "anchor": "plugins-meeting-summary"
   },
   "plugins.pinning": {
-    "text": "Lets admins pin any item, of any kind, to the right column's Pinned card, from its page or when approving it, with an optional end date. Admin → Pinned lists them. Switched off, nothing shows as pinned; urgent announcements still do.",
+    "text": "Built into the hub, not a library plugin. Admins pin any item to the Pinned card from its page, with an optional end date; Admin → Pinned lists them. Off, nothing shows as pinned; urgent announcements still do.",
     "page": "/reference/plugins",
     "anchor": "plugins-pinning",
     "pending": true

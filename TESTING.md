@@ -89,12 +89,10 @@ first time that layer has been runnable from a clean checkout.
 
 ## Pinning, phase 1 (2026-11-18)
 
-- **API** `pinAnyItem.test.ts` (now 9): Admin → Pinned lists a pinned vote with the count (403 for a resident); the
-  Pinning switch off answers 404 and the card shows no pin, on again it shows; Approve with `pin` pins the proposal
-  it posts with its end date. `leakHarness` plans `GET /admin/pins`; `pluginRoutes` lists it; the `manifestParity`
+- **API** `pinAnyItem.test.ts` (now 8): Admin → Pinned lists a pinned vote with the count (403 for a resident); the
+  Pinning switch off answers 404 and the card shows no pin, on again it shows. `leakHarness` plans `GET /admin/pins`; `pluginRoutes` lists it; the `manifestParity`
   fixture gains the `pinning` switch; help note `plugins.pinning` (pending).
-- Checked in the browser on Athens (local): Pin with the date form, Admin → Pinned (change end date, unpin), the
-  Approve screen's checkbox.
+- Checked in the browser on Athens (local): Pin with the date form, Admin → Pinned (change end date, unpin).
 
 ## News Sync on its own, and pinning any item (2026-11-18)
 

@@ -1,8 +1,5 @@
 import { ForbiddenError, NotFoundError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
-import { pinItem, pinView } from "../services/pins.js";
-import { readUntil } from "./pinsController.js";
-import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { Request, Response } from "express";
 import { describeSubmission } from "../processes/registry.js";
 import type { SubmissionField } from "../shared/submissionPreview.js";
@@ -225,23 +222,8 @@ export const handleAdminApprove = route(async (req, res) => {
   const user = getAuthUser(res);
   const reviewId = req.params.reviewId as string;
 
-  // "Pin it once approved" (Adam, 2026-11-18): the hub's Approve screen asks,
-  // for any type, so no plugin does anything for it. The approval stands
-  // whatever the pin does; a refused pin (the cap, an end date) comes back as
-  // pin_error for the screen to say.
-  const body = (req.body ?? {}) as { pin?: unknown };
-  const pinUntil = body.pin === true || (body.pin && typeof body.pin === "object") ? readUntil(body.pin) : undefined;
   const result = await approveReview(reviewId, user.id);
-  if (pinUntil === undefined || !isPluginEnabledSync("pinning")) {
-    res.json(result);
-    return;
-  }
-  try {
-    const pinned = await pinItem(result.process_id, user.id, pinUntil);
-    res.json({ ...result, pin: pinView(pinned) });
-  } catch (err) {
-    res.json({ ...result, pin_error: err instanceof Error ? err.message : "Could not pin it." });
-  }
+  res.json(result);
 });
 
 export const handleAdminRequestChanges = route(async (req, res) => {

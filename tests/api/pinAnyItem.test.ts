@@ -3,7 +3,7 @@
 // right column's facts (GET /api/aside) and Admin → Pinned (GET /admin/pins)
 // list it with its type's label; unpin takes it off; each change is a public
 // `updated` event with `data.pin`; a resident may not pin; an archived item
-// can't be pinned; Approve can pin what it posts; the hub's Pinning switch off
+// can't be pinned; the hub's Pinning switch off
 // answers 404 on every pin route and shows no pinned row on the card.
 //
 // Needs the local stack seeded as in CI and a server (CIVIC_API_BASE).
@@ -11,7 +11,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { pendingProposalReview } from "../fixtures/codeOfConduct.js";
 
 const FLOYD = "floyd.civic.social";
 const run = Date.now().toString(36);
@@ -46,8 +45,6 @@ beforeAll(async () => {
   expect((await call("POST", `/process/${vote}/action`, FLOYD, { type: "process.activate", payload: {} }, admin)).status).toBe(200);
 });
 
-const made: string[] = [];
-
 async function setPinning(on: "true" | "false") {
   const res = await call("PUT", "/admin/hub/settings", FLOYD, { section: "plugins", values: { "plugin.pinning.enabled": on } }, admin);
   expect(res.status, JSON.stringify(res.body)).toBe(200);
@@ -56,8 +53,6 @@ async function setPinning(on: "true" | "false") {
 afterAll(async () => {
   await setPinning("true");
   if (vote) await localRest(`processes?id=eq.${vote}`, { method: "DELETE" });
-  // A reviewed process keeps its review thread (append-only): archived, not deleted.
-  for (const id of made) await localRest(`processes?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status: "archived" }) });
 });
 
 describe("pin any item", () => {
@@ -118,19 +113,6 @@ describe("pin any item", () => {
     expect((await aside()).announcements.some((a) => a.process_id === vote && a.pinned)).toBe(false);
 
     expect((await pinEvents()).sort()).toEqual(["pinned", "unpinned"]);
-  });
-
-  it("Approve can pin what it posts, with an end date", async () => {
-    const pending = await pendingProposalReview(FLOYD, resident, `Pin on approve ${run}`);
-    made.push(pending.process_id);
-    const until = new Date(Date.now() + 5 * 86_400_000).toISOString();
-    const res = await call("POST", `/admin/reviews/${pending.review_id}/approve`, FLOYD, { pin: { pinned_until: until } }, admin);
-    expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.pin).toMatchObject({ pinned: true });
-    expect(Date.parse(res.body.pin.pinned_until)).toBe(Date.parse(until));
-    const row = (await call("GET", "/admin/pins", FLOYD, undefined, admin)).body.items.find((r: { id: string }) => r.id === pending.process_id);
-    expect(row).toMatchObject({ pinned: true, type: "civic.proposal" });
-    expect((await call("POST", `/admin/processes/${pending.process_id}/unpin`, FLOYD, {}, admin)).status).toBe(200);
   });
 
   it("an archived item can't be pinned", async () => {

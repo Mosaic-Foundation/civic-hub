@@ -27,7 +27,7 @@ export interface HubFeature {
 }
 
 export const HUB_FEATURES = [
-  // Pinning any item to the right column's card (Adam, 2026-11-18): the hub's
+  // Pinning any item to the Pinned card (Adam, 2026-11-18): the hub's
   // own, for every plugin's items, admins only. Off: no Pin controls, no
   // Admin → Pinned, and the card shows no pinned rows (urgent announcements
   // stay). Plugins know nothing of it, on or off.
@@ -35,7 +35,7 @@ export const HUB_FEATURES = [
     id: "pinning",
     order: 95,
     name: "Pinning",
-    what: "Admins pin any item to the right column's Pinned card, with an optional end date. Urgent announcements are listed first.",
+    what: "Built into the hub: admins pin any item to the Pinned card, with an optional end date. Urgent announcements are listed first.",
     fields: [],
   },
   { id: "assistant", order: 100, name: "Writing assistant", what: "AI help while drafting a vote, proposal, project or conversation.", fields: [] },

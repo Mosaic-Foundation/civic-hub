@@ -2841,16 +2841,10 @@ export function adminGetReview(reviewId: string): Promise<ReviewDetail> {
   return request("GET", `/admin/reviews/${reviewId}`);
 }
 
-/**
- * Approve and post. `pin` pins it once approved (Pinning on): `null` for no
- * end date, an ISO date for one. A refused pin leaves the approval standing
- * and comes back as `pin_error`.
- */
 export function adminApproveReview(
   reviewId: string,
-  pin?: { until: string | null },
-): Promise<{ review: ProcessReviewSummary; process_id: string; pin_error?: string }> {
-  return request("POST", `/admin/reviews/${reviewId}/approve`, pin ? { pin: { pinned_until: pin.until } } : undefined);
+): Promise<{ review: ProcessReviewSummary; process_id: string }> {
+  return request("POST", `/admin/reviews/${reviewId}/approve`);
 }
 
 export function adminRequestChanges(
