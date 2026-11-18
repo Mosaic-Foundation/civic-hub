@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApi } from "../hooks/useApi";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   adminPinAnnouncement,
   adminRemoveAnnouncement,
   adminRestoreAnnouncement,
   adminUnpinAnnouncement,
   getAnnouncement,
+  getNewsItem,
   type Announcement,
 } from "../services/api";
 import { useAuth } from "../context/authState";
@@ -50,6 +51,21 @@ export default function AnnouncementPage() {
     setData: setAnnouncement,
   } = useApi<Announcement>(id ? `announcement/${id}` : null, () => getAnnouncement(id!));
 
+  // Posts News Sync copied in were announcements until 2026-11-18 and are
+  // News items now: an old /announcement/ link to one goes to its News page.
+  const navigate = useNavigate();
+  const [checkedNews, setCheckedNews] = useState(false);
+  useEffect(() => {
+    if (!error || !id) return;
+    let live = true;
+    getNewsItem(id)
+      .then(() => live && navigate(`/news/${id}`, { replace: true }))
+      .catch(() => live && setCheckedNews(true));
+    return () => {
+      live = false;
+    };
+  }, [error, id, navigate]);
+
   // Slice 11 — admin moderation controls. The remove modal opens when
   // the admin clicks "Remove announcement" and stays mounted until the
   // request resolves (or the admin cancels).
@@ -58,7 +74,7 @@ export default function AnnouncementPage() {
   const [submitting, setSubmitting] = useState(false);
   const [moderationError, setModerationError] = useState<string | null>(null);
 
-  if (loading) {
+  if (loading || (error && !checkedNews)) {
     return (
       <div className="page announcement-page">
         <p className="announcement-status">Loading announcement…</p>
