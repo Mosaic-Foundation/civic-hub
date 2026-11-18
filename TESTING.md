@@ -87,6 +87,25 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## News Sync on its own, and pinning any item (2026-11-18)
+
+- **Unit:** `feedActivity` (a News item's pill and From label; an old synced announcement event reads as News
+  whatever its show-as said), `newsSource` (pill label), `cronHubIsolation` (the job makes `civic.news`, and runs
+  with Announcements off), `jobRunDescribe`; `archiveHooks`, `residentActions`, `pluginRoutes` and the
+  `manifestParity` fixture know the new type and routes.
+- **API** `tests/api/newsItems.test.ts` (4): GET /news/:id, not an announcement, a relabelled row (the migration's
+  shape) reads the same, both make News cards with Announcements off (on Athens, News Sync switched on for the run).
+  `tests/api/pinAnyItem.test.ts` (6): a resident can't pin, an admin pins a vote and the right column lists it
+  with its type, pinning twice records once, a passed end date is refused, unpin, an archived item can't be pinned.
+  `pluginToggles` covers News Sync's page; `auditLiveExposure` switches News Sync on for its run like meeting
+  summaries; `leakHarness` plans the new routes.
+- Results (local, both API modes for the files above): unit 2,807 pass; API 1,091 passed, failing and not this
+  change: `sampleContent`'s two removal tests and two `leakHarness` tests (the known local sample-content 500s);
+  `authzParity` and `leavingDemo` failed once in the full run (a test hub gone under them) and pass on their own.
+  The migration was tried on a copy of the old row shape (synced post relabelled, hand-posted one untouched,
+  updated_at kept, show_as → pill_label). Checked in the browser: the feed card ("Town news", From line, opens the
+  original), the News page, Pin on its page, the right column's "Pinned" card.
+
 ## Districts and demographics (2026-11-16)
 - **Unit:** `tests/unit/aboutYou.test.ts` (terms, questions, age groups, the Census name match, the district list
   setting, a member's tags, reading a Census answer), `tests/unit/breakdowns.test.ts` (the suppression rule, with a
