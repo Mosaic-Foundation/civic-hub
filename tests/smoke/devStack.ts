@@ -116,7 +116,9 @@ const minted: string[] = [];
 
 /**
  * A session for `email` on the smoke hub, as a successful code sign-in would
- * write it, with the current terms accepted (else a dialog covers the page).
+ * write it, with the current terms accepted (else a dialog covers the page)
+ * and About you already asked (else its one-time card waits in front of the
+ * first vote, support or submit; districts and demographics, 2026-11-16).
  * Creates the account if needed. Admin or not is the hub's roster's decision.
  */
 export async function mintSession(email: string): Promise<{ token: string; userId: string }> {
@@ -139,6 +141,11 @@ export async function mintSession(email: string): Promise<{ token: string; userI
     });
   }
   await devRest(filter, { method: "PATCH", body: JSON.stringify({ tos_version_accepted: CURRENT_LEGAL_VERSION }) });
+  await devRest("member_about?on_conflict=hub_id,user_id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ hub_id: hub, user_id: user.id, asked_at: new Date().toISOString() }),
+  });
 
   const token = randomBytes(32).toString("base64url");
   await devRest("sessions", {
