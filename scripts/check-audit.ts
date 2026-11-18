@@ -29,17 +29,10 @@ interface AuditException {
   until: string;
 }
 
-const EXCEPTIONS: AuditException[] = [
-  {
-    id: "GHSA-fc5q-39xc-vjpf",
-    reason:
-      "picomatch <=4.0.7 (via vite, vitest, fdir, tinyglobby; dev tooling only). Published 2026-11-17 " +
-      "with no patched release: 4.0.7 is the newest picomatch, so no override can fix it, and " +
-      "`npm audit fix --force` downgrades vitest to 3.1.4 (breaking). Remove this entry and add a " +
-      "package.json `overrides` pin once picomatch ships a fix.",
-    until: "2026-12-17",
-  },
-];
+// None right now. GHSA-fc5q-39xc-vjpf (picomatch <=4.0.7, via vite and vitest)
+// was excepted from 2026-11-17 to 2026-11-18, when npm audit stopped matching
+// it against picomatch 4.0.7 (the installed version), so it was deleted here.
+const EXCEPTIONS: AuditException[] = [];
 
 const BLOCKING = new Set(["high", "critical"]);
 
