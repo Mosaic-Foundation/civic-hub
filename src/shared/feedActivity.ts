@@ -60,6 +60,7 @@ export type BuiltinActivityKind =
   | "vote-results" // legacy civic.vote_results records
   | "announcement" // admin / synced (Floyd County Gov)
   | "announcement-author" // board member / committee / other authored
+  | "news" // a post News Sync copied in from another site (civic.news; Adam, 2026-11-18)
   | "meeting"
   | "wordcloud"
   | "proposal"
@@ -197,6 +198,8 @@ export type FeedCard =
   | { surface: ActivitySurface; kind: ActivityKind; color: ActivityColor; pill: string; href: FeedHref }
   /** An announcement: its pill is the author's role (classifyAnnouncement). */
   | "announcement"
+  /** A News item: its pill and "From" line are its source's (classifyNews). */
+  | "news"
   /** A published Civic Brief: it wears its source's colour and pill. */
   | "brief";
 
@@ -316,6 +319,7 @@ export const FEED_META_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(
   "conversation-results",
   "announcement",
   "announcement-author",
+  "news",
   // A brief's card is its publish event; a regenerated version replaces its
   // headline in place, marked "Updated <date>" (Actions slice).
   "brief",
@@ -354,6 +358,7 @@ export function classifyActivity(event: ClassifierEvent): Activity | null {
 function cardFor(rule: TableRule, event: ClassifierEvent, data: Record<string, unknown>): Activity {
   const card = rule.card;
   if (card === "announcement") return classifyAnnouncement(data, event.action_url);
+  if (card === "news") return classifyNews(data, event.action_url);
   if (card === "brief") {
     const brief = (data.brief ?? {}) as { source_process_type?: unknown };
     const srcType = typeof brief.source_process_type === "string" ? brief.source_process_type : "";
@@ -408,30 +413,41 @@ function classifyAnnouncement(
         ? "Admin"
         : rawRole;
   const isAdmin = normalized === "Admin";
-  // Posts News Sync copied in (e.g. from Floyd County's site) are keyed on the
-  // presence of `source`, not on its origin string: only a sync writes one,
-  // and the origin value changed when the module was renamed, so older rows
-  // carry a different one. They are News, with their own pill and filter,
-  // unless the hub set News Sync to show them as announcements; then they
-  // reuse the admin palette and group with admin-authored ones
-  // (src/shared/newsSource.ts). Either way the card says who they are from.
+  // Posts News Sync copied in before it became its own plugin (2026-11-18)
+  // were announcements with a `source` (keyed on its presence, not its origin
+  // string, which changed when the module was renamed). Their processes are
+  // News items now (migration 20261118180000), and their stored events read
+  // as News cards, whatever the hub's old "show as" said.
   const synced = syncedSourceView(ann?.source);
-  const isSynced = synced !== null;
-  const from = synced ? (synced.label ?? normalized) : undefined;
-  if (synced?.showAs === "news") {
-    return { surface: "news", kind: "announcement", color: "news", pill: "News", from, href: actionUrl };
+  if (synced) {
+    return { surface: "news", kind: "news", color: "news", pill: NEWS_PILL, from: synced.label ?? normalized, href: actionUrl };
   }
   return {
     surface: "announcement",
     // Non-admin authors (board members, committees) get a distinct pill +
     // border color so residents can tell elected-official posts from the hub
     // administrator's.
-    kind: isAdmin || isSynced ? "announcement" : "announcement-author",
-    color: isAdmin || isSynced ? "announcement" : "announcement-author",
+    kind: isAdmin ? "announcement" : "announcement-author",
+    color: isAdmin ? "announcement" : "announcement-author",
     pill: abbreviateGovernment(normalized),
-    ...(from ? { from } : {}),
     href: actionUrl,
   };
+}
+
+/** A News item's pill when its source names none. */
+const NEWS_PILL = "News";
+
+/**
+ * A News item (civic.news): its own filter and colour, the pill and "From"
+ * line its source was given when it was copied in (a reader that knows the
+ * hub's current settings words both from them; one source per hub), and a
+ * link to the original.
+ */
+function classifyNews(data: Record<string, unknown>, actionUrl: string): Activity {
+  const source = ((data.news as { source?: unknown } | undefined)?.source ?? {}) as { label?: unknown; pill?: unknown };
+  const pill = typeof source.pill === "string" && source.pill.trim() ? source.pill.trim() : NEWS_PILL;
+  const from = typeof source.label === "string" && source.label.trim() ? source.label.trim() : undefined;
+  return { surface: "news", kind: "news", color: "news", pill, ...(from ? { from } : {}), href: actionUrl };
 }
 
 /**

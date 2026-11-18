@@ -89,6 +89,8 @@ describe("registry snapshot — adding a process type forces an archive decision
     "civic.brief",
     "civic.event",
     "civic.meeting_summary",
+    // All its state is its processes row (2026-11-18): archiving needs no hook.
+    "civic.news",
     "civic.polis_deliberation",
     "civic.project",
     "civic.proposal",

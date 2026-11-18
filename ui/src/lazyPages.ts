@@ -54,6 +54,7 @@ export const Outcomes = page(() => import("./pages/Outcomes"));
 export const BriefPage = page(() => import("./pages/Brief"));
 export const AnnouncementPage = page(() => import("./pages/Announcement"));
 export const MeetingSummary = page(() => import("./pages/MeetingSummary"));
+export const NewsItemPage = page(() => import("./pages/NewsItem"));
 export const WordCloud = page(() => import("./pages/WordCloud"));
 // The kit's gallery (Events 3): admins only, in the public layout.
 export const KitGallery = page(() => import("./pages/KitGallery"));

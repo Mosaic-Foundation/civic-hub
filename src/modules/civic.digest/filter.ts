@@ -49,6 +49,7 @@ const KIND_ORDER: Record<BuiltinActivityKind, number> = {
   meeting: 2,
   announcement: 3,
   "announcement-author": 4,
+  news: 4,
   wordcloud: 5,
   proposal: 6,
   "proposal-closed": 7,

@@ -141,7 +141,7 @@ function describeNewsSync(b: Body): JobRunDescription {
   const summary =
     num(b.discovered) === 0
       ? "The news source had no posts"
-      : `${plural(created, "new announcement", "new announcements")} from ${plural(num(b.discovered), "post", "posts")}`;
+      : `${plural(created, "new News item", "new News items")} from ${plural(num(b.discovered), "post", "posts")}`;
   return { status: status(failed, []), summary, problems: failed };
 }
 

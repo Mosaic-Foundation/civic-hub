@@ -57,6 +57,11 @@
  * And (2026-11-16, districts and demographics): the host gains member_about
  * (exported, keyed by user_id) and its requirement. Only those (checked
  * by script before writing).
+ * And (2026-11-18, News Sync its own plugin): the News Sync package adds its
+ * type civic.news (plugin news_sync, /news/:id) to PROCESS_TYPE_PLUGINS,
+ * process_types and detail_paths, and its panel's show_as choice becomes the
+ * pill_label text; the news_sync job's description says News items. Only those
+ * (diffed before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

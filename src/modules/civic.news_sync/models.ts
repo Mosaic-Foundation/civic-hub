@@ -1,6 +1,6 @@
 // civic.news_sync — type definitions
 //
-// Pulls a local government's news feed and creates one civic.announcement per
+// Pulls a local government's news feed and creates one News item (civic.news) per
 // new post. Auto-published — no admin queue. Click on the synced feed card
 // opens the post on the government's own site.
 //
@@ -29,7 +29,7 @@
 
 /**
  * One news entry as parsed from the source feed. The `share_url` is also the
- * dedupe key on subsequent runs — we ingest at most one civic.announcement per
+ * dedupe key on subsequent runs — we ingest at most one News item per
  * share_url ever.
  */
 export interface NewsEntry {
@@ -45,8 +45,7 @@ export interface NewsEntry {
   /**
    * Plain-text body content, with HTML stripped and whitespace collapsed.
    * Empty string when the feed didn't include one (the common case). The card
-   * UI renders an empty-body card cleanly; the hub admin can manually annotate
-   * via PATCH /announcement/:id later if desired.
+   * UI renders an empty-body card cleanly.
    */
   body: string;
   /**

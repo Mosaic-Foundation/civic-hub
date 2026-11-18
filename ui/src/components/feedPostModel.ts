@@ -50,11 +50,11 @@ export function eventToPost(
   getProcessDescription: (processId: string) => string | undefined,
   getProcessTitle: (processId: string) => string | undefined,
   /**
-   * The hub's News Sync "From" label (plugin.news_sync.from_label), when set.
-   * Each hub has one News Sync source, so the setting as it stands now names
-   * every synced post, including ones copied in before it was changed.
+   * The hub's News Sync labels (plugin.news_sync.from_label, .pill_label),
+   * when set. Each hub has one News Sync source, so the settings as they
+   * stand now name every News item, including ones copied in before a change.
    */
-  newsFromLabel?: string | null,
+  newsLabels?: { from?: string | null; pill?: string | null },
 ): FeedPostView | null {
   const activity = classifyActivity(event);
   if (!activity) return null;
@@ -73,9 +73,13 @@ export function eventToPost(
     // The type's own label (design A, navigation slice 2026-10-14): one
     // word per kind of thing, from the registry, so a plugin's type gets its
     // pill with no change here.
-    // News (posts News Sync copied in) are announcements underneath, so the
-    // registry would call them "Announcement": the classifier's word wins.
-    pillLabel: activity.surface === "news" ? activity.pill : typeDisplay(eventProcessType(event))?.label ?? activity.pill,
+    // A News item's pill is its source's (the hub's pill label as set now),
+    // and older ones' events name the announcement type: the registry's word
+    // would be wrong for both.
+    pillLabel:
+      activity.surface === "news"
+        ? newsLabels?.pill?.trim() || activity.pill
+        : typeDisplay(eventProcessType(event))?.label ?? activity.pill,
     note: ACTIVITY_NOTES[activity.kind] ?? null,
     pillKind: activity.kind,
     pillColor: activity.color,
@@ -83,7 +87,7 @@ export function eventToPost(
     timestamp: event.timestamp,
     href: activity.href,
     // A synced post says where it came from: "From Floyd County Government".
-    authorName: activity.from ? `From ${syncedFrom(newsFromLabel, activity.from)}` : authorName ?? null,
+    authorName: activity.from ? `From ${syncedFrom(newsLabels?.from, activity.from)}` : authorName ?? null,
     sample: event.sample,
   };
 }

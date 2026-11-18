@@ -192,6 +192,7 @@ function digestTitleSummary(
   const d = event.data as {
     process?: { title?: unknown };
     announcement?: { title?: unknown; body_preview?: unknown };
+    news?: { title?: unknown; body_preview?: unknown };
     proposal?: { title?: unknown };
     project?: { title?: unknown };
     headline_result?: unknown;
@@ -204,6 +205,7 @@ function digestTitleSummary(
 
   const fromPayload =
     (typeof d?.announcement?.title === "string" && d.announcement.title) ||
+    (typeof d?.news?.title === "string" && d.news.title) ||
     (typeof d?.proposal?.title === "string" && d.proposal.title) ||
     (typeof d?.project?.title === "string" && d.project.title) ||
     (typeof d?.process?.title === "string" && d.process.title) ||
@@ -267,6 +269,17 @@ function digestTitleSummary(
           ? d.announcement.body_preview
           : "";
       return { title: rawTitle ?? "New announcement", summary: truncate(preview, 160) };
+    }
+
+    case "news": {
+      // A News item's own payload, or (copied in before the split) the announcement's.
+      const preview =
+        typeof d?.news?.body_preview === "string"
+          ? d.news.body_preview
+          : typeof d?.announcement?.body_preview === "string"
+            ? d.announcement.body_preview
+            : "";
+      return { title: rawTitle ?? "News", summary: truncate(preview, 160) };
     }
 
     case "wordcloud":
@@ -373,6 +386,7 @@ const SECTION_OF: Record<BuiltinActivityKind, DigestSection> = {
   meeting: "meeting_summaries",
   announcement: "announcements",
   "announcement-author": "announcements",
+  news: "news",
   wordcloud: "word_clouds",
   proposal: "proposals",
   "proposal-closed": "proposals",
@@ -583,9 +597,7 @@ export function formatDigestText(
 function groupBySection(items: DigestItem[]): Map<DigestSection, DigestItem[]> {
   const out = new Map<DigestSection, DigestItem[]>();
   for (const item of items) {
-    // Posts News Sync copied in are announcements underneath but read as
-    // News (src/shared/newsSource.ts), so they get their own section.
-    const section = item.color === "news" ? "news" : sectionOf(item.kind);
+    const section = sectionOf(item.kind);
     const list = out.get(section) ?? [];
     list.push(item);
     out.set(section, list);

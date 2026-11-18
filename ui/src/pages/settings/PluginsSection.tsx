@@ -39,7 +39,7 @@ import {
   UrlField,
   type FormApi,
 } from "./pluginFields";
-import { NEWS_SHOW_AS_LABELS, newsFromLabel } from "../../../../src/shared/newsSource";
+import { DEFAULT_NEWS_PILL, newsFromLabel } from "../../../../src/shared/newsSource";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
 import { useHub, type Hub } from "../../config/hub";
 import { feedbackContactEmail } from "../../../../src/shared/platform";
@@ -93,20 +93,14 @@ const NEWS_CONNECTOR_LABELS: Record<string, string> = {
 
 /**
  * News Sync's panel: where the posts come from, and how they read on the feed
- * (src/shared/newsSource.ts). It saves its posts as announcements, so it says
- * so plainly when Announcements is off.
+ * (src/shared/newsSource.ts). Its posts are News items of their own, so it
+ * needs nothing else switched on (2026-11-18).
  */
 function NewsSyncPanel({ f }: { f: FormApi }) {
   const hub = useHub();
   const place = hub.isPlace ? hub.jurisdiction.split(",")[0]?.trim() : null;
   return (
     <>
-      {!hub.plugins.enabled("announcement") && (
-        <p className="form-error" role="status">
-          News Sync needs Announcements switched on. Its posts are saved as announcements, so nothing is copied in
-          while Announcements is off.
-        </p>
-      )}
       <ChoiceField
         f={f}
         k="plugin.news_sync.connector"
@@ -122,12 +116,12 @@ function NewsSyncPanel({ f }: { f: FormApi }) {
         placeholder={newsFromLabel(null, place)}
         hint={'Shown on each synced post as "From …", so residents know where it came from. Applies to every synced post, including ones copied in earlier. Left empty, it reads as shown here.'}
       />
-      <ChoiceField
+      <TextField
         f={f}
-        k="plugin.news_sync.show_as"
-        label="Show posts as"
-        labels={NEWS_SHOW_AS_LABELS}
-        hint="News gets its own News filter on the feed. Announcement puts them with the hub's own announcements. Applies to posts copied in from now on. Either way, only admins can pin one, from Admin → Announcements."
+        k="plugin.news_sync.pill_label"
+        label="Pill label"
+        placeholder={DEFAULT_NEWS_PILL}
+        hint={'The tag on each synced post in the feed, and the name of its filter: "County news", "Government announcement". Applies to every synced post, including ones copied in earlier. Left empty, it reads "News". An admin can pin any post from its page.'}
       />
     </>
   );

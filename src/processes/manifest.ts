@@ -324,7 +324,7 @@ export function defineFeatureManifest<const M extends FeatureManifest>(manifest:
 
 /** The hub's own card kinds (src/shared/feedActivity.ts BuiltinActivityKind). */
 const BUILTIN_KINDS: ReadonlySet<string> = new Set([
-  "vote-open", "vote-closed", "vote-results", "meeting", "announcement", "announcement-author", "wordcloud",
+  "vote-open", "vote-closed", "vote-results", "meeting", "announcement", "announcement-author", "news", "wordcloud",
   "proposal", "proposal-closed", "project-created", "project-updated", "conversation", "conversation-results",
   "brief", "brief-response",
 ]);

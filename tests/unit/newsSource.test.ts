@@ -1,14 +1,15 @@
 // How a post News Sync copies in is shown (src/shared/newsSource.ts).
 import { describe, expect, it } from "vitest";
-import { newsFromLabel, newsShowAs, syncedFrom, syncedSourceView } from "../../src/shared/newsSource.js";
+import { newsFromLabel, newsPillLabel, syncedFrom, syncedSourceView } from "../../src/shared/newsSource.js";
 
 describe("news source", () => {
-  it("reads anything but 'announcement' as News", () => {
-    expect(newsShowAs("announcement")).toBe("announcement");
-    expect(newsShowAs("news")).toBe("news");
-    expect(newsShowAs("")).toBe("news");
-    expect(newsShowAs(undefined)).toBe("news");
-    expect(newsShowAs("urgent")).toBe("news");
+  it("names the pill with the setting, else News", () => {
+    expect(newsPillLabel("County news")).toBe("County news");
+    expect(newsPillLabel("  Government announcement ")).toBe("Government announcement");
+    expect(newsPillLabel("")).toBe("News");
+    expect(newsPillLabel("   ")).toBe("News");
+    expect(newsPillLabel(undefined)).toBe("News");
+    expect(newsPillLabel(null)).toBe("News");
   });
 
   it("labels posts with the setting, else the place's government", () => {
@@ -22,17 +23,16 @@ describe("news source", () => {
     expect(syncedSourceView(undefined)).toBeNull();
   });
 
-  it("reads a synced post's label and show-as, defaulting to News with no label", () => {
-    expect(syncedSourceView({ origin: "news-sync" })).toEqual({ label: null, showAs: "news" });
+  it("reads a synced post's label, null when it has none", () => {
+    expect(syncedSourceView({ origin: "news-sync" })).toEqual({ label: null });
     expect(syncedSourceView({ origin: "news-sync", label: " Floyd County ", show_as: "announcement" })).toEqual({
       label: "Floyd County",
-      showAs: "announcement",
     });
   });
 
   it("never carries urgent or pinned: those are not a source's to set", () => {
     const view = syncedSourceView({ origin: "news-sync", urgent: true, pinned: true });
-    expect(view).toEqual({ label: null, showAs: "news" });
+    expect(view).toEqual({ label: null });
   });
 
   it("names a synced post by the hub's From label as set now, even one synced earlier", () => {

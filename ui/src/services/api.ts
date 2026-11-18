@@ -1335,6 +1335,27 @@ export function getAnnouncement(id: string): Promise<Announcement> {
   return request("GET", `/announcement/${id}`);
 }
 
+/** GET /news/:id: a post News Sync copied in (packages/civic.news_sync). */
+export interface NewsItem {
+  id: string;
+  type: "civic.news";
+  title: string;
+  body: string;
+  /** "From …": who its source is, as copied in. */
+  from: string | null;
+  /** Its pill as copied in ("News"). */
+  pill: string;
+  /** The original, on the source's own site. */
+  share_url: string | null;
+  connector: string | null;
+  created_at: string;
+  is_sample?: boolean;
+}
+
+export function getNewsItem(id: string): Promise<NewsItem> {
+  return request("GET", `/news/${id}`);
+}
+
 export function listAnnouncements(limit?: number): Promise<AnnouncementSummary[]> {
   const q = typeof limit === "number" ? `?limit=${limit}` : "";
   return request("GET", `/announcements${q}`);
@@ -2146,19 +2167,6 @@ export interface AdminAnnouncements {
 
 export function adminListAnnouncements(): Promise<AdminAnnouncements> {
   return request("GET", "/admin/announcements");
-}
-
-/** One post News Sync copied in (GET /admin/news-sync/items; src/shared/newsSource.ts). */
-export interface NewsSyncItem {
-  id: string;
-  /** Who it is from: "Floyd County Government". */
-  from: string;
-  show_as: "news" | "announcement";
-}
-
-/** Every post News Sync copied in; empty while News Sync is off. */
-export function adminListNewsSyncItems(): Promise<{ items: NewsSyncItem[] }> {
-  return request("GET", "/admin/news-sync/items");
 }
 
 /** Pin to the right column's card; `until` (ISO) optional. */

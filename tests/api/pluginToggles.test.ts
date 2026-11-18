@@ -369,7 +369,8 @@ const PLUGIN_CASES: PluginCase[] = [
   { id: "admin_digest", job: "admin-digest" },
   { id: "search", route: { method: "GET", path: () => "/search?q=anything" } },
   { id: "feedback", route: { method: "GET", path: () => "/admin/feedback", admin: true }, digest: "feedback" },
-  { id: "news_sync", job: "news-sync" },
+  // Its own type since 2026-11-18: a News item's page, and its job.
+  { id: "news_sync", route: { method: "GET", path: () => `/news/${fixtures.get("civic.news")?.id}` }, job: "news-sync", types: ["civic.news"] },
   { id: "members", route: { method: "GET", path: () => "/members/summary" } },
 ];
 
@@ -392,6 +393,14 @@ function fixtureState(type: string, pending = false): Record<string, unknown> {
     return { publication_status: pending ? "pending" : "published" };
   }
   if (type === "civic.meeting_summary") return { approval_status: pending ? "pending" : "published" };
+  if (type === "civic.news") {
+    return {
+      type: "civic.news",
+      content: { title: "Plugin switch fixture", body: "" },
+      source: { origin: "news-sync", share_url: "https://news.example.test/p/1", ingested_at: "2026-11-18T00:00:00Z" },
+      created_at: "2026-11-18T00:00:00Z",
+    };
+  }
   return {};
 }
 

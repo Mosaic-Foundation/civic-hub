@@ -88,7 +88,7 @@ const HOST_JOBS: readonly JobSpec[] = [
     plugin: "news_sync",
     path: "/news-sync/run",
     schedule: "0 12 * * *",
-    description: "News feed to announcements, per hub that configured a feed",
+    description: "News feed to News items, per hub that configured a feed",
     // Production's vercel.json on `main` schedules the old name until the
     // multi-tenant cutover deploys this list; removed then, together with its
     // entry in scripts/place-name-allowlist.txt.

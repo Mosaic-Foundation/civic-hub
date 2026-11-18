@@ -105,6 +105,12 @@ vi.mock("../../src/services/processService.js", () => ({
   },
 }));
 
+// Which originals News Sync already copied in: none here.
+vi.mock("../../src/services/processRows.js", async (orig) => ({
+  ...(await orig<typeof import("../../src/services/processRows.js")>()),
+  syncedShareUrls: async () => new Set<string>(),
+}));
+
 vi.mock("../../src/events/eventEmitter.js", () => ({
   emitEvent: async () => ({}),
 }));
@@ -162,20 +168,36 @@ describe("news sync — one pass, each hub its own feed", () => {
     expect(athens).toHaveLength(2);
     expect(floyd).toHaveLength(2);
 
+    for (const c of [...athens, ...floyd]) {
+      // News items of their own (2026-11-18), not announcements.
+      expect((c.definition as { type: string }).type).toBe("civic.news");
+    }
     for (const c of athens) {
       expect(c.jurisdiction).toBe("us-va-athens");
-      expect((c.state as { author_role: string }).author_role).toBe("Town of Athens Government");
+      expect((c.state as { source: { label?: string } }).source.label).toBe("Town of Athens Government");
       expect(JSON.stringify(c)).not.toMatch(/floyd/i);
     }
     for (const c of floyd) {
       expect(c.jurisdiction).toBe("us-va-floyd");
-      expect((c.state as { author_role: string }).author_role).toBe("Floyd County Government");
-      // Shown as News, from the hub's own government (src/shared/newsSource.ts).
-      expect((c.state as { source: { label?: string; show_as?: string } }).source).toMatchObject({
+      // From the hub's own government, under the default pill (src/shared/newsSource.ts).
+      expect((c.state as { source: { label?: string; pill?: string } }).source).toMatchObject({
         label: "Floyd County Government",
-        show_as: "news",
+        pill: "News",
       });
     }
+  });
+
+  it("runs with Announcements switched off: News Sync needs nothing else (2026-11-18)", async () => {
+    const saved = SETTINGS.athens;
+    SETTINGS.athens = { ...saved, "plugin.announcement.enabled": "false", "plugin.news_sync.pill_label": "Town news" };
+    try {
+      await runJob("news_sync", "athens");
+    } finally {
+      SETTINGS.athens = saved;
+    }
+    expect(fetched).toEqual([ATHENS_NEWS_FEED_URL]);
+    expect(created).toHaveLength(2);
+    for (const c of created) expect((c.state as { source: { pill?: string } }).source.pill).toBe("Town news");
   });
 
   it("runs only the named hub with ?hub=", async () => {

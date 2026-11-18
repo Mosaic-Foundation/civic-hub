@@ -23,6 +23,7 @@ const EXPECTED: Record<string, string[]> = {
   "civic.project": ["process.sentiment"],
   "civic.brief": [],
   "civic.announcement": [],
+  "civic.news": [],
   "civic.meeting_summary": [],
   "civic.polis_deliberation": [],
   // Plugin Events (2026-10-27): saying you're going, and taking it back.

@@ -122,7 +122,7 @@
     "anchor": "plugins-meeting-summary"
   },
   "plugins.news_sync": {
-    "text": "Copies posts from your government's own news feed into the feed as announcements. It needs a feed address, and Announcements must be on too.",
+    "text": "Copies posts from another site's news feed, such as your government's, into the feed as News items with where they came from. It needs a feed address and nothing else switched on.",
     "page": "/reference/plugins",
     "anchor": "plugins-news-sync"
   },
@@ -476,7 +476,7 @@
     "anchor": "plugin-news-sync-connector"
   },
   "plugin.news_sync.source_url": {
-    "text": "The address of the news feed to copy from. Posts are saved as announcements underneath, so Announcements must be on too. Left empty, news sync does nothing.",
+    "text": "The address of the news feed to copy from. Left empty, news sync does nothing.",
     "page": "/reference/plugins",
     "anchor": "plugin-news-sync-source-url"
   },
@@ -486,10 +486,10 @@
     "anchor": "plugin-news-sync-from-label",
     "pending": true
   },
-  "plugin.news_sync.show_as": {
-    "text": "News (the default) gives copied posts a News label and their own News filter on the feed. Announcement shows them with the hub's own announcements. Only admins can pin one.",
+  "plugin.news_sync.pill_label": {
+    "text": "The tag on each copied post in the feed, and the name of the feed's filter for them, such as \"County news\". Left empty, it reads \"News\". An admin can pin any post from its page.",
     "page": "/reference/plugins",
-    "anchor": "plugin-news-sync-show-as",
+    "anchor": "plugin-news-sync-pill-label",
     "pending": true
   },
   "plugin.digest.send_hour": {

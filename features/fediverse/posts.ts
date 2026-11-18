@@ -38,6 +38,7 @@ const OPENING: Readonly<Record<string, string>> = {
   conversation: "New conversation",
   announcement: "Announcement",
   "announcement-author": "Announcement",
+  news: "News",
   event: "New event",
 };
 const DECIDED: Readonly<Record<string, string>> = {

@@ -34,7 +34,8 @@ export function typeColorSlug(type: string): string {
 
 /**
  * The colour of a type's own feed cards (feed-pill--type-<slug>): the colour
- * its manifest's first card rule gives. An announcement is "announcement"; a
+ * its manifest's first card rule gives. An announcement is "announcement", a
+ * News item "news"; a
  * brief wears its source's colour, which a list of mixed types does not know,
  * so "generic"; a type with no cards, "generic".
  */
@@ -42,6 +43,7 @@ export function feedColorSlug(type: string): string {
   const card = manifestOf(type)?.feed?.cards[0]?.card;
   if (!card || card === "brief") return "generic";
   if (card === "announcement") return "announcement";
+  if (card === "news") return "news";
   return card.color;
 }
 

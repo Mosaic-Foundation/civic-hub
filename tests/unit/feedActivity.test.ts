@@ -169,7 +169,7 @@ describe("classifyActivity — result_published discrimination", () => {
         announcement: { author_role: "Floyd County Government", source: { origin: "floyd-news" } },
       }),
     );
-    expect(a).toMatchObject({ surface: "news", kind: "announcement", color: "news", pill: "News", from: "Floyd County Government" });
+    expect(a).toMatchObject({ surface: "news", kind: "news", color: "news", pill: "News", from: "Floyd County Government" });
   });
 
   it("a synced post carries its source's own From label", () => {
@@ -184,7 +184,7 @@ describe("classifyActivity — result_published discrimination", () => {
     expect(a).toMatchObject({ surface: "news", from: "Floyd County" });
   });
 
-  it("a synced post set to show as an announcement reuses the admin palette, and still says where it came from", () => {
+  it("a synced post stored before the split reads as News, whatever its old show-as said (2026-11-18)", () => {
     const a = classifyActivity(
       ev("civic.process.result_published", {
         announcement: {
@@ -193,13 +193,22 @@ describe("classifyActivity — result_published discrimination", () => {
         },
       }),
     );
-    expect(a).toMatchObject({
-      surface: "announcement",
-      kind: "announcement",
-      color: "announcement",
-      pill: "Floyd County Gov",
-      from: "Floyd County Government",
-    });
+    expect(a).toMatchObject({ surface: "news", kind: "news", color: "news", pill: "News", from: "Floyd County Government" });
+  });
+
+  it("a News item reads its source's pill and From label, else News", () => {
+    const own = classifyActivity(
+      ev("civic.process.result_published", {
+        ...withType("civic.news"),
+        news: { title: "Road work", source: { share_url: "https://example.gov/p/1", label: "Town of Athens", pill: "Town news" } },
+      }),
+    );
+    expect(own).toMatchObject({ surface: "news", kind: "news", color: "news", pill: "Town news", from: "Town of Athens" });
+    const bare = classifyActivity(
+      ev("civic.process.result_published", { ...withType("civic.news"), news: { title: "Road work", source: {} } }),
+    );
+    expect(bare).toMatchObject({ surface: "news", kind: "news", pill: "News" });
+    expect(bare?.from).toBeUndefined();
   });
 
   it("a hand-posted announcement has no From line", () => {

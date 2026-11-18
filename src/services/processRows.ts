@@ -99,6 +99,25 @@ export async function boardRows(): Promise<BoardRow[]> {
   );
 }
 
+/**
+ * Every original's permalink News Sync has copied in, whatever the item's
+ * status: an archived one stays archived rather than coming back on the next
+ * run. Announcements are read too, for posts synced before News Sync had its
+ * own type (2026-11-18).
+ */
+export async function syncedShareUrls(): Promise<Set<string>> {
+  const rows = await readAll((from, to) =>
+    db()
+      .from("processes")
+      .select<{ share_url: string | null }>("share_url:state->source->>share_url")
+      .in("type", ["civic.news", "civic.announcement"])
+      .not("state->source->>share_url", "is", null)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
+  return new Set(rows.flatMap((r) => (r.share_url ? [r.share_url] : [])));
+}
+
 /** The type and title of each of these processes, read in chunks of 200 ids. */
 export async function processTypesAndTitles(
   ids: string[],
