@@ -38,7 +38,7 @@
   "engines": {
     "node": "24.x"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@civic-social/plugin-sdk": "file:kit/sdk",
     "@fedify/express": "2.4.5",

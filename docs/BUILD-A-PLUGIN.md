@@ -483,8 +483,8 @@ when its files are exactly the signed ones; change one byte and it needs a new v
 
 ## The license
 
-The SDK carries the hub's engine, which is moving to the AGPL; until that is official, the `LICENSE` in each package is
-what applies. Building and testing plugins with it is what it is for. Your plugin's own code is yours to license.
+The SDK carries the hub's engine, which is licensed under the GNU AGPL 3.0 or later (the `LICENSE` in each
+package). Building and testing plugins with it is what it is for. Your plugin's own code is yours to license.
 
 ## Where things are
 
