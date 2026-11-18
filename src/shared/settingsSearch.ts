@@ -102,6 +102,7 @@ export const SEARCH_WORDS: Readonly<Record<string, SearchWords>> = {
   "plugins.brief": { words: ["briefs", "report", "results", "officials", "summary of results"] },
   "plugins.announcement": { words: ["announcements", "news", "notices", "posts", "updates"] },
   "plugins.meeting_summary": { words: ["meetings", "minutes", "agendas", "council meetings", "ai summaries", "recordings"] },
+  "plugins.pinning": { words: ["pin", "pinned", "sticky", "right column", "featured"] },
   "plugins.news_sync": { words: ["rss", "news feed", "feed import", "import news", "atom"] },
   "plugins.assistant": { words: ["ai", "artificial intelligence", "writing help", "llm", "claude", "chatbot"] },
   "plugins.search": { words: ["search", "find", "full text"] },

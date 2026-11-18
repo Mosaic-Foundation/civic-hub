@@ -121,6 +121,12 @@
     "page": "/reference/plugins",
     "anchor": "plugins-meeting-summary"
   },
+  "plugins.pinning": {
+    "text": "Lets admins pin any item, of any kind, to the right column's Pinned card, from its page or when approving it, with an optional end date. Admin → Pinned lists them. Switched off, nothing shows as pinned; urgent announcements still do.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-pinning",
+    "pending": true
+  },
   "plugins.news_sync": {
     "text": "Copies posts from another site's news feed, such as your government's, into the feed as News items with where they came from. It needs a feed address and nothing else switched on.",
     "page": "/reference/plugins",

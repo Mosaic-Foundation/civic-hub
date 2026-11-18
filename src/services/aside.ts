@@ -67,12 +67,14 @@ export async function readAside(opts: { isAdmin: boolean }): Promise<AsideFacts>
 /** Pinned items and urgent announcements, right now: urgent first, then newest first. */
 async function readBoard(): Promise<AsideAnnouncement[]> {
   const now = Date.now();
+  const pinning = isPluginEnabledSync("pinning");
   const rows = (await boardRows())
     // A switched-off plugin's items leave the card as they leave the feed.
     .filter((r) => isProcessTypeEnabled(r.type))
     .map((r) => ({ r, marks: r.state as BoardMarks & { moderation?: { removed?: boolean } | null; created_at?: string } }))
     .filter(({ marks }) => !marks.moderation?.removed)
-    .map(({ r, marks }) => ({ r, marks, pinned: isPinnedNow(marks, now), urgent: isUrgentNow(marks, now) }))
+    // With the hub's Pinning switch off, a pin shows nowhere; urgent stays.
+    .map(({ r, marks }) => ({ r, marks, pinned: pinning && isPinnedNow(marks, now), urgent: isUrgentNow(marks, now) }))
     .filter((x) => x.pinned || x.urgent);
   const at = (x: (typeof rows)[number]) => x.marks.created_at ?? x.r.created_at;
   rows.sort((a, b) => Number(b.urgent) - Number(a.urgent) || at(b).localeCompare(at(a)));

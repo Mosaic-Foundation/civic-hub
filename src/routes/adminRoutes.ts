@@ -31,7 +31,7 @@ import {
   handleHideComment,
   handleRestoreComment,
 } from "../controllers/moderationController.js";
-import { handlePinProcess, handleUnpinProcess } from "../controllers/pinsController.js";
+import { handleListPins, handlePinProcess, handleUnpinProcess } from "../controllers/pinsController.js";
 import { handleGetHubAdminLog } from "../controllers/hubAdminLogController.js";
 import { handleGetSetupCard, handlePostSetupCard } from "../controllers/hubSetupCardController.js";
 import {
@@ -99,9 +99,11 @@ router.get("/archived", handleListArchivedProcesses);
 router.get("/edits", handleAdminListEdits);
 router.post("/processes/:id/archive", handleArchiveProcess);
 router.post("/processes/:id/restore", handleRestoreProcess);
-// Pin any item to the right column's card, or unpin it (Adam, 2026-11-18).
-router.post("/processes/:id/pin", handlePinProcess);
-router.post("/processes/:id/unpin", handleUnpinProcess);
+// Pin any item to the right column's card, or unpin it, and Admin → Pinned
+// (Adam, 2026-11-18), while the hub's Pinning switch is on.
+router.post("/processes/:id/pin", requirePlugin("pinning"), handlePinProcess);
+router.post("/processes/:id/unpin", requirePlugin("pinning"), handleUnpinProcess);
+router.get("/pins", requirePlugin("pinning"), handleListPins);
 
 // Feedback archive (read-only). Everything residents sent through the
 // feedback form, newest first, optionally filtered to one category.

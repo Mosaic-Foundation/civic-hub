@@ -108,6 +108,52 @@ export async function unpinItem(id: string, adminId: string): Promise<Process> {
   return process;
 }
 
+/** One row of Admin → Pinned. */
+export interface PinnedRow {
+  id: string;
+  type: string;
+  type_label: string;
+  title: string;
+  url: string;
+  pinned: boolean;
+  pinned_at: string | null;
+  pinned_until: string | null;
+  urgent: boolean;
+  urgent_until: string | null;
+}
+
+/**
+ * Admin → Pinned: every item pinned right now, of any type whose plugin is
+ * on, and every announcement marked urgent; urgent first, then the newest
+ * pin first (as the card orders them). Removed ones are left out.
+ */
+export async function listPinned(): Promise<{ items: PinnedRow[]; pinned_count: number; pinned_max: number }> {
+  const now = Date.now();
+  const items = (await boardRows())
+    .filter((r) => isProcessTypeEnabled(r.type))
+    .map((r) => ({ r, marks: r.state as Marks & { urgent_until?: string | null; content?: { title?: string } } }))
+    .filter(({ marks }) => !marks.moderation?.removed && (isPinnedNow(marks, now) || isUrgentNow(marks, now)))
+    .map(({ r, marks }): PinnedRow => {
+      const pinned = isPinnedNow(marks, now);
+      const urgent = isUrgentNow(marks, now);
+      const manifest = getManifest(r.type);
+      return {
+        id: r.id,
+        type: r.type,
+        type_label: manifest?.descriptor.display.label ?? r.type,
+        title: marks.content?.title || r.title,
+        url: manifest?.detailPath(r.id) ?? `/process/${r.id}`,
+        pinned,
+        pinned_at: pinned ? marks.pinned_at ?? null : null,
+        pinned_until: pinned ? marks.pinned_until ?? null : null,
+        urgent,
+        urgent_until: urgent ? marks.urgent_until ?? null : null,
+      };
+    })
+    .sort((a, b) => Number(b.urgent) - Number(a.urgent) || (b.pinned_at ?? "").localeCompare(a.pinned_at ?? ""));
+  return { items, pinned_count: items.filter((i) => i.pinned).length, pinned_max: PINNED_MAX };
+}
+
 /** An item's marks as readers see them: an end date that has passed reads as off. */
 export function pinView(process: Process, now: number = Date.now()) {
   const marks = marksOf(process);

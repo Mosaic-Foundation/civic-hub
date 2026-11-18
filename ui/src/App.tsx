@@ -28,6 +28,7 @@ import Home from "./pages/Home";
 import {
   About,
   AdminArchived,
+  AdminPinned,
   AdminEdits,
   AdminFeedback,
   AdminModeration,
@@ -318,6 +319,8 @@ function AppContent() {
                     the page. */}
                 <Route path="/admin/moderation" element={<AdminGuard><AdminModeration /></AdminGuard>} />
                 <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
+                {/* Everything pinned to the right column's card (2026-11-18), while Pinning is on. */}
+                <Route path="/admin/pinned" element={whenPlugin("pinning", <AdminGuard><AdminPinned /></AdminGuard>)} />
                 <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
                 {/* Read-only archive of resident feedback, incl. topic suggestions. */}
                 <Route path="/admin/feedback" element={whenPlugin("feedback", <AdminGuard><AdminFeedback /></AdminGuard>)} />

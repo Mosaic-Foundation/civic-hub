@@ -1599,6 +1599,25 @@ export function adminUnpinProcess(id: string): Promise<PinState> {
   return request("POST", `/admin/processes/${id}/unpin`);
 }
 
+/** One row of Admin → Pinned (GET /admin/pins). */
+export interface PinnedRow {
+  id: string;
+  type: string;
+  type_label: string;
+  title: string;
+  url: string;
+  pinned: boolean;
+  pinned_at: string | null;
+  pinned_until: string | null;
+  urgent: boolean;
+  urgent_until: string | null;
+}
+
+/** Everything pinned or urgent now, urgent first; the count against the cap. */
+export function adminListPins(): Promise<{ items: PinnedRow[]; pinned_count: number; pinned_max: number }> {
+  return request("GET", "/admin/pins");
+}
+
 export function getMeetingSummary(id: string): Promise<PublicMeetingSummary> {
   return request("GET", `/meeting-summary/${id}`);
 }
@@ -2822,10 +2841,16 @@ export function adminGetReview(reviewId: string): Promise<ReviewDetail> {
   return request("GET", `/admin/reviews/${reviewId}`);
 }
 
+/**
+ * Approve and post. `pin` pins it once approved (Pinning on): `null` for no
+ * end date, an ISO date for one. A refused pin leaves the approval standing
+ * and comes back as `pin_error`.
+ */
 export function adminApproveReview(
   reviewId: string,
-): Promise<{ review: ProcessReviewSummary; process_id: string }> {
-  return request("POST", `/admin/reviews/${reviewId}/approve`);
+  pin?: { until: string | null },
+): Promise<{ review: ProcessReviewSummary; process_id: string; pin_error?: string }> {
+  return request("POST", `/admin/reviews/${reviewId}/approve`, pin ? { pin: { pinned_until: pin.until } } : undefined);
 }
 
 export function adminRequestChanges(

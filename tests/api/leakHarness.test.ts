@@ -469,6 +469,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /search/": { query: [`?q=${MARKER_B}`, "?q=Vote", "?q=Notice&sort=newest", `?q=${MARKER_A}`] },
   "GET /meeting-summary/:id": {},
   "GET /news/:id": {},
+  "GET /admin/pins": {},
   "GET /unsubscribe/digest": { query: [] /* filled in below: none, a bad token, Floyd's resident's token */ },
   "GET /unsubscribe/notices": { query: [] /* filled in below: none, a bad token, Floyd's resident's notices token */ },
   "GET /events/": { query: ["", "?limit=500", "?page=true&limit=200", `?context=${"x"}`] },

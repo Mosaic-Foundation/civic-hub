@@ -179,6 +179,13 @@ const PATHS: Record<string, ReactElement> = {
     </>
   ),
   close: <path d="M6 6l12 12M18 6L6 18" />,
+  // A push pin (Admin → Pinned, 2026-11-18).
+  pin: (
+    <>
+      <path d="M9 4h6l-1 6 3 3H7l3-3z" />
+      <path d="M12 16v5" />
+    </>
+  ),
   generic: (
     <>
       <rect x="4" y="4" width="16" height="16" rx="3" />

@@ -62,6 +62,8 @@
  * process_types and detail_paths, and its panel's show_as choice becomes the
  * pill_label text; the news_sync job's description says News items. Only those
  * (diffed before writing).
+ * And (2026-11-18, pinning any item): the hub feature `pinning` (order 95,
+ * after News sync) and its switch. Only those (diffed before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

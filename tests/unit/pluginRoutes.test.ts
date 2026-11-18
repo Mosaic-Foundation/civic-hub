@@ -101,6 +101,7 @@ const ADDED: Record<string, string> = {
   // Pinning any item (2026-11-18): the kernel's, beside archive and restore.
   "POST /admin/processes/:id/pin": "Pin any item to the right column's card",
   "POST /admin/processes/:id/unpin": "Unpin an item",
+  "GET /admin/pins": "Admin → Pinned: everything pinned or urgent",
   // News Sync's own type (2026-11-18): a News item's page reads it.
   "GET /news/:id": "News sync: one News item, for its page",
 };

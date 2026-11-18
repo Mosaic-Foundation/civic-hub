@@ -64,6 +64,7 @@ export const AdminReviews = page(() => import("./pages/AdminReviews"), true);
 export const AdminSettings = page(() => import("./pages/AdminSettings"), true);
 export const AdminModeration = page(() => import("./pages/AdminModeration"), true);
 export const AdminArchived = page(() => import("./pages/AdminArchived"), true);
+export const AdminPinned = page(() => import("./pages/AdminPinned"), true);
 export const AdminEdits = page(() => import("./pages/AdminEdits"), true);
 export const AdminFeedback = page(() => import("./pages/AdminFeedback"), true);
 export const ContactCivicSocial = page(() => import("./pages/ContactCivicSocial"), true);

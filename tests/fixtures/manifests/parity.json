@@ -10,6 +10,7 @@
     "announcement",
     "meeting_summary",
     "news_sync",
+    "pinning",
     "assistant",
     "search",
     "feedback",
@@ -493,6 +494,7 @@
     "announcement",
     "meeting_summary",
     "news_sync",
+    "pinning",
     "assistant",
     "search",
     "feedback",
@@ -541,6 +543,10 @@
     },
     {
       "key": "plugin.news_sync.enabled",
+      "kind": "boolean"
+    },
+    {
+      "key": "plugin.pinning.enabled",
       "kind": "boolean"
     },
     {
