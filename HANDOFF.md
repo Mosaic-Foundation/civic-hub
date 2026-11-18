@@ -4,6 +4,27 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Pinning, phase 1: Admin → Pinned, the Pinning switch, pin on approve — 2026-11-18
+
+On dev, unpushed, no migration. Adam (2026-11-18): pinning is the hub's, for every plugin's items, admins only;
+Urgent stays an Announcements feature, listed first on the card.
+
+- **Pinning switch** (hub feature `pinning`, order 95, `plugin.pinning.enabled`, on by default): off answers 404 on
+  `POST /admin/processes/:id/pin|unpin` and `GET /admin/pins`, hides the Pin button, Admin → Pinned and
+  "Pin it once approved", and the card shows no pinned rows (urgent announcements stay). Stored pins are kept.
+  Announcements' own pin controls (its form, page bar, admin tab) are the package's and ignore the switch until phase 2.
+- **Admin → Community → Pinned** (`ui/src/pages/AdminPinned.tsx`, `GET /admin/pins`, `listPinned`): every item
+  pinned now, any type, and urgent announcements, urgent first; Change end date, Unpin; "n of 10 pinned".
+- **Pin button** on item pages now asks for an optional end date.
+- **Pin on approve:** `POST /admin/reviews/:id/approve { pin: { pinned_until } }` pins what it posts; a refused
+  pin (the cap) leaves the approval standing and answers `pin_error`. The Approve screen's checkbox and date.
+  Admin-published items: the Pin button is on the page they land on (the drafting pages are being moved by
+  kernel-extraction, so no checkbox there yet).
+- `docs/BUILD-A-PLUGIN.md` "Pinning (nothing to do)".
+- **Phase 2, after kernel-extraction merges dev:** Announcements drops its pin routes, form checkbox, page pin
+  button and own cap (a new Announcements version); pins move from item state to a hub-owned place (one migration);
+  urgent announcements reach the card through the package's contribution slot.
+
 ## News Sync on its own, and pinning any item — 2026-11-18
 
 On dev, unpushed. **Two migrations** (20261118171305 the News Sync 0.1.0 catalog entry, 20261118180000 the
