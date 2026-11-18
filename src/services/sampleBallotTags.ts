@@ -18,6 +18,7 @@ import { currentHubId } from "../config/hubContext.js";
 import { hubModeSync } from "./hubSettings.js";
 import { currentAboutConfig } from "../modules/civic.about/index.js";
 import { sampleProcessId } from "../models/sampleContent.js";
+import { sampleProcessIdsIn } from "./processRows.js";
 import { AGE_BRACKETS, type AgeBracket } from "../shared/aboutYou.js";
 
 export interface SampleBallotTag {
@@ -66,8 +67,7 @@ export async function tagUntaggedSampleBallots(voteTemplateKeys: readonly string
   const tagged: string[] = [];
   for (const key of voteTemplateKeys) {
     const processId = sampleProcessId(hubId, key);
-    const proc = await db.from("processes").select<{ is_sample: boolean | null }>("is_sample").eq("id", processId).maybeSingle();
-    if (!proc?.is_sample) continue;
+    if ((await sampleProcessIdsIn([processId])).length === 0) continue;
     const rows = await db
       .from("vote_records")
       .select<{ choice: string; district_id: string | null; age_bracket: string | null }>("choice, district_id, age_bracket")
