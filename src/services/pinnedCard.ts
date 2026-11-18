@@ -25,7 +25,24 @@ async function collect(read: (card: PluginPinnedCard) => Promise<PinnedCardItem[
 
 /** The plugins' items for the top of the card, right now. */
 export function contributedFirst(): Promise<PinnedCardItem[]> {
-  return collect((card) => card.first());
+  return collect(async (card) => (card.first ? card.first() : []));
+}
+
+/**
+ * The word a pinned item shows for its type: its plugin's own (`label`), else
+ * null for the type's label. A plugin's failure reads as null and is reported.
+ */
+export function pinnedItemLabel(type: string, item: { process_id: string; state: Record<string, unknown> }): string | null {
+  for (const p of loadedPackages()) {
+    if (p.type !== type || !p.server.pinnedCard?.label) continue;
+    try {
+      return p.server.pinnedCard.label(item)?.trim() || null;
+    } catch (err) {
+      reportError("pinned_card_failed", err instanceof Error ? err.message : String(err), { package: p.pkg.name }, err);
+      return null;
+    }
+  }
+  return null;
 }
 
 /**

@@ -16,7 +16,7 @@
 
 import { getProcess } from "./processService.js";
 import { processTypesAndTitles, publicCardRows, type CardRow } from "./processRows.js";
-import { contributedFirst } from "./pinnedCard.js";
+import { contributedFirst, pinnedItemLabel } from "./pinnedCard.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { NON_PUBLIC_STATUSES } from "./processLifecycle.js";
 import { isProcessTypeEnabled } from "./pluginGate.js";
@@ -176,7 +176,7 @@ export async function listPinned(): Promise<{ items: PinnedRow[]; pinned_count: 
     rows.set(p.process_id, {
       id: p.process_id,
       type: p.type,
-      type_label: labelOf(p.type),
+      type_label: pinnedItemLabel(p.type, { process_id: p.process_id, state: p.state }) ?? labelOf(p.type),
       title: title || p.title,
       url: getManifest(p.type)?.detailPath(p.process_id) ?? `/process/${p.process_id}`,
       pinned: true,

@@ -376,10 +376,12 @@ pinnedCard: {
   async first() { return [{ process_id, title, published_at, url: `/my-type/${id}`, urgent: true, until }]; },
   // Optional: a few rows for a card nothing is pinned to (the card is then named after your type's plural).
   async fill({ isAdmin }) { return newestFew; },
+  // Optional: the word a pinned item of your type shows instead of the type's label (News Sync: the hub's pill label).
+  label: ({ process_id, state }) => mySetting || null,
 },
 ```
 
-The hub calls these only while your plugin is on. A failure leaves your rows out and is reported; the card still shows.
+All three are optional. The hub calls `first` and `fill` only while your plugin is on. A failure leaves your rows out and is reported; the card still shows.
 
 ### Member information (districts and demographics)
 

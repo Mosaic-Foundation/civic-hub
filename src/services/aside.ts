@@ -23,7 +23,7 @@
 import { getManifest } from "../processes/registry.js";
 import { memberVisibility } from "./members.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
-import { contributedFill, contributedFirst } from "./pinnedCard.js";
+import { contributedFill, contributedFirst, pinnedItemLabel } from "./pinnedCard.js";
 import { readVisiblePins } from "./pins.js";
 import type { PinnedCardItem } from "../plugins/pinnedCard.js";
 
@@ -86,7 +86,7 @@ async function readBoard(): Promise<AsideAnnouncement[]> {
     .map((p): AsideAnnouncement => {
       const state = p.state as { content?: { title?: string }; created_at?: string };
       const manifest = getManifest(p.type);
-      const label = manifest?.descriptor.display.label;
+      const label = pinnedItemLabel(p.type, { process_id: p.process_id, state: p.state }) ?? manifest?.descriptor.display.label;
       return {
         process_id: p.process_id,
         title: state.content?.title || p.title,

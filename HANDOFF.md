@@ -28,6 +28,10 @@ Announcements feature, listed first on the Pinned card.
   (`readVisiblePins`: a pin on an archived or removed item, or on a switched-off plugin, holds no place and comes
   back with its item); Announcements' `pinnedCard` reads only urgent rows and the newest few, through a new
   `processesOf().list({ where, limit })`; the migration reads a malformed pin date as missing instead of stopping.
+- **News on the Pinned card (Nov 18, from the Civic Hub Dev handoff):** a pinned News item shows the hub's own
+  pill label (Settings → News sync → Pill label), else the pill it was copied in with, on the card and on Admin →
+  Pinned, through a new optional `pinnedCard.label`. News Sync 0.2.0's catalog entry regenerated
+  (`20261118234932`). Test: `newsItems.test.ts`.
 - **Visible changes for Adam's eye:** the card is called "Pinned" whenever something is pinned or urgent (before:
   "Announcements" unless a non-announcement was pinned), and a pinned announcement's row reads "Announcement ·"
   like other types. Admins pin an announcement from the page's admin row, not the post form.

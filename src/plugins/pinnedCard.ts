@@ -26,10 +26,17 @@ export interface PinnedCardItem {
 
 export interface PluginPinnedCard {
   /** Its items for the top of the card, right now (each with its own rule for "now"). */
-  first(): Promise<PinnedCardItem[]>;
+  first?(): Promise<PinnedCardItem[]>;
   /**
    * A few items for the card when nothing is pinned and no plugin has one for
    * the top. `isAdmin`: the reader is an admin (who sees what the feed shows an admin).
    */
   fill?(opts: { isAdmin: boolean }): Promise<PinnedCardItem[]>;
+  /**
+   * The word a pinned item of this plugin's type shows on the card and on
+   * Admin → Pinned, when it is not the type's label: News Sync's hub-chosen
+   * pill ("Updates"). Null or undefined: the type's label. Called for each
+   * pinned item of its type; keep it quick (no reads beyond settings).
+   */
+  label?(item: { process_id: string; state: Record<string, unknown> }): string | null | undefined;
 }
