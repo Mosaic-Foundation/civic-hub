@@ -1,5 +1,5 @@
 -- A plugin catalog entry, written by `npm run catalog:add` (ADR-014). Additive.
--- @civic-social/plugin-announcement@0.4.0 passed the conformance suite (c87e14f+uncommitted). The row waits,
+-- @civic-social/plugin-announcement@0.4.0 passed the conformance suite (c6bd3cd+uncommitted). The row waits,
 -- 'pending', for the operator to approve it in the console; until then the
 -- loader does not mount this version on the deployment. The console signs it as
 -- it approves it (ADR-015).
@@ -9,12 +9,12 @@ INSERT INTO plugin_catalog (package, version, hash, display_name, plugin, proces
 VALUES (
   '@civic-social/plugin-announcement',
   '0.4.0',
-  'sha256:15917ac505b1b42011cd40d4a57b47e8b4782b99d835c5c6e4dcfe6e3b9baddb',
+  'sha256:c63983c206a22d39c4358750f42707e66dd5f9a941cb041efe782c040a31cc52',
   'Announcements',
   'announcement',
   'civic.announcement',
   '{"activities":{"emit":["civic.process.result_published"],"listen":[]},"state":{"read":["own-process"],"write":["own-process"],"tables":[]},"adapters":["mail"],"network":{"egress":[]},"identity":{"claims":["participant-ref"]},"ui":{"surfaces":["process-page","create-page","feed-card","settings-panel"]}}'::jsonb,
-  '{"result":"passed","ran_at":"2026-11-17T02:45:04.548Z","commit":"c87e14f+uncommitted","walked":true}'::jsonb,
+  '{"result":"passed","ran_at":"2026-11-18T21:11:40.739Z","commit":"c6bd3cd+uncommitted","walked":true}'::jsonb,
   'pending',
   true,
   true

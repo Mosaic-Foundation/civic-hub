@@ -20,20 +20,13 @@ function bodyPreview(body: string): string {
 }
 
 /**
- * Resolve the action_url_path for an announcement event.
- *
- * - Synced announcements (`state.source.share_url` set) emit the absolute
- *   external URL as the path. The event emitter detects this and stores
- *   it as the action_url verbatim, so feed-card clicks route directly to
- *   the source (e.g. floydcova.gov/post/...).
- * - Hand-authored announcements emit the internal /announcement/:id path,
- *   prefixed with the hub's UI base by the event emitter.
+ * An announcement event's action_url_path: its own /announcement/:id page,
+ * prefixed with the hub's UI base by the event emitter. (Posts News Sync
+ * copied in carried their original's address here until they became News
+ * items of their own, 2026-11-18.)
  */
-function actionPathFor(
-  ctx: AnnouncementProcessContext,
-  state: AnnouncementProcessState,
-): string {
-  return state.source?.share_url ?? announcementPath(ctx.process_id);
+function actionPathFor(ctx: AnnouncementProcessContext): string {
+  return announcementPath(ctx.process_id);
 }
 
 export async function emitAnnouncementCreated(
@@ -48,7 +41,7 @@ export async function emitAnnouncementCreated(
     process_id: ctx.process_id,
     jurisdiction: ctx.jurisdiction,
     processType: "civic.announcement",
-    action_url_path: actionPathFor(ctx, state),
+    action_url_path: actionPathFor(ctx),
     data: {
       announcement: {
         title: state.content.title,
@@ -56,7 +49,6 @@ export async function emitAnnouncementCreated(
         author_role: state.author_role,
         official_type: state.official_type ?? null,
         author_display_name: state.author_display_name ?? null,
-        source: state.source ?? null,
       },
     },
     timestamp: opts.timestamp,
@@ -68,9 +60,7 @@ export async function emitAnnouncementCreated(
  * and go directly to publication. See HANDOFF.md for the spec-compliance
  * note about skipped phases for instant-publish announcements.
  *
- * Sync paths (e.g. floyd-news-sync) pass `opts.timestamp` to backdate
- * the event to the underlying content's real-world publication time so
- * the feed orders synced items chronologically.
+ * `opts.timestamp` backdates the event (sample content).
  */
 export async function emitAnnouncementResultPublished(
   ctx: AnnouncementProcessContext,
@@ -84,7 +74,7 @@ export async function emitAnnouncementResultPublished(
     process_id: ctx.process_id,
     jurisdiction: ctx.jurisdiction,
     processType: "civic.announcement",
-    action_url_path: actionPathFor(ctx, state),
+    action_url_path: actionPathFor(ctx),
     data: {
       announcement: {
         id: ctx.process_id,
@@ -92,7 +82,6 @@ export async function emitAnnouncementResultPublished(
         author_role: state.author_role,
         official_type: state.official_type ?? null,
         author_display_name: state.author_display_name ?? null,
-        source: state.source ?? null,
       },
     },
     timestamp: opts.timestamp,

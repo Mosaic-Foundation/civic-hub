@@ -10,7 +10,7 @@ import { KEYS } from "../models/hubSettings.js";
 import { hubKindOf } from "../shared/hubKind.js";
 import { resolveTerm, type KernelTerm } from "../shared/spaceProfile.js";
 import { currentSpaceType } from "../shared/spaceTypes.js";
-import { defaultJurisdiction } from "../config/hub.js";
+import { civicPlaceShortName, defaultJurisdiction } from "../config/hub.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { hubTimeZone } from "./hubTimeZone.js";
 
@@ -27,6 +27,11 @@ export interface HubContext {
    * docs/kernel/SURFACE.md).
    */
   place: string;
+  /**
+   * The place it serves in running text ("Floyd County"), or null where it
+   * serves none: for a sentence ("Floyd County Government"), never a key.
+   */
+  placeName: string | null;
   /**
    * What the people taking part are called, for `count` of them: "resident",
    * "members", or the hub's own word (`copy.resident_noun`). Read when called, for the hub in scope then.
@@ -53,6 +58,7 @@ export function hubContext(): HubContext {
     baseUrl: uiBaseUrl(),
     timeZone: hubTimeZone(),
     place: defaultJurisdiction(),
+    placeName: civicPlaceShortName(),
     participantNoun: (count) => term("member", count),
     term,
   };

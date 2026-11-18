@@ -1,5 +1,5 @@
 // civic.news process handler. News items are made by the news sync job
-// (src/jobs/newsSync.ts) through createProcess; nothing reaches them through
+// (./job.ts) through the kernel's create path; nothing reaches them through
 // the generic /process/:id/action dispatcher.
 
 import {
@@ -8,7 +8,7 @@ import {
   type ProcessHandler,
   str,
   type FeedProcessMeta,
-} from "@civic-social/plugin-sdk/first-party";
+} from "@civic-social/plugin-sdk";
 import { createNewsState, newsReadModel } from "./state.js";
 import type { NewsProcessState } from "./models.js";
 import { NEWS_MANIFEST } from "./manifest.js";

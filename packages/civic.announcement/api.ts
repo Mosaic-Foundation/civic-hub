@@ -9,7 +9,6 @@ export type {
   AnnouncementModeration,
   AnnouncementProcessContext,
   AnnouncementProcessState,
-  AnnouncementSource,
   CreateAnnouncementInput,
   EmitEventFn,
   UrgentInput,

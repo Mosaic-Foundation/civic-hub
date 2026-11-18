@@ -740,13 +740,6 @@
   ],
   "JOBS": [
     {
-      "id": "meeting_summary",
-      "plugin": "meeting_summary",
-      "path": "/meeting-summary/run",
-      "schedule": "30 11 * * *",
-      "description": "Meeting discovery and summarization, per hub that configured a source"
-    },
-    {
       "id": "news_sync",
       "plugin": "news_sync",
       "path": "/news-sync/run",
@@ -755,6 +748,13 @@
       "deprecatedPaths": [
         "/floyd-news-sync/run"
       ]
+    },
+    {
+      "id": "meeting_summary",
+      "plugin": "meeting_summary",
+      "path": "/meeting-summary/run",
+      "schedule": "30 11 * * *",
+      "description": "Meeting discovery and summarization, per hub that configured a source"
     },
     {
       "id": "digest",
@@ -1414,7 +1414,7 @@
       "forbiddenColumns": [
         {
           "column": "user_id",
-          "reason": "vote_records must never identify the voter — this column would make every past ballot attributable"
+          "reason": "vote_records must never identify the voter \u2014 this column would make every past ballot attributable"
         }
       ],
       "owner": "civic.vote"

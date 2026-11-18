@@ -5,12 +5,15 @@
 // no defaults, and a hub that has configured neither is simply not using the
 // plugin.
 
-import { getSettingSync, isPluginEnabledSync } from "../../services/hubSettings.js";
-import { KEYS } from "../../models/hubSettings.js";
+import { settingsOf } from "@civic-social/plugin-sdk";
 import { NEWS_CONNECTORS, newsConnectorFor } from "./connectors/index.js";
 import type { NewsSyncConfig } from "./models.js";
 
 const DEFAULT_MAX_PER_RUN = 5;
+
+const settings = () => settingsOf("news_sync");
+const CONNECTOR = "plugin.news_sync.connector";
+const SOURCE_URL = "plugin.news_sync.source_url";
 
 export type NewsSyncResolution =
   /** Configured and ready to run. */
@@ -29,12 +32,12 @@ export type NewsSyncResolution =
  * because that is a half-finished setup rather than an absent one.
  */
 export function resolveNewsSyncConfig(): NewsSyncResolution {
-  if (!isPluginEnabledSync("news_sync")) {
+  if (!settings().enabled()) {
     return { status: "skipped", reason: "news sync disabled" };
   }
 
-  const connector = getSettingSync(KEYS.PLUGIN_NEWS_SYNC_CONNECTOR)?.trim() ?? "";
-  const source_url = getSettingSync(KEYS.PLUGIN_NEWS_SYNC_SOURCE_URL)?.trim() ?? "";
+  const connector = settings().get("connector")?.trim() ?? "";
+  const source_url = settings().get("source_url")?.trim() ?? "";
 
   if (!connector && !source_url) {
     return { status: "skipped", reason: "news sync not configured" };
@@ -43,7 +46,7 @@ export function resolveNewsSyncConfig(): NewsSyncResolution {
     return {
       status: "invalid",
       reason:
-        `${KEYS.PLUGIN_NEWS_SYNC_SOURCE_URL} is set but ${KEYS.PLUGIN_NEWS_SYNC_CONNECTOR} ` +
+        `${SOURCE_URL} is set but ${CONNECTOR} ` +
         `is not. Known connectors: ${Object.keys(NEWS_CONNECTORS).join(", ")}.`,
     };
   }
@@ -51,14 +54,14 @@ export function resolveNewsSyncConfig(): NewsSyncResolution {
     return {
       status: "invalid",
       reason:
-        `Unknown ${KEYS.PLUGIN_NEWS_SYNC_CONNECTOR} "${connector}". ` +
+        `Unknown ${CONNECTOR} "${connector}". ` +
         `Known: ${Object.keys(NEWS_CONNECTORS).join(", ")}.`,
     };
   }
   if (!source_url) {
     return {
       status: "invalid",
-      reason: `${KEYS.PLUGIN_NEWS_SYNC_SOURCE_URL} must be set for the "${connector}" connector.`,
+      reason: `${SOURCE_URL} must be set for the "${connector}" connector.`,
     };
   }
 
@@ -66,7 +69,7 @@ export function resolveNewsSyncConfig(): NewsSyncResolution {
 }
 
 function maxPerRun(): number {
-  const raw = getSettingSync(KEYS.PLUGIN_NEWS_SYNC_MAX_PER_RUN)?.trim();
+  const raw = settings().get("max_per_run")?.trim();
   if (!raw) return DEFAULT_MAX_PER_RUN;
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 1) return DEFAULT_MAX_PER_RUN;

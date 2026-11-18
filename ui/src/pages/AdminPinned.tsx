@@ -14,7 +14,7 @@ import { adminListPins, adminPinProcess, adminUnpinProcess, type PinnedRow } fro
 import { Button, Group, StatusChip } from "../kit";
 import { dayFromToday, dayOf, endOfDay, shortDay } from "../components/boardDates";
 import { refreshAside } from "../aside/asideFacts";
-import "./AdminAnnouncements.css";
+import "./AdminPinned.css";
 
 type Pins = { items: PinnedRow[]; pinned_count: number; pinned_max: number };
 
@@ -56,7 +56,7 @@ export default function AdminPinned() {
   const rows = data?.items ?? [];
 
   return (
-    <div className="page admin-page admin-announcements-page">
+    <div className="page admin-page admin-pinned-page">
       <h1 className="kit-page-title">Pinned</h1>
       <p className="admin-page-description kit-page-lede">
         Everything on the Pinned card, of any kind. Only admins pin. Pin an item from its own page: the Pin button sits
@@ -77,33 +77,33 @@ export default function AdminPinned() {
           {rows.length === 0 ? (
             <p className="kit-note">Nothing is pinned or urgent. The card shows the latest announcements.</p>
           ) : (
-            <ul className="admin-ann-list">
+            <ul className="admin-pinned-list">
               {rows.map((row) => (
-                <li key={row.id} className="admin-ann-row">
-                  <div className="admin-ann-text">
-                    <Link to={row.url} className="admin-ann-title">
+                <li key={row.id} className="admin-pinned-row">
+                  <div className="admin-pinned-text">
+                    <Link to={row.url} className="admin-pinned-title">
                       {row.title}
                     </Link>
-                    <span className="admin-ann-marks">
+                    <span className="admin-pinned-marks">
                       {row.urgent && <StatusChip tone="alert">Urgent</StatusChip>}
                       {row.urgent && row.urgent_until && <span>until {shortDay(row.urgent_until, tz)}</span>}
                       {row.pinned && (
                         <span>Pinned{row.pinned_until ? ` until ${shortDay(row.pinned_until, tz)}` : ", no end date"}</span>
                       )}
                     </span>
-                    <span className="admin-ann-meta">{row.type_label}</span>
+                    <span className="admin-pinned-meta">{row.type_label}</span>
                   </div>
                   {row.pinned && (
-                    <div className="admin-ann-actions">
+                    <div className="admin-pinned-actions">
                       {editing === row.id ? (
                         <form
-                          className="admin-ann-pin-form"
+                          className="admin-pinned-pin-form"
                           onSubmit={(e) => {
                             e.preventDefault();
                             void act(row.id, () => adminPinProcess(row.id, endOfDay(until, tz)));
                           }}
                         >
-                          <label className="admin-ann-until">
+                          <label className="admin-pinned-until">
                             <span>
                               Until <span className="optional">(empty: no end date)</span>
                             </span>

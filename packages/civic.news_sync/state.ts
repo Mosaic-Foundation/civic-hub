@@ -1,6 +1,6 @@
 // The News item's state, its read model and its event payload. Pure.
 
-import { ValidationError } from "@civic-social/plugin-sdk/first-party";
+import { ValidationError } from "@civic-social/plugin-sdk";
 import { BODY_MAX, BODY_PREVIEW_LEN, DEFAULT_NEWS_PILL, TITLE_MAX, type NewsProcessState, type NewsSource } from "./models.js";
 
 function text(v: unknown): string {
@@ -27,6 +27,23 @@ export function createNewsState(input: Record<string, unknown>, now: string = ne
     ...(text(raw.pill) ? { pill: text(raw.pill) } : {}),
   };
   return { type: "civic.news", content: { title, body }, source, created_at: now };
+}
+
+/**
+ * The "From" label a hub's posts are copied in with: its setting
+ * (plugin.news_sync.from_label), else "<place> Government", what synced posts
+ * have always been labelled, else "Local Government" where the hub serves no
+ * place.
+ */
+export function newsFromLabel(setting: string | null | undefined, place: string | null | undefined): string {
+  const own = setting?.trim();
+  if (own) return own;
+  return place ? `${place} Government` : "Local Government";
+}
+
+/** The pill a hub's posts are copied in with: its setting (plugin.news_sync.pill_label), else "News". */
+export function newsPillLabel(setting: string | null | undefined): string {
+  return setting?.trim() || DEFAULT_NEWS_PILL;
 }
 
 /** Who it is from: the label it was copied in with, else (a relabelled announcement) its author label. */

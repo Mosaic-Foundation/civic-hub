@@ -1,4 +1,4 @@
-// civic.news_sync — public surface
+// News Sync's feed reading: connectors, discovery, config and paraphrase (../job.ts uses it)
 
 export type {
   DiscoverDeps,

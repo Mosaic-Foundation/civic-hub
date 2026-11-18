@@ -102,7 +102,6 @@ export const handleAdminListAnnouncements = route(async (_req, res) => {
         author_display_name: state.author_display_name ?? null,
         created_at: state.created_at ?? p.createdAt,
         pinned_at: state.pinned_at ?? null,
-        synced: Boolean(state.source),
         ...boardView(state, now),
       };
     })

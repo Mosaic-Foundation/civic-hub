@@ -79,21 +79,10 @@ export const VERCEL_API_PREFIX = "/api";
 
 /**
  * Jobs the hub runs whatever process types it carries: hub features' (the
- * digests, news sync) and housekeeping. A process type's own jobs are in its
+ * digests) and housekeeping. A process type's own jobs are in its
  * manifest (ADR-009).
  */
 const HOST_JOBS: readonly JobSpec[] = [
-  {
-    id: "news_sync",
-    plugin: "news_sync",
-    path: "/news-sync/run",
-    schedule: "0 12 * * *",
-    description: "News feed to News items, per hub that configured a feed",
-    // Production's vercel.json on `main` schedules the old name until the
-    // multi-tenant cutover deploys this list; removed then, together with its
-    // entry in scripts/place-name-allowlist.txt.
-    deprecatedPaths: ["/floyd-news-sync/run"],
-  },
   {
     id: "digest",
     plugin: "digest",

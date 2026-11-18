@@ -16,8 +16,8 @@ import { ATHENS_HUB, FLOYD_HUB } from "../fixtures/hubs/index.js";
 import { runWithHub } from "../../src/config/hubContext.js";
 import { PLUGIN_IDS } from "../../src/models/hubSettings.js";
 import { MEETING_CONNECTOR_OPTIONS } from "../../packages/civic.meeting_summary/connectors/options.js";
+import { NEWS_CONNECTOR_OPTIONS } from "../../packages/civic.news_sync/sync/connectors/options.js";
 import {
-  NEWS_CONNECTOR_OPTIONS,
   PLUGIN_SECTION_ORDER,
   SETTINGS_SECTIONS,
   fieldSpec,
@@ -34,7 +34,7 @@ const {
 } = await import("../../src/services/pluginGate.js");
 const { voteDurationLimits: voteDurationLimitsSync } = await import("../../packages/civic.vote/settings.js");
 const { CONNECTORS } = await import("../../packages/civic.meeting_summary/connectors/index.js");
-const { NEWS_CONNECTORS } = await import("../../src/modules/civic.news_sync/connectors/index.js");
+const { NEWS_CONNECTORS } = await import("../../packages/civic.news_sync/sync/connectors/index.js");
 
 const off = (id: string) => ({ [`plugin.${id}.enabled`]: "false" });
 

@@ -6,9 +6,8 @@ import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manif
 
 /**
  * What an announcement is (src/processes/descriptor.ts). It is published the
- * moment it is made: the announcement routes (admins and officials) and the
- * news sync job create the row, emit result_published, and set it to
- * finalized. Edits, removal and restore are those routes and emit only
+ * moment it is made: the announcement routes (admins and officials) create
+ * the row, emit result_published, and set it to finalized. Edits, removal and restore are those routes and emit only
  * civic.process.updated. It has no process actions.
  *
  * Lifecycle: born active and finalized in the same request (the row is never

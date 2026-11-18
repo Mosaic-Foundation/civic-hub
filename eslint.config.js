@@ -364,17 +364,13 @@ const authzSeamRule = {
 // manifest.ts reaches only src/shared/ and src/processes/manifest.ts, because
 // the UI reads it. In the other direction, engine code (src/) never imports a
 // package: the hub loads them from the configured list (config/plugins/).
-// The engine files that still reach into one are listed below with why; the
-// list only shrinks (tests/unit/packageBoundary.test.ts fails on an entry
-// that no longer reaches a package).
-export const PACKAGE_REACH_NOT_YET = {
-  "src/jobs/newsSync.ts": "posts each news item as an announcement: its result-published event (emitAnnouncementResultPublished) and its state types",
-};
+// No engine file is let through any more: the last (the news sync job) moved
+// into its package on 2026-11-18, so the list of exceptions is gone.
 
 // A space type (kernel step 3; src/plugins/space.ts) is the layer above the
 // kernel: spaces/<dir>/ (the Civic Hub's is spaces/civic/). It may use the
 // kernel's own modules and the packages it curates, a package's values only
-// by await import() (as the engine's reach list above); never a feature
+// by await import() (ADR-017); never a feature
 // package or the configured lists. The engine reaches a space type only
 // through config/space.ts, which the hosting layer writes, and reads that
 // file in one place.
@@ -545,11 +541,11 @@ const packageBoundaryRule = {
       if (inSpace && target.startsWith(SPACES_DIR) && !target.startsWith(rel.split("/").slice(0, 2).join("/") + "/")) {
         context.report({ node, message: `"${spec}": a space type imports only its own files of spaces/.` });
       }
-      if (target.startsWith(PACKAGES_DIR) && inEngine && !(rel in PACKAGE_REACH_NOT_YET)) {
+      if (target.startsWith(PACKAGES_DIR) && inEngine) {
         context.report({ node, message: `"${spec}": the engine never imports a plugin package; the hub loads them from config/plugins.json (ADR-014).` });
       } else if (target.startsWith(PACKAGES_DIR) && node.type !== "ImportExpression" && node.importKind !== "type" && node.exportKind !== "type") {
-        // Even a file still allowed to reach a package loads it on first use
-        // (await import()), never as the engine starts: a package imports the
+        // A space type loads a package's values on first use (await import()),
+        // never as the engine starts: a package imports the
         // SDK by name, and the hub hands the SDK its engine only once the
         // engine has loaded (ADR-017; the compiled server failed to start).
         context.report({ node, message: `"${spec}": load a package's values with await import() where they are used; only its types may be imported statically (ADR-017).` });

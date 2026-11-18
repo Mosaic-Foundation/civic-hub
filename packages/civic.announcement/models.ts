@@ -50,7 +50,7 @@ export interface AnnouncementProcessState {
   /**
    * Machine-readable office kind behind `author_role` (which is the
    * free-form display string). Stamped at post time from the author's
-   * managed official role; null for admin-authored and synced posts.
+   * managed official role; null for admin-authored posts.
    * Carried into the event payload so a per-office feed pill colour can
    * be added later without backfilling historical announcements.
    */
@@ -67,19 +67,6 @@ export interface AnnouncementProcessState {
    * flips `removed` back to false and stamps `restored_at`.
    */
   moderation?: AnnouncementModeration | null;
-  /**
-   * Slice 13 — provenance for synced-from-external announcements.
-   *
-   * Set when an announcement was created by an automated sync (e.g. the
-   * floyd-news-sync cron pulling from floydcova.gov/news) rather than
-   * authored directly by a human admin. Absent on hand-authored
-   * announcements. The `share_url` is the external permalink and is
-   * also used as the dedupe key on subsequent sync runs (one row per
-   * share_url, never duplicated). The feed-card click on a synced
-   * announcement routes to `share_url` externally, not to the internal
-   * /announcement/:id page.
-   */
-  source?: AnnouncementSource | null;
   /**
    * Pinned to the right column's Announcements card (Adam, 2026-11-15; rules
    * in src/shared/announcementBoard.ts). Admins only. Flat fields, so the
@@ -100,25 +87,6 @@ export interface AnnouncementProcessState {
 export interface UrgentInput {
   urgent: boolean;
   urgent_until?: string | null;
-}
-
-export interface AnnouncementSource {
-  /**
-   * Which sync produced it. "news-sync" since the module rename (2026-09-24);
-   * rows synced before then carry the module's old, place-named value, which
-   * is why readers test for the presence of `source` rather than comparing
-   * this string.
-   */
-  origin: string;
-  /**
-   * The news-sync connector that read it, e.g. "wix-cms". Absent on rows
-   * synced before connectors were chosen per hub.
-   */
-  connector?: string;
-  /** External permalink — also serves as the dedupe key. */
-  share_url: string;
-  /** ISO 8601 timestamp of when the sync ingested this entry. */
-  ingested_at: string;
 }
 
 export interface AnnouncementModeration {
@@ -196,11 +164,6 @@ export interface CreateAnnouncementInput {
   author_display_name?: string | null;
   image_url?: string | null;
   image_alt?: string | null;
-  /**
-   * Slice 13 — populated by automated sync paths. Hand-authored
-   * announcements leave this undefined.
-   */
-  source?: AnnouncementSource | null;
   /** The red Urgent label, with its end date (src/shared/announcementBoard.ts). */
   urgent?: UrgentInput | null;
 }

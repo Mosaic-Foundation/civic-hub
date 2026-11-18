@@ -249,12 +249,12 @@
   ],
   "crons": [
     {
-      "path": "/api/internal/meeting-summary/run",
-      "schedule": "30 11 * * *"
-    },
-    {
       "path": "/api/internal/news-sync/run",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/internal/meeting-summary/run",
+      "schedule": "30 11 * * *"
     },
     {
       "path": "/api/internal/digest/run",

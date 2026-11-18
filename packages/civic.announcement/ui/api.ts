@@ -1,7 +1,6 @@
 // Announcements' reads and actions, through the kernel's API client
 // (@civic-social/plugin-sdk/ui): its routes (/announcement, /announcements,
-// /admin/announcements), the kernel's moderation routes for it, and News
-// Sync's list of the posts it copied in (empty while News Sync is off).
+// /admin/announcements) and the kernel's moderation routes for it.
 
 import { apiRequest } from "@civic-social/plugin-sdk/ui";
 
@@ -50,7 +49,7 @@ export interface Announcement {
   author_role: AnnouncementAuthorRole;
   /**
    * Machine-readable office behind author_role. Null for admin-authored
-   * and synced posts. Present so a per-office feed pill colour can be
+   * posts. Present so a per-office feed pill colour can be
    * added later without backfilling old announcements.
    */
   official_type?: string | null;
@@ -94,7 +93,7 @@ export interface AnnouncementSummary {
   author_role: AnnouncementAuthorRole;
   /**
    * Machine-readable office behind author_role. Null for admin-authored
-   * and synced posts. Present so a per-office feed pill colour can be
+   * posts. Present so a per-office feed pill colour can be
    * added later without backfilling old announcements.
    */
   official_type?: string | null;
@@ -158,7 +157,7 @@ export function listAnnouncements(limit?: number): Promise<AnnouncementSummary[]
 }
 
 
-// --- Admin: remove and restore, pin and unpin, the board, News Sync's posts ---
+// --- Admin: remove and restore, pin and unpin, the board ---
 
 /** Remove an announcement (renders a tombstone for non-admin viewers). */
 export function adminRemoveAnnouncement(
@@ -180,8 +179,6 @@ export interface AdminAnnouncementRow {
   author_display_name: string | null;
   created_at: string;
   pinned_at: string | null;
-  /** Posted by the news sync, not by hand. */
-  synced: boolean;
   pinned: boolean;
   pinned_until: string | null;
   urgent: boolean;

@@ -87,6 +87,18 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel branch: dev merged, News Sync whole in its package (2026-11-18)
+
+- **Unit:** 2,828 pass. `cronHubIsolation` runs the job from the package (its own items through `processesOf`, the
+  hub's place stamped by the kernel's create); `newsSync` and `pluginGate` read the feed code and connector ids from
+  `packages/civic.news_sync/sync/`; `packageBoundary` loses the reach-list tests (the list is gone);
+  `announcementBoardCopy` takes dev's "any item" wording into Announcements' copy; `manifestParity` and
+  `jobRegistry` take news_sync's new place in the cron list. UI: 110 pass, `hubStyles` gains `AdminPinned.css`.
+- **Catalog:** News Sync 0.2.0 (`20261118211124`) and Announcements 0.4.0 (`20261118211140`) regenerated against a
+  local stack; conformance green.
+- **API:** 1,085 pass in both modes (service role on :3000, minted tokens on :3001); the 4 `events.test.ts` failures are the sandbox-only ones, as before.
+- `kernel-surface --count`: 0 names, 0 paths for all ten packages.
+
 ## Pinning, phase 1 (2026-11-18)
 
 - **API** `pinAnyItem.test.ts` (now 8): Admin → Pinned lists a pinned vote with the count (403 for a resident); the

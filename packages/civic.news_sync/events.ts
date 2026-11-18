@@ -2,8 +2,8 @@
 // job saves it. Its action_url is the original's permalink, so the feed card
 // and the digest open the source site, not the hub's page.
 
-import type { Process } from "@civic-social/plugin-sdk/first-party";
-import { emitEvent } from "@civic-social/plugin-sdk/first-party";
+import type { Process } from "@civic-social/plugin-sdk";
+import { emitEvent } from "@civic-social/plugin-sdk";
 import { newsPayload } from "./state.js";
 import type { NewsProcessState } from "./models.js";
 

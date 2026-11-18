@@ -6,7 +6,7 @@ import {
   parseRssFeed,
   resolveNewsSyncConfig,
   wixPostUrlPattern,
-} from "../../src/modules/civic.news_sync/index.js";
+} from "../../packages/civic.news_sync/sync/index.js";
 import { civicPlaceShortName } from "../../src/config/hub.js";
 import {
   ATHENS_HUB,

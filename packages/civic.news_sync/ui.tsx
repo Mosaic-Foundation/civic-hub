@@ -1,9 +1,12 @@
-// civic.news: a post News Sync copied in from another site (manifest:
-// ./manifest.ts). Its card opens the original; its page is the hub's.
+// civic.news's UI module: a post News Sync copied in from another site
+// (manifest: ./manifest.ts). Its card opens the original; its page is its own
+// (./ui/), built from the SDK's UI entry alone, and loads when first opened.
 
-import { NewsItemPage } from "../../ui/src/lazyPages";
-import { getNewsItem } from "../../ui/src/services/api";
-import type { FeedKindUi, ProcessUi } from "../../ui/src/processes/types";
+import { lazy } from "react";
+import type { FeedKindUi, ProcessUi } from "@civic-social/plugin-sdk/ui";
+import { getNewsItem } from "./ui/api";
+
+const NewsItemPage = lazy(() => import("./ui/NewsItem"));
 
 const newsKind: FeedKindUi = {
   card: ({ id, data, getTitle, descSummary }) => {

@@ -10,7 +10,10 @@
 // Output is constrained to one sentence ≤ 200 chars and is captured
 // once at ingest. We never re-run paraphrase on the same row.
 
-import type { CallClaudeFn } from "../../shared/meetingSummaryRules.js";
+/** One model call: the ai adapter's complete(), as the job wraps it. */
+export interface CallClaudeFn {
+  (input: { model: string; system?: string; userText: string; maxTokens?: number }): Promise<{ text: string; model: string }>;
+}
 
 export interface ParaphraseInput {
   /** The announcement title from the RSS <title> element. */

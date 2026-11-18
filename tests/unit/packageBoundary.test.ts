@@ -5,14 +5,10 @@
 // names, and that list only shrinks. Linted as planted files of this repo,
 // through the repo's config.
 
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
-// @ts-expect-error eslint.config.js is plain JavaScript with no declarations.
-import { PACKAGE_REACH_NOT_YET as NOT_YET } from "../../eslint.config.js";
 
-const PACKAGE_REACH_NOT_YET = NOT_YET as Record<string, string>;
 
 const ROOT = resolve(__dirname, "../..");
 const eslint = new ESLint({ cwd: ROOT });
@@ -84,13 +80,6 @@ describe("civic/package-boundary", () => {
     expect(await errors(`${pkg}/ui/api.ts`, `import { request } from "../../../ui/src/services/http";`)).toHaveLength(1);
   });
 
-  it("lets a file on the reach list load a package only on first use: types statically, values by await import() (ADR-017)", async () => {
-    const reach = "src/jobs/newsSync.ts";
-    expect(await errors(reach, `import { createProposal } from "../../packages/civic.proposals/service.js";`)).toHaveLength(1);
-    expect(await errors(reach, `import type { ProposalSummary } from "../../packages/civic.proposals/service.js";`)).toHaveLength(0);
-    expect(await errors(reach, `export const f = async () => (await import("../../packages/civic.proposals/service.js")).createProposal;`)).toHaveLength(0);
-  });
-
   it("lets a space type use the kernel and load its packages on first use; the engine reaches it only through config/space.ts (kernel step 3)", async () => {
     const space = "spaces/civic/x.ts";
     expect(await errors(space, `import { forHub } from "../../src/db/forHub.js";`)).toHaveLength(0);
@@ -133,14 +122,5 @@ describe("civic/package-boundary", () => {
     expect(await errors("src/services/somethingNew.ts", `import { rollup } from "../../features/analytics/rollup.js";`)).toHaveLength(1);
     expect(await errors("src/services/somethingNew.ts", `import { FEATURE_PACKAGES } from "../../config/features.js";`)).toHaveLength(1);
     expect(await errors("src/plugins/features.ts", `import { FEATURE_PACKAGES } from "../../config/features.js";`)).toHaveLength(0);
-  });
-
-  it("names each engine file still reaching into a package, and every one still does (the list only shrinks)", () => {
-    for (const [file, why] of Object.entries(PACKAGE_REACH_NOT_YET)) {
-      expect(why.length, file).toBeGreaterThan(20);
-      expect(readFileSync(resolve(ROOT, file), "utf8"), `${file} no longer reaches a package: take it off the list`).toMatch(
-        /(from |import\()"(\.\.\/)+packages\//,
-      );
-    }
   });
 });

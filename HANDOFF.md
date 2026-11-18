@@ -4,6 +4,36 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel branch: dev merged (News Sync on its own, pinning any item); News Sync whole in its package — 2026-11-18
+
+On `kernel-extraction` (PR #22). dev merged at 7f79be3 (News Sync split, pinning phase 1). Then, as Adam asked:
+
+- **News Sync 0.2.0 is all in `packages/civic.news_sync/`, on SDK v1.** The job (`job.ts`, from
+  `src/jobs/newsSync.ts`), the feed reading (`sync/`: config, connectors, discovery, paraphrase, from
+  `src/modules/civic.news_sync/`), the connector ids (`sync/connectors/options.ts`, from `src/shared/connectorOptions.ts`)
+  and the News page (`ui/NewsItem.tsx`, its own `NewsItem.css`, from `ui/src/pages/`). The job's spec moved from the
+  kernel's `HOST_JOBS` to the manifest's `jobs` (same id, path, schedule, deprecated path); it reads through
+  `processesOf("civic.news")` (its dedupe reads its own items, live and archived, since the relabel made every
+  synced post a News item; `processRows.syncedShareUrls` is gone), `settingsOf("news_sync")`, the `ai` and `web`
+  adapters it now declares, and `hubContext().placeName` (new: "Floyd County", or null). `kernel-surface --count`:
+  0 for every package. `PACKAGE_REACH_NOT_YET` is gone: no engine file imports a package. 0.2.0, not 0.1.0, because
+  dev's 0.1.0 catalog entry ships with dev; conformance `MOVED_HUB_PAGES` gains `civic.news@0.2.0` (page moved as it was).
+- **Announcements 0.4.0 drops the sync leftovers:** `source` / `AnnouncementSource`, the empty-body allowance for
+  synced posts, the external action URL, `synced` on Admin → Announcements' rows, and the News Sync list client.
+  Dev's page edits carried over: `useOwnPinControl()` (now on the SDK UI surface), and the old `/announcement/:id`
+  link to a relabelled post now asks the kernel the process's type and goes to `/process/:id` (which opens the News
+  page) without naming News Sync. Catalog entry regenerated (`20261118211140`, replaces `20261117024504`).
+- **Kernel pages off Announcements' stylesheet:** Admin → Pinned had `import "./AdminAnnouncements.css"`, which now
+  lives in the package; it has its own `AdminPinned.css` (same rules, `admin-pinned-*`).
+- **Merge fixes:** `hubStyles.ts` had About-you and results-breakdown imported twice (both sides added them); kept
+  dev's place. `cronHubIsolation`: the mock process service gained the archived list, and the meeting-summary full
+  pass now expects mail only for Athens (Floyd's run used to fail on the missing mock and mail too). Cron order in
+  `vercel.json` and the parity fixture: news_sync now comes from the plugin list, before meeting_summary.
+- **Docs:** KERNEL.md (News Sync its own plugin, pinning hub core), SURFACE.md (the reach list gone, the News feed
+  card and the Pinned card's urgent rows as couplings still in the kernel, `placeName`, `useOwnPinControl`).
+- **Left for pinning phase 2** (see Adam's plan above): the Pinned card's urgent rows and the urgent top line still
+  read announcements in the kernel (`src/services/aside.ts`, `src/shared/announcementBoard.ts`).
+
 ## Pinning, phase 1: Admin → Pinned, the Pinning switch — 2026-11-18
 
 On dev, unpushed, no migration. Adam (2026-11-18): pinning is the hub's, for every plugin's items, admins only;

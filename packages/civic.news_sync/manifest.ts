@@ -4,12 +4,11 @@
 //
 // News Sync is its own plugin (Adam, 2026-11-18): its posts are News items,
 // not announcements, so it works with Announcements switched off and
-// Announcements works with it off. The sync job itself is still the hub's
-// (src/jobs/newsSync.ts, job "news_sync", under this plugin's switch); it
-// moves into this folder with the kernel extraction.
+// Announcements works with it off. Its job ("news_sync", ./job.ts) is its own
+// too, under this plugin's switch.
 
 import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
-import { NEWS_CONNECTOR_OPTIONS } from "../../src/shared/connectorOptions.js";
+import { NEWS_CONNECTOR_OPTIONS } from "./sync/connectors/options.js";
 
 /**
  * What a News item is (src/processes/descriptor.ts). The news sync job
@@ -42,7 +41,19 @@ export const NEWS_MANIFEST = defineManifest({
   detailPath: (id) => `/news/${id}`,
   requiredSchema: [],
   tables: [],
-  jobs: [],
+  jobs: [
+    {
+      id: "news_sync",
+      plugin: "news_sync",
+      path: "/news-sync/run",
+      schedule: "0 12 * * *",
+      description: "News feed to News items, per hub that configured a feed",
+      // Production's vercel.json on `main` schedules the old name until the
+      // multi-tenant cutover deploys this list; removed then, together with its
+      // entry in scripts/place-name-allowlist.txt.
+      deprecatedPaths: ["/floyd-news-sync/run"],
+    },
+  ],
   pluginSection: {
     order: 90,
     name: "News sync",
@@ -74,7 +85,7 @@ export const NEWS_MANIFEST = defineManifest({
   capabilities: {
     activities: { emit: ["civic.process.result_published"], listen: [] },
     state: { read: ["own-process"], write: ["own-process"], tables: [] },
-    adapters: [],
+    adapters: ["ai", "web"],
     network: { egress: [] },
     identity: { claims: ["participant-ref"] },
     ui: { surfaces: ["process-page", "feed-card", "settings-panel"] },
