@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { SlotArchiveButton } from "./archiveSlot";
+import { SlotArchiveButton, SlotPinButton } from "./archiveSlot";
 import { useClaimArchiveSlot } from "./archiveSlotContext";
 import "./DetailActions.css";
 
@@ -35,6 +35,7 @@ function PageRow({ children }: { children?: ReactNode }) {
   return (
     <Row>
       {children}
+      {inSlot && <SlotPinButton />}
       {inSlot && <SlotArchiveButton />}
     </Row>
   );

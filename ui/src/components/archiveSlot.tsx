@@ -14,6 +14,7 @@ import { useCallback, useContext, useMemo, useState, type ReactNode } from "reac
 import { ArchiveSlotContext } from "./archiveSlotContext";
 import { useNavigate, useParams } from "react-router-dom";
 import AdminArchiveButton from "./AdminArchiveButton";
+import AdminPinButton from "./AdminPinButton";
 import { typeDisplay } from "../config/navigation";
 import { useAuth } from "../context/authState";
 
@@ -30,6 +31,16 @@ export function SlotArchiveButton() {
       onArchived={() => navigate(shown?.section?.path ?? "/")}
     />
   );
+}
+
+/**
+ * Pin the page's item to the right column's card (any type, Adam,
+ * 2026-11-18), unless the page draws its own pin control. Admins only.
+ */
+export function SlotPinButton() {
+  const slot = useContext(ArchiveSlotContext);
+  if (!slot || slot.pinOwned) return null;
+  return <AdminPinButton processId={slot.id} />;
 }
 
 /**
@@ -53,7 +64,16 @@ export function ArchiveSlotProvider({
     setClaims((n) => n + 1);
     return () => setClaims((n) => n - 1);
   }, []);
-  const slot = useMemo(() => (id ? { type, id, claim } : null), [type, id, claim]);
+  const [pinOwners, setPinOwners] = useState(0);
+  const ownPin = useCallback(() => {
+    setPinOwners((n) => n + 1);
+    return () => setPinOwners((n) => n - 1);
+  }, []);
+  const pinOwned = pinOwners > 0;
+  const slot = useMemo(
+    () => (id ? { type, id, claim, ownPin, pinOwned } : null),
+    [type, id, claim, ownPin, pinOwned],
+  );
   if (!slot) return <>{children}</>;
   return (
     <ArchiveSlotContext.Provider value={slot}>
@@ -61,6 +81,7 @@ export function ArchiveSlotProvider({
       {/* Only an admin has anything for it; drawn for no one else. */}
       {claims === 0 && isAdmin && (
         <Row host>
+          <SlotPinButton />
           <SlotArchiveButton />
         </Row>
       )}

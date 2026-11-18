@@ -23,6 +23,7 @@ import { StatusChip } from "../kit";
 import { useHub } from "../config/hub";
 import { shortDay } from "../components/boardDates";
 import { refreshAside } from "../aside/asideFacts";
+import { useOwnPinControl } from "../components/archiveSlotContext";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
 
@@ -38,6 +39,9 @@ export default function AnnouncementPage() {
   const { id } = useParams<{ id: string }>();
   const { isAdmin } = useAuth();
   const hub = useHub();
+  // The page's admin bar pins (with Admin → Announcements' end date), so the
+  // slot's Pin button for any item stays out.
+  useOwnPinControl();
 
   const {
     data: announcement,

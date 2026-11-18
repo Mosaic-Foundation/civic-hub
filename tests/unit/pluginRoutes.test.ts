@@ -98,6 +98,9 @@ const ADDED: Record<string, string> = {
   "POST /upload/process-image/:type": "an image a type's residents attach, for a type that declares uploads (E1)",
   "GET /calendar/events/:id.ics": "Events: one event's calendar file (Add to my calendar)",
   "GET /calendar/events/:id/announcements": "Events: what the people going were sent, for admins",
+  // Pinning any item (2026-11-18): the kernel's, beside archive and restore.
+  "POST /admin/processes/:id/pin": "Pin any item to the right column's card",
+  "POST /admin/processes/:id/unpin": "Unpin an item",
 };
 
 interface Layer {

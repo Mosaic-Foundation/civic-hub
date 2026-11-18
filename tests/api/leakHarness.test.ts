@@ -726,6 +726,8 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /admin/reviews/:reviewId/decline": { body: { reason: X.reason } },
   "POST /admin/processes/:id/archive": { body: { reason: X.reason } },
   "POST /admin/processes/:id/restore": { body: {} },
+  "POST /admin/processes/:id/pin": { body: {} },
+  "POST /admin/processes/:id/unpin": { body: {} },
   "POST /admin/queues/:queue/seen": { skip: ":queue names one of this hub's own queues, not a row; writes only the caller's hub" },
   "POST /admin/moderation/comments/:commentId/hide": { body: { reason: X.reason } },
   "POST /admin/moderation/comments/:commentId/restore": { body: {} },
