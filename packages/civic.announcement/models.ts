@@ -67,16 +67,9 @@ export interface AnnouncementProcessState {
    * flips `removed` back to false and stamps `restored_at`.
    */
   moderation?: AnnouncementModeration | null;
-  /**
-   * Pinned to the right column's Announcements card (Adam, 2026-11-15; rules
-   * in src/shared/announcementBoard.ts). Admins only. Flat fields, so the
-   * card's read can filter on state->>pinned. Absent on older rows.
-   */
-  pinned?: boolean;
-  pinned_at?: string | null;
-  pinned_by?: string | null;
-  /** ISO 8601; null for no end date. */
-  pinned_until?: string | null;
+  // Older rows also carry pinned / pinned_at / pinned_by / pinned_until: pins
+  // were kept here until pinning phase 2 moved them to the hub (process_pins).
+  // Left in place, unread.
   /** The red Urgent label: anyone who may edit the announcement sets it. */
   urgent?: boolean;
   /** ISO 8601; required while urgent. */
@@ -164,7 +157,7 @@ export interface CreateAnnouncementInput {
   author_display_name?: string | null;
   image_url?: string | null;
   image_alt?: string | null;
-  /** The red Urgent label, with its end date (src/shared/announcementBoard.ts). */
+  /** The red Urgent label, with its end date (./board.ts). */
   urgent?: UrgentInput | null;
 }
 

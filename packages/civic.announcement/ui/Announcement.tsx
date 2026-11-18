@@ -6,7 +6,6 @@ import {
   LinkPreviewCard,
   Modal,
   PostFeaturedImage,
-  refreshAside,
   RelatedProcesses,
   relativeTime,
   SampleBadge,
@@ -14,15 +13,12 @@ import {
   shortDay,
   StatusChip,
   useApi,
-  useOwnPinControl,
   useSpace,
   useViewer,
 } from "@civic-social/plugin-sdk/ui";
 import {
-  adminPinAnnouncement,
   adminRemoveAnnouncement,
   adminRestoreAnnouncement,
-  adminUnpinAnnouncement,
   getAnnouncement,
   processTypeOf,
   type Announcement,
@@ -43,10 +39,6 @@ export default function AnnouncementPage() {
   const { id } = useParams<{ id: string }>();
   const { isAdmin } = useViewer();
   const space = useSpace();
-  // The page's admin bar pins (with Admin → Announcements' end date), so the
-  // slot's Pin button for any item stays out.
-  useOwnPinControl();
-
   const {
     data: announcement,
     loading,
@@ -129,22 +121,6 @@ export default function AnnouncementPage() {
       );
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  // Pin / unpin from the page (no end date here; Admin → Announcements and
-  // the edit form take one).
-  async function handlePinToggle() {
-    if (!id || !announcement) return;
-    setModerationError(null);
-    try {
-      const updated = announcement.pinned
-        ? await adminUnpinAnnouncement(id)
-        : await adminPinAnnouncement(id, null);
-      setAnnouncement({ ...announcement, ...updated });
-      refreshAside();
-    } catch (err) {
-      setModerationError(err instanceof Error ? err.message : "Could not change the pin");
     }
   }
 
@@ -249,15 +225,6 @@ export default function AnnouncementPage() {
             </>
           ) : (
             <>
-              <button type="button" onClick={handlePinToggle}>
-                {announcement.pinned ? "Unpin" : "Pin to Announcements card"}
-              </button>
-              {announcement.pinned && (
-                <span>
-                  Pinned
-                  {announcement.pinned_until && ` until ${shortDay(announcement.pinned_until, space.timeZone)}`}
-                </span>
-              )}
               <button
                 type="button"
                 className="danger"

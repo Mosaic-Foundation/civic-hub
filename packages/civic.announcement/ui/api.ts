@@ -1,6 +1,6 @@
 // Announcements' reads and actions, through the kernel's API client
-// (@civic-social/plugin-sdk/ui): its routes (/announcement, /announcements,
-// /admin/announcements) and the kernel's moderation routes for it.
+// (@civic-social/plugin-sdk/ui): its routes (/announcement, /announcements)
+// and the kernel's moderation routes for it. Pinning is the hub's.
 
 import { apiRequest } from "@civic-social/plugin-sdk/ui";
 
@@ -57,9 +57,6 @@ export interface Announcement {
   created_at: string;
   last_edited_at: string | null;
   edit_count: number;
-  /** Pinned to the right column's card right now (src/shared/announcementBoard.ts). */
-  pinned?: boolean;
-  pinned_until?: string | null;
   /** The red Urgent label, its end date not passed. */
   urgent?: boolean;
   urgent_until?: string | null;
@@ -112,9 +109,6 @@ export interface CreateAnnouncementInput {
   /** Any poster may; needs urgent_until (ISO). */
   urgent?: boolean;
   urgent_until?: string | null;
-  /** Admins only; pinned_until (ISO) optional. */
-  pinned?: boolean;
-  pinned_until?: string | null;
 }
 
 export interface UpdateAnnouncementInput {
@@ -129,9 +123,6 @@ export interface UpdateAnnouncementInput {
   image_alt?: string | null;
   urgent?: boolean;
   urgent_until?: string | null;
-  /** Admins only. */
-  pinned?: boolean;
-  pinned_until?: string | null;
 }
 
 export function createAnnouncement(
@@ -157,7 +148,7 @@ export function listAnnouncements(limit?: number): Promise<AnnouncementSummary[]
 }
 
 
-// --- Admin: remove and restore, pin and unpin, the board ---
+// --- Admin: remove and restore ---
 
 /** Remove an announcement (renders a tombstone for non-admin viewers). */
 export function adminRemoveAnnouncement(
@@ -171,32 +162,6 @@ export function adminRemoveAnnouncement(
   );
 }
 
-/** One row of Admin → Announcements. */
-export interface AdminAnnouncementRow {
-  id: string;
-  title: string;
-  author_role: AnnouncementAuthorRole;
-  author_display_name: string | null;
-  created_at: string;
-  pinned_at: string | null;
-  pinned: boolean;
-  pinned_until: string | null;
-  urgent: boolean;
-  urgent_until: string | null;
-}
-
-/** GET /admin/announcements: what is pinned or urgent now, and the newest others. */
-export interface AdminAnnouncements {
-  pinned: AdminAnnouncementRow[];
-  recent: AdminAnnouncementRow[];
-  pinned_count: number;
-  pinned_max: number;
-}
-
-export function adminListAnnouncements(): Promise<AdminAnnouncements> {
-  return apiRequest("GET", "/admin/announcements");
-}
-
 /**
  * The type a process is now (the kernel's GET /process/:id/state), or null
  * when there is none: an old /announcement/ link to a process of another type
@@ -205,15 +170,6 @@ export function adminListAnnouncements(): Promise<AdminAnnouncements> {
 export async function processTypeOf(id: string): Promise<string | null> {
   const state = await apiRequest<{ type?: string }>("GET", `/process/${id}/state`);
   return state?.type ?? null;
-}
-
-/** Pin to the right column's card; `until` (ISO) optional. */
-export function adminPinAnnouncement(processId: string, until: string | null): Promise<Announcement> {
-  return apiRequest("POST", `/admin/announcements/${processId}/pin`, { pinned_until: until });
-}
-
-export function adminUnpinAnnouncement(processId: string): Promise<Announcement> {
-  return apiRequest("POST", `/admin/announcements/${processId}/unpin`);
 }
 
 /** Restore a previously removed announcement. */

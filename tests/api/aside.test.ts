@@ -109,9 +109,9 @@ describe("GET /api/aside", () => {
 
   it("serves the same to a signed-out reader, and no account or name", async () => {
     const res = await call("GET", "/api/aside", FLOYD);
-    expect(Object.keys(res.body).sort()).toEqual(["about", "announcements", "urgent"]);
-    // Pinned and urgent (2026-11-15) are marks on a row, no more.
-    const marks = new Set(["sample", "pinned", "urgent"]);
+    expect(Object.keys(res.body).sort()).toEqual(["about", "announcements", "card_title", "urgent"]);
+    // Pinned and urgent (2026-11-15) are marks on a row, no more; a pin names its type.
+    const marks = new Set(["sample", "pinned", "urgent", "type_label"]);
     for (const a of [...(res.body.announcements as Array<Record<string, unknown>>), ...(res.body.urgent ? [res.body.urgent] : [])]) {
       expect(Object.keys(a).filter((k) => !marks.has(k)).sort()).toEqual(["process_id", "published_at", "title", "url"]);
     }

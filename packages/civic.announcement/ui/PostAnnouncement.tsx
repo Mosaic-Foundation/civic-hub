@@ -41,11 +41,9 @@ export default function PostAnnouncement() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
-  // Urgent (any poster) and pinned (admins): src/shared/announcementBoard.ts.
+  // Urgent (any poster; ../board.ts). Pinning is the hub's: an admin pins from the page.
   const [urgent, setUrgent] = useState(false);
   const [urgentUntil, setUrgentUntil] = useState(() => dayFromToday(URGENT_DEFAULT_DAYS, tz));
-  const [pinned, setPinned] = useState(false);
-  const [pinnedUntil, setPinnedUntil] = useState("");
 
   // Load the existing announcement when editing.
   useEffect(() => {
@@ -61,8 +59,6 @@ export default function PostAnnouncement() {
         setIsOwner(!!a.is_owner);
         setUrgent(!!a.urgent);
         if (a.urgent && a.urgent_until) setUrgentUntil(dayOf(a.urgent_until, tz));
-        setPinned(!!a.pinned);
-        setPinnedUntil(dayOf(a.pinned_until, tz));
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoadingExisting(false));
@@ -119,7 +115,6 @@ export default function PostAnnouncement() {
     }
   }
 
-  const isAdminRole = viewerIsAdmin;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -141,8 +136,6 @@ export default function PostAnnouncement() {
       const marks = {
         urgent,
         urgent_until: urgent ? endOfDay(urgentUntil, tz) : null,
-        // Only an admin sends pinned: the server refuses it from anyone else.
-        ...(isAdminRole ? { pinned, pinned_until: pinned ? endOfDay(pinnedUntil, tz) : null } : {}),
       };
       if (isEditMode && editId) {
         await updateAnnouncement(editId, {
@@ -337,30 +330,6 @@ export default function PostAnnouncement() {
                 disabled={submitting}
               />
             </label>
-          )}
-          {isAdminRole && (
-            <>
-              <Checkbox
-                label="Pin to the Announcements card"
-                hint="Keeps it in the right column's Announcements card until you unpin it or the end date passes. Admins only."
-                checked={pinned}
-                onChange={(e) => setPinned(e.target.checked)}
-                disabled={submitting}
-              />
-              {pinned && (
-                <label className="announcement-mark-date">
-                  Pinned until <span className="optional">(optional)</span>
-                  <input
-                    className="form-input"
-                    type="date"
-                    value={pinnedUntil}
-                    min={dayFromToday(0, tz)}
-                    onChange={(e) => setPinnedUntil(e.target.value)}
-                    disabled={submitting}
-                  />
-                </label>
-              )}
-            </>
           )}
         </fieldset>
 

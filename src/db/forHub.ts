@@ -72,6 +72,7 @@ export const HOST_TABLES = [
   "link_previews",
   "member_about",
   "process_links",
+  "process_pins",
   "process_reviews",
   "processes",
   "review_turns",

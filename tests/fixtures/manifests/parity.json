@@ -66,6 +66,7 @@
     "link_previews",
     "member_about",
     "process_links",
+    "process_pins",
     "process_reviews",
     "processes",
     "project_comments",
@@ -231,6 +232,10 @@
       "rows": "export"
     },
     {
+      "table": "process_pins",
+      "rows": "export"
+    },
+    {
       "table": "process_reviews",
       "rows": "export"
     },
@@ -386,6 +391,9 @@
     ],
     "process_links": [
       "id"
+    ],
+    "process_pins": [
+      "process_id"
     ],
     "process_reviews": [
       "id"
@@ -1269,6 +1277,17 @@
         "created_by"
       ],
       "owner": "core/processLinks"
+    },
+    {
+      "table": "process_pins",
+      "columns": [
+        "hub_id",
+        "process_id",
+        "pinned_by",
+        "pinned_at",
+        "pinned_until"
+      ],
+      "owner": "services/pins"
     },
     {
       "table": "process_reviews",

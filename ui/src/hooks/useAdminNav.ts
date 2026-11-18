@@ -109,10 +109,6 @@ export function useAdminNav(): AdminNav {
   const community: NavItem[] = [item("moderation", "Moderation", "moderation", "/admin/moderation")];
   // Everything pinned to the right column's card, any type (2026-11-18).
   if (hub.plugins.enabled("pinning")) community.push(item("admin-pinned", "Pinned", "pin", "/admin/pinned"));
-  // Pinned and urgent announcements (2026-11-15), while the plugin is on.
-  if (hub.plugins.enabled("announcement")) {
-    community.push(item("admin-announcements", "Announcements", "announcement", "/admin/announcements"));
-  }
   if (hub.plugins.enabled("feedback")) {
     community.push(item("admin-feedback", "Feedback", "feedback", "/admin/feedback", counts.feedback));
   }

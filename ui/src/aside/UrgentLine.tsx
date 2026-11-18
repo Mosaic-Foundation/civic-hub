@@ -1,4 +1,4 @@
-// The urgent line (Adam, 2026-11-15; src/shared/announcementBoard.ts): the
+// The urgent line (Adam, 2026-11-15; a plugin's urgent row on the Pinned card, src/services/aside.ts): the
 // newest announcement marked urgent, as one red line across the top of the
 // hub's pages, on every layout and width (the right column is not drawn on
 // a phone). It links to the announcement; closing it hides that one for this

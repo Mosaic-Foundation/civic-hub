@@ -43,8 +43,8 @@ export async function writeProcessState(processId: string, state: Record<string,
 
 // --- controllers ---
 
-/** An item marked pinned (any type) or urgent (announcements), as the right column reads it. */
-export interface BoardRow {
+/** A public item as the Pinned card reads it (src/services/pins.ts). */
+export interface CardRow {
   id: string;
   type: string;
   title: string;
@@ -55,21 +55,16 @@ export interface BoardRow {
 }
 
 /**
- * Every public item whose state says pinned or urgent (the right column's
- * card; src/shared/announcementBoard.ts). Any type can be pinned (Adam,
- * 2026-11-18); only an announcement is ever marked urgent. End dates, removal
- * and switched-off plugins are the caller's to read. Few rows: pins are
- * capped, urgent labels expire.
+ * These processes, the public ones only (one pinned while public and then
+ * held back or archived drops off the card), read in chunks of 200 ids.
  */
-export async function boardRows(): Promise<BoardRow[]> {
-  return readAll((from, to) =>
+export async function publicCardRows(ids: string[]): Promise<CardRow[]> {
+  return inChunks(ids, (chunk) =>
     db()
       .from("processes")
-      .select<BoardRow>("id, type, title, state, created_at, is_sample, added_in_demo")
-      .or("state->>pinned.eq.true,state->>urgent.eq.true")
-      .not("status", "in", `(${[...NON_PUBLIC_STATUSES].join(",")})`)
-      .order("id", { ascending: true })
-      .range(from, to),
+      .select<CardRow>("id, type, title, state, created_at, is_sample, added_in_demo")
+      .in("id", chunk)
+      .not("status", "in", `(${[...NON_PUBLIC_STATUSES].join(",")})`),
   );
 }
 

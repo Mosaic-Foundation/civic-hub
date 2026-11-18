@@ -114,9 +114,10 @@ describe("export manifest", () => {
     // omitted) and fediverse_posts (hub data, exported). 64 since
     // 20261116000000 (fediverse phase 3): fediverse_replies and
     // fediverse_reactions (hub data, exported). 65 since 20261116030000
-    // (districts and demographics): member_about (hub data, exported).
-    expect(schema.tables.size).toBe(65);
-    expect(schema.withHubId.size).toBe(52);
+    // (districts and demographics): member_about (hub data, exported). 66
+    // since 20261118230000 (pinning phase 2): process_pins (hub data, exported).
+    expect(schema.tables.size).toBe(66);
+    expect(schema.withHubId.size).toBe(53);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);
   });

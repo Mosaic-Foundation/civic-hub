@@ -10,7 +10,7 @@
 import { route } from "../http/route.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { ValidationError } from "../errors/index.js";
-import { listPinned, pinItem, pinView, unpinItem } from "../services/pins.js";
+import { listPinned, pinItem, unpinItem } from "../services/pins.js";
 
 /** `pinned_until` from a body (`true` for none). */
 export function readUntil(body: unknown): string | null {
@@ -22,14 +22,12 @@ export function readUntil(body: unknown): string | null {
 
 export const handlePinProcess = route(async (req, res) => {
   const admin = getAuthUser(res);
-  const process = await pinItem(req.params.id as string, admin.id, readUntil(req.body));
-  res.json({ id: process.id, ...pinView(process) });
+  res.json(await pinItem(req.params.id as string, admin.id, readUntil(req.body)));
 });
 
 export const handleUnpinProcess = route(async (req, res) => {
   const admin = getAuthUser(res);
-  const process = await unpinItem(req.params.id as string, admin.id);
-  res.json({ id: process.id, ...pinView(process) });
+  res.json(await unpinItem(req.params.id as string, admin.id));
 });
 
 export const handleListPins = route(async (_req, res) => {

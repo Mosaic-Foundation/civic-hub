@@ -39,7 +39,7 @@ export interface NewsProcessState {
   created_at: string;
   /** On items relabelled from announcements only: the label they were given then. */
   author_role?: string;
-  // Pinned marks (src/shared/announcementBoard.ts) are flat fields any item may carry.
+  // Pins are the hub's own (process_pins), not part of the item.
 }
 
 /** First N characters of the body in the event's payload. */

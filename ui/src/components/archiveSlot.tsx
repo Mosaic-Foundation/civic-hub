@@ -39,7 +39,7 @@ export function SlotArchiveButton() {
  */
 export function SlotPinButton() {
   const slot = useContext(ArchiveSlotContext);
-  if (!slot || slot.pinOwned) return null;
+  if (!slot) return null;
   return <AdminPinButton processId={slot.id} />;
 }
 
@@ -64,16 +64,7 @@ export function ArchiveSlotProvider({
     setClaims((n) => n + 1);
     return () => setClaims((n) => n - 1);
   }, []);
-  const [pinOwners, setPinOwners] = useState(0);
-  const ownPin = useCallback(() => {
-    setPinOwners((n) => n + 1);
-    return () => setPinOwners((n) => n - 1);
-  }, []);
-  const pinOwned = pinOwners > 0;
-  const slot = useMemo(
-    () => (id ? { type, id, claim, ownPin, pinOwned } : null),
-    [type, id, claim, ownPin, pinOwned],
-  );
+  const slot = useMemo(() => (id ? { type, id, claim } : null), [type, id, claim]);
   if (!slot) return <>{children}</>;
   return (
     <ArchiveSlotContext.Provider value={slot}>

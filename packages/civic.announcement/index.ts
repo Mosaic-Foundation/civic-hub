@@ -5,8 +5,9 @@ import type { PluginPackage } from "@civic-social/plugin-sdk";
 import manifest from "./manifest.js";
 import handler from "./handler.js";
 import routes, { listRouter } from "./routes.js";
-import adminRoutes, { boardRouter } from "./adminRoutes.js";
+import adminRoutes from "./adminRoutes.js";
 import { announcementHost } from "./host.js";
+import { pinnedCard } from "./pinnedCard.js";
 
 const announcementPackage: PluginPackage = {
   name: "@civic-social/plugin-announcement",
@@ -24,9 +25,10 @@ const announcementPackage: PluginPackage = {
       ],
       adminRoutes: [
         { path: "/moderation/announcements", router: adminRoutes },
-        // Admin → Announcements: pinned and urgent, pin and unpin.
-        { path: "/announcements", router: boardRouter },
       ],
+      // Urgent announcements at the top of the hub's Pinned card, and the
+      // newest few when nothing is pinned (./pinnedCard.ts).
+      pinnedCard,
     };
   },
 };

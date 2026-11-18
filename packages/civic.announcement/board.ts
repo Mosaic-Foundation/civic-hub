@@ -1,58 +1,35 @@
-// Pinned and urgent announcements (Adam, 2026-11-15): Announcements' own copy
-// of the rules (kernel step 1: a package imports only the SDK and its own
-// files). The hub's right column reads the same rules from
-// src/shared/announcementBoard.ts until kernel step 3 makes the board a
-// contribution Announcements registers; tests/unit/announcementBoardCopy.test.ts
-// keeps the two copies' code identical until then.
+// Urgent announcements (Adam, 2026-11-15): Announcements' own rules. Pinning
+// was here too until pinning phase 2 (2026-11-18) made it the hub's
+// (src/shared/pinRules.ts on the kernel side); Urgent stays an Announcements
+// feature, offered to the hub's Pinned card through ./pinnedCard.ts.
 //
-//   Pinned   admins only. Any item can be pinned (Adam, 2026-11-18): the hub
-//            pins any item from its page's admin row, and an announcement
-//            also from Admin → Announcements, its page's admin bar or its
-//            form. Stays up until unpinned or its optional end date.
-//            At most PINNED_MAX at once; the right column's card shows
-//            BOARD_SHOWN and scrolls for the rest.
 //   Urgent   anyone who may post or edit the announcement ticks it on the
 //            form. A red Urgent label on the card, the page and the feed, and
-//            a line across the top of the hub's pages. It needs an end date,
-//            URGENT_DEFAULT_DAYS ahead unless the author picks another, at
-//            most URGENT_MAX_DAYS.
+//            a line across the top of the hub's pages. Listed first on the
+//            Pinned card. It needs an end date, URGENT_DEFAULT_DAYS ahead
+//            unless the author picks another, at most URGENT_MAX_DAYS.
 //
-// Both stay on the hub: neither is sent to the Fediverse or other hubs, and
-// pinning does not move an announcement in the feed. An end date is read when
-// the facts are read, so nothing has to run for an item to drop off.
+// It stays on the hub: it is not sent to the Fediverse or other hubs. An end
+// date is read when the facts are read, so nothing has to run for an item to
+// drop off.
 
-/** How many items may be pinned at once. */
-export const PINNED_MAX = 10;
-/** How many rows the right column's card shows before it scrolls. */
-export const BOARD_SHOWN = 3;
 /** An urgent label's end date, unless the author picks another. */
 export const URGENT_DEFAULT_DAYS = 7;
 /** The furthest an urgent label's end date may be. */
 export const URGENT_MAX_DAYS = 30;
 
-/** The marks an announcement's state carries (all optional: older rows have none). */
-export interface BoardMarks {
-  pinned?: boolean | null;
-  pinned_at?: string | null;
-  pinned_until?: string | null;
+/** The urgent marks an announcement's state carries (optional: older rows have none). */
+export interface UrgentMarks {
   urgent?: boolean | null;
   urgent_until?: string | null;
 }
 
-function before(until: string | null | undefined, now: number): boolean {
-  if (!until) return true;
-  const t = Date.parse(until);
-  return Number.isNaN(t) ? true : now < t;
-}
-
-/** Pinned, and its end date (if any) not yet passed. */
-export function isPinnedNow(m: BoardMarks, now: number = Date.now()): boolean {
-  return m.pinned === true && before(m.pinned_until, now);
-}
-
 /** Marked urgent, and its end date not yet passed. */
-export function isUrgentNow(m: BoardMarks, now: number = Date.now()): boolean {
-  return m.urgent === true && before(m.urgent_until, now);
+export function isUrgentNow(m: UrgentMarks, now: number = Date.now()): boolean {
+  if (m.urgent !== true) return false;
+  if (!m.urgent_until) return true;
+  const t = Date.parse(m.urgent_until);
+  return Number.isNaN(t) ? true : now < t;
 }
 
 /**

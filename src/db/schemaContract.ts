@@ -93,6 +93,8 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "hub_invites", columns: ["hub_id", "email", "invited_by", "outcome", "link_hash", "created_at", "expires_at", "used_at"], owner: "services/hubInvites" },
   // Districts and demographics: a member's own About-you answers (20261116030000).
   { table: "member_about", columns: ["hub_id", "user_id", "district_id", "birth_year", "race", "declined", "asked_at"], owner: "civic.about" },
+  // Pinning phase 2: the hub's own pins (20261118230000).
+  { table: "process_pins", columns: ["hub_id", "process_id", "pinned_by", "pinned_at", "pinned_until"], owner: "services/pins" },
   { table: "hub_roles", columns: ["hub_id", "role", "user_id", "source", "granted_email", "attrs"], owner: "authz" },
   // Plugin packages (20261025000000, ADR-014).
   { table: "hub_plugins", columns: ["hub_id", "package", "version", "plugin", "capabilities", "installed_at", "installed_by", "removed_at", "removed_by", "winding_down_since", "winding_down_by"], owner: "plugins" },
@@ -159,6 +161,8 @@ const HOST_EXPORTS: readonly ExportManifestEntry[] = [
   // A member's own About-you answers move with their account (20261116030000).
   { table: "member_about", rows: "export" },
   { table: "process_links", rows: "export" },
+  // What an admin pinned to the Pinned card moves with the hub (20261118230000).
+  { table: "process_pins", rows: "export" },
   { table: "process_reviews", rows: "export" },
   { table: "processes", rows: "export" },
   { table: "review_turns", rows: "export" },

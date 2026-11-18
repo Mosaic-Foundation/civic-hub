@@ -35,11 +35,9 @@ export {
   getAdminReadModel,
   getPublicReadModel,
   getPublicSummary,
-  pinAnnouncement,
   removeAnnouncement,
   restoreAnnouncement,
   setUrgent,
-  unpinAnnouncement,
   updateAnnouncement,
 } from "./service.js";
 

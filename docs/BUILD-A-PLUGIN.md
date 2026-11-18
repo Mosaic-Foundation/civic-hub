@@ -367,6 +367,20 @@ bottom of every item page (beside Archive); Admin → Pinned lists every pinned 
 pinned as soon as they have a page (`detailPath`). A hub can switch Pinning off (Plugins → Pinning); every Pin control
 disappears and plugins work the same.
 
+A plugin may still put its own rows on the card, above the pins, with `pinnedCard` on what `server()` returns
+(Announcements does this for its urgent announcements):
+
+```ts
+pinnedCard: {
+  // Rows for the top of the card, right now. One flagged `urgent` is also the line across the top of the pages.
+  async first() { return [{ process_id, title, published_at, url: `/my-type/${id}`, urgent: true, until }]; },
+  // Optional: a few rows for a card nothing is pinned to (the card is then named after your type's plural).
+  async fill({ isAdmin }) { return newestFew; },
+},
+```
+
+The hub calls these only while your plugin is on. A failure leaves your rows out and is reported; the card still shows.
+
 ### Member information (districts and demographics)
 
 A hub can ask its members which district they live in, their year of birth and, if the hub chooses, their race or

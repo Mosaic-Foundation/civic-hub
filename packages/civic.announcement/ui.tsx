@@ -9,7 +9,6 @@ import { getAnnouncement } from "./ui/api";
 // Its pages are its own (./ui/), built from the SDK's UI entry, and load when first opened.
 const AnnouncementPage = lazy(() => import("./ui/Announcement"));
 const PostAnnouncement = lazy(() => import("./ui/PostAnnouncement"));
-const AdminAnnouncements = lazy(() => import("./ui/AdminAnnouncements"));
 
 const announcementKind: FeedKindUi = {
   card: ({ id, data, getTitle, descSummary }) => {
@@ -57,8 +56,6 @@ const announcementUi: ProcessUi = {
     { path: "/announcement/new", element: <PostAnnouncement /> },
     { path: "/announcement/:id/edit", element: <PostAnnouncement /> },
     { path: "/announcement/:id", element: <AnnouncementPage /> },
-    // Admin → Announcements: pinned and urgent, pin and unpin (2026-11-15).
-    { path: "/admin/announcements", element: <AdminAnnouncements />, admin: true },
   ],
   feed: {
     announcement: announcementKind,

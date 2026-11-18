@@ -64,6 +64,8 @@
  * (diffed before writing).
  * And (2026-11-18, pinning any item): the hub feature `pinning` (order 95,
  * after News sync) and its switch. Only those (diffed before writing).
+ * And (2026-11-18, pinning phase 2): the host gains process_pins (exported,
+ * keyed by process_id) and its requirement. Only those (diffed before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

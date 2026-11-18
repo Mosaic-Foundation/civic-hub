@@ -52,6 +52,9 @@ export type {
   PluginSampleTemplate,
   SampleKit,
   SampleTemplate,
+  // What a package puts on the hub's Pinned card (PluginServer.pinnedCard, pinning phase 2).
+  PinnedCardItem,
+  PluginPinnedCard,
 } from "../../src/sdk/index.js";
 
 // --- The one emission path: every event a package writes goes through it ------------------

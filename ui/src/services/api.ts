@@ -641,7 +641,6 @@ export interface PinState {
   id: string;
   pinned: boolean;
   pinned_until: string | null;
-  urgent: boolean;
 }
 
 /** Pin any item to the right column's card (Adam, 2026-11-18); `until` (ISO) optional. */
@@ -1757,19 +1756,21 @@ export interface AsideAnnouncement {
   title: string;
   published_at: string;
   url: string;
-  /** Its type's label ("Vote"), on a pinned item that is not an announcement. */
+  /** Its type's label ("Vote"), on a pinned item. */
   type_label?: string;
   sample?: true;
   /** Pinned right now. */
   pinned?: true;
-  /** Marked urgent right now. */
+  /** A plugin's urgent row (an urgent announcement). */
   urgent?: true;
 }
 
 export interface AsideFacts {
-  /** Pinned items and urgent announcements when there are any, else the newest few announcements. */
+  /** The card's name: "Pinned", or the filling plugin's type ("Announcements"). */
+  card_title: string;
+  /** Plugins' rows (urgent first) and pinned items when there are any, else a plugin's few to fill the card. */
   announcements: AsideAnnouncement[];
-  /** The newest urgent announcement, for the line across the top of the pages. */
+  /** The first urgent row, for the line across the top of the pages. */
   urgent: AsideAnnouncement | null;
   about: { member_count: number | null };
 }

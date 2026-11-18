@@ -87,6 +87,22 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel branch: pinning phase 2 (2026-11-18)
+
+- **Unit:** 2,827 pass. `pinRules.test.ts` (was `announcementBoard.test.ts`): the hub's pin rules
+  (`src/shared/pinRules.ts`) and Announcements' urgent rules (`packages/civic.announcement/board.ts`).
+  `announcementBoardCopy.test.ts` is gone (the two copies differ by design now). `forHub`, `exportManifest` and the
+  parity fixture gain `process_pins` (exported, keyed by `process_id`); `pluginRoutes` loses the three
+  `/admin/announcements` routes. UI: 110 pass.
+- **API:** 1,085 pass in both modes (4 sandbox-only `events.test.ts` failures). `announcementUrgent.test.ts` (was
+  `announcementBoard.test.ts`): urgent as before; the plugin's pin routes answer 404 and a `pinned` field on its form
+  is ignored; an announcement is pinned through `/admin/processes/:id/pin` like any item; an urgent pinned item shows
+  once, at the top; a passed end date in `process_pins` drops off; ten at most. `aside.test.ts` allows `card_title`
+  and `type_label`; `leakHarness` drops the three routes.
+- **Migration** `20261118230000_process_pins.sql`: checked by hand that it copies a pinned item's state (who, when,
+  end date), skips a date that doesn't parse, and applies twice.
+- **Catalog:** Announcements 0.4.0 and News Sync 0.2.0 regenerated; conformance green.
+
 ## Kernel branch: dev merged, News Sync whole in its package (2026-11-18)
 
 - **Unit:** 2,828 pass. `cronHubIsolation` runs the job from the package (its own items through `processesOf`, the

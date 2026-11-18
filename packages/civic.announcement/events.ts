@@ -113,15 +113,16 @@ export async function emitAnnouncementUpdated(
 }
 
 /**
- * Pinned or urgent changed (src/shared/announcementBoard.ts). Public, as an
- * edit is: the hub's own log says who pinned what and when. The Fediverse
+ * Urgent changed (./board.ts). Public, as an edit is: the hub's own log says
+ * who marked what urgent and when. (Pins are the hub's, with their own event
+ * since pinning phase 2; older logs also carry "pinned" / "unpinned".) The Fediverse
  * posts feed cards only, so this goes no further than the hub's event log.
  */
 export async function emitAnnouncementBoardChanged(
   ctx: AnnouncementProcessContext,
   actor: string,
   state: AnnouncementProcessState,
-  change: "pinned" | "unpinned" | "urgent" | "not_urgent",
+  change: "urgent" | "not_urgent",
 ): Promise<void> {
   await ctx.emit({
     event_type: "civic.process.updated",
@@ -134,7 +135,6 @@ export async function emitAnnouncementBoardChanged(
       announcement: {
         title: state.content.title,
         board_change: change,
-        ...(change === "pinned" ? { pinned_until: state.pinned_until ?? null } : {}),
         ...(change === "urgent" ? { urgent_until: state.urgent_until ?? null } : {}),
       },
     },

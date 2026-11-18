@@ -5,30 +5,29 @@
 //   - Coming up is the calendar's events only (Events 4, Adam, 2026-11-09),
 //     read from GET /calendar/events; it has nothing here. Closing dates moved
 //     to the feed, as "closing soon" cards (services/closingSoon.ts).
-//   - announcements: the board (Adam, 2026-11-15; src/shared/
-//     announcementBoard.ts): every item pinned right now, of any type whose
-//     plugin is on (Adam, 2026-11-18), and every announcement marked urgent,
-//     urgent first, then newest first. When none is, the newest few
-//     announcement cards, as the feed's Announcements filter reads them
-//     (services/feedPage.ts), a removed one left out as the feed leaves it out.
-//   - urgent: the newest urgent announcement, for the line across the top of
-//     the hub's pages, or null.
+//   - announcements: the Pinned card (Adam, 2026-11-15; the hub's own since
+//     pinning phase 2, src/shared/pinRules.ts). First the rows plugins put at
+//     its top (PluginServer.pinnedCard: the Announcements plugin's urgent
+//     announcements), then every item pinned right now (process_pins), of any
+//     type whose plugin is on, the newest first. When none is, the rows a
+//     plugin offers to fill the card (the newest few announcements).
+//   - urgent: the first row a plugin flags urgent, for the line across the
+//     top of the hub's pages, or null.
 //   - about: the member count, when the Members plugin is on and its count is
 //     public (the same rule as GET /members/summary). The place and the About
 //     link are the hub's config, which the page already has.
 //
-// The same for every reader but an admin, who also sees restricted
-// announcements, as on the feed. No account, name or ballot is in it.
+// The same for every reader but an admin, to whom a plugin filling the card
+// may show what the feed shows an admin. No account, name or ballot is in it.
 
 import { getManifest } from "../processes/registry.js";
-import { processTypesAndTitles } from "./processRows.js";
-import { readFeedPage } from "./feedPage.js";
-import { buildFeedProcessMeta } from "./feedMeta.js";
 import { memberVisibility } from "./members.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
-import { boardRows } from "./processRows.js";
 import { isProcessTypeEnabled } from "./pluginGate.js";
-import { isPinnedNow, isUrgentNow, type BoardMarks } from "../shared/announcementBoard.js";
+import { contributedFill, contributedFirst } from "./pinnedCard.js";
+import { readPinnedItems } from "./pins.js";
+import { isPinActive } from "../shared/pinRules.js";
+import type { PinnedCardItem } from "../plugins/pinnedCard.js";
 
 /** Announcements in their card. */
 export const ASIDE_ANNOUNCEMENTS = 3;
@@ -38,89 +37,78 @@ export interface AsideAnnouncement {
   title: string;
   published_at: string;
   url: string;
-  /** Its type's one-word label ("Vote"), on a pinned item that is not an announcement. */
+  /** Its type's one-word label ("Vote"), on a pinned item. */
   type_label?: string;
   sample?: true;
   /** On the board: pinned right now. */
   pinned?: true;
-  /** On the board: marked urgent, its end date not passed. */
+  /** On the board: a plugin's urgent row, its end date not passed. */
   urgent?: true;
 }
 
 export interface AsideFacts {
+  /** The card's name: "Pinned", or the filling plugin's type ("Announcements"). */
+  card_title: string;
   announcements: AsideAnnouncement[];
-  /** The newest urgent announcement, for the line across the top of the pages. */
+  /** The first urgent row, for the line across the top of the pages. */
   urgent: AsideAnnouncement | null;
   about: { member_count: number | null };
 }
 
 export async function readAside(opts: { isAdmin: boolean }): Promise<AsideFacts> {
   const [board, memberCount] = await Promise.all([readBoard(), readMemberCount()]);
-  const announcements = board.length > 0 ? board : await readAnnouncements(opts.isAdmin);
+  const fill = board.length > 0 ? null : await contributedFill(opts.isAdmin);
   return {
-    announcements,
+    card_title: fill ? getManifest(fill.type)?.descriptor.display.plural ?? "Pinned" : "Pinned",
+    announcements: fill ? fill.items.slice(0, ASIDE_ANNOUNCEMENTS).map(cardRow) : board,
     urgent: board.find((a) => a.urgent) ?? null,
     about: { member_count: memberCount },
   };
 }
 
-/** Pinned items and urgent announcements, right now: urgent first, then newest first. */
+function cardRow(item: PinnedCardItem): AsideAnnouncement {
+  return {
+    process_id: item.process_id,
+    title: item.title,
+    published_at: item.published_at,
+    url: item.url,
+    ...(item.sample ? { sample: true as const } : {}),
+    ...(item.urgent ? { urgent: true as const } : {}),
+  };
+}
+
+/** The plugins' rows (urgent first), then the items pinned right now, the newest first. */
 async function readBoard(): Promise<AsideAnnouncement[]> {
   const now = Date.now();
-  const pinning = isPluginEnabledSync("pinning");
-  const rows = (await boardRows())
+  // With the hub's Pinning switch off, a pin shows nowhere; a plugin's rows stay.
+  const [first, pinned] = await Promise.all([contributedFirst(), isPluginEnabledSync("pinning") ? readPinnedItems() : []]);
+  const top = first.map(cardRow).sort((a, b) => Number(Boolean(b.urgent)) - Number(Boolean(a.urgent)) || b.published_at.localeCompare(a.published_at));
+  const pins = pinned
     // A switched-off plugin's items leave the card as they leave the feed.
-    .filter((r) => isProcessTypeEnabled(r.type))
-    .map((r) => ({ r, marks: r.state as BoardMarks & { moderation?: { removed?: boolean } | null; created_at?: string } }))
-    .filter(({ marks }) => !marks.moderation?.removed)
-    // With the hub's Pinning switch off, a pin shows nowhere; urgent stays.
-    .map(({ r, marks }) => ({ r, marks, pinned: pinning && isPinnedNow(marks, now), urgent: isUrgentNow(marks, now) }))
-    .filter((x) => x.pinned || x.urgent);
-  const at = (x: (typeof rows)[number]) => x.marks.created_at ?? x.r.created_at;
-  rows.sort((a, b) => Number(b.urgent) - Number(a.urgent) || at(b).localeCompare(at(a)));
-  return rows.map(({ r, marks, pinned, urgent }) => {
-    const content = (r.state as { content?: { title?: string } }).content;
-    const label = r.type === ANNOUNCEMENT ? null : getManifest(r.type)?.descriptor.display.label ?? null;
-    return {
-      process_id: r.id,
-      title: content?.title || r.title,
-      published_at: marks.created_at ?? r.created_at,
-      url: detailUrl(r.type, r.id),
-      ...(label ? { type_label: label } : {}),
-      ...(r.is_sample && !r.added_in_demo ? { sample: true as const } : {}),
-      ...(pinned ? { pinned: true as const } : {}),
-      ...(urgent ? { urgent: true as const } : {}),
-    };
-  });
-}
-
-/** The card's own type: its rows need no type label. */
-const ANNOUNCEMENT = "civic.announcement";
-
-function detailUrl(type: string, id: string): string {
-  return getManifest(type)?.detailPath(id) ?? `/process/${id}`;
-}
-
-async function readAnnouncements(isAdmin: boolean): Promise<AsideAnnouncement[]> {
-  // A few more than needed: a removed one is left out after the read.
-  const page = await readFeedPage({ limit: ASIDE_ANNOUNCEMENTS * 2, cursor: null, surface: "announcement", isAdmin });
-  const meta = await buildFeedProcessMeta(page.events);
-  const events = page.events.filter((e) => e.process_id && !meta[e.process_id]?.removed);
-  const facts = new Map((await processTypesAndTitles(events.map((e) => e.process_id))).map((r) => [r.id, r]));
-  const out: AsideAnnouncement[] = [];
-  for (const e of events) {
-    const fact = facts.get(e.process_id);
-    if (!fact || out.some((a) => a.process_id === e.process_id)) continue;
-    out.push({
-      process_id: e.process_id,
-      title: meta[e.process_id]?.title || fact.title,
-      published_at: e.timestamp,
-      url: detailUrl(fact.type, e.process_id),
-      ...(e.sample ? { sample: true as const } : {}),
-    });
-    if (out.length === ASIDE_ANNOUNCEMENTS) break;
-  }
-  return out;
+    .filter((p) => isPinActive(p, now) && isProcessTypeEnabled(p.type))
+    .filter((p) => !(p.state as { moderation?: { removed?: boolean } | null }).moderation?.removed)
+    .map((p): AsideAnnouncement => {
+      const state = p.state as { content?: { title?: string }; created_at?: string };
+      const manifest = getManifest(p.type);
+      const label = manifest?.descriptor.display.label;
+      return {
+        process_id: p.process_id,
+        title: state.content?.title || p.title,
+        published_at: state.created_at ?? p.created_at,
+        url: manifest?.detailPath(p.process_id) ?? `/process/${p.process_id}`,
+        ...(label ? { type_label: label } : {}),
+        ...(p.is_sample && !p.added_in_demo ? { sample: true as const } : {}),
+        pinned: true as const,
+      };
+    })
+    .sort((a, b) => b.published_at.localeCompare(a.published_at));
+  // An item both on a plugin's rows and pinned shows once, at the top, marked pinned too.
+  const pinnedIds = new Set(pins.map((p) => p.process_id));
+  const topIds = new Set(top.map((t) => t.process_id));
+  return [
+    ...top.map((t) => (pinnedIds.has(t.process_id) ? { ...t, pinned: true as const } : t)),
+    ...pins.filter((p) => !topIds.has(p.process_id)),
+  ];
 }
 
 async function readMemberCount(): Promise<number | null> {

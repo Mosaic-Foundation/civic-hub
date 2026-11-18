@@ -4,6 +4,32 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel branch: pinning phase 2 — 2026-11-18
+
+Adam's plan (Nov 18): pinning is a hub core feature, admins only, plugins write no pin code; Urgent stays an
+Announcements feature, listed first on the Pinned card.
+
+- **Pins in the hub's own table:** `process_pins` (migration `20261118230000`; hub_id, process_id, pinned_by,
+  pinned_at, pinned_until; cascades with its item; exported with the hub). The migration copies every pin items
+  carried in their state (`pinned`, `pinned_at`, `pinned_by`, `pinned_until`); those fields stay in the state, unread.
+  `src/stores/pins.ts`, `src/services/pins.ts` (pin, unpin, cap of 10, Admin → Pinned), rules in
+  `src/shared/pinRules.ts` (was `announcementBoard.ts`). The pin routes answer `{ id, pinned, pinned_until }`.
+- **The Pinned card** (`src/services/aside.ts`): first the rows plugins offer through `PluginServer.pinnedCard.first()`
+  (urgent first), then the items pinned now, newest first, each naming its type ("Announcement", "Vote"). An item in
+  both shows once, at the top. Empty: a plugin's `fill()` rows, and the card is named after that type
+  ("Announcements"); otherwise "Pinned" (`card_title` in the facts). The urgent top line is the first urgent row.
+  The kernel no longer reads announcements or the feed for the card.
+- **Announcements** (still 0.4.0, unreleased, catalog regenerated): its pin routes (`/admin/announcements`,
+  `/:id/pin`, `/:id/unpin`), the form's Pin checkbox, the page's Pin button, the Admin → Announcements page and its
+  rail entry are gone (decision card to Adam; recommended removing the page). `pinnedCard.ts` offers urgent
+  announcements (`first`) and the newest three (`fill`). The kernel's Pin button now shows on the announcement page
+  too. `useOwnPinControl` is gone from the SDK UI surface.
+- **Visible changes for Adam's eye:** the card is called "Pinned" whenever something is pinned or urgent (before:
+  "Announcements" unless a non-announcement was pinned), and a pinned announcement's row reads "Announcement ·"
+  like other types. Admins pin an announcement from the page's admin row, not the post form.
+
+---
+
 ## Kernel branch: dev merged (News Sync on its own, pinning any item); News Sync whole in its package — 2026-11-18
 
 On `kernel-extraction` (PR #22). dev merged at 7f79be3 (News Sync split, pinning phase 1). Then, as Adam asked:
