@@ -6,7 +6,7 @@ import { RAIL_GROUPS_KEY } from "../hooks/useRailGroups";
 
 vi.mock("../config/hub", () => ({ useHub: () => ({ plugins: { enabled: () => true } }) }));
 // The packages' review queues, as Briefs and Meeting summaries register them.
-vi.mock("./PackageSlots", () => ({
+vi.mock("./packageContributions", () => ({
   adminQueueTabs: () => [
     { queue: "briefs", label: "Briefs", icon: "outcome", path: "/admin/briefs" },
     { queue: "meeting_summaries", label: "Meeting summaries", icon: "meeting", path: "/admin/meeting-summaries" },

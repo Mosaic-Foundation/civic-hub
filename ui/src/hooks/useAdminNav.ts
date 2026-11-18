@@ -22,7 +22,7 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useApi } from "./useApi";
 import { adminQueueCounts, ADMIN_QUEUES_CHANGED, type AdminQueueCounts } from "../services/api";
-import { adminQueueTabs } from "../components/PackageSlots";
+import { adminQueueTabs } from "../components/packageContributions";
 import { useHub } from "../config/hub";
 import { FEATURE_UI } from "../features";
 import { SETTINGS_NAV, SETUP_CHECKLIST_PATH } from "../../../src/shared/adminAnchors";
@@ -100,7 +100,7 @@ export function useAdminNav(): AdminNav {
 
   const review: NavItem[] = [item("processes", "Processes", "reviews", "/admin/reviews", counts.reviews)];
   // The packages' review queues (Briefs, Meeting summaries), while their
-  // plugin is on (components/PackageSlots.tsx).
+  // plugin is on (components/packageContributions.ts).
   for (const q of adminQueueTabs(hub)) {
     review.push(item(q.path.replace(/^\/admin\//, ""), q.label, q.icon, q.path, counts[q.queue] ?? 0));
   }

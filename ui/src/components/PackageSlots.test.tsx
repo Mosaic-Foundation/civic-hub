@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ProcessPageTop, WelcomeStripSlot, adminQueueTabs, afterSignUpStop } from "./PackageSlots";
+import { ProcessPageTop, WelcomeStripSlot } from "./PackageSlots";
+import { adminQueueTabs, afterSignUpStop } from "./packageContributions";
 
 const on = new Set<string>();
 const hub = { plugins: { enabled: (p: string) => on.has(p) } };

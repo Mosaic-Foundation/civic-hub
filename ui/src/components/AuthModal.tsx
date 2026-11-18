@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/authState";
 import { officialFrom } from "./authOfficial";
 import { useHub } from "../config/hub";
-import { afterSignUpStop } from "./PackageSlots";
+import { afterSignUpStop } from "./packageContributions";
 import { NEXT_STEPS_PATH } from "../pages/settings/nextSteps";
 import {
   requestCode,

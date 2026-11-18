@@ -17,7 +17,7 @@ import { useApi } from "../hooks/useApi";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./authState";
 import { useHub } from "../config/hub";
-import { adminQueueTabs } from "../components/PackageSlots";
+import { adminQueueTabs } from "../components/packageContributions";
 import { NavDataContext, type NavData } from "./navDataState";
 import {
   adminQueueCounts,
