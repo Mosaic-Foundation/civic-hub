@@ -200,17 +200,14 @@ export function adminListAnnouncements(): Promise<AdminAnnouncements> {
   return apiRequest("GET", "/admin/announcements");
 }
 
-/** One post News Sync copied in (GET /admin/news-sync/items; src/shared/newsSource.ts). */
-export interface NewsSyncItem {
-  id: string;
-  /** Who it is from: "Floyd County Government". */
-  from: string;
-  show_as: "news" | "announcement";
-}
-
-/** Every post News Sync copied in; empty while News Sync is off. */
-export function adminListNewsSyncItems(): Promise<{ items: NewsSyncItem[] }> {
-  return apiRequest("GET", "/admin/news-sync/items");
+/**
+ * The type a process is now (the kernel's GET /process/:id/state), or null
+ * when there is none: an old /announcement/ link to a process of another type
+ * goes on to that type's page.
+ */
+export async function processTypeOf(id: string): Promise<string | null> {
+  const state = await apiRequest<{ type?: string }>("GET", `/process/${id}/state`);
+  return state?.type ?? null;
 }
 
 /** Pin to the right column's card; `until` (ISO) optional. */

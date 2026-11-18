@@ -43,9 +43,10 @@ export async function writeProcessState(processId: string, state: Record<string,
 
 // --- controllers ---
 
-/** An announcement marked pinned or urgent, as the right column reads it. */
-export interface AnnouncementBoardRow {
+/** An item marked pinned (any type) or urgent (announcements), as the right column reads it. */
+export interface BoardRow {
   id: string;
+  type: string;
   title: string;
   state: Record<string, unknown>;
   created_at: string;
@@ -54,21 +55,41 @@ export interface AnnouncementBoardRow {
 }
 
 /**
- * Every public announcement whose state says pinned or urgent (the right
- * column's card; src/shared/announcementBoard.ts). End dates and removal are
- * the caller's to read. Few rows: pins are capped, urgent labels expire.
+ * Every public item whose state says pinned or urgent (the right column's
+ * card; src/shared/announcementBoard.ts). Any type can be pinned (Adam,
+ * 2026-11-18); only an announcement is ever marked urgent. End dates, removal
+ * and switched-off plugins are the caller's to read. Few rows: pins are
+ * capped, urgent labels expire.
  */
-export async function announcementBoardRows(): Promise<AnnouncementBoardRow[]> {
+export async function boardRows(): Promise<BoardRow[]> {
   return readAll((from, to) =>
     db()
       .from("processes")
-      .select<AnnouncementBoardRow>("id, title, state, created_at, is_sample, added_in_demo")
-      .eq("type", "civic.announcement")
+      .select<BoardRow>("id, type, title, state, created_at, is_sample, added_in_demo")
       .or("state->>pinned.eq.true,state->>urgent.eq.true")
       .not("status", "in", `(${[...NON_PUBLIC_STATUSES].join(",")})`)
       .order("id", { ascending: true })
       .range(from, to),
   );
+}
+
+/**
+ * Every original's permalink News Sync has copied in, whatever the item's
+ * status: an archived one stays archived rather than coming back on the next
+ * run. Announcements are read too, for posts synced before News Sync had its
+ * own type (2026-11-18).
+ */
+export async function syncedShareUrls(): Promise<Set<string>> {
+  const rows = await readAll((from, to) =>
+    db()
+      .from("processes")
+      .select<{ share_url: string | null }>("share_url:state->source->>share_url")
+      .in("type", ["civic.news", "civic.announcement"])
+      .not("state->source->>share_url", "is", null)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
+  return new Set(rows.flatMap((r) => (r.share_url ? [r.share_url] : [])));
 }
 
 /** The type and title of each of these processes, read in chunks of 200 ids. */

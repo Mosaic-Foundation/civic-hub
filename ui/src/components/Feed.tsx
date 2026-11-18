@@ -312,8 +312,9 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
     }
   }, [visibleEvents, processMeta]);
 
-  // A synced post's "From" line names the hub's News Sync source as set now.
+  // A News item's "From" line and pill name the hub's News Sync source as set now.
   const newsFrom = hub.setting("plugin.news_sync.from_label") ?? null;
+  const newsPill = hub.setting("plugin.news_sync.pill_label") ?? null;
   const posts: FeedPostView[] = useMemo(() => {
     const getTitle = (id: string) => processMeta[id]?.title;
     const getDescription = (id: string) => processMeta[id]?.description;
@@ -341,7 +342,7 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
       ) {
         continue;
       }
-      const post = eventToPost(ev, getDescription, getTitle, newsFrom);
+      const post = eventToPost(ev, getDescription, getTitle, { from: newsFrom, pill: newsPill });
       if (!post) continue;
       const meta = processMeta[ev.process_id];
       out.push({
@@ -359,7 +360,7 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
       });
     }
     return out;
-  }, [visibleEvents, processMeta, removedProcessIds, newsFrom]);
+  }, [visibleEvents, processMeta, removedProcessIds, newsFrom, newsPill]);
 
   const hasMore = nextCursor !== null;
 

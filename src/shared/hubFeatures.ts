@@ -7,8 +7,6 @@
 // Shared with the UI: imports nothing from the server.
 
 import type { SettingFieldSpec } from "./hubSettingsSections.js";
-import { NEWS_CONNECTOR_OPTIONS } from "./connectorOptions.js";
-import { NEWS_SHOW_AS_OPTIONS } from "./newsSource.js";
 
 export interface HubFeature {
   id: string;
@@ -29,17 +27,16 @@ export interface HubFeature {
 }
 
 export const HUB_FEATURES = [
+  // Pinning any item to the Pinned card (Adam, 2026-11-18): the hub's
+  // own, for every plugin's items, admins only. Off: no Pin controls, no
+  // Admin → Pinned, and the card shows no pinned rows (urgent announcements
+  // stay). Plugins know nothing of it, on or off.
   {
-    id: "news_sync",
-    order: 90,
-    name: "News sync",
-    what: "Posts from another site's news feed, shown on the feed as News with where they came from. Needs Announcements on.",
-    fields: [
-      { key: "plugin.news_sync.connector", kind: "choice", options: NEWS_CONNECTOR_OPTIONS },
-      { key: "plugin.news_sync.source_url", kind: "url" },
-      { key: "plugin.news_sync.from_label", kind: "text", maxLength: 80 },
-      { key: "plugin.news_sync.show_as", kind: "choice", options: NEWS_SHOW_AS_OPTIONS },
-    ],
+    id: "pinning",
+    order: 95,
+    name: "Pinning",
+    what: "Built into the hub: admins pin any item to the Pinned card, with an optional end date. Urgent announcements are listed first.",
+    fields: [],
   },
   { id: "assistant", order: 100, name: "Writing assistant", what: "AI help while drafting a vote, proposal, project or conversation.", fields: [] },
   { id: "search", order: 110, name: "Search", what: "Full-text search across everything on the hub.", fields: [] },

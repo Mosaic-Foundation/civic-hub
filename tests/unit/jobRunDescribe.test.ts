@@ -113,7 +113,7 @@ describe("describeJobRun", () => {
   it("news sync and the digests report partial send failures", () => {
     expect(describeJobRun("news_sync", { status: 200, body: { discovered: 5, created: 2, failed: 1 } })).toEqual({
       status: "failed",
-      summary: "2 new announcements from 5 posts",
+      summary: "2 new News items from 5 posts",
       problems: ["1 news post could not be imported."],
     });
     expect(describeJobRun("digest", { status: 200, body: { sent_count: 40, failed_count: 0 } })?.summary).toBe(

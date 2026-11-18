@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   absoluteTime,
   Creator,
@@ -14,6 +14,7 @@ import {
   shortDay,
   StatusChip,
   useApi,
+  useOwnPinControl,
   useSpace,
   useViewer,
 } from "@civic-social/plugin-sdk/ui";
@@ -23,6 +24,7 @@ import {
   adminRestoreAnnouncement,
   adminUnpinAnnouncement,
   getAnnouncement,
+  processTypeOf,
   type Announcement,
 } from "./api";
 import "./Announcement.css";
@@ -41,6 +43,9 @@ export default function AnnouncementPage() {
   const { id } = useParams<{ id: string }>();
   const { isAdmin } = useViewer();
   const space = useSpace();
+  // The page's admin bar pins (with Admin → Announcements' end date), so the
+  // slot's Pin button for any item stays out.
+  useOwnPinControl();
 
   const {
     data: announcement,
@@ -48,6 +53,26 @@ export default function AnnouncementPage() {
     error,
     setData: setAnnouncement,
   } = useApi<Announcement>(id ? `announcement/${id}` : null, () => getAnnouncement(id!));
+
+  // A process that was an announcement once and is another type now (posts a
+  // feed sync copied in, until 2026-11-18): an old /announcement/ link to it
+  // goes to the kernel's /process/ link, which opens its own type's page.
+  const navigate = useNavigate();
+  const [checkedType, setCheckedType] = useState(false);
+  useEffect(() => {
+    if (!error || !id) return;
+    let live = true;
+    processTypeOf(id)
+      .then((type) => {
+        if (!live) return;
+        if (type && type !== "civic.announcement") navigate(`/process/${id}`, { replace: true });
+        else setCheckedType(true);
+      })
+      .catch(() => live && setCheckedType(true));
+    return () => {
+      live = false;
+    };
+  }, [error, id, navigate]);
 
   // Slice 11 — admin moderation controls. The remove modal opens when
   // the admin clicks "Remove announcement" and stays mounted until the
@@ -57,7 +82,7 @@ export default function AnnouncementPage() {
   const [submitting, setSubmitting] = useState(false);
   const [moderationError, setModerationError] = useState<string | null>(null);
 
-  if (loading) {
+  if (loading || (error && !checkedType)) {
     return (
       <div className="page announcement-page">
         <p className="announcement-status">Loading announcement…</p>

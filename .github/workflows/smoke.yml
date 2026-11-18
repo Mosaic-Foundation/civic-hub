@@ -30,7 +30,8 @@ jobs:
     if: >-
       github.event.deployment_status.state == 'success' &&
       github.event.deployment.environment == (vars.CIVIC_SMOKE_DEV_ENVIRONMENT || 'Production – civic-hub-dev')
-    runs-on: ubuntu-latest
+    # Pinned (2026-11-18): ubuntu-latest became 26.04, where Playwright installs no Chromium.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     # One run at a time, never cancelled: a cancelled run would skip its cleanup.
     concurrency:
@@ -111,7 +112,8 @@ jobs:
     if: >-
       github.event.deployment_status.state == 'success' &&
       github.event.deployment.environment == (vars.CIVIC_SMOKE_PROD_ENVIRONMENT || 'Production – civic-hub')
-    runs-on: ubuntu-latest
+    # Pinned (2026-11-18): ubuntu-latest became 26.04, where Playwright installs no Chromium.
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       HUB_URL: ${{ vars.CIVIC_PROD_HUB_URL }}

@@ -230,10 +230,12 @@ export const KEYS = {
   PLUGIN_NEWS_SYNC_SOURCE_URL: "plugin.news_sync.source_url",
   PLUGIN_NEWS_SYNC_MAX_PER_RUN: "plugin.news_sync.max_per_run",
   // How synced posts are shown (Adam, 2026-11-16): the "From" line on each
-  // card (empty means "<place> Government", as synced posts always read), and
-  // whether they are News (the default) or Announcements on the feed.
+  // card (empty means "<place> Government", as synced posts always read).
   PLUGIN_NEWS_SYNC_FROM_LABEL: "plugin.news_sync.from_label",
-  PLUGIN_NEWS_SYNC_SHOW_AS: "plugin.news_sync.show_as",
+  // The pill on each News item and the feed's filter for them (Adam,
+  // 2026-11-18): "County news", "Government announcement". Empty is "News".
+  // Replaces plugin.news_sync.show_as: a News item is never an announcement.
+  PLUGIN_NEWS_SYNC_PILL_LABEL: "plugin.news_sync.pill_label",
   // The Members plugin (Adam, 2026-10-14). Below `min_count` members,
   // residents see no count, no avatar stack and no Members page; admins always
   // see the count. Unset is 0 (shown, as before the plugin); new hubs are
@@ -427,6 +429,8 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.PLUGIN_ANALYTICS_PUBLIC_NUMBERS,
   // 2026-11-16 (Adam): every synced post's feed card prints it ("From …").
   KEYS.PLUGIN_NEWS_SYNC_FROM_LABEL,
+  // 2026-11-18 (Adam): every News item's pill and the feed's News filter print it.
+  KEYS.PLUGIN_NEWS_SYNC_PILL_LABEL,
 ];
 
 const PUBLIC_KEYS: ReadonlySet<string> = new Set(PUBLIC_KEY_LIST);

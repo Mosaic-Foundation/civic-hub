@@ -80,7 +80,9 @@ export function ComingUpCard({ data }: { data: AsideData }) {
 
 // Announcements (2026-11-15; src/shared/announcementBoard.ts): the pinned
 // and urgent ones when there are any, urgent first; else the newest few. Past
-// BOARD_SHOWN rows the list scrolls inside the card.
+// BOARD_SHOWN rows the list scrolls inside the card. Any item can be pinned
+// (2026-11-18): when the board holds one that is not an announcement, the
+// card is "Pinned" and that row names its type ("Vote").
 export function AnnouncementsCard({ data }: { data: AsideData }) {
   // Memoized so a hub with no announcements doesn't hand the layout effect a new [] every render.
   const announcements = data.facts?.announcements;
@@ -99,12 +101,13 @@ export function AnnouncementsCard({ data }: { data: AsideData }) {
     if (third) ul.style.maxHeight = `${third.offsetTop - ul.offsetTop + third.offsetHeight + 20}px`;
   }, [scrolls, list]);
   if (list.length === 0) return null;
+  const title = list.some((a) => a.type_label) ? "Pinned" : "Announcements";
   return (
-    <AsideCard id="announcements" title="Announcements">
+    <AsideCard id="announcements" title={title}>
       <ul
         ref={listRef}
         className={`aside-rows aside-rows--plain${scrolls ? " aside-rows--scroll" : ""}`}
-        {...(scrolls ? { tabIndex: 0, "aria-label": `${list.length} announcements` } : {})}
+        {...(scrolls ? { tabIndex: 0, "aria-label": title === "Pinned" ? `${list.length} pinned items` : `${list.length} announcements` } : {})}
       >
         {list.map((a) => (
           <li key={a.process_id}>
@@ -113,6 +116,12 @@ export function AnnouncementsCard({ data }: { data: AsideData }) {
                 <span className="aside-row-title">{a.title}</span>
                 <span className="aside-row-meta">
                   {a.urgent && <StatusChip tone="alert">Urgent</StatusChip>}
+                  {a.type_label && (
+                    <>
+                      <span>{a.type_label}</span>
+                      <span aria-hidden="true">·</span>
+                    </>
+                  )}
                   {a.pinned && !a.urgent && (
                     <>
                       <span>Pinned</span>

@@ -146,7 +146,10 @@ async function keep(
       const activity = classifyActivity(event);
       if (!activity) continue;
       if (req.surface && activity.surface !== req.surface) continue;
-      const type = emittedProcessType(event);
+      // The process's type as it is now: an item relabelled since its event
+      // was stored (News Sync's posts, once announcements; 2026-11-18)
+      // follows its own plugin's switch, not the old type's.
+      const type = fact?.type ?? emittedProcessType(event);
       if (type && !isProcessTypeEnabled(type)) continue;
     }
 

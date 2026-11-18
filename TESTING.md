@@ -87,6 +87,31 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Pinning, phase 1 (2026-11-18)
+
+- **API** `pinAnyItem.test.ts` (now 8): Admin → Pinned lists a pinned vote with the count (403 for a resident); the
+  Pinning switch off answers 404 and the card shows no pin, on again it shows. `leakHarness` plans `GET /admin/pins`; `pluginRoutes` lists it; the `manifestParity`
+  fixture gains the `pinning` switch; help note `plugins.pinning` (pending).
+- Checked in the browser on Athens (local): Pin with the date form, Admin → Pinned (change end date, unpin).
+
+## News Sync on its own, and pinning any item (2026-11-18)
+
+- **Unit:** `feedActivity` (a News item's pill and From label; an old synced announcement event reads as News
+  whatever its show-as said), `newsSource` (pill label), `cronHubIsolation` (the job makes `civic.news`, and runs
+  with Announcements off), `jobRunDescribe`; `archiveHooks`, `residentActions`, `pluginRoutes` and the
+  `manifestParity` fixture know the new type and routes.
+- **API** `tests/api/newsItems.test.ts` (4): GET /news/:id, not an announcement, a relabelled row (the migration's
+  shape) reads the same, both make News cards with Announcements off (on Athens, News Sync switched on for the run).
+  `tests/api/pinAnyItem.test.ts` (6): a resident can't pin, an admin pins a vote and the right column lists it
+  with its type, pinning twice records once, a passed end date is refused, unpin, an archived item can't be pinned.
+  `pluginToggles` covers News Sync's page; `auditLiveExposure` switches News Sync on for its run like meeting
+  summaries; `leakHarness` plans the new routes.
+- Results (local, both API modes for the files above): unit 2,807 pass; API 1,091 passed, failing and not this
+  change: `sampleContent`'s two removal tests and two `leakHarness` tests (the known local sample-content 500s);
+  `authzParity` and `leavingDemo` failed once in the full run (a test hub gone under them) and pass on their own.
+  The migration was tried on a copy of the old row shape (synced post relabelled, hand-posted one untouched,
+  updated_at kept, show_as → pill_label). Checked in the browser: the feed card ("Town news", From line, opens the
+  original), the News page, Pin on its page, the right column's "Pinned" card.
 ## Kernel step 3, fifth part: sample content (2026-11-17)
 
 - **Unit:** 2,819 passed, plus `samplesHook.test.ts` (the kernel's plan: space samples, then plugin defaults, skipped
@@ -3664,7 +3689,8 @@ The goal: before any push to `main`, every row in this table should have at leas
 
 **Update 2026-10-12 (Audit 4): CI checks everything the suites rely on.**
 - `ci.yml` uses npm 12.2.0 and `npm ci` (as Vercel does), pins every action by commit and the Supabase CLI
-  (2.110.0), and runs `npm audit --audit-level=high` in both packages.
+  (2.110.0), and runs `npm audit --audit-level=high` in both packages (since 2026-11-17 through
+  `scripts/check-audit.ts`, which allows named, dated exceptions for advisories with no patched release).
 - It type-checks `tests/`, `scripts/` and `api/` (`npm run typecheck`, `tsconfig.check.json`) and runs the UI lint
   with its import boundaries.
 - **The Playwright suite runs in `.github/workflows/e2e.yml`.** It runs on pushes to `dev` and by hand

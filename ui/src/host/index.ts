@@ -166,6 +166,8 @@ export { default as RichText } from "../components/RichText";
 export { default as SourceLinks } from "../components/SourceLinks";
 export { default as EditHistory } from "../components/EditHistory";
 export { default as DetailActions } from "../components/DetailActions";
+// A page that draws its own Pin control keeps the hub's Pin button for any item out.
+export { useOwnPinControl } from "../components/archiveSlotContext";
 export { CloseEarlyButton, ClosedEarlyNote } from "../components/CloseEarly";
 export { default as ShareMoment } from "../components/ShareMoment";
 // What people wrote on a process, and the form to add to it (every type's page).

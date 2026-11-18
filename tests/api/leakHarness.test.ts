@@ -465,10 +465,11 @@ const GET_PLAN: Record<string, Plan> = {
   // Admin → Announcements (pinned and urgent, 2026-11-15): the caller's hub's announcements only.
   "GET /admin/announcements": {},
   // Admin → News Sync: the caller's hub's synced posts and their From label (2026-11-16).
-  "GET /admin/news-sync/items": {},
   "GET /link-preview/": { query: [] /* filled in below: ?url=<floyd's cached url> */ },
   "GET /search/": { query: [`?q=${MARKER_B}`, "?q=Vote", "?q=Notice&sort=newest", `?q=${MARKER_A}`] },
   "GET /meeting-summary/:id": {},
+  "GET /news/:id": {},
+  "GET /admin/pins": {},
   "GET /unsubscribe/digest": { query: [] /* filled in below: none, a bad token, Floyd's resident's token */ },
   "GET /unsubscribe/notices": { query: [] /* filled in below: none, a bad token, Floyd's resident's notices token */ },
   "GET /events/": { query: ["", "?limit=500", "?page=true&limit=200", `?context=${"x"}`] },
@@ -725,6 +726,8 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /admin/reviews/:reviewId/decline": { body: { reason: X.reason } },
   "POST /admin/processes/:id/archive": { body: { reason: X.reason } },
   "POST /admin/processes/:id/restore": { body: {} },
+  "POST /admin/processes/:id/pin": { body: {} },
+  "POST /admin/processes/:id/unpin": { body: {} },
   "POST /admin/queues/:queue/seen": { skip: ":queue names one of this hub's own queues, not a row; writes only the caller's hub" },
   "POST /admin/moderation/comments/:commentId/hide": { body: { reason: X.reason } },
   "POST /admin/moderation/comments/:commentId/restore": { body: {} },

@@ -215,4 +215,5 @@ export {
   type OfficialType,
   type Official,
   type HeldBackRecipient,
+  useOwnPinControl,
 } from "../../ui/src/host/index";

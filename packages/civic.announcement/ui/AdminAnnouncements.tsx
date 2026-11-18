@@ -5,13 +5,11 @@
 // date passes; urgent ones are marked by their author on the form and show
 // here so an admin sees everything on the card in one place.
 //
-// Posts News Sync copied in are listed too, so an admin can pin one (2026-11-16):
-// each such row is tagged News or Announcement and says who it is from, and a
-// Source filter shows the hub's own posts or one source's. All of that comes
-// from News Sync's own route; with News Sync off the rows and the filter are
-// simply not there.
+// Posts News Sync copies in are News items of their own since 2026-11-18, not
+// announcements, so they are not listed here; an admin pins one from its page,
+// as any item.
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Button,
@@ -28,8 +26,6 @@ import {
 } from "@civic-social/plugin-sdk/ui";
 import {
   adminListAnnouncements,
-  adminListNewsSyncItems,
-  type NewsSyncItem,
   adminPinAnnouncement,
   adminUnpinAnnouncement,
   type AdminAnnouncementRow,
@@ -37,27 +33,10 @@ import {
 } from "./api";
 import "./AdminAnnouncements.css";
 
-/** The Source filter: everything, the hub's own posts, or one News Sync source by its label. */
-type SourceFilter = { kind: "all" } | { kind: "hub" } | { kind: "synced"; from: string };
-
-function filterKey(f: SourceFilter): string {
-  return f.kind === "synced" ? `synced:${f.from}` : f.kind;
-}
-
-function parseFilter(key: string): SourceFilter {
-  if (key.startsWith("synced:")) return { kind: "synced", from: key.slice("synced:".length) };
-  return key === "hub" ? { kind: "hub" } : { kind: "all" };
-}
-
-function Byline({ row, synced }: { row: AdminAnnouncementRow; synced: NewsSyncItem | undefined }) {
-  const who = row.synced
-    ? `From ${synced?.from ?? row.author_role} · News Sync`
-    : row.author_display_name || (row.author_role === "board" ? "Board member" : row.author_role);
+function Byline({ row }: { row: AdminAnnouncementRow }) {
+  const who = row.author_display_name || (row.author_role === "board" ? "Board member" : row.author_role);
   return (
     <span className="admin-ann-meta">
-      {row.synced && (
-        <span className="admin-ann-tag">{synced?.show_as === "announcement" ? "Announcement" : "News"}</span>
-      )}
       {who} · {localShortDate(row.created_at)}
     </span>
   );
@@ -71,32 +50,6 @@ export default function AdminAnnouncements() {
     !authLoading && isAdmin ? "admin/announcements" : null,
     () => adminListAnnouncements(),
   );
-  // News Sync's posts: who each is from, News or Announcement. Its route
-  // answers an empty list while News Sync is off (then no Source filter), so
-  // the page never asks which features are on (kernel step 1; News Sync folds
-  // into Announcements at step 3).
-  const { data: newsData } = useApi<{ items: NewsSyncItem[] }>(
-    !authLoading && isAdmin ? "admin/news-sync/items" : null,
-    () => adminListNewsSyncItems(),
-  );
-  const syncedById = useMemo(() => new Map((newsData?.items ?? []).map((i) => [i.id, i])), [newsData]);
-  const [source, setSource] = useState<SourceFilter>({ kind: "all" });
-  // One entry per source label among the rows listed, in order of first appearance.
-  const sources = useMemo(() => {
-    const out: string[] = [];
-    for (const row of [...(data?.pinned ?? []), ...(data?.recent ?? [])]) {
-      if (!row.synced) continue;
-      const from = syncedById.get(row.id)?.from ?? row.author_role;
-      if (!out.includes(from)) out.push(from);
-    }
-    return out;
-  }, [data, syncedById]);
-  const shows = (row: AdminAnnouncementRow): boolean => {
-    if (source.kind === "all") return true;
-    if (source.kind === "hub") return !row.synced;
-    return row.synced && (syncedById.get(row.id)?.from ?? row.author_role) === source.from;
-  };
-
   // The row being pinned: its end date is asked for in place.
   const [pinning, setPinning] = useState<string | null>(null);
   const [until, setUntil] = useState("");
@@ -128,8 +81,8 @@ export default function AdminAnnouncements() {
   }
 
   const full = data ? data.pinned_count >= data.pinned_max : false;
-  const pinnedRows = (data?.pinned ?? []).filter(shows);
-  const recentRows = (data?.recent ?? []).filter(shows);
+  const pinnedRows = data?.pinned ?? [];
+  const recentRows = data?.recent ?? [];
 
   return (
     <div className="page admin-page admin-announcements-page">
@@ -150,24 +103,6 @@ export default function AdminAnnouncements() {
 
       {data && (
         <>
-          {sources.length > 0 && (
-            <label className="admin-ann-source">
-              <span>Source</span>
-              <select
-                className="form-input"
-                value={filterKey(source)}
-                onChange={(e) => setSource(parseFilter(e.target.value))}
-              >
-                <option value="all">All</option>
-                <option value="hub">Posted on this hub</option>
-                {sources.map((from) => (
-                  <option key={from} value={`synced:${from}`}>
-                    From {from} (News Sync)
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           <Group
             heading="Pinned and urgent"
             description={`${data.pinned_count} of ${data.pinned_max} pinned. The card shows three and scrolls for the rest; urgent ones come first.`}
@@ -191,7 +126,7 @@ export default function AdminAnnouncements() {
                           </span>
                         )}
                       </span>
-                      <Byline row={row} synced={syncedById.get(row.id)} />
+                      <Byline row={row} />
                     </div>
                     <div className="admin-ann-actions">
                       {row.pinned ? (
@@ -226,7 +161,7 @@ export default function AdminAnnouncements() {
                       <Link to={`/announcement/${row.id}`} className="admin-ann-title">
                         {row.title}
                       </Link>
-                      <Byline row={row} synced={syncedById.get(row.id)} />
+                      <Byline row={row} />
                     </div>
                     <div className="admin-ann-actions">
                       {pinning === row.id ? (

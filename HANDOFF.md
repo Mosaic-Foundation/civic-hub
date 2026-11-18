@@ -4,6 +4,64 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Pinning, phase 1: Admin → Pinned, the Pinning switch — 2026-11-18
+
+On dev, unpushed, no migration. Adam (2026-11-18): pinning is the hub's, for every plugin's items, admins only;
+Urgent stays an Announcements feature, listed first on the card.
+
+- **Pinning switch** (hub feature `pinning`, order 95, `plugin.pinning.enabled`, on by default): off answers 404 on
+  `POST /admin/processes/:id/pin|unpin` and `GET /admin/pins`, hides the Pin button and Admin → Pinned, and the card shows no pinned rows (urgent announcements stay). Stored pins are kept.
+  Announcements' own pin controls (its form, page bar, admin tab) are the package's and ignore the switch until phase 2.
+- **Admin → Community → Pinned** (`ui/src/pages/AdminPinned.tsx`, `GET /admin/pins`, `listPinned`): every item
+  pinned now, any type, and urgent announcements, urgent first; Change end date, Unpin; "n of 10 pinned".
+- **Pin button** on item pages now asks for an optional end date.
+- **No pin on approve** (ac1729d added it; Adam took it out the same day: it let a resident's submission decide
+  what gets pinned). Pinning is only an admin's act on a live item. Copy says "the Pinned card", not "the right
+  column": admins may move the card.
+- `docs/BUILD-A-PLUGIN.md` "Pinning (nothing to do)".
+- **Phase 2, after kernel-extraction merges dev:** Announcements drops its pin routes, form checkbox, page pin
+  button and own cap (a new Announcements version); pins move from item state to a hub-owned place (one migration);
+  urgent announcements reach the card through the package's contribution slot.
+
+## News Sync on its own, and pinning any item — 2026-11-18
+
+On dev, unpushed. **Two migrations** (20261118171305 the News Sync 0.1.0 catalog entry, 20261118180000 the
+relabel), so release with `./scripts/release.sh dev`, then **approve News Sync 0.1.0 in the console**: until then
+the plugin is not mounted, so News items (the relabelled ones included) are not shown and the job skips. Design:
+Adam, 2026-11-18 ("Full split", with a pill label per source). Announcements' own package is unchanged (no new
+version): kernel-extraction's Announcements 0.4.0 can drop its dead `source` handling.
+
+- **News items** (`packages/civic.news_sync`, `@civic-social/plugin-news-sync` 0.1.0, type `civic.news`, plugin
+  `news_sync`, page `/news/:id`, `GET /news/:id`). Made only by the job; no actions. State `{ type, content: {
+  title, body }, source: { origin, connector, share_url, ingested_at, label, pill }, created_at }`; relabelled rows
+  keep the announcement's shape and `author_role`, and every reader takes both. Its event is `result_published`
+  with `data.news` (title, body_preview, source), action_url the original's permalink.
+- **News Sync is a process plugin now:** its Plugins panel fields moved from `HUB_FEATURES` to the package's
+  `pluginSection` (same order, 90). The job (`src/jobs/newsSync.ts`) is still the hub's and still job
+  `news_sync`; it makes `civic.news`, needs no other plugin, and dedupes on every row's permalink whatever its
+  status (`syncedShareUrls`, so an archived post stays archived). Kernel-extraction moves the job and
+  `src/modules/civic.news_sync/` into the package folder.
+- **Pill label** `plugin.news_sync.pill_label` (public; empty = "News") replaces `plugin.news_sync.show_as`: the
+  pill on each card, the News page's eyebrow and the feed filter's name. Stored on each item as `source.pill`;
+  the UI uses the setting as it is now (one source per hub), like the From label.
+- **Feed:** card kind `news` (builtin), `card: "news"` in the manifest (`classifyNews`). Old announcement events
+  with a `source` classify as kind `news` too, whatever their show_as said. `feedPage` follows the process's type
+  as it is now for the plugin switch, so a relabelled post's stored announcement event shows with Announcements
+  off. Digest section `news` by kind; Fediverse posts `news` as "News". Theme colour key `news` (#34495a).
+- **Removed:** `GET /admin/news-sync/items` and Admin → Announcements' Source filter and News tags.
+  `/announcement/:id` for a News item redirects to `/news/:id` in the UI.
+- **Pinning any item** (c4c91d2): `POST /admin/processes/:id/pin { pinned_until? }` and `/unpin`
+  (`src/services/pins.ts`), any public item whose plugin is on, the same flat marks as announcements, capped at
+  10 across all types; event `civic.process.updated` with `data.pin`. Pin on every detail page's admin row (the
+  archive slot; the announcement page keeps its own, `useOwnPinControl`). The right column's card lists pinned
+  items of every type with their type's label and is called "Pinned" when one is not an announcement. The
+  Announcements package still pins from its form and admin tab and counts only announcements toward its cap.
+- **Migration 20261118180000** (not additive): every announcement whose `state.source` is an object with a
+  `share_url` becomes `civic.news` (state.type too), updated_at held; a hub with `show_as = announcement` gets
+  `pill_label = Announcement`; every `show_as` row is deleted. Undo SQL in its header.
+- **Also:** `sampleBallotTags.ts` lint fix (b318d53, the same as kernel-extraction's).
+- Open: no end date on the detail page's Pin (Admin → Announcements has one for announcements); no admin list of
+  pinned non-announcements (the card shows them); Search has no News chip (a search with no chip finds them).
 ## Kernel step 3, fifth part: sample content — a plugin's own, and the Civic Hub's out of the kernel — 2026-11-17
 
 On `kernel-extraction`. Adam (Nov 17): "some kind of standard way for plugin creators to speak to the hub to create

@@ -33,7 +33,7 @@ const HUB_CARDS: Record<(typeof ASIDE_CARD_IDS)[number], AsideCardUi> = {
   announcements: {
     id: "announcements",
     name: "Announcements",
-    about: "The latest announcements.",
+    about: "What admins pinned and urgent announcements, else the latest announcements.",
     Component: AnnouncementsCard,
   },
   about: {

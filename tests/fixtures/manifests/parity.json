@@ -10,6 +10,7 @@
     "announcement",
     "meeting_summary",
     "news_sync",
+    "pinning",
     "assistant",
     "search",
     "feedback",
@@ -25,6 +26,7 @@
     "civic.project": "project",
     "civic.brief": "brief",
     "civic.announcement": "announcement",
+    "civic.news": "news_sync",
     "civic.meeting_summary": "meeting_summary",
     "civic.polis_deliberation": "conversation",
     "civic.wordcloud": "wordcloud",
@@ -492,6 +494,7 @@
     "announcement",
     "meeting_summary",
     "news_sync",
+    "pinning",
     "assistant",
     "search",
     "feedback",
@@ -540,6 +543,10 @@
     },
     {
       "key": "plugin.news_sync.enabled",
+      "kind": "boolean"
+    },
+    {
+      "key": "plugin.pinning.enabled",
       "kind": "boolean"
     },
     {
@@ -685,12 +692,9 @@
       "maxLength": 80
     },
     {
-      "key": "plugin.news_sync.show_as",
-      "kind": "choice",
-      "options": [
-        "news",
-        "announcement"
-      ]
+      "key": "plugin.news_sync.pill_label",
+      "kind": "text",
+      "maxLength": 40
     },
     {
       "key": "plugin.feedback.contact_email",
@@ -747,7 +751,7 @@
       "plugin": "news_sync",
       "path": "/news-sync/run",
       "schedule": "0 12 * * *",
-      "description": "News feed to announcements, per hub that configured a feed",
+      "description": "News feed to News items, per hub that configured a feed",
       "deprecatedPaths": [
         "/floyd-news-sync/run"
       ]
@@ -1514,6 +1518,13 @@
       "icon": "announcement"
     },
     {
+      "type": "civic.news",
+      "plugin": "news_sync",
+      "label": "News",
+      "plural": "News",
+      "icon": "announcement"
+    },
+    {
       "type": "civic.meeting_summary",
       "plugin": "meeting_summary",
       "label": "Meeting summary",
@@ -1567,6 +1578,7 @@
     "civic.project": "/project/p_x",
     "civic.brief": "/brief/p_x",
     "civic.announcement": "/announcement/p_x",
+    "civic.news": "/news/p_x",
     "civic.meeting_summary": "/meeting-summary/p_x",
     "civic.polis_deliberation": "/deliberation/p_x",
     "civic.wordcloud": "/wordcloud/p_x",

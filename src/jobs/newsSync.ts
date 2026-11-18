@@ -1,25 +1,28 @@
 // The "news_sync" job (src/jobs/registry.ts): discovers new posts from a
-// hub's own news feed and creates one civic.announcement per new entry.
+// hub's own news feed and creates one News item (civic.news,
+// packages/civic.news_sync) per new entry.
 //
 // Runs once per active hub, inside that hub's scope (src/jobs/runJob.ts). For
 // a hub that has configured it, discovers posts through the hub's own
 // connector, filters out past-dated events, dedupes against already-ingested
-// rows, and publishes each new entry as an announcement (no admin review).
+// rows, and publishes each new entry as a News item (no admin review).
 // Per-entry failures are isolated: one bad post does not abort the run, and
 // one hub's broken feed does not stop the next hub's. Returns a JobOutcome:
 // 200 with the counts (or a skip reason), 500 with an error when the config
 // is invalid or the run throws.
 //
-// A synced announcement has `state.source` set so the event emitter routes
-// the action_url to the external permalink: the feed-card click goes straight
-// to the government's site, not the internal /announcement/:id page. There
-// are no thumbnails (document scans are unreadable); the body comes from the
-// feed's description when present, otherwise a strict Claude paraphrase of
-// the title, otherwise empty.
+// A News item's published event carries the original's permalink as its
+// action_url: the feed-card click goes straight to the source's site, not the
+// hub's /news/:id page. There are no thumbnails (document scans are
+// unreadable); the body comes from the feed's description when present,
+// otherwise a strict Claude paraphrase of the title, otherwise empty.
 //
-// Each post's source also carries the hub's "From" label and whether it shows
-// as News or as an announcement (src/shared/newsSource.ts). The source never
-// marks a post urgent or pinned; admins pin it like any other.
+// Each item's source also carries the hub's "From" label and pill as they
+// were when it was copied in (src/shared/newsSource.ts). Nothing marks it
+// urgent; an admin can pin it like any item.
+//
+// News Sync is its own plugin since 2026-11-18: it needs nothing else
+// switched on, and Announcements needs nothing of it.
 
 import { env } from "../config/env.js";
 import {
@@ -29,30 +32,19 @@ import {
   type NewsEntry,
   type NewsSyncConfig,
 } from "../modules/civic.news_sync/index.js";
-import {
-  createProcess,
-  getAllProcesses,
-  saveProcessState,
-} from "../services/processService.js";
-import { emitEvent } from "../events/eventEmitter.js";
+import { createProcess, saveProcessState } from "../services/processService.js";
+import { syncedShareUrls } from "../services/processRows.js";
 import { fetchXml } from "../utils/http.js";
 import { aiComplete, aiConfigured, aiDefaultModel, type AiSingleTurnInput } from "../adapters/ai.js";
 
 /** The news sync's model calls, through the ai adapter's gate, as a job. */
 const callClaude = (input: AiSingleTurnInput) => aiComplete("job.news_sync", input);
-import type {
-  AnnouncementProcessContext,
-  AnnouncementProcessState,
-  AnnouncementSource,
-} from "../../packages/civic.announcement/api.js";
-import { getSettingSync, isPluginEnabledSync } from "../services/hubSettings.js";
+import type { NewsSource } from "../../packages/civic.news_sync/api.js";
+import { getSettingSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { civicPlaceShortName, processJurisdiction } from "../config/hub.js";
 import type { JobOutcome, JobRunner } from "./types.js";
-import { newsFromLabel, newsShowAs, type NewsShowAs } from "../shared/newsSource.js";
-
-/** A synced post's source, with how it is shown (src/shared/newsSource.ts). */
-type SyncedSource = AnnouncementSource & { label: string; show_as: NewsShowAs };
+import { newsFromLabel, newsPillLabel } from "../shared/newsSource.js";
 
 const CRON_ACTOR = "system:news-sync-cron";
 
@@ -77,28 +69,6 @@ function todayIsoLocal(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function announcementState(record: { state: Record<string, unknown> }): AnnouncementProcessState {
-  return record.state as unknown as AnnouncementProcessState;
-}
-
-/**
- * Build the set of share_urls already ingested as civic.announcement
- * rows. Used for dedupe — one announcement per share_url, ever.
- */
-async function existingShareUrls(): Promise<Set<string>> {
-  const all = await getAllProcesses();
-  const out = new Set<string>();
-  for (const p of all) {
-    if (p.definition.type !== "civic.announcement") continue;
-    const state = announcementState(p);
-    const url = state?.source?.share_url;
-    if (typeof url === "string" && url.length > 0) {
-      out.add(url);
-    }
-  }
-  return out;
-}
-
 /**
  * One hub's run, inside that hub's scope. Every value it reads — enabled,
  * connector, feed, cap, jurisdiction, author label, the names in the
@@ -106,11 +76,6 @@ async function existingShareUrls(): Promise<Set<string>> {
  * could stand in for a hub that set nothing.
  */
 export const newsSyncJob: JobRunner = async (): Promise<JobOutcome> => {
-  // What news sync makes is announcements; with those off there is nothing
-  // it may create, so it does not fetch at all.
-  if (!isPluginEnabledSync("announcement")) {
-    return { status: 200, body: { skipped: true, reason: "plugin.announcement.enabled is off" } };
-  }
   const resolved = resolveNewsSyncConfig();
   if (resolved.status === "skipped") {
     return { status: 200, body: { skipped: true, reason: resolved.reason } };
@@ -127,9 +92,9 @@ export const newsSyncJob: JobRunner = async (): Promise<JobOutcome> => {
     governing_body: getSettingSync(KEYS.COPY_GOVERNING_BODY_NAME)?.trim() || null,
   };
 
-  // Read once per run: every post this run saves carries the same two.
+  // Read once per run: every item this run saves carries the same two.
   const fromLabel = syncedFromLabel();
-  const showAs = newsShowAs(getSettingSync(KEYS.PLUGIN_NEWS_SYNC_SHOW_AS)?.trim());
+  const pill = newsPillLabel(getSettingSync(KEYS.PLUGIN_NEWS_SYNC_PILL_LABEL));
 
   const started = Date.now();
   const today = todayIsoLocal();
@@ -150,7 +115,7 @@ export const newsSyncJob: JobRunner = async (): Promise<JobOutcome> => {
     );
     discovered = entries.length;
 
-    const existing = await existingShareUrls();
+    const existing = await syncedShareUrls();
     console.log(
       `[news-sync] processing — discovered=${discovered} existing=${existing.size} per_run_cap=${cap}`,
     );
@@ -169,13 +134,13 @@ export const newsSyncJob: JobRunner = async (): Promise<JobOutcome> => {
 
       const entryStart = Date.now();
       try {
-        const source: SyncedSource = {
+        const source: NewsSource = {
           origin: "news-sync",
           connector: cfg.connector,
           share_url: entry.share_url,
           ingested_at: new Date().toISOString(),
           label: fromLabel,
-          show_as: showAs,
+          pill,
         };
 
         // When the feed's description is empty (~75% of Wix posts),
@@ -208,7 +173,7 @@ export const newsSyncJob: JobRunner = async (): Promise<JobOutcome> => {
         }
 
         const record = await createProcess({
-          definition: { type: "civic.announcement", version: "0.1" },
+          definition: { type: "civic.news", version: "0.1" },
           title: entry.title,
           // Body is RSS description verbatim when present, else a
           // strict Claude paraphrase of the title, else empty.
@@ -221,30 +186,14 @@ export const newsSyncJob: JobRunner = async (): Promise<JobOutcome> => {
           // push them outside the digest's 24h window. The eventTimestamp
           // override remains available on createProcess for one-off
           // backfills / migrations that need it.
-          state: {
-            title: entry.title,
-            body,
-            author_id: CRON_ACTOR,
-            author_role: fromLabel,
-            links: [],
-            // Slice 13.1: no thumbnails for synced announcements.
-            // Wix's document-scan thumbnails are unreadable noise;
-            // cards look better without them.
-            image_url: null,
-            image_alt: null,
-            source,
-          },
+          // No thumbnails (Slice 13.1): Wix's document-scan thumbnails are
+          // unreadable noise; cards look better without them.
+          state: { title: entry.title, body, source },
         });
 
-        const state = announcementState(record);
-        const ctx: AnnouncementProcessContext = {
-          process_id: record.id,
-          jurisdiction: record.jurisdiction,
-          emit: emitEvent,
-        };
         // Loaded on first use, never as the engine starts (engine 2, ADR-017).
-        const { emitAnnouncementResultPublished } = await import("../../packages/civic.announcement/api.js");
-        await emitAnnouncementResultPublished(ctx, CRON_ACTOR, state);
+        const { emitNewsPublished } = await import("../../packages/civic.news_sync/api.js");
+        await emitNewsPublished(record, CRON_ACTOR);
 
         record.status = "finalized";
         await saveProcessState(record);

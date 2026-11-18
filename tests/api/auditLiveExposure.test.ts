@@ -38,6 +38,8 @@ let resident = "";
 let residentId = "";
 /** Athens's meeting-summary switch before this file; on while it runs. */
 let summariesBefore = "false";
+/** Athens's News Sync switch before this file (its seed has it off); on while it runs. */
+let newsBefore = "false";
 const inserted: string[] = [];
 
 type Row = Record<string, any>;
@@ -69,12 +71,14 @@ beforeAll(async () => {
   // Unset reads as on (pluginEnabled is `!== "false"`), so restore "true" for
   // it: restoring "false" left Athens' meeting summaries off for every later
   // file (Architecture 2 found it through the dashboard's order-dependent fail).
-  summariesBefore = (await call("GET", "/hub-config", HOST)).body.settings["plugin.meeting_summary.enabled"] ?? "true";
-  await setPlugins({ "plugin.meeting_summary.enabled": "true" });
+  const settings = (await call("GET", "/hub-config", HOST)).body.settings;
+  summariesBefore = settings["plugin.meeting_summary.enabled"] ?? "true";
+  newsBefore = settings["plugin.news_sync.enabled"] ?? "true";
+  await setPlugins({ "plugin.meeting_summary.enabled": "true", "plugin.news_sync.enabled": "true" });
 });
 
 afterAll(async () => {
-  await setPlugins({ "plugin.meeting_summary.enabled": summariesBefore });
+  await setPlugins({ "plugin.meeting_summary.enabled": summariesBefore, "plugin.news_sync.enabled": newsBefore });
   if (inserted.length > 0) {
     await localRest(`processes?id=in.(${inserted.join(",")})`, {
       method: "PATCH",

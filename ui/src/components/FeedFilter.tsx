@@ -34,8 +34,9 @@ function choices(hub: Hub): FeedFilterChoice[] {
       label: "Announcements",
       pillClass: "feed-filter-pill--announcement",
     },
-    // Posts News Sync copies in from another site (2026-11-16).
-    { key: "news", label: "News", pillClass: "feed-filter-pill--news" },
+    // Posts News Sync copies in from another site (2026-11-16), under the
+    // hub's own word for them (plugin.news_sync.pill_label, 2026-11-18).
+    { key: "news", label: hub.setting("plugin.news_sync.pill_label")?.trim() || "News", pillClass: "feed-filter-pill--news" },
     {
       key: "meeting_summary",
       label: hub.meetingSummaryLabel(true),
@@ -59,8 +60,7 @@ interface Props {
 function visibleChoices(hub: Hub): FeedFilterChoice[] {
   return choices(hub).filter((choice) => {
     if (choice.key === "announcement") return hub.plugins.shown("announcement");
-    // News Sync saves its posts as announcements, so it needs both on.
-    if (choice.key === "news") return hub.plugins.shown("news_sync") && hub.plugins.enabled("announcement");
+    if (choice.key === "news") return hub.plugins.shown("news_sync");
     if (choice.key === "meeting_summary") return hub.plugins.shown("meeting_summary");
     return true;
   });

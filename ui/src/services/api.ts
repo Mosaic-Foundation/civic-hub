@@ -636,6 +636,42 @@ export function adminRestoreProcess(
   return request("POST", `/admin/processes/${id}/restore`);
 }
 
+/** An item's pin as POST /admin/processes/:id/pin and /unpin answer it (src/services/pins.ts). */
+export interface PinState {
+  id: string;
+  pinned: boolean;
+  pinned_until: string | null;
+  urgent: boolean;
+}
+
+/** Pin any item to the right column's card (Adam, 2026-11-18); `until` (ISO) optional. */
+export function adminPinProcess(id: string, until: string | null = null): Promise<PinState> {
+  return request("POST", `/admin/processes/${id}/pin`, { pinned_until: until });
+}
+
+export function adminUnpinProcess(id: string): Promise<PinState> {
+  return request("POST", `/admin/processes/${id}/unpin`);
+}
+
+/** One row of Admin → Pinned (GET /admin/pins). */
+export interface PinnedRow {
+  id: string;
+  type: string;
+  type_label: string;
+  title: string;
+  url: string;
+  pinned: boolean;
+  pinned_at: string | null;
+  pinned_until: string | null;
+  urgent: boolean;
+  urgent_until: string | null;
+}
+
+/** Everything pinned or urgent now, urgent first; the count against the cap. */
+export function adminListPins(): Promise<{ items: PinnedRow[]; pinned_count: number; pinned_max: number }> {
+  return request("GET", "/admin/pins");
+}
+
 // --- The officials roster and the space's result recipients (Officials settings) ---
 
 /** The officials an admin lists, and who a result goes to when a review picks nobody. Admins only. */
@@ -1721,6 +1757,8 @@ export interface AsideAnnouncement {
   title: string;
   published_at: string;
   url: string;
+  /** Its type's label ("Vote"), on a pinned item that is not an announcement. */
+  type_label?: string;
   sample?: true;
   /** Pinned right now. */
   pinned?: true;
@@ -1729,7 +1767,7 @@ export interface AsideAnnouncement {
 }
 
 export interface AsideFacts {
-  /** Pinned and urgent ones when there are any, else the newest few. */
+  /** Pinned items and urgent announcements when there are any, else the newest few announcements. */
   announcements: AsideAnnouncement[];
   /** The newest urgent announcement, for the line across the top of the pages. */
   urgent: AsideAnnouncement | null;

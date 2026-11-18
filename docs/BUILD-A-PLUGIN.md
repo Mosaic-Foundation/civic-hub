@@ -359,6 +359,14 @@ None of these is required; each has a step in the suite where you use it (`docs/
 
 `kit/conformance/fixtures/sdk-tour` in the hub's repository uses every one of these.
 
+### Pinning (nothing to do)
+
+An admin can pin any item to the Pinned card, with an optional end date: from the Pin button the hub draws at the
+bottom of every item page (beside Archive); Admin → Pinned lists every pinned item. Only admins pin. The hub stores the pin and records each change as a
+`civic.process.updated` with `data.pin`. A plugin writes no pin code and needs nothing in its manifest: its items can be
+pinned as soon as they have a page (`detailPath`). A hub can switch Pinning off (Plugins → Pinning); every Pin control
+disappears and plugins work the same.
+
 ### Member information (districts and demographics)
 
 A hub can ask its members which district they live in, their year of birth and, if the hub chooses, their race or

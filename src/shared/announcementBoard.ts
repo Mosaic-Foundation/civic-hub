@@ -3,8 +3,10 @@
 // the UI share. Plain data and pure functions, so each side reads the same
 // answer to "is this pinned / urgent right now".
 //
-//   Pinned   admins only, from Admin → Announcements, the announcement's page
-//            or its form. Stays up until unpinned or its optional end date.
+//   Pinned   admins only. Any item can be pinned (Adam, 2026-11-18): every
+//            detail page's admin row has Pin (src/services/pins.ts), and an
+//            announcement also from Admin → Announcements, its page's admin
+//            bar or its form. Stays up until unpinned or its optional end date.
 //            At most PINNED_MAX at once; the right column's card shows
 //            BOARD_SHOWN and scrolls for the rest.
 //   Urgent   anyone who may post or edit the announcement ticks it on the
@@ -17,7 +19,7 @@
 // pinning does not move an announcement in the feed. An end date is read when
 // the facts are read, so nothing has to run for an item to drop off.
 
-/** How many announcements may be pinned at once. */
+/** How many items may be pinned at once. */
 export const PINNED_MAX = 10;
 /** How many rows the right column's card shows before it scrolls. */
 export const BOARD_SHOWN = 3;

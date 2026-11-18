@@ -30,6 +30,14 @@ export async function session(hub: string, email: string): Promise<{ token: stri
   const filter = `users?hub_id=eq.${hub}&email=eq.${encodeURIComponent(email)}`;
   await localRest(filter, { method: "PATCH", body: JSON.stringify({ tos_version_accepted: CURRENT_LEGAL_VERSION }) });
   const [u] = (await localRest(`${filter}&select=id`)) as Array<{ id: string }>;
+  // About you already asked, as for someone who saw the card once (districts
+  // and demographics, 2026-11-16): else it waits in front of the first vote,
+  // support or submit.
+  await localRest("member_about?on_conflict=hub_id,user_id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ hub_id: hub, user_id: u.id, asked_at: new Date().toISOString() }),
+  });
   return { token, userId: u.id };
 }
 
