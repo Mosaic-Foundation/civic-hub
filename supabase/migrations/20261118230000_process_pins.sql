@@ -45,15 +45,29 @@ BEGIN
   END IF;
 END $$;
 
--- The pins stored in items' state, copied. A date that does not parse is left
--- out (the item reads as unpinned, as it did).
+-- The pins stored in items' state, copied. A date that does not parse as a
+-- timestamp (a bad string, or one shaped like a date but out of range, such
+-- as 2026-13-45) is read as missing rather than stopping the migration: a bad
+-- `pinned_at` becomes the item's created_at, and an item whose `pinned_until`
+-- does not parse is left out (it read as unpinned before, too).
+CREATE OR REPLACE FUNCTION pg_temp.civic_pin_ts(v text) RETURNS timestamptz
+LANGUAGE plpgsql IMMUTABLE AS $$
+BEGIN
+  IF v IS NULL OR v !~ '^\d{4}-\d{2}-\d{2}([T ][0-9:.]+)?(Z|[+-]\d{2}(:?\d{2})?)?$' THEN
+    RETURN NULL;
+  END IF;
+  RETURN v::timestamptz;
+EXCEPTION WHEN others THEN
+  RETURN NULL;
+END $$;
+
 INSERT INTO process_pins (hub_id, process_id, pinned_by, pinned_at, pinned_until)
 SELECT p.hub_id,
        p.id,
        NULLIF(p.state->>'pinned_by', ''),
-       CASE WHEN (p.state->>'pinned_at') ~ '^\d{4}-\d{2}-\d{2}' THEN (p.state->>'pinned_at')::timestamptz ELSE p.created_at END,
-       CASE WHEN (p.state->>'pinned_until') ~ '^\d{4}-\d{2}-\d{2}' THEN (p.state->>'pinned_until')::timestamptz ELSE NULL END
+       COALESCE(pg_temp.civic_pin_ts(p.state->>'pinned_at'), p.created_at),
+       pg_temp.civic_pin_ts(p.state->>'pinned_until')
   FROM processes p
  WHERE p.state->>'pinned' = 'true'
-   AND ((p.state->>'pinned_until') IS NULL OR (p.state->>'pinned_until') ~ '^\d{4}-\d{2}-\d{2}')
+   AND (NULLIF(p.state->>'pinned_until', '') IS NULL OR pg_temp.civic_pin_ts(p.state->>'pinned_until') IS NOT NULL)
 ON CONFLICT (hub_id, process_id) DO NOTHING;

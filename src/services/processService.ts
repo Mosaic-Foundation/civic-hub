@@ -284,6 +284,31 @@ export async function getAllProcesses(types?: string[]): Promise<Process[]> {
   return data.map((r) => rowToProcess(r));
 }
 
+/**
+ * The newest public processes of these types whose state holds each `where`
+ * value at its key (compared as text: `{ urgent: "true" }`), at most `limit`.
+ * processesOf().list({ where, limit }).
+ */
+export async function getProcessesWhere(
+  types: readonly string[],
+  opts: { where?: Readonly<Record<string, string>>; limit: number },
+): Promise<Process[]> {
+  let q = db()
+    .from("processes")
+    .select<ProcessRow>("*")
+    .not("status", "in", nonPublicStatusFilter())
+    .in("type", [...types]);
+  for (const [key, value] of Object.entries(opts.where ?? {})) {
+    if (!/^[a-z_][a-z0-9_]*$/.test(key)) throw new Error(`getProcessesWhere: ${key} is not a state key`);
+    q = q.eq(`state->>${key}`, value);
+  }
+  const data = await q
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
+    .limit(Math.max(1, Math.min(opts.limit, 1000)));
+  return data.map((r) => rowToProcess(r));
+}
+
 // --- Action dispatch -------------------------------------------------------
 
 /** A resident called an action their handler does not open to residents. */

@@ -643,7 +643,7 @@ export interface PinState {
   pinned_until: string | null;
 }
 
-/** Pin any item to the right column's card (Adam, 2026-11-18); `until` (ISO) optional. */
+/** Pin any item to the Pinned card (Adam, 2026-11-18); `until` (ISO) optional. */
 export function adminPinProcess(id: string, until: string | null = null): Promise<PinState> {
   return request("POST", `/admin/processes/${id}/pin`, { pinned_until: until });
 }

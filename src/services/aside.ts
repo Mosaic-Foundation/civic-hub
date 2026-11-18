@@ -23,10 +23,8 @@
 import { getManifest } from "../processes/registry.js";
 import { memberVisibility } from "./members.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
-import { isProcessTypeEnabled } from "./pluginGate.js";
 import { contributedFill, contributedFirst } from "./pinnedCard.js";
-import { readPinnedItems } from "./pins.js";
-import { isPinActive } from "../shared/pinRules.js";
+import { readVisiblePins } from "./pins.js";
 import type { PinnedCardItem } from "../plugins/pinnedCard.js";
 
 /** Announcements in their card. */
@@ -81,12 +79,10 @@ function cardRow(item: PinnedCardItem): AsideAnnouncement {
 async function readBoard(): Promise<AsideAnnouncement[]> {
   const now = Date.now();
   // With the hub's Pinning switch off, a pin shows nowhere; a plugin's rows stay.
-  const [first, pinned] = await Promise.all([contributedFirst(), isPluginEnabledSync("pinning") ? readPinnedItems() : []]);
+  const [first, pinned] = await Promise.all([contributedFirst(), isPluginEnabledSync("pinning") ? readVisiblePins(now) : []]);
   const top = first.map(cardRow).sort((a, b) => Number(Boolean(b.urgent)) - Number(Boolean(a.urgent)) || b.published_at.localeCompare(a.published_at));
+  // Only what Admin → Pinned lists: a switched-off plugin's items leave the card as they leave the feed.
   const pins = pinned
-    // A switched-off plugin's items leave the card as they leave the feed.
-    .filter((p) => isPinActive(p, now) && isProcessTypeEnabled(p.type))
-    .filter((p) => !(p.state as { moderation?: { removed?: boolean } | null }).moderation?.removed)
     .map((p): AsideAnnouncement => {
       const state = p.state as { content?: { title?: string }; created_at?: string };
       const manifest = getManifest(p.type);

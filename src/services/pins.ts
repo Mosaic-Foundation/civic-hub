@@ -51,10 +51,20 @@ export async function readPinnedItems(): Promise<PinnedItemRow[]> {
   });
 }
 
-/** How many items other than `exceptId` are pinned right now (for the cap). */
+/**
+ * The pins readers see right now: end date not passed, the item public and
+ * not removed, its plugin on. Admin → Pinned lists these, the card shows
+ * them, and the cap counts them, so "8 of 10" is the truth. A pin on an item
+ * that is archived, removed, or whose plugin is off stays stored and comes
+ * back with it, but holds no place meanwhile.
+ */
+export async function readVisiblePins(now: number = Date.now()): Promise<PinnedItemRow[]> {
+  return (await readPinnedItems()).filter((p) => isPinActive(p, now) && isProcessTypeEnabled(p.type) && !isRemoved(p.state));
+}
+
+/** How many items other than `exceptId` are pinned right now, as Admin → Pinned counts them (for the cap). */
 export async function countPinnedNow(exceptId: string | null): Promise<number> {
-  const now = Date.now();
-  return (await readPins()).filter((p) => p.process_id !== exceptId && isPinActive(p, now)).length;
+  return (await readVisiblePins()).filter((p) => p.process_id !== exceptId).length;
 }
 
 /** A process an admin may pin: public, its plugin on, not removed. */
@@ -159,10 +169,9 @@ function labelOf(type: string): string {
  */
 export async function listPinned(): Promise<{ items: PinnedRow[]; pinned_count: number; pinned_max: number }> {
   const now = Date.now();
-  const [pinned, first] = await Promise.all([readPinnedItems(), contributedFirst()]);
+  const [pinned, first] = await Promise.all([readVisiblePins(now), contributedFirst()]);
   const rows = new Map<string, PinnedRow>();
   for (const p of pinned) {
-    if (!isPinActive(p, now) || !isProcessTypeEnabled(p.type) || isRemoved(p.state)) continue;
     const title = (p.state as { content?: { title?: string } }).content?.title;
     rows.set(p.process_id, {
       id: p.process_id,

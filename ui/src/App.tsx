@@ -348,7 +348,7 @@ function AppContent() {
                     the page. */}
                 <Route path="/admin/moderation" element={<AdminGuard><AdminModeration /></AdminGuard>} />
                 <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
-                {/* Everything pinned to the right column's card (2026-11-18), while Pinning is on. */}
+                {/* Everything pinned to the Pinned card (2026-11-18), while Pinning is on. */}
                 <Route path="/admin/pinned" element={whenPlugin("pinning", <AdminGuard><AdminPinned /></AdminGuard>)} />
                 <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
                 {/* Read-only archive of resident feedback, incl. topic suggestions. */}

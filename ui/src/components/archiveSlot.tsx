@@ -34,7 +34,7 @@ export function SlotArchiveButton() {
 }
 
 /**
- * Pin the page's item to the right column's card (any type, Adam,
+ * Pin the page's item to the Pinned card (any type, Adam,
  * 2026-11-18), unless the page draws its own pin control. Admins only.
  */
 export function SlotPinButton() {

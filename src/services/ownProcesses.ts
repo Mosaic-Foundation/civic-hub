@@ -23,6 +23,7 @@ import {
   archiveProcess,
   createProcess,
   getAllProcesses,
+  getProcessesWhere,
   getArchivedProcesses,
   getProcess,
   getSampleProcessIds,
@@ -43,9 +44,11 @@ export interface OwnProcesses {
   get(id: string): Promise<Process | undefined>;
   /**
    * Its processes, newest first: the public ones (anything not pending review,
-   * hidden or archived), or with `archived`, the archived ones.
+   * hidden or archived), or with `archived`, the archived ones. With `limit`,
+   * only the newest public ones, at most that many; `where` keeps those whose
+   * state holds each value at its key, compared as text (`{ urgent: "true" }`).
    */
-  list(options?: { archived?: boolean }): Promise<Process[]>;
+  list(options?: { archived?: boolean; limit?: number; where?: Readonly<Record<string, string>> }): Promise<Process[]>;
   /**
    * Make a process of one of these types through the kernel's path (its
    * handler's initializeState, the hub's place, civic.process.created). A type
@@ -123,7 +126,11 @@ export function processesOf(...types: string[]): OwnProcesses {
       return process && mine.has(process.definition.type) ? process : undefined;
     },
     list(options = {}) {
-      return options.archived ? getArchivedProcesses([...types]) : getAllProcesses([...types]);
+      if (options.archived) return getArchivedProcesses([...types]);
+      if (options.limit !== undefined || options.where) {
+        return getProcessesWhere(frozen, { where: options.where, limit: options.limit ?? 1000 });
+      }
+      return getAllProcesses([...types]);
     },
     create(input) {
       if (!mine.has(input.definition.type)) {

@@ -99,7 +99,7 @@ router.get("/archived", handleListArchivedProcesses);
 router.get("/edits", handleAdminListEdits);
 router.post("/processes/:id/archive", handleArchiveProcess);
 router.post("/processes/:id/restore", handleRestoreProcess);
-// Pin any item to the right column's card, or unpin it, and Admin → Pinned
+// Pin any item to the Pinned card, or unpin it, and Admin → Pinned
 // (Adam, 2026-11-18), while the hub's Pinning switch is on.
 router.post("/processes/:id/pin", requirePlugin("pinning"), handlePinProcess);
 router.post("/processes/:id/unpin", requirePlugin("pinning"), handleUnpinProcess);

@@ -24,6 +24,10 @@ Announcements feature, listed first on the Pinned card.
   rail entry are gone (decision card to Adam; recommended removing the page). `pinnedCard.ts` offers urgent
   announcements (`first`) and the newest three (`fill`). The kernel's Pin button now shows on the announcement page
   too. `useOwnPinControl` is gone from the SDK UI surface.
+- **Review fixes (Civic Hub Dev review, Nov 18):** the cap of 10 counts only what Admin → Pinned lists
+  (`readVisiblePins`: a pin on an archived or removed item, or on a switched-off plugin, holds no place and comes
+  back with its item); Announcements' `pinnedCard` reads only urgent rows and the newest few, through a new
+  `processesOf().list({ where, limit })`; the migration reads a malformed pin date as missing instead of stopping.
 - **Visible changes for Adam's eye:** the card is called "Pinned" whenever something is pinned or urgent (before:
   "Announcements" unless a non-announcement was pinned), and a pinned announcement's row reads "Announcement ·"
   like other types. Admins pin an announcement from the page's admin row, not the post form.

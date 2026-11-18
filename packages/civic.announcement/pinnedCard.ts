@@ -30,9 +30,12 @@ function item(p: Process, samples: Set<string>): PinnedCardItem & { state: Annou
   };
 }
 
-async function live(): Promise<Array<PinnedCardItem & { state: AnnouncementProcessState }>> {
-  const [all, samples] = await Promise.all([announcements().list(), announcements().sampleIds()]);
-  return all
+/** How many of the newest to read for `fill`: a few spare, as a removed one is left out after the read. */
+const FILL_READ = FILL * 3;
+
+async function rows(read: Promise<Process[]>): Promise<Array<PinnedCardItem & { state: AnnouncementProcessState }>> {
+  const [found, samples] = await Promise.all([read, announcements().sampleIds()]);
+  return found
     .map((p) => item(p, samples))
     .filter((i) => !i.state.moderation?.removed)
     .sort((a, b) => b.published_at.localeCompare(a.published_at));
@@ -45,11 +48,12 @@ function bare({ state: _state, ...rest }: PinnedCardItem & { state: Announcement
 export const pinnedCard: PluginPinnedCard = {
   async first() {
     const now = Date.now();
-    return (await live())
+    // Only the ones marked urgent are read; few, as each has an end date at most 30 days out.
+    return (await rows(announcements().list({ where: { urgent: "true" }, limit: 100 })))
       .filter((i) => isUrgentNow(i.state, now))
       .map((i) => ({ ...bare(i), urgent: true as const, until: i.state.urgent_until ?? null }));
   },
   async fill() {
-    return (await live()).slice(0, FILL).map(bare);
+    return (await rows(announcements().list({ limit: FILL_READ }))).slice(0, FILL).map(bare);
   },
 };

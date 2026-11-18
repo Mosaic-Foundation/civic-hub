@@ -168,6 +168,15 @@ describe("pinned", () => {
     expect(JSON.stringify(over.body)).toMatch(/Unpin one first/);
     const facts = await aside();
     expect(facts.announcements.filter((a) => a.pinned).length).toBe(10);
+
+    // A pin Admin → Pinned can't show holds no place: archive one, and the
+    // count says 9 and another can be pinned.
+    const first = made[made.length - 11];
+    expect((await call("POST", `/admin/processes/${first}/archive`, FLOYD, { reason: "test" }, admin)).status).toBe(200);
+    const list = await call("GET", "/admin/pins", FLOYD, undefined, admin);
+    expect(list.body.pinned_count).toBe(9);
+    expect((await pin(id)).status).toBe(200);
     await unpinAll();
+    await call("POST", `/admin/processes/${first}/unpin`, FLOYD, {}, admin);
   });
 });
