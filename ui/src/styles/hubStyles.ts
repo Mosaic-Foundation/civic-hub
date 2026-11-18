@@ -115,5 +115,8 @@ import "../aside/UrgentLine.css";
 // The kit's page patterns (Events 3): the section page's head, groups, list
 // card, chips and filter pills, where App.css and Feed.css ranked them.
 import "../kit/patterns.css";
+// Districts and demographics (2026-11-16): About you, and the results' breakdown tables.
+import "../components/AboutYouForm.css";
+import "../components/ResultsBreakdown.css";
 import "../App.css";
 import "../kit/kit.css";
