@@ -132,6 +132,8 @@ export interface OperatorApi {
   applyConfig(hubId: string, changes: Partial<HubConfigView>, actor: string): Promise<{ changes: Partial<HubConfigView>; follow_on: FollowOn; message: string | null }>;
   updateHandover(hubId: string, body: unknown, actor: string): Promise<{ result: HandoverResult; message: string | null }>;
   updateAiLimits(hubId: string, body: unknown, actor: string): Promise<{ before: unknown; after: unknown }>;
+  /** Approve the hub for live, or take it back ({ approved: boolean }). Nothing changes when it already is. */
+  setLiveApproval(hubId: string, body: unknown): Promise<{ before: { live_approved_at: string | null }; after: { live_approved_at: string | null } }>;
   /** The roster asked for, checked, beside the current one. */
   planAdmins(hubId: string, body: unknown): Promise<{ before: string[]; next: string[] }>;
   setAdmins(hubId: string, admins: readonly string[], actor: string): Promise<void>;
@@ -186,6 +188,7 @@ export const OPERATOR_METHODS = [
   "applyConfig",
   "updateHandover",
   "updateAiLimits",
+  "setLiveApproval",
   "planAdmins",
   "setAdmins",
   "refreshSamples",

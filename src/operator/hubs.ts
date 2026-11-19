@@ -19,7 +19,7 @@ import { defaultJurisdiction, spaceDid } from "../config/hub.js";
 import { apiOriginFor } from "../utils/baseUrl.js";
 import { inHubScope } from "./inHub.js";
 import { readAll } from "../db/readAll.js";
-import { invalidateHubCache } from "../db/hubs.js";
+import { invalidateHubCache, setHubLiveApprovedAt } from "../db/hubs.js";
 import { invalidateHubSettings } from "../db/hubSettingsStore.js";
 import {
   RESERVED_HUB_SLUGS,
@@ -74,7 +74,7 @@ export class ControlInputError extends CivicError {
 }
 
 const HUB_COLUMNS =
-  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, jurisdiction_ocd_id, jurisdiction_custom, space_did, space_type, status, mode, created_at, updated_at, archived_at, redirect_to, previous_hostnames, custody_arrangement, custodian, assurance_level";
+  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, jurisdiction_ocd_id, jurisdiction_custom, space_did, space_type, status, mode, created_at, updated_at, archived_at, redirect_to, previous_hostnames, custody_arrangement, custodian, assurance_level, live_approved_at";
 
 export type ControlHub = Hub & {
   archived_at: string | null;
@@ -85,6 +85,11 @@ export type ControlHub = Hub & {
   jurisdiction_ocd_id: string | null;
   /** "Other / not listed": a name with no OCD id, on purpose. */
   jurisdiction_custom: boolean;
+  /**
+   * When the platform approved the hub for live (20261119000000), or null:
+   * its admins cannot move it to live until then (src/shared/goLive.ts).
+   */
+  live_approved_at: string | null;
 };
 
 const OCD_ID_RE = /^ocd-division\/country:us(\/[a-z_]+:[a-z0-9_~.-]+)*$/;
@@ -1121,4 +1126,26 @@ export async function updateHubAiLimits(
   await writeSettings(hub.id, { [KEYS.LIMITS_AI]: JSON.stringify(next) }, consoleBy(actor));
   refreshCaches(hub.id);
   return { before: view.overrides, after: next as Partial<AiLimits> };
+}
+
+// --- Live approval (Adam, 2026-11-19) ---------------------------------------
+//
+// A live hub runs under an agreement with Civic.Social. The console approves
+// a hub for live once one is in place; the hub's admins then go live from
+// Hub settings → Mode, with its readiness checks. Not destructive, so no
+// step-up: approving opens nothing by itself, and taking it back does not
+// move a live hub. Audited by the console.
+
+export async function setHubLiveApproval(
+  hub: ControlHub,
+  body: unknown,
+): Promise<{ before: { live_approved_at: string | null }; after: { live_approved_at: string | null } }> {
+  const approved = (body as { approved?: unknown } | null)?.approved;
+  if (typeof approved !== "boolean") throw new ControlInputError("Send approved: true or false.");
+  const before = hub.live_approved_at ?? null;
+  if (approved === (before !== null)) {
+    return { before: { live_approved_at: before }, after: { live_approved_at: before } };
+  }
+  const after = await setHubLiveApprovedAt(hub.id, approved);
+  return { before: { live_approved_at: before }, after: { live_approved_at: after } };
 }

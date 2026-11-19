@@ -70,6 +70,11 @@ export async function updateAiLimits(hubId: string, body: unknown, by = OPERATOR
   return then(hubId, await operatorCall("updateAiLimits", hubId, hubFields(body), by));
 }
 
+/** The console's "Approved for live" switch (2026-11-19). */
+export async function setLiveApproval(hubId: string, approved: boolean): Promise<OperatorResponse> {
+  return then(hubId, await operatorCall("setLiveApproval", hubId, { approved }));
+}
+
 /** A hub's admins, as asked; the new ones are invited. */
 export async function setAdmins(hubId: string, body: unknown, by = OPERATOR): Promise<OperatorResponse> {
   const plan = await operatorCall("planAdmins", hubId, hubFields(body));

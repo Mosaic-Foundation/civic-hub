@@ -43,7 +43,7 @@ import {
 } from "../shared/hubSettingsSections.js";
 import { documentSettingDefault, documentTemplate, documentValues, hubGoverningLaw } from "../services/hubDocuments.js";
 import { getUser } from "../modules/civic.auth/index.js";
-import { renameHub } from "../db/hubs.js";
+import { getHubLiveApprovedAt, renameHub } from "../db/hubs.js";
 import { placeTimeZone } from "../shared/hubTimeZone.js";
 import { processTypeDisplays } from "../processes/registry.js";
 import { orderAfterSwitchingOff } from "../shared/navSections.js";
@@ -63,6 +63,8 @@ export interface HubSettingsResponse {
      * to confirm (src/shared/hubTimeZone.ts).
      */
     place_time_zone: string;
+    /** Whether the platform has approved the hub for live (src/shared/goLive.ts). */
+    live_approved: boolean;
   };
   /** The hub's own value for every editable key; "" where it has none. */
   values: Record<string, string>;
@@ -148,6 +150,9 @@ async function loadHubSettings(): Promise<HubSettingsResponse> {
       hostname: hub?.hostname ?? "",
       jurisdiction_name: hub?.jurisdiction_name ?? null,
       mode: hubModeFor(hub),
+      // Whether the platform has approved this hub for live (2026-11-19):
+      // the Mode section shows Live as unavailable until it has.
+      live_approved: hub ? (await getHubLiveApprovedAt(hub.id)) !== null : false,
       place_time_zone: placeTimeZone(hub?.jurisdiction_code ?? null),
     },
     values,

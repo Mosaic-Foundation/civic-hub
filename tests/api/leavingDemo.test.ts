@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession, plantHubCode } from "../fixtures/adminSession.js";
-import { createHub } from "../fixtures/operator.js";
+import { createHub, setLiveApproval } from "../fixtures/operator.js";
 import { freshTestIp } from "../fixtures/helpers.js";
 import { CURRENT_LEGAL_VERSION } from "../../src/shared/legal.js";
 
@@ -226,6 +226,23 @@ describe("the first week of beta", () => {
 });
 
 describe("beta → live, and back", () => {
+  it("refuses live until the platform approves it (2026-11-19)", async () => {
+    const settings = await call("GET", "/admin/hub/settings", KEEP_HOST, undefined, admin[KEEP_HOST]);
+    expect(settings.status, JSON.stringify(settings.body)).toBe(200);
+    expect(settings.body.hub.live_approved).toBe(false);
+    const accepted = ALL_ACCEPTABLE.filter((a) => a !== "samples");
+    const { res } = await switchMode(KEEP_HOST, KEEP, { mode: "live", accepted });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("live_not_approved");
+    expect(res.body.error).toContain("adam@civic.social");
+
+    const approved = await setLiveApproval(KEEP, true);
+    expect(approved.status, JSON.stringify(approved.body)).toBe(200);
+    expect(approved.body.hub.live_approved_at).toEqual(expect.any(String));
+    const after = await call("GET", "/admin/hub/settings", KEEP_HOST, undefined, admin[KEEP_HOST]);
+    expect(after.body.hub.live_approved).toBe(true);
+  });
+
   it("tells the waitlist the hub is open, once each", async () => {
     for (const who of ["one", "two"]) {
       const res = await call("POST", "/waitlist", KEEP_HOST, { email: `ld-wait-${who}-${run}@example.test` });

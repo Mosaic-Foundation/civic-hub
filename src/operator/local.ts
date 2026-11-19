@@ -45,6 +45,7 @@ import {
   unarchiveHub,
   updateHandover,
   updateHubAiLimits,
+  setHubLiveApproval,
   updateHubConfig,
   validateHubConfig,
   withDerivedCode,
@@ -175,6 +176,11 @@ export function localOperator(): OperatorApi {
       const hub = await requireHub(hubId);
       refuseArchived(hub);
       return updateHubAiLimits(hub, body, actor);
+    },
+    async setLiveApproval(hubId, body) {
+      const hub = await requireHub(hubId);
+      refuseArchived(hub);
+      return setHubLiveApproval(hub, body);
     },
     async planAdmins(hubId, body) {
       await requireHub(hubId);

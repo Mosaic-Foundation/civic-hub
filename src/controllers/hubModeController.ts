@@ -23,6 +23,12 @@
 // so they end the moment the mode changes, on every server. Sessions proved by
 // an emailed code, the admin's own among them, carry on.
 //
+// GOING LIVE NEEDS THE PLATFORM'S APPROVAL (Adam, 2026-11-19): a live hub runs
+// under an agreement with Civic.Social. Until the console has approved the
+// hub (hubs.live_approved_at), a move to live is refused with
+// "live_not_approved" and the words of src/shared/goLive.ts; a trigger on
+// `hubs` refuses it as well.
+//
 // WHAT CANNOT BE DONE HERE AT ALL: moving a hub into demo. Demo is the one
 // mode that relaxes sign-in, and it is set when a hub is created, by the
 // control plane. A trigger on `hubs` refuses the update as well, so this
@@ -30,7 +36,7 @@
 
 import { NotFoundError, UnauthorizedError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
-import { setHubMode } from "../db/hubs.js";
+import { getHubLiveApprovedAt, setHubMode } from "../db/hubs.js";
 import { hubModeChangeRejectionReason, type HubMode } from "../models/hub.js";
 import { hubModeFor } from "../services/hubSettings.js";
 import { caller, requireStepUpCode } from "./adminStepUp.js";
@@ -68,8 +74,14 @@ export const handleSetHubMode = route(async (req, res) => {
   // The requested mode is checked BEFORE the code is spent. A code is
   // single-use, so an admin who asks for something the rules forbid should
   // not also have to go and fetch another one.
-  const rejection = hubModeChangeRejectionReason(hubModeFor(hub), body.mode);
-  if (rejection) throw new ValidationError(rejection, "mode_change_rejected");
+  // Going live needs the platform's approval (2026-11-19), read only when
+  // that is the move asked for.
+  const liveApproved = body.mode === "live" ? (await getHubLiveApprovedAt(hub.id)) !== null : false;
+  const rejection = hubModeChangeRejectionReason(hubModeFor(hub), body.mode, { liveApproved });
+  if (rejection) {
+    const notApproved = body.mode === "live" && !liveApproved && hubModeFor(hub) !== "live";
+    throw new ValidationError(rejection, notApproved ? "live_not_approved" : "mode_change_rejected");
+  }
 
   const mode = body.mode as HubMode;
   const from = hubModeFor(hub);
