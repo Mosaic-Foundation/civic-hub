@@ -52,6 +52,8 @@ const announcementKind: FeedKindUi = {
 
 const announcementUi: ProcessUi = {
   type: "civic.announcement",
+  // Its own filter pill above the feed (the kernel names none).
+  feedFilter: { surface: "announcement", label: () => "Announcements", pillClass: "announcement" },
   routes: [
     { path: "/announcement/new", element: <PostAnnouncement /> },
     { path: "/announcement/:id/edit", element: <PostAnnouncement /> },

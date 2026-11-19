@@ -12,6 +12,8 @@ import { DEADLINE_CLOSE_INPUT as CLOSE_INPUT } from "../../src/shared/deadlineCl
 
 export type { ProcessManifest };
 export type { ParticipationDeclaration, MeasureId } from "../../src/shared/participation.js";
+// A card a type builds from its event's payload (`feed.cards[].card.fromPayload`) returns one.
+export type { Activity, ActivityKind, ActivityColor, ActivitySurface } from "../../src/shared/feedActivity.js";
 
 /** Declare a process type's descriptor. Returns it as given, keeping its literal values. */
 export function defineDescriptor<const P extends string>(descriptor: ProcessTypeDescriptor<P>): ProcessTypeDescriptor<P> {

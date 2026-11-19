@@ -3,7 +3,6 @@
 import type { CivicEvent } from "../services/api";
 import { typeDisplay } from "../config/navigation";
 import { classifyActivity, type Activity, type ActivityKind } from "../../../src/shared/feedActivity";
-import { syncedFrom } from "../../../src/shared/newsSource";
 import { feedKindUi } from "../processes";
 import { summaryFromDescription } from "../processes/feedText";
 import type { CardText } from "../processes/types";
@@ -49,17 +48,11 @@ export function eventToPost(
   event: CivicEvent,
   getProcessDescription: (processId: string) => string | undefined,
   getProcessTitle: (processId: string) => string | undefined,
-  /**
-   * The hub's News Sync labels (plugin.news_sync.from_label, .pill_label),
-   * when set. Each hub has one News Sync source, so the settings as they
-   * stand now name every News item, including ones copied in before a change.
-   */
-  newsLabels?: { from?: string | null; pill?: string | null },
 ): FeedPostView | null {
   const activity = classifyActivity(event);
   if (!activity) return null;
 
-  const { title, summary, authorName, engagement } = buildTitleSummary(
+  const { title, summary, authorName, engagement, pill } = buildTitleSummary(
     activity,
     event,
     getProcessTitle,
@@ -73,21 +66,18 @@ export function eventToPost(
     // The type's own label (design A, navigation slice 2026-10-14): one
     // word per kind of thing, from the registry, so a plugin's type gets its
     // pill with no change here.
-    // A News item's pill is its source's (the hub's pill label as set now),
-    // and older ones' events name the announcement type: the registry's word
-    // would be wrong for both.
-    pillLabel:
-      activity.surface === "news"
-        ? newsLabels?.pill?.trim() || activity.pill
-        : typeDisplay(eventProcessType(event))?.label ?? activity.pill,
+    // A kind may word its own pill from the space as it stands now (News
+    // Sync: the hub's pill label); its card text says so.
+    pillLabel: pill ?? typeDisplay(eventProcessType(event))?.label ?? activity.pill,
     note: ACTIVITY_NOTES[activity.kind] ?? null,
     pillKind: activity.kind,
     pillColor: activity.color,
     summary,
     timestamp: event.timestamp,
     href: activity.href,
-    // A synced post says where it came from: "From Floyd County Government".
-    authorName: activity.from ? `From ${syncedFrom(newsLabels?.from, activity.from)}` : authorName ?? null,
+    // A post copied in from elsewhere says where it came from ("From Floyd
+    // County Government"); its kind's card text words it.
+    authorName: authorName ?? (activity.from ? `From ${activity.from}` : null),
     sample: event.sample,
   };
 }

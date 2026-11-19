@@ -87,6 +87,8 @@ export interface SpaceView {
    * "where you live". The UI side of the kernel's spacePlace().
    */
   place: string;
+  /** The place it serves, short ("Floyd County"), or null where it serves none: the kernel's hubContext().placeName. */
+  placeName: string | null;
   /** Its IANA time zone, the one every time is shown in (as hubTimeZone()). */
   timeZone: string;
   /** What the people taking part are called, by count (as the kernel's hubContext().participantNoun). */
@@ -139,6 +141,7 @@ function spaceViewOf(hub: ReturnType<typeof useHub>): SpaceView {
     name,
     theName: (capital = false) => theName(name, capital),
     place: hub.place,
+    placeName: hub.isPlace ? hub.jurisdiction.split(",")[0]?.trim() || null : null,
     timeZone: hub.timeZone,
     participantNoun: (count) => hub.noun(count),
     term: (t, count) => hub.term(t, count),

@@ -8,6 +8,7 @@ import type { ComponentType, ReactElement, ReactNode } from "react";
 import type { Activity, ActivityKind } from "../../../src/shared/feedActivity";
 import type { CivicEvent, RelationType } from "../services/api";
 import type { FormApi } from "../pages/settings/pluginFields";
+import type { SpaceView } from "../host";
 
 /**
  * One page of a type: its path, and who may open it. A type whose page lives
@@ -56,6 +57,11 @@ export interface CardText {
   title: string;
   summary: string;
   authorName?: string | null;
+  /**
+   * The card's pill, where the type words it from the space as it stands now
+   * (News Sync: the hub's pill label). Unset: the type's own label.
+   */
+  pill?: string;
   /** Event-derived metadata line. When set, it wins over the Feed
    *  container's fetched-meta engagement (which knows nothing about
    *  this event's payload). */
@@ -104,6 +110,12 @@ export interface ProcessUi {
   routes: ReadonlyArray<ProcessRoute>;
   /** How this type's feed kinds render. */
   feed?: Partial<Record<ActivityKind, FeedKindUi>>;
+  /**
+   * A filter pill of its own above the feed, for the surface its card rules
+   * name (src/shared/feedActivity.ts FEED_SURFACES), shown while its plugin
+   * is. `pillClass` is the FeedFilter.css modifier (feed-filter-pill--<it>).
+   */
+  feedFilter?: { surface: string; label: (space: SpaceView) => string; pillClass: string };
   /** Its plugin's panel on the Plugins page; only on the type whose manifest carries pluginSection. */
   settingsPanel?: (f: FormApi) => ReactNode;
   /** The relation the link picker offers first when linking FROM a process of this type. */

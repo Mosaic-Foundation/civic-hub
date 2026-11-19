@@ -441,6 +441,14 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
     }
     const ownKinds = new Set((m.feed?.kinds ?? []).map((k) => k.kind));
     for (const rule of m.feed?.cards ?? []) {
+      if (typeof rule.card === "object" && "fromPayload" in rule.card) {
+        if (typeof rule.card.fromPayload !== "function") throw new ManifestError(`${where(m)}: a payload card needs fromPayload as a function`);
+        if (!/^[a-z][a-z0-9_]*$/.test(rule.card.surface ?? "")) throw new ManifestError(`${where(m)}: feed card surface "${rule.card.surface}" must be lowercase letters, digits and underscores`);
+        continue;
+      }
+      if (typeof rule.card === "object" && !/^[a-z][a-z0-9_]*$/.test(rule.card.surface ?? "")) {
+        throw new ManifestError(`${where(m)}: feed card surface "${rule.card.surface}" must be lowercase letters, digits and underscores`);
+      }
       if (typeof rule.card === "object" && !BUILTIN_KINDS.has(rule.card.kind) && !ownKinds.has(rule.card.kind)) {
         throw new ManifestError(`${where(m)}: feed card kind "${rule.card.kind}" is neither the hub's nor declared in feed.kinds`);
       }

@@ -25,6 +25,15 @@ Updated after every Claude Code session. Records what was built, what's incomple
 - **The module table (docs/KERNEL.md):** the admin digest stays in the kernel (it reports the kernel's own queues and
   job health); the assistant splits (the Code of Conduct check is kernel moderation; the drafting chat becomes a
   feature, next); `civic.receipts` stays in the kernel (decided Nov 17).
+- **The feed's filters name no plugin.** `ActivitySurface` is a string: a type's card rule names its surface, and
+  `FEED_SURFACES` (`src/shared/feedActivity.ts`) lists what the manifests name, then the kernel's `activity`; the feed
+  route accepts those alone. A card built from its payload is `{ surface, color, fromPayload }`: Announcements'
+  `feed.ts` (the author's role pill, and a pre-split synced post as News) and News Sync's `feed.ts`. A UI module's
+  `feedFilter` adds its own pill (Announcements, News, Meeting summaries); `CardText.pill` lets a kind word its pill
+  (News Sync: the hub's pill label as set now), and News Sync's card words its From line. News Sync's settings panel
+  moved into its `ui.tsx`. `src/shared/newsSource.ts` is gone (labels in `packages/civic.news_sync/models.ts`).
+  `SpaceView.placeName` is new. Nothing on screen changes. Catalog entries regenerated, same versions: News Sync 0.2.0
+  `20261119013922`, Announcements 0.4.0 `20261119013934`, Meeting summaries 0.3.0 `20261119013944`.
 - **Dev merged in (0eda79f, About you not during sign-up).** On this branch the hold names no package: AuthModal works
   out the first stop (`afterSignUpStop`) before `login()` and hands it to `holdAboutYouForSignup(stop)`; nothing asks on
   that path (kept in sessionStorage for a reload), and the first action anywhere else after reaching it ends the hold.

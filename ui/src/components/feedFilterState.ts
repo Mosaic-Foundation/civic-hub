@@ -1,23 +1,15 @@
 // The feed's ?type= filter (split from FeedFilter.tsx, which holds the pills).
 
 import { useSearchParams } from "react-router-dom";
+import { FEED_SURFACES } from "../../../src/shared/feedActivity";
 
-export type FeedFilterKey =
-  | "all"
-  | "announcement"
-  | "news"
-  | "meeting_summary"
-  | "activity";
+/** "all", or one of the surfaces the configured types name, or "activity". */
+export type FeedFilterKey = "all" | (string & {});
 
 const PARAM = "type";
 
 function isFilterKey(v: string | null): v is FeedFilterKey {
-  return (
-    v === "announcement" ||
-    v === "news" ||
-    v === "meeting_summary" ||
-    v === "activity"
-  );
+  return v !== null && FEED_SURFACES.includes(v);
 }
 
 /**

@@ -30,6 +30,14 @@ const MEETING_CONNECTOR_LABELS: Record<string, string> = {
 
 const meetingSummaryUi: ProcessUi = {
   type: "civic.meeting_summary",
+  // Its own filter pill above the feed (the kernel names none): "Supervisors
+  // meeting summaries", or "Meeting summaries" where the space names no
+  // governing body. The card pill reads the same.
+  feedFilter: {
+    surface: "meeting_summary",
+    label: (space) => (space.governingBodyShort ? `${space.governingBodyShort} meeting summaries` : "Meeting summaries"),
+    pillClass: "meeting",
+  },
   // Its review queue in the admin rail (the kernel counts what is new).
   contributes: {
     adminQueue: { queue: "meeting_summaries", label: "Meeting summaries", icon: "meeting", path: "/admin/meeting-summaries" },

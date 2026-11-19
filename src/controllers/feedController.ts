@@ -41,9 +41,8 @@ import {
   feedProcessFacts,
   readFeedPage,
 } from "../services/feedPage.js";
-import type { ActivitySurface } from "../shared/feedActivity.js";
-
-const SURFACES: readonly ActivitySurface[] = ["announcement", "news", "meeting_summary", "activity"];
+// The surfaces the configured types name, and the kernel's "activity".
+import { FEED_SURFACES as SURFACES, type ActivitySurface } from "../shared/feedActivity.js";
 
 export const handleGetFeed = route(async (req, res) => {
   const processId = firstQueryValue(req.query.process_id);

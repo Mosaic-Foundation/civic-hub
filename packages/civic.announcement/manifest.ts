@@ -3,6 +3,7 @@
 // are built from it. The handler (./handler.ts) runs its actions.
 
 import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
+import { announcementCard } from "./feed.js";
 
 /**
  * What an announcement is (src/processes/descriptor.ts). It is published the
@@ -59,7 +60,7 @@ export const ANNOUNCEMENT_MANIFEST = defineManifest({
     "civic.process.result_published": ["announcement"],
   },
   feed: {
-    cards: [{ event: "civic.process.result_published", legacy: [{ field: "announcement", is: "present" }], card: "announcement" }],
+    cards: [{ event: "civic.process.result_published", legacy: [{ field: "announcement", is: "present" }], card: { surface: "announcement", color: "announcement", fromPayload: announcementCard } }],
   },
   capabilities: {
     activities: { emit: ["civic.process.result_published"], listen: [] },

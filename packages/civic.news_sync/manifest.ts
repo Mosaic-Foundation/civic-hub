@@ -9,6 +9,7 @@
 
 import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
 import { NEWS_CONNECTOR_OPTIONS } from "./sync/connectors/options.js";
+import { newsCard } from "./feed.js";
 
 /**
  * What a News item is (src/processes/descriptor.ts). The news sync job
@@ -80,7 +81,7 @@ export const NEWS_MANIFEST = defineManifest({
     "civic.process.result_published": ["news"],
   },
   feed: {
-    cards: [{ event: "civic.process.result_published", legacy: [{ field: "news", is: "present" }], card: "news" }],
+    cards: [{ event: "civic.process.result_published", legacy: [{ field: "news", is: "present" }], card: { surface: "news", color: "news", fromPayload: newsCard } }],
   },
   capabilities: {
     activities: { emit: ["civic.process.result_published"], listen: [] },

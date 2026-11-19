@@ -493,8 +493,11 @@ export async function getFeedMeta(processIds: string[]): Promise<Record<string, 
   return (await request<{ processes: Record<string, FeedProcessFacts> }>("GET", `/feed/meta?${params}`)).processes;
 }
 
-/** The feed's filter pills; mirrors ActivitySurface in src/shared/feedActivity.ts. */
-export type FeedSurface = "announcement" | "news" | "meeting_summary" | "activity";
+/**
+ * One of the feed's filter pills: a surface a type's card rules name, or the
+ * kernel's "activity" (FEED_SURFACES in src/shared/feedActivity.ts).
+ */
+export type FeedSurface = string;
 
 /** Cards per page of the feed. */
 export const FEED_PAGE_SIZE = 25;

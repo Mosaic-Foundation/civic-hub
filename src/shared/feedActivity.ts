@@ -36,17 +36,22 @@
 // via emitEvent) as the single discriminator, falling back to the legacy
 // data-shape checks for historical events emitted before the field existed.
 
-import { syncedSourceView } from "./newsSource.js";
 import { LEGACY_TYPES, MANIFEST_LIST } from "./processManifests.js";
 
 /**
  * Coarse content category — aligned 1:1 with the FeedFilter `?type=` keys so
  * the inclusion gate, the filter predicate, and the rendered pills can never
- * disagree (the "filter shows fewer than All" bug). Votes, vote-results,
- * wordclouds, proposals, projects, and conversations all live under
- * "activity"; announcements and meeting summaries get their own filter pill.
+ * disagree (the "filter shows fewer than All" bug). "activity" is the
+ * kernel's own, where most cards go; a type's card rule may name a surface of
+ * its own (Announcements' "announcement", News Sync's "news", Meeting
+ * summaries' "meeting_summary"), which gets its own filter pill while that
+ * type's plugin is shown (its UI module's `feedFilter`). The kernel names none
+ * of them (kernel step 3, Nov 19): FEED_SURFACES lists what the manifests name.
  */
-export type ActivitySurface = "announcement" | "news" | "meeting_summary" | "activity";
+export type ActivitySurface = string;
+
+/** The kernel's own surface: every card no type gives a surface of its own. */
+export const ACTIVITY_SURFACE = "activity";
 
 /**
  * Fine-grained render variant. Each consumer maps this to its own presentation
@@ -193,14 +198,23 @@ export type FeedHref =
   /** The page of the process a data field names, else the event's own. */
   | { detailOf: string };
 
-/** A card, or one of the two whose pill is built from the payload. */
+/**
+ * A card built from its event's payload by the type that declares it
+ * (Announcements: the pill is the author's role; News Sync: the pill and
+ * "From" line are its source's). `surface` and `color` are what it is usually
+ * filed under and coloured, read where no event is at hand (the filter list,
+ * a type's colour); `fromPayload` gives the card itself.
+ */
+export interface PayloadCard {
+  surface: ActivitySurface;
+  color: ActivityColor;
+  fromPayload: (data: Record<string, unknown>, actionUrl: string) => Activity;
+}
+
+/** A card, one built from its payload, or a published Civic Brief (it wears its source's colour and pill). */
 export type FeedCard =
   | { surface: ActivitySurface; kind: ActivityKind; color: ActivityColor; pill: string; href: FeedHref }
-  /** An announcement: its pill is the author's role (classifyAnnouncement). */
-  | "announcement"
-  /** A News item: its pill and "From" line are its source's (classifyNews). */
-  | "news"
-  /** A published Civic Brief: it wears its source's colour and pill. */
+  | PayloadCard
   | "brief";
 
 /** One event of a type that makes a feed card. */
@@ -293,6 +307,20 @@ const BRIEF_STYLES: ReadonlyMap<string, FeedBriefStyle> = new Map(
 );
 
 /**
+ * Every surface a card can be filed under: the ones the manifests' card rules
+ * name, in load order, then the kernel's "activity". The feed's `?surface=`
+ * accepts these alone.
+ */
+export const FEED_SURFACES: readonly ActivitySurface[] = [
+  ...new Set(
+    MANIFEST_LIST.flatMap((m) =>
+      (m.feed?.cards ?? []).flatMap((r) => (typeof r.card === "object" && r.card.surface !== ACTIVITY_SURFACE ? [r.card.surface] : [])),
+    ),
+  ),
+  ACTIVITY_SURFACE,
+];
+
+/**
  * The only event types `classifyActivity` can return a card for: every event
  * a manifest's feed rule names. The feed asks the database for these types
  * alone (2026-10-07), so a page of cards is not a scan through every ballot
@@ -371,14 +399,12 @@ function pickRule(event: ClassifierEvent): TableRule | undefined {
 
 function cardFor(rule: TableRule, event: ClassifierEvent, data: Record<string, unknown>): Activity {
   const card = rule.card;
-  if (card === "announcement") return classifyAnnouncement(data, event.action_url);
-  if (card === "news") return classifyNews(data, event.action_url);
   if (card === "brief") {
     const brief = (data.brief ?? {}) as { source_process_type?: unknown };
     const srcType = typeof brief.source_process_type === "string" ? brief.source_process_type : "";
     const style = BRIEF_STYLES.get(srcType);
     return {
-      surface: "activity",
+      surface: ACTIVITY_SURFACE,
       kind: "brief",
       color: style?.color ?? "generic",
       pill: style?.pill ?? "Civic Brief",
@@ -386,6 +412,7 @@ function cardFor(rule: TableRule, event: ClassifierEvent, data: Record<string, u
       href: rule.detail(event.process_id),
     };
   }
+  if ("fromPayload" in card) return card.fromPayload(data, event.action_url);
   const href =
     card.href === "detail"
       ? rule.detail(event.process_id)
@@ -407,69 +434,5 @@ function cardFor(rule: TableRule, event: ClassifierEvent, data: Record<string, u
 export function briefResponseContext(sourceType: unknown): string {
   const noun = BRIEF_STYLES.get(typeof sourceType === "string" ? sourceType : "")?.noun ?? "process";
   return `Responding to the community's Civic Brief on this ${noun}`;
-}
-
-function classifyAnnouncement(
-  data: Record<string, unknown>,
-  actionUrl: string,
-): Activity {
-  const ann = data.announcement as
-    | { author_role?: unknown; source?: { origin?: unknown } | null }
-    | undefined;
-  const rawRole =
-    typeof ann?.author_role === "string" ? ann.author_role : null;
-  // Legacy "board" → "Board member"; lowercase "admin"/unset → "Admin"; any
-  // other free-form role ("Planning Committee", …) is shown verbatim.
-  const normalized =
-    rawRole === "board"
-      ? "Board member"
-      : rawRole === "admin" || !rawRole
-        ? "Admin"
-        : rawRole;
-  const isAdmin = normalized === "Admin";
-  // Posts News Sync copied in before it became its own plugin (2026-11-18)
-  // were announcements with a `source` (keyed on its presence, not its origin
-  // string, which changed when the module was renamed). Their processes are
-  // News items now (migration 20261118180000), and their stored events read
-  // as News cards, whatever the hub's old "show as" said.
-  const synced = syncedSourceView(ann?.source);
-  if (synced) {
-    return { surface: "news", kind: "news", color: "news", pill: NEWS_PILL, from: synced.label ?? normalized, href: actionUrl };
-  }
-  return {
-    surface: "announcement",
-    // Non-admin authors (board members, committees) get a distinct pill +
-    // border color so residents can tell elected-official posts from the hub
-    // administrator's.
-    kind: isAdmin ? "announcement" : "announcement-author",
-    color: isAdmin ? "announcement" : "announcement-author",
-    pill: abbreviateGovernment(normalized),
-    href: actionUrl,
-  };
-}
-
-/** A News item's pill when its source names none. */
-const NEWS_PILL = "News";
-
-/**
- * A News item (civic.news): its own filter and colour, the pill and "From"
- * line its source was given when it was copied in (a reader that knows the
- * hub's current settings words both from them; one source per hub), and a
- * link to the original.
- */
-function classifyNews(data: Record<string, unknown>, actionUrl: string): Activity {
-  const source = ((data.news as { source?: unknown } | undefined)?.source ?? {}) as { label?: unknown; pill?: unknown };
-  const pill = typeof source.pill === "string" && source.pill.trim() ? source.pill.trim() : NEWS_PILL;
-  const from = typeof source.label === "string" && source.label.trim() ? source.label.trim() : undefined;
-  return { surface: "news", kind: "news", color: "news", pill, ...(from ? { from } : {}), href: actionUrl };
-}
-
-/**
- * Width-saver for announcement pill labels: "Floyd County Government" →
- * "Floyd County Gov". Single source of truth for both the feed and the email
- * digest (previously duplicated in FeedPost.tsx and digest/service.ts).
- */
-function abbreviateGovernment(label: string): string {
-  return label.replace(/\bGovernment\b/gi, "Gov");
 }
 

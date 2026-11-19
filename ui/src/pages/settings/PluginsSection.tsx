@@ -31,15 +31,11 @@ import { Link } from "react-router-dom";
 import SectionForm from "./SectionForm";
 import {
   BooleanField,
-  ChoiceField,
   EmailField,
   HourField,
   NumberField,
-  TextField,
-  UrlField,
   type FormApi,
 } from "./pluginFields";
-import { DEFAULT_NEWS_PILL, newsFromLabel } from "../../../../src/shared/newsSource";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
 import { useHub, type Hub } from "../../config/hub";
 import { feedbackContactEmail } from "../../../../src/shared/platform";
@@ -85,46 +81,6 @@ function digestCopy(hub: Hub): { name: string; what: string } {
 function pluginCopy(id: PluginId, hub: Hub): { name: string; what: string } {
   if (id === "digest") return digestCopy(hub);
   return processPluginCopy(id) ?? HUB_FEATURES.find((f) => f.id === id) ?? { name: id, what: "" };
-}
-
-const NEWS_CONNECTOR_LABELS: Record<string, string> = {
-  "wix-cms": "Wix blog feed",
-};
-
-/**
- * News Sync's panel: where the posts come from, and how they read on the feed
- * (src/shared/newsSource.ts). Its posts are News items of their own, so it
- * needs nothing else switched on (2026-11-18).
- */
-function NewsSyncPanel({ f }: { f: FormApi }) {
-  const hub = useHub();
-  const place = hub.isPlace ? hub.jurisdiction.split(",")[0]?.trim() : null;
-  return (
-    <>
-      <ChoiceField
-        f={f}
-        k="plugin.news_sync.connector"
-        label="Kind of feed"
-        labels={NEWS_CONNECTOR_LABELS}
-        emptyLabel="Not set up"
-      />
-      <UrlField f={f} k="plugin.news_sync.source_url" label="Feed address" hint="Both must be set for news sync to run." />
-      <TextField
-        f={f}
-        k="plugin.news_sync.from_label"
-        label="From label"
-        placeholder={newsFromLabel(null, place)}
-        hint={'Shown on each synced post as "From …", so residents know where it came from. Applies to every synced post, including ones copied in earlier. Left empty, it reads as shown here.'}
-      />
-      <TextField
-        f={f}
-        k="plugin.news_sync.pill_label"
-        label="Pill label"
-        placeholder={DEFAULT_NEWS_PILL}
-        hint={'The tag on each synced post in the feed, and the name of its filter: "County news", "Government announcement". Applies to every synced post, including ones copied in earlier. Left empty, it reads "News". An admin can pin any post from its page.'}
-      />
-    </>
-  );
 }
 
 const NO_COUNTS: Record<string, number> = {};
@@ -454,7 +410,6 @@ function LiveItemsWarning({ id, live }: { id: PluginId; live: number }) {
 // The hub features' own panels. A process plugin's panel comes from its type's
 // module (ui/src/processes/), through processSettingsPanel.
 const FEATURE_PANELS: Partial<Record<PluginId, (f: FormApi) => React.ReactNode>> = {
-  news_sync: (f) => <NewsSyncPanel f={f} />,
   digest: (f) => (
     <HourField
       f={f}
