@@ -21,6 +21,7 @@
 //     to a hub (see "The sending domain belongs to the platform" in the build
 //     plan). The Email section shows it read-only.
 
+import type { PluginSetupRule } from "./pluginSetup.js";
 import { MANIFEST_LIST, type ProcessPluginId } from "./processManifests.js";
 import { HUB_FEATURES, type HubFeatureId } from "./hubFeatures.js";
 
@@ -95,6 +96,12 @@ export interface SettingFieldSpec {
   max?: number;
   /** "process": the process type the value must name, e.g. "civic.wordcloud". */
   processType?: string;
+  /**
+   * A plugin setting's "?" note, written into src/shared/helpRegistry.json
+   * under its key by `npm run plugins:sync` (kernel step 4), so the note
+   * comes from the plugin's own folder.
+   */
+  help?: { text: string; page: string; anchor: string; pending?: boolean };
 }
 
 export const SETTINGS_SECTION_IDS = ["identity", "copy", "legal", "email", "theme", "districts", "plugins"] as const;
@@ -117,6 +124,10 @@ export interface PluginSectionInfo {
   fields: readonly SettingFieldSpec[];
   /** Its own settings-search words, by key (a manifest's pluginSection.search). */
   search?: Readonly<Record<string, { label: string; words?: readonly string[] }>>;
+  /** Other words an admin might type for its panel (a manifest's pluginSection.words). */
+  words?: readonly string[];
+  /** When it is on but cannot work yet ("needs setup"; a manifest's pluginSection.setup). */
+  setup?: PluginSetupRule;
 }
 
 const PLUGIN_SECTIONS: readonly PluginSectionInfo[] = [
@@ -130,6 +141,8 @@ const PLUGIN_SECTIONS: readonly PluginSectionInfo[] = [
             what: m.pluginSection.what,
             fields: m.pluginSection.fields,
             search: m.pluginSection.search,
+            words: m.pluginSection.words,
+            setup: m.pluginSection.setup,
           },
         ]
       : [],

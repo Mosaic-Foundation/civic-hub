@@ -60,11 +60,38 @@ export const NEWS_MANIFEST = defineManifest({
     name: "News sync",
     what: "Posts copied in from another site's news feed, each shown on the feed with where it came from.",
     fields: [
-      { key: "plugin.news_sync.connector", kind: "choice", options: NEWS_CONNECTOR_OPTIONS },
-      { key: "plugin.news_sync.source_url", kind: "url" },
-      { key: "plugin.news_sync.from_label", kind: "text", maxLength: 80 },
-      { key: "plugin.news_sync.pill_label", kind: "text", maxLength: 40 },
+      {
+        key: "plugin.news_sync.connector", kind: "choice", options: NEWS_CONNECTOR_OPTIONS,
+        help: { text: "The kind of news feed to copy from. Today the only choice is a Wix blog feed. Both this and the feed address must be set for news sync to run.", page: "/reference/plugins", anchor: "plugin-news-sync-connector" },
+      },
+      {
+        key: "plugin.news_sync.source_url", kind: "url",
+        help: { text: "The address of the news feed to copy from. Left empty, news sync does nothing.", page: "/reference/plugins", anchor: "plugin-news-sync-source-url" },
+      },
+      {
+        key: "plugin.news_sync.from_label", kind: "text", maxLength: 80,
+        help: { text: "Shown on each copied post as \"From ...\", so residents know where it came from. Left empty, it reads as your place's name followed by \"Government\".", page: "/reference/plugins", anchor: "plugin-news-sync-from-label", pending: true },
+      },
+      {
+        key: "plugin.news_sync.pill_label", kind: "text", maxLength: 40,
+        help: { text: "The tag on each copied post in the feed, and the name of the feed's filter for them, such as \"County news\". Left empty, it reads \"News\". An admin can pin any post from its page.", page: "/reference/plugins", anchor: "plugin-news-sync-pill-label", pending: true },
+      },
     ],
+    words: ["rss", "news feed", "feed import", "import news", "atom"],
+    help: { text: "Copies posts from another site's news feed, such as your government's, into the feed as News items with where they came from. It needs a feed address and nothing else switched on.", page: "/reference/plugins", anchor: "plugins-news-sync" },
+    // "Needs setup" until it has a feed (src/shared/pluginSetup.ts): what the
+    // news-sync job reads, both needed.
+    setup: {
+      keys: ["plugin.news_sync.connector", "plugin.news_sync.source_url"],
+      configured: (s) => !!s("plugin.news_sync.connector")?.trim() && !!s("plugin.news_sync.source_url")?.trim(),
+      missing: "Choose a connector and add the news feed's address below.",
+    },
+    search: {
+      "plugin.news_sync.connector": { label: "Kind of feed", words: ["rss", "atom", "news feed type"] },
+      "plugin.news_sync.source_url": { label: "Feed address", words: ["rss url", "feed url", "news url"] },
+      "plugin.news_sync.from_label": { label: "From label", words: ["source name", "from", "news source", "label"] },
+      "plugin.news_sync.pill_label": { label: "Pill label", words: ["news", "pill", "category", "tag", "label", "filter"] },
+    },
   },
   activities: {},
   // Who a participant's name is disclosed to: nobody takes part, and the

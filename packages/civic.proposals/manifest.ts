@@ -91,7 +91,10 @@ export const PROPOSAL_MANIFEST = defineManifest({
   pluginSection: {
  order: 20,
  name: "Proposals",
- what: "Ideas residents float for discussion and support.", fields: [] },
+ what: "Ideas residents float for discussion and support.", fields: [],
+    words: ["proposals", "ideas", "suggestions", "petition", "petitions", "propose"],
+    help: { text: "Ideas people float for discussion and support. Off hides the Proposals pages and stops new ones. While off, nothing closes at its deadline.", page: "/reference/plugins", anchor: "plugins-proposal" },
+  },
   activities: {
     "civic.proposal.submitted": { type: "Create", object: { kind: "civic", class: "civic:Proposal", id: "process", name: "title" } },
     // AS2's own verb for endorsement: no civic term needed (spec §3.1 rule 1).

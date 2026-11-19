@@ -1,7 +1,7 @@
 // A plugin that is switched on but cannot do anything yet: "needs setup".
 //
-// The one place that rule lives (Adam, 2026-10-07). Some plugins only work
-// once the hub has told them something — today Meeting summaries and News
+// The one place that rule is applied (Adam, 2026-10-07). Some plugins only
+// work once the hub has told them something: today Meeting summaries and News
 // sync need a source. Such a plugin stays switched on as the creator chose;
 // what changes is:
 //
@@ -12,12 +12,15 @@
 //   - in Settings → Plugins it carries a "Needs setup" badge with one line on
 //     what is missing (`missing`).
 //
-// To give another plugin the same treatment, add an entry to PLUGIN_SETUP.
-// The server evaluates it (src/services/pluginSetup.ts) because the settings
-// it reads are admin-only, and serves the result as `plugin_setup` in
+// A plugin declares its own rule in its manifest's pluginSection.setup
+// (kernel step 4; Meeting summaries' and News Sync's moved into their
+// packages). The server evaluates it (src/services/pluginSetup.ts) because the
+// settings it reads are admin-only, and serves the result as `plugin_setup` in
 // /hub-config, which the UI reads (ui/src/config/plugins.tsx).
 //
 // Pure: no I/O, shared by the server and the UI.
+
+import { PLUGIN_SECTION_INFO } from "./hubSettingsSections.js";
 
 export interface PluginSetupRule {
   /** Every settings key `configured` reads, so a caller can fetch them first. */
@@ -33,27 +36,10 @@ export interface PluginSetupRule {
   missing: string;
 }
 
-const has = (v: string | undefined): boolean => !!v && v.trim() !== "";
-
-export const PLUGIN_SETUP: Readonly<Record<string, PluginSetupRule>> = {
-  meeting_summary: {
-    // What the meeting-summary job reads (resolveMeetingSummaryConfig): a
-    // page to read or a YouTube channel.
-    keys: ["plugin.meeting_summary.source_url", "plugin.meeting_summary.youtube_channel_id"],
-    configured: (s) =>
-      has(s("plugin.meeting_summary.source_url")) ||
-      has(s("plugin.meeting_summary.youtube_channel_id")),
-    contentType: "civic.meeting_summary",
-    missing: "Add a meeting source (a page address or a YouTube channel) below.",
-  },
-  news_sync: {
-    // What the news-sync job reads (resolveNewsSyncConfig): both are needed.
-    keys: ["plugin.news_sync.connector", "plugin.news_sync.source_url"],
-    configured: (s) =>
-      has(s("plugin.news_sync.connector")) && has(s("plugin.news_sync.source_url")),
-    missing: "Choose a connector and add the news feed's address below.",
-  },
-};
+/** Every plugin's setup rule, by plugin id: what its manifest declares. */
+export const PLUGIN_SETUP: Readonly<Record<string, PluginSetupRule>> = Object.fromEntries(
+  PLUGIN_SECTION_INFO.flatMap((p) => (p.setup ? [[p.id, p.setup] as const] : [])),
+);
 
 /** What /hub-config says about one plugin that needs setup. */
 export interface PluginSetupStatus {

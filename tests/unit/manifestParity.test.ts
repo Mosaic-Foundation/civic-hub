@@ -95,7 +95,9 @@ describe("lists derived from the manifests equal the hand-maintained ones", () =
     TABLE_KEYS,
     mappedEventTypes: mappedEventTypes(),
     PLUGIN_SECTION_ORDER,
-    plugins_section: SETTINGS_SECTIONS.plugins,
+    // A field's "?" note moved into its manifest (kernel step 4, Nov 19); it is
+    // the same note helpRegistry.json has, so the fields compare without it.
+    plugins_section: SETTINGS_SECTIONS.plugins.map(({ help: _help, ...f }) => f),
     JOBS,
     requirements: currentRequirements(),
     process_types: processTypeDisplays(),

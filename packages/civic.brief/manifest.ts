@@ -63,7 +63,10 @@ export const BRIEF_MANIFEST = defineManifest({
   pluginSection: {
  order: 60,
  name: "Briefs",
- what: "The published record of what residents decided, sent to officials.", fields: [] },
+ what: "The published record of what residents decided, sent to officials.", fields: [],
+    words: ["briefs", "report", "results", "officials", "summary of results"],
+    help: { text: "The published record of what people decided, sent to officials. The hub drafts each brief and an admin approves it before it is published and emailed.", page: "/reference/plugins", anchor: "plugins-brief" },
+  },
   activities: {},
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
   // Dropped deliberately, with Adam's field-row yes (2026-10-21): the review

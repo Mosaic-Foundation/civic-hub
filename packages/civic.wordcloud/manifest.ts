@@ -116,7 +116,17 @@ export const WORDCLOUD_MANIFEST = defineManifest({
     order: 50,
     name: "Word clouds",
     what: "One-word answers gathered into a cloud.",
-    fields: [{ key: "plugin.wordcloud.onboarding_id", kind: "process", processType: "civic.wordcloud" }],
+    fields: [
+      {
+        key: "plugin.wordcloud.onboarding_id", kind: "process", processType: "civic.wordcloud",
+        help: { text: "Pick a word cloud to show in the strip at the top of every page, and where a new account lands after signing up. Left empty, the strip is hidden.", page: "/reference/plugins", anchor: "plugin-wordcloud-onboarding-id" },
+      },
+    ],
+    words: ["word cloud", "word clouds", "words", "onboarding question"],
+    help: { text: "One-word answers gathered into a cloud. Only admins create them. You can show one in the strip at the top of every page.", page: "/reference/plugins", anchor: "plugins-wordcloud" },
+    search: {
+      "plugin.wordcloud.onboarding_id": { label: "The hub's word cloud", words: ["onboarding question", "banner word cloud", "sign up question"] },
+    },
   },
   activities: {},
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).

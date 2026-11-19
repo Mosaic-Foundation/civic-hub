@@ -41,6 +41,15 @@ Updated after every Claude Code session. Records what was built, what's incomple
   (lint). `feedActivity.ts`, `theme.ts`, `manifest.ts`, the digest feature and the feed card read it; `ActivityKind`,
   `ActivityColor` and `ThemeTypeKey` are plain strings, and `BUILTIN_THEME_TYPE_KEYS` is gone.
   `tests/unit/spacePalette.test.ts` pins the old orders and values. No package changed, so no catalog entries.
+- **Step 4: plugin settings' words live with the plugins.** A manifest's `pluginSection` now carries each setting's
+  "?" note (`fields[].help`, written into `helpRegistry.json` by `npm run plugins:sync`, unchanged there), its panel's
+  search words (`words`), its settings' search labels (`search`, which existed) and its "needs setup" rule (`setup`;
+  `src/shared/pluginSetup.ts` builds `PLUGIN_SETUP` from the manifests). The nine first-party packages carry theirs,
+  and their entries left `settingsSearch.ts`. Nothing on screen changes. Events (released on dev) keeps its panel
+  words in the kernel's list until its next release. Catalog entries regenerated at the same versions: Votes
+  `20261119043725`, Proposals `20261119043744`, Projects `20261119043758`, Conversations `20261119043823`, Word clouds
+  `20261119043835`, Briefs `20261119043846`, Announcements `20261119043858`, Meeting summaries `20261119043908`, News
+  Sync `20261119043918`.
 - **Step 4 begun: the palette's colours are the space type's stylesheet**, `spaces/civic/palette.css` (light and dark
   `--type-<key>-*` and the older `--pill-<kind>-*`), loaded through `config/spacePalette.css` right after `theme.css`
   (`hubStyles.ts`; its test checks the place). The built CSS declares exactly the same tokens with the same values.

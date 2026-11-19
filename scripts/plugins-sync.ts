@@ -168,7 +168,10 @@ async function main(): Promise<void> {
 interface DerivedManifest {
   descriptor: { plugin: string };
   detailPath(id: string): string;
-  pluginSection?: { help?: { text: string; page: string; anchor: string; pending?: boolean } };
+  pluginSection?: {
+    help?: { text: string; page: string; anchor: string; pending?: boolean };
+    fields?: ReadonlyArray<{ key: string; help?: { text: string; page: string; anchor: string; pending?: boolean } }>;
+  };
 }
 
 /**
@@ -184,7 +187,9 @@ const LEGACY_SHARE_PATHS = ["/vote-results"];
  *     page path, and the legacy ones. The block is rewritten only when the
  *     set of paths changes, keeping its order (new ones go last);
  *   - src/shared/helpRegistry.json: `plugins.<id>` for each manifest that
- *     declares its help note, in place, or after the last plugins.* key.
+ *     declares its help note, in place, or after the last plugins.* key; and
+ *     each of its settings' notes (`fields[].help`, kernel step 4) under the
+ *     setting's key, in place, or after the last plugin.* key.
  */
 export function derivedFiles(manifests: readonly DerivedManifest[], root = ROOT): Array<[string, string]> {
   const out: Array<[string, string]> = [];
@@ -209,18 +214,20 @@ export function derivedFiles(manifests: readonly DerivedManifest[], root = ROOT)
   const helpText = readFileSync(join(root, "src/shared/helpRegistry.json"), "utf8");
   const help = JSON.parse(helpText) as Record<string, unknown>;
   let next: Record<string, unknown> = { ...help };
-  for (const m of manifests) {
-    const note = m.pluginSection?.help;
-    if (!note) continue;
-    const key = `plugins.${m.descriptor.plugin}`;
+  const put = (key: string, note: { text: string; page: string; anchor: string; pending?: boolean }, prefix: string) => {
     const entry = { text: note.text, page: note.page, anchor: note.anchor, ...(note.pending ? { pending: true } : {}) };
     if (key in next) {
       next[key] = entry;
     } else {
       const keys = Object.keys(next);
-      const after = keys.reduce((last, k, i) => (k.startsWith("plugins.") ? i : last), keys.length - 1);
+      const after = keys.reduce((last, k, i) => (k.startsWith(prefix) ? i : last), keys.length - 1);
       next = Object.fromEntries([...keys.slice(0, after + 1).map((k) => [k, next[k]]), [key, entry], ...keys.slice(after + 1).map((k) => [k, next[k]])]);
     }
+  };
+  for (const m of manifests) {
+    const note = m.pluginSection?.help;
+    if (note) put(`plugins.${m.descriptor.plugin}`, note, "plugins.");
+    for (const f of m.pluginSection?.fields ?? []) if (f.help) put(f.key, f.help, "plugin.");
   }
   const helpBody = JSON.stringify(next, null, 2) + "\n";
   if (helpBody !== helpText) out.push(["src/shared/helpRegistry.json", helpBody]);

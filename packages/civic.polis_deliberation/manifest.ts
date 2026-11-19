@@ -133,7 +133,22 @@ export const POLIS_DELIBERATION_MANIFEST = defineManifest({
     { name: "deliberation_drafts", rows: "export", key: ["id"], holds: "residents' unfinished conversation drafts" },
   ],
   jobs: [],
-  pluginSection: { order: 40, name: "Conversations", what: "Structured group conversations that map where people agree.", fields: [{ key: "plugin.conversation.polis_url", kind: "url" }] },
+  pluginSection: {
+    order: 40,
+    name: "Conversations",
+    what: "Structured group conversations that map where people agree.",
+    fields: [
+      {
+        key: "plugin.conversation.polis_url", kind: "url",
+        help: { text: "The address of the Polis server this hub's conversations run on. Left empty, the platform's server is used.", page: "/reference/plugins", anchor: "plugin-conversation-polis-url" },
+      },
+    ],
+    words: ["polis", "deliberation", "discussion", "conversations", "dialogue"],
+    help: { text: "Group conversations that show where people agree. They run on a Polis server. Off hides the pages, stops new ones and pauses deadlines.", page: "/reference/plugins", anchor: "plugins-conversation" },
+    search: {
+      "plugin.conversation.polis_url": { label: "Conversation server", words: ["polis", "polis server", "polis url"] },
+    },
+  },
   activities: {},
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
   // Dropped deliberately, with Adam's field-row yes (2026-10-21): the outside

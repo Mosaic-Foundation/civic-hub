@@ -44,7 +44,10 @@ export const ANNOUNCEMENT_MANIFEST = defineManifest({
   pluginSection: {
  order: 70,
  name: "Announcements",
- what: "Posts from officials and admins on the feed.", fields: [] },
+ what: "Posts from officials and admins on the feed.", fields: [],
+    words: ["announcements", "news", "notices", "posts", "updates"],
+    help: { text: "Posts from admins and officials on the feed. People can read them but not reply. Who may post is set under Officials.", page: "/reference/plugins", anchor: "plugins-announcement" },
+  },
   activities: {},
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
   // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).

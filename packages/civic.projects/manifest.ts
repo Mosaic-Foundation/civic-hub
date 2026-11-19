@@ -85,7 +85,10 @@ export const PROJECT_MANIFEST = defineManifest({
   pluginSection: {
  order: 30,
  name: "Projects",
- what: "Community projects with updates, comments and sentiment.", fields: [] },
+ what: "Community projects with updates, comments and sentiment.", fields: [],
+    words: ["projects", "initiatives", "volunteer"],
+    help: { text: "Community projects with updates, comments and support or opposition. Off hides the Projects pages and stops new projects. Nothing is deleted.", page: "/reference/plugins", anchor: "plugins-project" },
+  },
   activities: {
     "civic.project.created": { type: "Create", object: { kind: "civic", class: "hub:Project", id: "process", name: "title" } },
     "civic.project.updated": { type: "Update", object: { kind: "civic", class: "hub:Project", id: "process" } },

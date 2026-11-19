@@ -17,6 +17,7 @@ import type { ProcessTypeDescriptor } from "./descriptorTypes.js";
 import type { ProcessStatus } from "../models/process.js";
 import type { SchemaRequirement } from "../db/schemaRequirement.js";
 import type { SettingFieldSpec } from "../shared/hubSettingsSections.js";
+import type { PluginSetupRule } from "../shared/pluginSetup.js";
 import type { ThemeTypeKey } from "../shared/theme.js";
 import type { ActivityRecipe, WireObjectRecipe } from "../shared/activityRecipe.js";
 import { AS2_TERMS } from "../shared/as2Terms.js";
@@ -140,6 +141,14 @@ export interface PluginSection {
    * here wins over it. Keys must be the section's own fields.
    */
   search?: Readonly<Record<string, { label: string; words?: readonly string[] }>>;
+  /** Other words an admin might type for its panel ("ballot", "poll"). */
+  words?: readonly string[];
+  /**
+   * When it is switched on but cannot do anything yet: what it needs, and the
+   * Settings badge's line (src/shared/pluginSetup.ts). Its keys must be its
+   * own fields.
+   */
+  setup?: PluginSetupRule;
 }
 
 export interface ProcessManifest {
@@ -575,6 +584,11 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       for (const f of m.pluginSection.fields) {
         if (!f.key.startsWith(`plugin.${d.plugin}.`)) {
           throw new ManifestError(`${where(m)}: setting ${f.key} is not under plugin.${d.plugin}.`);
+        }
+      }
+      for (const key of m.pluginSection.setup?.keys ?? []) {
+        if (!m.pluginSection.fields.some((f) => f.key === key)) {
+          throw new ManifestError(`${where(m)}: pluginSection.setup reads ${key}, which is not one of its fields`);
         }
       }
       for (const [key, entry] of Object.entries(m.pluginSection.search ?? {})) {
