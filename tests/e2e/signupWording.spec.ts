@@ -14,7 +14,7 @@
  */
 
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
-import { localRest, mintSession, storedSetting } from "../fixtures/adminSession.js";
+import { localRest, mintSession, storedSetting } from "./sessions";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 import { E2E_API_BASE as API } from "./hubApi";
 
@@ -153,6 +153,11 @@ test.describe("Demo sign-in and sign-up", () => {
 
     // Onboarding: the word cloud, carrying the vote's address.
     await expect(page).toHaveURL(/\/wordcloud\/.+onboarding=1.*return=/);
+    // A new member is asked About you once (districts and demographics,
+    // 2026-11-16); its card comes up over the cloud and is skipped here.
+    const about = page.getByRole("dialog", { name: /about you/i });
+    await about.getByRole("button", { name: "Skip", exact: true }).first().click();
+    await expect(about).toBeHidden();
     await page.getByRole("button", { name: /Skip/ }).click();
 
     await expect(page).toHaveURL(new RegExp(`/process/${voteId}$`));

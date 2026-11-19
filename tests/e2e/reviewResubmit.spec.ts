@@ -15,7 +15,7 @@
  */
 
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
-import { localRest, mintSession } from "../fixtures/adminSession.js";
+import { localRest, mintSession } from "./sessions";
 import { FAKE_COC_DOWN, FAKE_COC_FLAG } from "../../src/debug/fakeCodeOfConduct.js";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 import { E2E_API_BASE as API } from "./hubApi";

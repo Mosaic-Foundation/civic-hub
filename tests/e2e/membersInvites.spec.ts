@@ -20,7 +20,7 @@
 
 import { createHash } from "node:crypto";
 import { test, expect, type Page } from "@playwright/test";
-import { localRest, mintSession } from "../fixtures/adminSession.js";
+import { localRest, mintSession } from "./sessions";
 import { createHub, archiveHub } from "../fixtures/operator.js";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 

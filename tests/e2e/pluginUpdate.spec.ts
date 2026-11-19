@@ -16,6 +16,11 @@ import { test, expect } from "@playwright/test";
 import { localRest } from "../fixtures/adminSession.js";
 import { adminEmailFor, closeAsAdmin, hubId, run, session, visitAs } from "./actors";
 import { E2E_API_BASE as API } from "./hubApi";
+import { readFileSync } from "node:fs";
+
+/** The checkout's Briefs version: what Update takes the hub to. */
+const BRIEF_VERSION = (JSON.parse(readFileSync("packages/civic.brief/package.json", "utf8")) as { version: string }).version;
+const BRIEF_RE = BRIEF_VERSION.replace(/\./g, "\\.");
 
 const BRIEF = "@civic-social/plugin-brief";
 
@@ -62,20 +67,20 @@ test.describe("Update on the Plugins page", () => {
 
     const card = page.getByRole("region", { name: "Briefs", exact: true });
     await expect(card.getByText(/Update available/)).toBeVisible();
-    await expect(card.getByText(/version 0\.3\.0\. Until you update, it keeps to what you approved/)).toBeVisible();
+    await expect(card.getByText(new RegExp(`version ${BRIEF_RE}\\. Until you update, it keeps to what you approved`))).toBeVisible();
     await card.getByRole("button", { name: "Update…" }).click();
 
-    const dialog = page.getByRole("dialog", { name: "Update Briefs to version 0.3.0?" });
+    const dialog = page.getByRole("dialog", { name: `Update Briefs to version ${BRIEF_VERSION}?` });
     await expect(dialog.getByText("Briefs will also be able to:")).toBeVisible();
     await expect(dialog.getByText("Use the hub's AI service. Each use counts against the hub's daily AI allowance.")).toBeVisible();
-    await expect(dialog.getByText(/From version 0\.1\.0 to 0\.3\.0, checked by Civic\.Social on/)).toBeVisible();
+    await expect(dialog.getByText(new RegExp(`From version 0\\.1\\.0 to ${BRIEF_RE}, checked by Civic\\.Social on`))).toBeVisible();
     await dialog.getByRole("button", { name: "Update", exact: true }).click();
     await expect(dialog).toBeHidden();
     await expect(card.getByText(/Update available/)).toHaveCount(0);
-    await expect(card.getByText(/version 0\.3\.0/)).toBeVisible();
+    await expect(card.getByText(new RegExp(`version ${BRIEF_RE}`))).toBeVisible();
 
     const [after] = (await localRest(`${filter}&select=version,upgraded_from`)) as Array<{ version: string; upgraded_from: string }>;
-    expect(after).toEqual({ version: "0.3.0", upgraded_from: "0.1.0" });
+    expect(after).toEqual({ version: BRIEF_VERSION, upgraded_from: "0.1.0" });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width);
   });
 });

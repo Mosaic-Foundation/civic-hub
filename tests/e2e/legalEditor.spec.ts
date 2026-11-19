@@ -8,7 +8,7 @@
 
 import { test, expect } from "@playwright/test";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
-import { localRest, mintSession } from "../fixtures/adminSession.js";
+import { localRest, mintSession } from "./sessions";
 import { createHub, archiveHub } from "../fixtures/operator.js";
 
 const UI = new URL(process.env.CIVIC_E2E_UI_ORIGIN?.trim() || "http://localhost:5173");
