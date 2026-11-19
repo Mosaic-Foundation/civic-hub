@@ -146,7 +146,8 @@ async function main(): Promise<void> {
   const listFile = join(HOST_ROOT, "config", "plugins.json");
   const original = `${listFile}.orig`;
   if (!existsSync(original)) cpSync(listFile, original);
-  const list = JSON.parse(readFileSync(original, "utf8")) as { packages: string[] };
+  // The rest of the list (its "space": the space type, kernel step 4) stays as it was.
+  const list = JSON.parse(readFileSync(original, "utf8")) as { packages: string[]; [key: string]: unknown };
   rmSync(copyDir, { recursive: true, force: true });
   cpSync(dir, copyDir, { recursive: true, filter: (src) => !/[/\\](node_modules|\.git)([/\\]|$)/.test(src) });
   // A new version of a package the host already ships (Events 2): the
@@ -163,7 +164,7 @@ async function main(): Promise<void> {
   if (replaced.length > 0) console.log(`civic-conformance: ${pj.name} replaces the host's own ${replaced.join(", ")} for this run`);
   writeFileSync(
     listFile,
-    JSON.stringify({ packages: [...list.packages.filter((d) => !replaced.includes(d)), `packages/${slug}`] }, null, 2) + "\n",
+    JSON.stringify({ ...list, packages: [...list.packages.filter((d) => !replaced.includes(d)), `packages/${slug}`] }, null, 2) + "\n",
   );
 
   const db = new pg.Client({ connectionString: st.dbUrl });
