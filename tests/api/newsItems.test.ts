@@ -123,23 +123,13 @@ describe("a News item", () => {
     expect(ids).toContain(relabelled);
   });
 
-  it("pinned, the Pinned card names it with the hub's pill label, else the pill it was copied in with", async () => {
-    const before = (await call("GET", "/hub-config", ATHENS)).body.settings["plugin.news_sync.pill_label"] ?? "";
-    const label = async () => {
-      const res = await call("GET", "/api/aside", ATHENS);
-      return (res.body.announcements as Array<{ process_id: string; type_label?: string }>).find((a) => a.process_id === fresh)?.type_label;
-    };
-    expect((await call("POST", `/admin/processes/${fresh}/pin`, ATHENS, {}, admin)).status).toBe(200);
+  it("pinned, the Pinned card names it with its type's word, as any pinned item", async () => {
+    expect((await call("POST", `/pins/${fresh}`, ATHENS, {}, admin)).status).toBe(200);
     try {
-      await setPlugins({ "plugin.news_sync.pill_label": "" });
-      expect(await label()).toBe("County news");
-      await setPlugins({ "plugin.news_sync.pill_label": "Updates" });
-      expect(await label()).toBe("Updates");
-      const pins = await call("GET", "/admin/pins", ATHENS, undefined, admin);
-      expect((pins.body.items as Array<{ id: string; type_label: string }>).find((r) => r.id === fresh)?.type_label).toBe("Updates");
+      const res = await call("GET", "/pins", ATHENS);
+      expect((res.body.items as Array<{ process_id: string; type_label: string }>).find((a) => a.process_id === fresh)?.type_label).toBe("News");
     } finally {
-      await setPlugins({ "plugin.news_sync.pill_label": before });
-      await call("POST", `/admin/processes/${fresh}/unpin`, ATHENS, {}, admin);
+      await call("DELETE", `/pins/${fresh}`, ATHENS, undefined, admin);
     }
   });
 });

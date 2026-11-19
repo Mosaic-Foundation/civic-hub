@@ -639,41 +639,6 @@ export function adminRestoreProcess(
   return request("POST", `/admin/processes/${id}/restore`);
 }
 
-/** An item's pin as POST /admin/processes/:id/pin and /unpin answer it (src/services/pins.ts). */
-export interface PinState {
-  id: string;
-  pinned: boolean;
-  pinned_until: string | null;
-}
-
-/** Pin any item to the Pinned card (Adam, 2026-11-18); `until` (ISO) optional. */
-export function adminPinProcess(id: string, until: string | null = null): Promise<PinState> {
-  return request("POST", `/admin/processes/${id}/pin`, { pinned_until: until });
-}
-
-export function adminUnpinProcess(id: string): Promise<PinState> {
-  return request("POST", `/admin/processes/${id}/unpin`);
-}
-
-/** One row of Admin → Pinned (GET /admin/pins). */
-export interface PinnedRow {
-  id: string;
-  type: string;
-  type_label: string;
-  title: string;
-  url: string;
-  pinned: boolean;
-  pinned_at: string | null;
-  pinned_until: string | null;
-  urgent: boolean;
-  urgent_until: string | null;
-}
-
-/** Everything pinned or urgent now, urgent first; the count against the cap. */
-export function adminListPins(): Promise<{ items: PinnedRow[]; pinned_count: number; pinned_max: number }> {
-  return request("GET", "/admin/pins");
-}
-
 // --- The officials roster and the space's result recipients (Officials settings) ---
 
 /** The officials an admin lists, and who a result goes to when a review picks nobody. Admins only. */
@@ -1754,27 +1719,7 @@ export function adminGetHiddenMembers(): Promise<{ hidden: Array<Member & { join
 }
 
 /** GET /api/aside: the right column's facts (src/services/aside.ts; ADR-019). */
-export interface AsideAnnouncement {
-  process_id: string;
-  title: string;
-  published_at: string;
-  url: string;
-  /** Its type's label ("Vote"), on a pinned item. */
-  type_label?: string;
-  sample?: true;
-  /** Pinned right now. */
-  pinned?: true;
-  /** A plugin's urgent row (an urgent announcement). */
-  urgent?: true;
-}
-
 export interface AsideFacts {
-  /** The card's name: "Pinned", or the filling plugin's type ("Announcements"). */
-  card_title: string;
-  /** Plugins' rows (urgent first) and pinned items when there are any, else a plugin's few to fill the card. */
-  announcements: AsideAnnouncement[];
-  /** The first urgent row, for the line across the top of the pages. */
-  urgent: AsideAnnouncement | null;
   about: { member_count: number | null };
 }
 

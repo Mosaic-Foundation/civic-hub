@@ -126,7 +126,6 @@ export {
   PostFeaturedImage,
   PostImagePicker,
   LinkPreviewCard,
-  refreshAside,
   resolveActorId,
   participantNoun,
   qrMatrix,

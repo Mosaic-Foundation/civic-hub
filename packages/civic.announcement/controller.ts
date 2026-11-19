@@ -28,13 +28,11 @@ import {
   getAdminReadModel,
   getPublicReadModel,
   getPublicSummary,
-  setUrgent,
   updateAnnouncement,
   type AnnouncementAuthorRole,
   type AnnouncementContentPatch,
   type AnnouncementLink,
   type AnnouncementProcessState,
-  type UrgentInput,
 } from "./api.js";
 import { sendAnnouncementReceipt } from "./receipt.js";
 
@@ -71,17 +69,6 @@ function readLinks(body: unknown): AnnouncementLink[] | undefined {
     .map((l) => ({ label: l.label, url: l.url }));
 }
 
-/** The Urgent label as a request body sets it; undefined when the body doesn't say. */
-export function readUrgent(body: unknown): UrgentInput | undefined {
-  const b = (body ?? {}) as { urgent?: unknown; urgent_until?: unknown };
-  if (b.urgent === undefined) return undefined;
-  if (typeof b.urgent !== "boolean") throw new ValidationError("urgent must be true or false.");
-  if (b.urgent_until !== undefined && b.urgent_until !== null && typeof b.urgent_until !== "string") {
-    throw new ValidationError("urgent_until must be a date.");
-  }
-  return { urgent: b.urgent, urgent_until: (b.urgent_until as string | null | undefined) ?? null };
-}
-
 export const handleCreateAnnouncement = route(async (req, res) => {
   const user = getAuthUser(res);
   // The middleware resolved the user's display label. For an official
@@ -108,9 +95,6 @@ export const handleCreateAnnouncement = route(async (req, res) => {
   }
 
   const links = readLinks(req.body);
-  // Urgent (./board.ts): any poster may mark it urgent. Checked before
-  // anything is created. Pinning is the hub's (an admin pins from the page).
-  const urgent = readUrgent(req.body);
   const image_url =
     typeof body.image_url === "string" && body.image_url.trim().length > 0
       ? body.image_url.trim()
@@ -144,8 +128,6 @@ export const handleCreateAnnouncement = route(async (req, res) => {
       links: links ?? [],
       image_url,
       image_alt,
-      urgent: urgent?.urgent === true,
-      urgent_until: urgent?.urgent_until ?? null,
     },
   });
 
@@ -265,9 +247,6 @@ export const handleUpdateAnnouncement = route(async (req, res) => {
     patch.image_alt = body.image_alt as string | null;
   }
 
-  // Urgent rides on the same save as the edit, with its own `updated` event.
-  const urgent = readUrgent(req.body);
-
   const state = getState(record);
   const outcome = await updateAnnouncement(
     state,
@@ -275,7 +254,6 @@ export const handleUpdateAnnouncement = route(async (req, res) => {
     patch,
     ctxFor(record),
   );
-  if (urgent) await setUrgent(state, { id: user.id, role }, urgent, ctxFor(record));
   await announcements().saveState(record);
 
   // Warm previews for whatever URLs are in the post-edit body. We

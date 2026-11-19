@@ -67,19 +67,10 @@ export interface AnnouncementProcessState {
    * flips `removed` back to false and stamps `restored_at`.
    */
   moderation?: AnnouncementModeration | null;
-  // Older rows also carry pinned / pinned_at / pinned_by / pinned_until: pins
-  // were kept here until pinning phase 2 moved them to the hub (process_pins).
-  // Left in place, unread.
-  /** The red Urgent label: anyone who may edit the announcement sets it. */
-  urgent?: boolean;
-  /** ISO 8601; required while urgent. */
-  urgent_until?: string | null;
-}
-
-/** An urgent label as the form sends it. */
-export interface UrgentInput {
-  urgent: boolean;
-  urgent_until?: string | null;
+  // Older rows also carry pinned / pinned_at / pinned_by / pinned_until (pins,
+  // moved to process_pins in pinning phase 2) and urgent / urgent_until (the
+  // Urgent label, moved to the Pinning plugin's urgent flag in kernel step 4,
+  // migration 20261119200000). Left in place, unread.
 }
 
 export interface AnnouncementModeration {
@@ -157,8 +148,6 @@ export interface CreateAnnouncementInput {
   author_display_name?: string | null;
   image_url?: string | null;
   image_alt?: string | null;
-  /** The red Urgent label, with its end date (./board.ts). */
-  urgent?: UrgentInput | null;
 }
 
 /** Partial update used by PATCH /announcement/:id. */

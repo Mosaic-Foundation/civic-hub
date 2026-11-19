@@ -32,7 +32,6 @@ export type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 export { storeSlot, type StoreSlot } from "../processes/storeSlot.js";
 export type { GrantedDb, PluginAdapters, PluginHost, PluginPackage, PluginServer, PluginMount, ClosedProcess } from "../plugins/package.js";
 export type { PluginSamples, PluginSampleTemplate, SampleKit, SampleTemplate } from "../plugins/samples.js";
-export type { PinnedCardItem, PluginPinnedCard } from "../plugins/pinnedCard.js";
 
 // --- Requests and the names a package uses as it loads ----------------------------------
 // Listed ahead of the groups that reach the loader (the events and services
@@ -225,6 +224,9 @@ export { extractUrls } from "../modules/civic.link_preview/index.js";
 export { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
 
 // --- What a closed process came to, and the space's offices (kernel step 1, Briefs) -------
+// Any item on the space, for a feature that works on items of every type (Pinning; kernel step 4).
+export { items } from "../services/kernelItems.js";
+export type { ItemSummary } from "../services/kernelItems.js";
 export { results } from "../services/kernelResults.js";
 export type { ResultSource, FreshResult } from "../services/kernelResults.js";
 export { offices, recordAdminAct } from "../services/kernelOffices.js";

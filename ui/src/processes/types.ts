@@ -48,8 +48,6 @@ export interface ProcessMeta {
   lastEditedAt?: string | null;
   blockCount?: number;
   maxStartSeconds?: number | null;
-  /** An announcement marked urgent right now: the card's red Urgent label. */
-  urgent?: boolean;
 }
 
 /** The text of a feed card: derived from the classified kind, the event and the fetched meta. */

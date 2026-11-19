@@ -107,8 +107,12 @@ export function useAdminNav(): AdminNav {
   review.push(item("edits", "Edits", "edits", "/admin/edits", counts.edits));
 
   const community: NavItem[] = [item("moderation", "Moderation", "moderation", "/admin/moderation")];
-  // Everything pinned to the Pinned card, any type (2026-11-18).
-  if (hub.plugins.enabled("pinning")) community.push(item("admin-pinned", "Pinned", "pin", "/admin/pinned"));
+  // A feature's page that belongs in Community (Pinning's Pinned, ui/src/features.ts).
+  for (const u of FEATURE_UI) {
+    if (u.adminTab?.group === "community" && hub.plugins.enabled(u.feature)) {
+      community.push(item(`admin-${u.feature}`, u.adminTab.label, u.adminTab.icon, u.adminTab.path));
+    }
+  }
   if (hub.plugins.enabled("feedback")) {
     community.push(item("admin-feedback", "Feedback", "feedback", "/admin/feedback", counts.feedback));
   }
@@ -116,7 +120,7 @@ export function useAdminNav(): AdminNav {
   // Feature packages' pages (ui/src/features.ts): Activity.
   const singles: AdminNavSingle[] = [];
   for (const u of FEATURE_UI) {
-    if (u.adminTab && hub.plugins.enabled(u.feature)) {
+    if (u.adminTab && !u.adminTab.group && hub.plugins.enabled(u.feature)) {
       singles.push({ kind: "item", item: item(u.feature, u.adminTab.label, u.adminTab.icon, u.adminTab.path) });
     }
   }

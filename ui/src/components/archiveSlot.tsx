@@ -14,7 +14,8 @@ import { useCallback, useContext, useMemo, useState, type ReactNode } from "reac
 import { ArchiveSlotContext } from "./archiveSlotContext";
 import { useNavigate, useParams } from "react-router-dom";
 import AdminArchiveButton from "./AdminArchiveButton";
-import AdminPinButton from "./AdminPinButton";
+import { featureItemActions } from "../features";
+import { useHub } from "../config/hub";
 import { typeDisplay } from "../config/navigation";
 import { useAuth } from "../context/authState";
 
@@ -34,13 +35,20 @@ export function SlotArchiveButton() {
 }
 
 /**
- * Pin the page's item to the Pinned card (any type, Adam,
- * 2026-11-18), unless the page draws its own pin control. Admins only.
+ * The feature plugins' controls for the page's item (Pinning's Pin, kernel
+ * step 4), while each is on. Each decides whether this reader sees it.
  */
-export function SlotPinButton() {
+export function SlotFeatureActions() {
   const slot = useContext(ArchiveSlotContext);
+  const hub = useHub();
   if (!slot) return null;
-  return <AdminPinButton processId={slot.id} />;
+  return (
+    <>
+      {featureItemActions((id) => hub.plugins.enabled(id)).map(({ feature, Action }) => (
+        <Action key={feature} processId={slot.id} />
+      ))}
+    </>
+  );
 }
 
 /**
@@ -58,7 +66,8 @@ export function ArchiveSlotProvider({
   row: (props: { children: ReactNode; host?: true }) => ReactNode;
 }) {
   const { id } = useParams();
-  const { isAdmin } = useAuth();
+  const hub = useHub();
+  const { isAdmin, user } = useAuth();
   const [claims, setClaims] = useState(0);
   const claim = useCallback(() => {
     setClaims((n) => n + 1);
@@ -69,10 +78,10 @@ export function ArchiveSlotProvider({
   return (
     <ArchiveSlotContext.Provider value={slot}>
       {children}
-      {/* Only an admin has anything for it; drawn for no one else. */}
-      {claims === 0 && isAdmin && (
+      {/* Archive is an admin's; a feature's control may be any signed-in reader's. */}
+      {claims === 0 && (isAdmin || (user && featureItemActions((id) => hub.plugins.enabled(id)).length > 0)) && (
         <Row host>
-          <SlotPinButton />
+          <SlotFeatureActions />
           <SlotArchiveButton />
         </Row>
       )}

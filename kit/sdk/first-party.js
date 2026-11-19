@@ -82,6 +82,7 @@ export const hubTimeZone = e.hubTimeZone;
 export const inputs = e.inputs;
 export const isPastDeadline = e.isPastDeadline;
 export const isPluginEnabledSync = e.isPluginEnabledSync;
+export const items = e.items;
 export const lines = e.lines;
 export const links = e.links;
 export const listSubscribedUsers = e.listSubscribedUsers;

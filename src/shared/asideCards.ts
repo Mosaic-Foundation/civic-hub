@@ -4,15 +4,15 @@
 // default order. Read by the hub's three-column layout and its editor in
 // Hub settings → Appearance → Right column.
 //
-// A card id the stored list names but this hub does not draw (a plugin's card
-// once plugins can add them, its plugin off) is kept in the list and skipped
+// A card id the stored list names but this hub does not draw (a feature
+// plugin's card, its plugin off: Pinning's "pinned") is kept in the list and skipped
 // when drawn, so switching the plugin back on brings it back where it was. A
 // card the list does not name is drawn after the listed ones, shown, in the
 // default order. Pure, so the rules are tested without a browser
 // (tests/unit/asideCards.test.ts).
 
-/** The hub's own cards, in their default order. */
-export const ASIDE_CARD_IDS = ["coming_up", "announcements", "about"] as const;
+/** The kernel's own cards, in their default order (a feature's cards join them in the UI's registry). */
+export const ASIDE_CARD_IDS = ["coming_up", "about"] as const;
 export type HubAsideCardId = (typeof ASIDE_CARD_IDS)[number];
 
 export interface AsideCardSetting {

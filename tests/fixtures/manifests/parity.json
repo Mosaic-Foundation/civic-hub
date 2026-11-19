@@ -393,6 +393,7 @@
       "id"
     ],
     "process_pins": [
+      "hub_id",
       "process_id"
     ],
     "process_reviews": [
@@ -703,6 +704,14 @@
       "key": "plugin.news_sync.pill_label",
       "kind": "text",
       "maxLength": 40
+    },
+    {
+      "key": "plugin.pinning.who",
+      "kind": "choice",
+      "options": [
+        "admins",
+        "members"
+      ]
     },
     {
       "key": "plugin.feedback.contact_email",
@@ -1285,9 +1294,10 @@
         "process_id",
         "pinned_by",
         "pinned_at",
-        "pinned_until"
+        "pinned_until",
+        "urgent"
       ],
-      "owner": "services/pins"
+      "owner": "features/pinning"
     },
     {
       "table": "process_reviews",
@@ -1433,7 +1443,7 @@
       "forbiddenColumns": [
         {
           "column": "user_id",
-          "reason": "vote_records must never identify the voter \u2014 this column would make every past ballot attributable"
+          "reason": "vote_records must never identify the voter — this column would make every past ballot attributable"
         }
       ],
       "owner": "civic.vote"

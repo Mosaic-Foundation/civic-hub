@@ -129,7 +129,7 @@ export function useNavGroups({ onShare }: { onShare: () => void }): NavGroups {
           current: REVIEW_PATHS.some((p) => pathname.startsWith(p)),
         },
         ...ADMIN_PAGES.slice(0, 1).map(({ match, ...page }) => ({ ...page, current: match(pathname) })),
-        ...FEATURE_UI.filter((u) => u.adminTab && hub.plugins.enabled(u.feature)).map((u) => ({
+        ...FEATURE_UI.filter((u) => u.adminTab && !u.adminTab.group && hub.plugins.enabled(u.feature)).map((u) => ({
           id: u.feature,
           label: u.adminTab!.label,
           icon: u.adminTab!.icon,

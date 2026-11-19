@@ -352,7 +352,6 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
         ...(kind === "brief" && meta?.description ? { summary: meta.description } : {}),
         imageUrl: meta?.imageUrl ?? null,
         imageAlt: meta?.imageAlt ?? null,
-        urgent: meta?.urgent === true,
         // An event-derived line from eventToPost (e.g. the official-response
         // context) wins; buildEngagement only knows the fetched meta.
         engagement:

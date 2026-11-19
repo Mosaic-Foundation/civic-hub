@@ -34,18 +34,6 @@ export interface HubFeature {
 
 /** The kernel's own features: built into it, for every space type. */
 const KERNEL_FEATURES = [
-  // Pinning any item to the Pinned card (Adam, 2026-11-18): the hub's
-  // own, for every plugin's items, admins only. Off: no Pin controls, no
-  // Admin → Pinned, and the card shows no pinned rows (urgent announcements
-  // stay). Plugins know nothing of it, on or off.
-  {
-    id: "pinning",
-    order: 95,
-    name: "Pinning",
-    what: "Built into the hub: admins pin any item to the Pinned card, with an optional end date. Urgent announcements are listed first.",
-    fields: [],
-    words: ["pin", "pinned", "sticky", "right column", "featured"],
-  },
   {
     id: "search",
     order: 110,

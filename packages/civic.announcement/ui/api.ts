@@ -57,9 +57,6 @@ export interface Announcement {
   created_at: string;
   last_edited_at: string | null;
   edit_count: number;
-  /** The red Urgent label, its end date not passed. */
-  urgent?: boolean;
-  urgent_until?: string | null;
   /**
    * Slice 11 — moderation state. Null on never-moderated announcements.
    * When `removed` is true and the viewer is not an admin, the body /
@@ -106,9 +103,6 @@ export interface CreateAnnouncementInput {
   links?: AnnouncementLink[];
   image_url?: string | null;
   image_alt?: string | null;
-  /** Any poster may; needs urgent_until (ISO). */
-  urgent?: boolean;
-  urgent_until?: string | null;
 }
 
 export interface UpdateAnnouncementInput {
@@ -121,8 +115,6 @@ export interface UpdateAnnouncementInput {
    */
   image_url?: string | null;
   image_alt?: string | null;
-  urgent?: boolean;
-  urgent_until?: string | null;
 }
 
 export function createAnnouncement(

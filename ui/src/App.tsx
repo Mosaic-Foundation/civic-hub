@@ -5,7 +5,7 @@ import { useAuth } from "./context/authState";
 import { useHub } from "./config/hub";
 import { whenPlugin } from "./config/plugins";
 import { PROCESS_UI } from "./processes";
-import { FEATURE_UI } from "./features";
+import { FEATURE_UI, featurePageTops } from "./features";
 import { detailPathOf, pluginOfType } from "./processes/display";
 import { ArchiveSlotProvider } from "./components/archiveSlot";
 import DetailActions from "./components/DetailActions";
@@ -29,7 +29,6 @@ import ProcessLink, { type ProcessLinkPage } from "./pages/ProcessLink";
 import {
   About,
   AdminArchived,
-  AdminPinned,
   AdminEdits,
   AdminFeedback,
   AdminModeration,
@@ -66,7 +65,6 @@ import { useIsWideViewport } from "./hooks/useIsWideViewport";
 import { useTypingFocus } from "./hooks/useTypingFocus";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import AsideColumn from "./aside/AsideColumn";
-import UrgentLine from "./aside/UrgentLine";
 import { THREE_COLUMN_QUERY, pageHasAside } from "./aside/asidePages";
 import AuthModal from "./components/AuthModal";
 import "./App.css";
@@ -276,8 +274,8 @@ function AppContent() {
       {/* Demo hubs (Phase 7): explains the Sample badge; admins get the
           link to remove the sample content. */}
       {hub.demo_mode && <DemoBanner />}
-      {/* The newest urgent announcement, on every public page (aside/UrgentLine.tsx). */}
-      {!inAdmin && hub.plugins.enabled("announcement") && <UrgentLine />}
+      {/* A feature's line across the top of every public page (Pinning's urgent pin). */}
+      {!inAdmin && featurePageTops((id) => hub.plugins.enabled(id)).map(({ feature, Top }) => <Top key={feature} />)}
     </>
   );
 
@@ -348,8 +346,6 @@ function AppContent() {
                     the page. */}
                 <Route path="/admin/moderation" element={<AdminGuard><AdminModeration /></AdminGuard>} />
                 <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
-                {/* Everything pinned to the Pinned card (2026-11-18), while Pinning is on. */}
-                <Route path="/admin/pinned" element={whenPlugin("pinning", <AdminGuard><AdminPinned /></AdminGuard>)} />
                 <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
                 {/* Read-only archive of resident feedback, incl. topic suggestions. */}
                 <Route path="/admin/feedback" element={whenPlugin("feedback", <AdminGuard><AdminFeedback /></AdminGuard>)} />

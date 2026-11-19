@@ -4,7 +4,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
-## Kernel branch: E2E caught up; the resident digest and the drafting assistant are feature packages — 2026-11-19
+## Kernel branch: E2E caught up; the resident digest, the drafting assistant and Pinning are feature packages — 2026-11-19
 
 - **E2E (0c96ca3):** dev's E2E run had failed or run out its 30 minutes since Nov 17. Most of the time went on specs
   that minted a resident's session through `tests/fixtures/adminSession` and so had not been asked About you: each
@@ -45,8 +45,30 @@ Updated after every Claude Code session. Records what was built, what's incomple
   6, and the module table now say so: the kernel is identity, security and interoperability (federation:
   ActivityPub now, AT Protocol later) plus the shared services plugins need; the kernel offers services, plugins offer
   features; no space must have admins; a space type lists each plugin as required, on by default or off by default.
-  Moving out next: Pinning (urgent becomes a flag on a pin; "who can pin" setting, default admins; Announcements'
-  urgent and `PluginServer.pinnedCard` go), Feedback, the admin digest, the search page, the Members page.
+  Moving out next: Feedback, the admin digest, the search page, the Members page (Pinning is done, below).
+- **A space type lists its plugins (6570db3).** `SpaceType.plugins` `{ required, on, off }`; `spacePluginRule(id)` and
+  `pluginRequired(id)` in `src/shared/spaceTypes.ts`. A required plugin is on whatever its switch says; the settings
+  save and Remove refuse to turn it off, and the Plugins page shows "A {space type} needs this plugin, so it is always
+  on." in place of its switch. The Civic Hub lists none yet, so nothing changes on screen.
+- **Pinning is a feature plugin** (`features/pinning`: manifest, `rules.ts`, `store.ts`, `service.ts`, `routes.ts`,
+  `types.ts`, `ui.tsx`, `ui/`). It owns `process_pins` (exported, keyed by hub and item) and reads items through the
+  kernel's new items service (SDK `items`, `src/services/kernelItems.ts`). Routes: `GET /pins` (the card, the urgent
+  line, `can_pin`), `GET|POST|DELETE /pins/:id`, `GET /admin/pins`; the old `/admin/processes/:id/pin|unpin` are gone.
+  New: a pin can be **urgent** (listed first, the red line across the top of every page) and **Settings → Plugins →
+  Pinning → Who can pin** (`plugin.pinning.who`: admins, the default, or every member; whoever may pin may mark
+  urgent). The UI draws through three new generic slots on a feature's UI module (`ui/src/features.ts`):
+  `itemAction` (the row at the foot of every item's page; drawn for any signed-in reader, each control decides),
+  `asideCards` (right-column cards, each with an `order`; the card's id is `pinned`) and `pageTop`; and
+  `adminTab.group: "community"` keeps Admin → Pinned in the rail's Community group. `GET /api/aside` now serves only
+  the member count. Migration `20261119200000_pinning_urgent.sql` adds `urgent`, pins every announcement urgent right
+  now as an urgent pin until the same date, and renames the saved right-column card `announcements` to `pinned`.
+- **Announcements has no urgent label any more**, and `PluginServer.pinnedCard` is gone (with Announcements'
+  `board.ts` and `pinnedCard.ts`, its form's Prominence box, the page's Urgent chip and "Urgent until", the feed card's
+  Urgent chip and `FeedProcessMeta.urgent`). News Sync's pinned-item label hook is gone too. Visible: a pinned News
+  item shows its type's word ("News") on the card rather than the space's pill label; the feed card no longer shows an
+  Urgent chip; the Pinned card no longer fills with the newest announcements when nothing is pinned (it is hidden);
+  the right column editor calls the card "Pinned" (was "Announcements"). Catalog entries regenerated at the same
+  versions: Announcements 0.4.0 `20261119055657`, News Sync 0.2.0 `20261119055711`.
 - **Step 4: the space type is the deployment's setting.** One line in `config/plugins.json`, `"space": "spaces/civic"`
   (or `null`), picks it. `npm run plugins:sync` writes `config/space.ts`, `config/spaceType.ts` (new),
   `config/spacePalette.ts` and `config/spacePalette.css` from it (they say "Do not edit"; CI's `--check` holds them).

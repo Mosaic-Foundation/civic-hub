@@ -80,7 +80,6 @@ import "../pages/AdminArchived.css";
 import "../pages/AdminEdits.css";
 import "../pages/AdminFeedback.css";
 import "../pages/AdminReviews.css";
-import "../pages/AdminPinned.css";
 import "../components/SubmissionPreview.css";
 import "../pages/MySubmissions.css";
 import "../components/SharePrompt.css";
@@ -88,7 +87,6 @@ import "../components/BetaBanner.css";
 import "../components/BetaWelcomeDialog.css";
 // The three-column layout's right column (ADR-019); its rules are its own.
 import "../aside/aside.css";
-import "../aside/UrgentLine.css";
 // The kit's page patterns (Events 3): the section page's head, groups, list
 // card, chips and filter pills, where App.css and Feed.css ranked them.
 import "../kit/patterns.css";

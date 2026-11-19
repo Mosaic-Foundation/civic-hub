@@ -112,35 +112,6 @@ export async function emitAnnouncementUpdated(
   });
 }
 
-/**
- * Urgent changed (./board.ts). Public, as an edit is: the hub's own log says
- * who marked what urgent and when. (Pins are the hub's, with their own event
- * since pinning phase 2; older logs also carry "pinned" / "unpinned".) The Fediverse
- * posts feed cards only, so this goes no further than the hub's event log.
- */
-export async function emitAnnouncementBoardChanged(
-  ctx: AnnouncementProcessContext,
-  actor: string,
-  state: AnnouncementProcessState,
-  change: "urgent" | "not_urgent",
-): Promise<void> {
-  await ctx.emit({
-    event_type: "civic.process.updated",
-    actor,
-    process_id: ctx.process_id,
-    jurisdiction: ctx.jurisdiction,
-    processType: "civic.announcement",
-    action_url_path: announcementPath(ctx.process_id),
-    data: {
-      announcement: {
-        title: state.content.title,
-        board_change: change,
-        ...(change === "urgent" ? { urgent_until: state.urgent_until ?? null } : {}),
-      },
-    },
-  });
-}
-
 // Re-export for the adapter that needs the raw preview util (keeps the
 // module as the single source of truth for preview length).
 export { bodyPreview };

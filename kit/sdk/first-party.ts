@@ -89,6 +89,7 @@ export {
   inputs,
   isPastDeadline,
   isPluginEnabledSync,
+  items,
   lines,
   links,
   listSubscribedUsers,

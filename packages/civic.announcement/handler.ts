@@ -73,11 +73,6 @@ const announcementProcess: ProcessHandler = {
         typeof input.image_alt === "string" || input.image_alt === null
           ? (input.image_alt as string | null)
           : undefined,
-      // The red Urgent label and its end date (checked by the module).
-      urgent:
-        input.urgent === true
-          ? { urgent: true, urgent_until: typeof input.urgent_until === "string" ? input.urgent_until : null }
-          : null,
     };
     return createAnnouncementState(createInput) as unknown as Record<string, unknown>;
   },
@@ -123,7 +118,6 @@ const announcementProcess: ProcessHandler = {
       editCount: num(model.edit_count) ?? 0,
       lastEditedAt: str(model.last_edited_at) ?? null,
       removed: moderation?.removed === true,
-      urgent: model.urgent === true,
     };
   },
 };

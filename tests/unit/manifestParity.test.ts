@@ -66,6 +66,10 @@
  * after News sync) and its switch. Only those (diffed before writing).
  * And (2026-11-18, pinning phase 2): the host gains process_pins (exported,
  * keyed by process_id) and its requirement. Only those (diffed before writing).
+ * And (2026-11-19, Pinning a plugin, kernel step 4): process_pins becomes the
+ * Pinning feature's table (keyed by hub_id and process_id, as a feature's
+ * are), its requirement gains urgent and names features/pinning, and its
+ * panel gains plugin.pinning.who. Only those (diffed before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

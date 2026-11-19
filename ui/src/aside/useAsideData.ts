@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { getCalendarEvents, type AsideFacts, type CalendarEventRow } from "../services/api";
-import { loadAsideFacts, onAsideChanged } from "./asideFacts";
+import { loadAsideFacts } from "./asideFacts";
 import { pluginEnabled, type PluginId } from "../config/plugins";
 
 /** The plugin whose calendar Coming up reads its events from. */
@@ -30,15 +30,8 @@ export function useAsideData(): AsideData {
     ]).then(([facts, events]) => {
       if (live) setData({ facts, events, loaded: true });
     });
-    // A pin or an urgent label changed: the announcements again, the calendar as it was.
-    const off = onAsideChanged(() => {
-      void loadAsideFacts().then((facts) => {
-        if (live) setData((d) => ({ ...d, facts }));
-      });
-    });
     return () => {
       live = false;
-      off();
     };
   }, [calendarOn]);
   return data;

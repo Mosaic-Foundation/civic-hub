@@ -1,0 +1,10 @@
+{
+  "name": "@civic-social/feature-pinning",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pinning: any item pinned to the right column's Pinned card, with an optional end date and an optional urgent flag; who may pin is the space's setting (kernel step 4). A hub feature built as a plugin package is.",
+  "peerDependencies": {
+    "express": "^4.22.3"
+  }
+}

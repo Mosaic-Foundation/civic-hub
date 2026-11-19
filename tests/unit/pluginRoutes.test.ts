@@ -49,7 +49,7 @@ const ADDED: Record<string, string> = {
   // The console split (2026-11-10): the operator API, 404 unless CIVIC_OPERATOR_TOKEN is set.
   "POST /operator/rpc/:method": "the console's calls to the hub deployment (src/operator/api.ts)",
   // The layout session (2026-11-07; ADR-019): the three-column layout's right column.
-  "GET /aside": "the right column's facts: announcements and the member count (deadlines moved to the feed, Events 4)",
+  "GET /aside": "the right column's facts: the member count (deadlines moved to the feed, Events 4; pins to the Pinning plugin)",
   "GET /api/aside": "the same, at the URL the UI reads locally (Vercel strips /api)",
   // Events 4 (2026-11-09): what is about to close, for the feed's closing-soon cards.
   "GET /feed/closing": "open processes closing within 48 hours: titles, close times and links",
@@ -100,9 +100,11 @@ const ADDED: Record<string, string> = {
   "GET /calendar/events/:id.ics": "Events: one event's calendar file (Add to my calendar)",
   "GET /calendar/events/:id/announcements": "Events: what the people going were sent, for admins",
   // Pinning any item (2026-11-18): the kernel's, beside archive and restore.
-  "POST /admin/processes/:id/pin": "Pin any item to the right column's card",
-  "POST /admin/processes/:id/unpin": "Unpin an item",
-  "GET /admin/pins": "Admin → Pinned: everything pinned or urgent",
+  "GET /pins": "the Pinning plugin's card: what is pinned, the urgent line, whether the reader may pin",
+  "GET /pins/:id": "an item's pin, for its Pin button",
+  "POST /pins/:id": "pin an item, or change its end date or urgent flag",
+  "DELETE /pins/:id": "unpin an item",
+  "GET /admin/pins": "Admin → Pinned: everything pinned",
   // News Sync's own type (2026-11-18): a News item's page reads it.
   "GET /news/:id": "News sync: one News item, for its page",
 };

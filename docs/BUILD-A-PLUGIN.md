@@ -361,27 +361,12 @@ None of these is required; each has a step in the suite where you use it (`docs/
 
 ### Pinning (nothing to do)
 
-An admin can pin any item to the Pinned card, with an optional end date: from the Pin button the hub draws at the
-bottom of every item page (beside Archive); Admin → Pinned lists every pinned item. Only admins pin. The hub stores the pin and records each change as a
-`civic.process.updated` with `data.pin`. A plugin writes no pin code and needs nothing in its manifest: its items can be
-pinned as soon as they have a page (`detailPath`). A hub can switch Pinning off (Plugins → Pinning); every Pin control
-disappears and plugins work the same.
-
-A plugin may still put its own rows on the card, above the pins, with `pinnedCard` on what `server()` returns
-(Announcements does this for its urgent announcements):
-
-```ts
-pinnedCard: {
-  // Rows for the top of the card, right now. One flagged `urgent` is also the line across the top of the pages.
-  async first() { return [{ process_id, title, published_at, url: `/my-type/${id}`, urgent: true, until }]; },
-  // Optional: a few rows for a card nothing is pinned to (the card is then named after your type's plural).
-  async fill({ isAdmin }) { return newestFew; },
-  // Optional: the word a pinned item of your type shows instead of the type's label (News Sync: the hub's pill label).
-  label: ({ process_id, state }) => mySetting || null,
-},
-```
-
-All three are optional. The hub calls `first` and `fill` only while your plugin is on. A failure leaves your rows out and is reported; the card still shows.
+Pinning is a plugin of its own (`features/pinning`, kernel step 4): whoever the space allows (admins by default, or
+every member) pins any item to the Pinned card, with an optional end date, and may mark a pin urgent (listed first,
+and the line across the top of the pages). Its Pin button sits at the bottom of every item page, beside Archive;
+Admin → Pinned lists every pinned item. Your plugin writes no pin code and needs nothing in its manifest: its items can
+be pinned as soon as they have a page (`detailPath`), and they show on the card with your type's label. A space can
+switch Pinning off; your plugin works the same. There is no hook for a plugin to put its own rows on the card.
 
 ### Member information (districts and demographics)
 

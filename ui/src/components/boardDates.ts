@@ -1,4 +1,4 @@
-// End dates for pins (src/shared/pinRules.ts) and urgent announcements:
+// End dates for pins (features/pinning/rules.ts):
 // the forms pick a day, read in the hub's time zone; the item stays up to the
 // end of that day.
 

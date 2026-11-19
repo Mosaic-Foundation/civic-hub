@@ -38,7 +38,6 @@ const announcementKind: FeedKindUi = {
         imageAlt: a.image_alt ?? null,
         editCount: a.edit_count ?? 0,
         lastEditedAt: a.last_edited_at ?? null,
-        urgent: a.urgent === true,
       };
     }),
   engagement: (meta) => {

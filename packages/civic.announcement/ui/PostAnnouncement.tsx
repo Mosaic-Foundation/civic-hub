@@ -1,16 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  Checkbox,
-  dayFromToday,
-  dayOf,
-  endOfDay,
   PostImagePicker,
-  refreshAside,
-  useSpace,
   useViewer,
 } from "@civic-social/plugin-sdk/ui";
-import { URGENT_DEFAULT_DAYS, URGENT_MAX_DAYS } from "../board";
 import {
   createAnnouncement,
   getAnnouncement,
@@ -27,8 +20,6 @@ export default function PostAnnouncement() {
   const navigate = useNavigate();
   const { id: editId } = useParams<{ id?: string }>();
   const { isAdmin: viewerIsAdmin, mayPostForSpace: canPostAnnouncements, loading: authLoading } = useViewer();
-  const space = useSpace();
-  const tz = space.timeZone;
 
   const isEditMode = Boolean(editId);
 
@@ -41,9 +32,6 @@ export default function PostAnnouncement() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
-  // Urgent (any poster; ../board.ts). Pinning is the hub's: an admin pins from the page.
-  const [urgent, setUrgent] = useState(false);
-  const [urgentUntil, setUrgentUntil] = useState(() => dayFromToday(URGENT_DEFAULT_DAYS, tz));
 
   // Load the existing announcement when editing.
   useEffect(() => {
@@ -57,12 +45,10 @@ export default function PostAnnouncement() {
         setImageUrl(a.image_url);
         setImageAlt(a.image_alt);
         setIsOwner(!!a.is_owner);
-        setUrgent(!!a.urgent);
-        if (a.urgent && a.urgent_until) setUrgentUntil(dayOf(a.urgent_until, tz));
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoadingExisting(false));
-  }, [editId, tz]);
+  }, [editId]);
 
   // Gate: only Board or admin can reach the form at all. On edit, only the
   // original author or an admin can reach the form. Residents and
@@ -133,10 +119,6 @@ export default function PostAnnouncement() {
       const altToSend = imageUrl
         ? ((imageAlt ?? "").trim().length > 0 ? imageAlt!.trim() : null)
         : null;
-      const marks = {
-        urgent,
-        urgent_until: urgent ? endOfDay(urgentUntil, tz) : null,
-      };
       if (isEditMode && editId) {
         await updateAnnouncement(editId, {
           title: title.trim(),
@@ -144,9 +126,7 @@ export default function PostAnnouncement() {
           links: cleanedLinks,
           image_url: imageUrl,
           image_alt: altToSend,
-          ...marks,
         });
-        refreshAside();
         navigate(`/announcement/${editId}`);
       } else {
         const created = await createAnnouncement({
@@ -155,9 +135,7 @@ export default function PostAnnouncement() {
           links: cleanedLinks,
           image_url: imageUrl,
           image_alt: altToSend,
-          ...marks,
         });
-        refreshAside();
         navigate(`/announcement/${created.id}`);
       }
     } catch (err) {
@@ -189,7 +167,6 @@ export default function PostAnnouncement() {
     body.trim().length > 0 &&
     !titleOver &&
     !bodyOver &&
-    !(urgent && !urgentUntil) &&
     !submitting;
 
   return (
@@ -306,32 +283,6 @@ export default function PostAnnouncement() {
             </button>
           )}
         </div>
-
-        <fieldset className="form-field announcement-marks">
-          <legend className="form-label">Prominence</legend>
-          <Checkbox
-            label="Mark as urgent"
-            hint="Shows a red Urgent label on the post, and a line across the top of the hub's pages, until the end of the date below. For a fire ban, a road closure, a boil-water notice."
-            checked={urgent}
-            onChange={(e) => setUrgent(e.target.checked)}
-            disabled={submitting}
-          />
-          {urgent && (
-            <label className="announcement-mark-date">
-              Urgent until
-              <input
-                className="form-input"
-                type="date"
-                value={urgentUntil}
-                min={dayFromToday(0, tz)}
-                max={dayFromToday(URGENT_MAX_DAYS, tz)}
-                onChange={(e) => setUrgentUntil(e.target.value)}
-                required
-                disabled={submitting}
-              />
-            </label>
-          )}
-        </fieldset>
 
         {error && <p className="form-error">{error}</p>}
 

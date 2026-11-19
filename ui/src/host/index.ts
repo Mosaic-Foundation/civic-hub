@@ -233,9 +233,6 @@ export { default as PostFeaturedImage } from "../components/PostFeaturedImage";
 export { default as PostImagePicker } from "../components/PostImagePicker";
 export { default as LinkPreviewCard } from "../components/LinkPreviewCard";
 
-// --- The right column: tell it something it shows has changed ------------------------------
-export { refreshAside } from "../aside/asideFacts";
-
 // --- An admin page: its pinned filter bar, a review page's way back, a publication's status,
 // and its review queue's "seen" mark (the admin tabs' counts refetch after it) --------------
 export { AdminBackButton, AdminStickyBar } from "../components/AdminSticky";

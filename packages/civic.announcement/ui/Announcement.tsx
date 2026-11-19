@@ -10,10 +10,7 @@ import {
   relativeTime,
   SampleBadge,
   ShareButton,
-  shortDay,
-  StatusChip,
   useApi,
-  useSpace,
   useViewer,
 } from "@civic-social/plugin-sdk/ui";
 import {
@@ -38,7 +35,6 @@ const REASON_CHIPS = [
 export default function AnnouncementPage() {
   const { id } = useParams<{ id: string }>();
   const { isAdmin } = useViewer();
-  const space = useSpace();
   const {
     data: announcement,
     loading,
@@ -149,12 +145,6 @@ export default function AnnouncementPage() {
       <header className="announcement-header">
         <p className="announcement-eyebrow">
           {isAdminLabel ? "Announcement" : `${roleLabel} announcement`}
-          {announcement.urgent && (
-            <>
-              {" "}
-              <StatusChip tone="alert">Urgent</StatusChip>
-            </>
-          )}
           {announcement.is_sample && (
             <>
               {" "}
@@ -187,9 +177,6 @@ export default function AnnouncementPage() {
                 {relativeTime(announcement.last_edited_at)}
               </time>
             </>
-          )}
-          {announcement.urgent && announcement.urgent_until && (
-            <>{` · Urgent until ${shortDay(announcement.urgent_until, space.timeZone)}`}</>
           )}
           {canEdit && !isRemoved && (
             <>

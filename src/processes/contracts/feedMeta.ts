@@ -15,6 +15,4 @@ export interface FeedProcessMeta {
   maxStartSeconds?: number | null;
   /** Announcement removed by a moderator — the client drops the card. */
   removed?: boolean;
-  /** Announcement marked urgent, its end date not passed: the card's red label. */
-  urgent?: boolean;
 }

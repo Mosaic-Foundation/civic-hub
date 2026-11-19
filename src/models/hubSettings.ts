@@ -247,6 +247,8 @@ export const KEYS = {
   PLUGIN_ANALYTICS_PUBLIC_NUMBERS: "plugin.analytics.public_numbers",
   // Fediverse phase 2 (2026-11-14): how often the hub posts (each | daily |
   // weekly), the hashtags added to each post, the servers it ignores. Admin-only.
+  // Pinning (kernel step 4): admins (default) or every member.
+  PLUGIN_PINNING_WHO: "plugin.pinning.who",
   PLUGIN_FEDIVERSE_POST_MODE: "plugin.fediverse.post_mode",
   PLUGIN_FEDIVERSE_HASHTAGS: "plugin.fediverse.hashtags",
   PLUGIN_FEDIVERSE_BLOCKED_SERVERS: "plugin.fediverse.blocked_servers",

@@ -43,7 +43,7 @@ export async function writeProcessState(processId: string, state: Record<string,
 
 // --- controllers ---
 
-/** A public item as the Pinned card reads it (src/services/pins.ts). */
+/** A public item as the kernel's items service reads it (src/services/kernelItems.ts). */
 export interface CardRow {
   id: string;
   type: string;

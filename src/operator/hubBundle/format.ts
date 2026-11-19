@@ -48,7 +48,6 @@ const HOST_TABLE_KEYS: Readonly<Record<string, readonly string[]>> = {
   hub_settings: ["hub_id", "key"],
   member_about: ["user_id"],
   process_links: ["id"],
-  process_pins: ["process_id"],
   process_reviews: ["id"],
   processes: ["id"],
   review_turns: ["id"],

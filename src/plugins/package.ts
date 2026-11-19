@@ -23,7 +23,6 @@
 // (src/plugins/loader.ts) checks each one, hashes its files, and mounts it
 // only when an approved catalog row records that exact hash.
 
-import type { PluginPinnedCard } from "./pinnedCard.js";
 import type { Router } from "express";
 import type { ProcessManifest } from "../processes/manifest.js";
 import type { ProcessHandler } from "../processes/types.js";
@@ -85,12 +84,6 @@ export interface PluginServer {
    * type seeds its type's samples itself.
    */
   samples?: PluginSamples;
-  /**
-   * Its items on the hub's Pinned card (pinning phase 2; src/plugins/pinnedCard.ts):
-   * the ones for the top of the card, and a few to fill it when it would be empty.
-   * Pins themselves are the kernel's: a plugin writes no pin code.
-   */
-  pinnedCard?: PluginPinnedCard;
   /**
    * What it does when the kernel says something happened (kernel step 3): the
    * kernel calls it in-process, for the hub in scope, only while the package
