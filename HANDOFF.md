@@ -34,6 +34,15 @@ Updated after every Claude Code session. Records what was built, what's incomple
   moved into its `ui.tsx`. `src/shared/newsSource.ts` is gone (labels in `packages/civic.news_sync/models.ts`).
   `SpaceView.placeName` is new. Nothing on screen changes. Catalog entries regenerated, same versions: News Sync 0.2.0
   `20261119013922`, Announcements 0.4.0 `20261119013934`, Meeting summaries 0.3.0 `20261119013944`.
+- **The colour and kind vocabulary is the space type's palette.** `spaces/civic/palette.ts` holds the Civic Hub's
+  colour families (theme label, default hue, which base colour it follows, its email pill), card kinds (digest
+  section and order, whether the feed batches its metadata, the "Results"/"Update" note, the response's context
+  line) and digest sections. `config/spacePalette.ts` names it; `src/shared/spacePalette.ts` is its one reader
+  (lint). `feedActivity.ts`, `theme.ts`, `manifest.ts`, the digest feature and the feed card read it; `ActivityKind`,
+  `ActivityColor` and `ThemeTypeKey` are plain strings, and `BUILTIN_THEME_TYPE_KEYS` is gone.
+  `tests/unit/spacePalette.test.ts` pins the old orders and values. No package changed, so no catalog entries.
+  Left for step 4: the default `--type-<key>-*` tokens in `ui/src/styles/theme.css` and `dark.css`, and kernel words
+  naming civic plugins in `settingsSearch.ts`, `pluginSetup.ts` and `pluginGrantWords.ts`.
 - **Dev merged in (0eda79f, About you not during sign-up).** On this branch the hold names no package: AuthModal works
   out the first stop (`afterSignUpStop`) before `login()` and hands it to `holdAboutYouForSignup(stop)`; nothing asks on
   that path (kept in sessionStorage for a reload), and the first action anywhere else after reaching it ends the hold.

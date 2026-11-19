@@ -15,9 +15,10 @@
 // SHARED ACROSS BOTH RUNTIMES — consumed by:
 //   - the Vite frontend (Feed / FeedPost / FeedFilter), and
 //   - the Node backend (the digest feature's filter + service, features/digest/).
-// It MUST therefore stay framework-agnostic and free of server code: its one
-// import is the process manifests (plain data, src/shared/processManifests.ts;
-// eslint keeps it to that).
+// It MUST therefore stay framework-agnostic and free of server code: it
+// imports only plain data, the process manifests
+// (src/shared/processManifests.ts) and the space type's palette
+// (src/shared/spacePalette.ts).
 // Do NOT fork this logic back into the consumers — that drift is the bug this
 // module exists to kill. Frontend imports it by relative path; the backend
 // gets it via `src/**/*`.
@@ -37,6 +38,7 @@
 // data-shape checks for historical events emitted before the field existed.
 
 import { LEGACY_TYPES, MANIFEST_LIST } from "./processManifests.js";
+import { SPACE_PALETTE } from "./spacePalette.js";
 
 /**
  * Coarse content category — aligned 1:1 with the FeedFilter `?type=` keys so
@@ -59,30 +61,14 @@ export const ACTIVITY_SURFACE = "activity";
  * pill color) via a total, exhaustively-checked switch — stable mappings, not
  * the brittle data-shape sniffing this module replaces.
  */
-export type BuiltinActivityKind =
-  | "vote-open"
-  | "vote-closed" // a vote's own results, published when it closes (2026-10-07)
-  | "vote-results" // legacy civic.vote_results records
-  | "announcement" // admin / synced (Floyd County Gov)
-  | "announcement-author" // board member / committee / other authored
-  | "news" // a post News Sync copied in from another site (civic.news; Adam, 2026-11-18)
-  | "meeting"
-  | "wordcloud"
-  | "proposal"
-  | "proposal-closed"
-  | "project-created"
-  | "project-updated"
-  | "conversation"
-  | "conversation-results" // legacy deliberation outcome delivered (close)
-  | "brief" // universal civic.brief published — the final result of any process
-  | "brief-response"; // an official responded to a published brief (anchored)
-
 /**
- * A card kind: the hub's own, or one a package declares in its manifest's
- * `feed.kinds` (engine 2, A5: the Events plugin's "event"). Consumers switch
- * on the hub's own and read a declared one from DECLARED_FEED_KINDS.
+ * A card kind: one a type's card rule names ("vote-open"), listed with its
+ * digest section and order in the space type's palette
+ * (src/shared/spacePalette.ts), or one a package declares in its manifest's
+ * `feed.kinds` (engine 2, A5: the Events plugin's "event"). The kernel names
+ * none but "brief", the card of a published Civic Brief.
  */
-export type ActivityKind = BuiltinActivityKind | (string & {});
+export type ActivityKind = string;
 
 /**
  * THE color decision (2026-08-28, Adam): every surface colors a card, row,
@@ -93,31 +79,12 @@ export type ActivityKind = BuiltinActivityKind | (string & {});
  * the Outcomes index, and the email digest can never disagree again
  * (they previously kept three drifting palettes keyed by kind).
  *
- * Each key maps to a `--type-<key>-bg/-fg` token pair in the UI's
- * theme.css and a literal hex pair in features/digest/service.ts
- * PILL_COLORS (emails cannot read CSS variables).
- *
- * Two non-process keys on purpose: "announcement-author" preserves the
- * elected-official vs hub-admin announcement distinction, and
- * "official-response" is an ACT (the government answering a brief), not
- * a process — it keeps its gold everywhere.
+ * Each key maps to a `--type-<key>-bg/-fg` token pair in the UI and an
+ * email pill pair; the space type's palette (src/shared/spacePalette.ts)
+ * lists its keys, and a package declares its own with its card kind (A5).
+ * The kernel's own is "generic".
  */
-export type BuiltinActivityColor =
-  | "vote"
-  | "proposal"
-  | "conversation"
-  | "project"
-  | "wordcloud"
-  | "announcement"
-  | "announcement-author"
-  // Posts News Sync copies in from another site (2026-11-16, Adam).
-  | "news"
-  | "meeting"
-  | "official-response"
-  | "generic";
-
-/** A colour key: the hub's own, or one a package declares with its card kind (A5). */
-export type ActivityColor = BuiltinActivityColor | (string & {});
+export type ActivityColor = string;
 
 export interface Activity {
   surface: ActivitySurface;
@@ -335,23 +302,9 @@ export const FEED_EVENT_TYPES: readonly string[] = [...RULES.keys()];
  * /api/feed's process_meta, GET /api/feed/meta), and the feed seeds its
  * metadata cache with it for these kinds only.
  */
-export const FEED_META_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>([
-  "vote-open",
-  "vote-closed",
-  "vote-results",
-  "meeting",
-  "wordcloud",
-  "project-created",
-  "project-updated",
-  "conversation",
-  "conversation-results",
-  "announcement",
-  "announcement-author",
-  "news",
-  // A brief's card is its publish event; a regenerated version replaces its
-  // headline in place, marked "Updated <date>" (Actions slice).
-  "brief",
-]);
+export const FEED_META_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(
+  SPACE_PALETTE.kinds.filter((k) => k.meta).map((k) => k.kind),
+);
 
 /**
  * Classify a civic event into its feed/digest presentation, or null when the

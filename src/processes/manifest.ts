@@ -24,6 +24,7 @@ import type { FeedDeclaration } from "../shared/feedActivity.js";
 import { grantProblem, type PluginCapabilities } from "../shared/pluginGrant.js";
 import { participationProblem, type ParticipationDeclaration } from "../shared/participation.js";
 import { namesRole } from "../shared/spaceProfile.js";
+import { SPACE_KINDS } from "../shared/spacePalette.js";
 
 /**
  * One scheduled job of a type: src/jobs/registry.ts's HubJobSpec, with the
@@ -328,12 +329,8 @@ export function defineFeatureManifest<const M extends FeatureManifest>(manifest:
   return manifest;
 }
 
-/** The hub's own card kinds (src/shared/feedActivity.ts BuiltinActivityKind). */
-const BUILTIN_KINDS: ReadonlySet<string> = new Set([
-  "vote-open", "vote-closed", "vote-results", "meeting", "announcement", "announcement-author", "news", "wordcloud",
-  "proposal", "proposal-closed", "project-created", "project-updated", "conversation", "conversation-results",
-  "brief", "brief-response",
-]);
+/** The card kinds the space type's palette lists (src/shared/spacePalette.ts) and the kernel's "brief": a package declares none of these. */
+const BUILTIN_KINDS: ReadonlySet<string> = new Set([...SPACE_KINDS.keys(), "brief"]);
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 /** Why a manifest was refused at startup. */

@@ -3,6 +3,7 @@ import { useIsWideViewport } from "../hooks/useIsWideViewport";
 import SampleBadge from "./SampleBadge";
 import { ListCard, StatusChip } from "../kit";
 import type { ActivityColor, ActivityKind } from "../../../src/shared/feedActivity";
+import { SPACE_KINDS } from "../../../src/shared/spacePalette";
 import { absoluteTime, relativeTime } from "../utils/dates";
 
 /**
@@ -156,7 +157,7 @@ export default function FeedPost({ post }: Props) {
       {post.engagement && (
         <p
           className={
-            post.pillKind === "brief-response"
+            SPACE_KINDS.get(post.pillKind)?.context
               ? "feed-post-engagement feed-post-engagement--context"
               : "feed-post-engagement"
           }

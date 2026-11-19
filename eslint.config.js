@@ -376,6 +376,8 @@ const authzSeamRule = {
 // file in one place.
 const SPACES_DIR = "spaces/";
 const SPACE_READERS = { "src/plugins/spaceType.ts": "config/space.ts" };
+// The space type's palette (plain data the UI reads too) has one reader as well.
+const PALETTE_READERS = { "src/shared/spacePalette.ts": "config/spacePalette.ts" };
 
 const PACKAGES_DIR = "packages/";
 // A feature package (ADR-016): a hub feature built as a plugin package is,
@@ -538,6 +540,9 @@ const packageBoundaryRule = {
       if (inEngine && target === "config/space.ts" && SPACE_READERS[rel] !== target) {
         context.report({ node, message: `"${spec}": only src/plugins/spaceType.ts reads the hub's space type (config/space.ts).` });
       }
+      if (target === "config/spacePalette.ts" && PALETTE_READERS[rel] !== target) {
+        context.report({ node, message: `"${spec}": only src/shared/spacePalette.ts reads the space type's palette (config/spacePalette.ts).` });
+      }
       if (inSpace && target.startsWith(SPACES_DIR) && !target.startsWith(rel.split("/").slice(0, 2).join("/") + "/")) {
         context.report({ node, message: `"${spec}": a space type imports only its own files of spaces/.` });
       }
@@ -650,16 +655,16 @@ export default [
     },
   },
   // The feed classifier is shared with the UI: its imports are the
-  // manifest list (Architecture 2; it was import-free before) and the
-  // import-free reader of a News Sync post's source (2026-11-16).
+  // manifest list (Architecture 2; it was import-free before) and the space
+  // type's palette (kernel step 3, Nov 19), both plain data.
   {
     files: ["src/shared/feedActivity.ts"],
     rules: {
       "no-restricted-imports": ["error", {
         patterns: [{
-          regex: "^(?!\\./processManifests\\.js$|\\./newsSource\\.js$)",
+          regex: "^(?!\\./processManifests\\.js$|\\./spacePalette\\.js$)",
           allowTypeImports: true,
-          message: "feedActivity imports only the manifest list (src/shared/processManifests.ts) and src/shared/newsSource.ts.",
+          message: "feedActivity imports only the manifest list (src/shared/processManifests.ts) and the palette (src/shared/spacePalette.ts).",
         }],
       }],
     },

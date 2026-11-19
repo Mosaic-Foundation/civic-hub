@@ -13,9 +13,9 @@
 import {
   classifyActivity,
   DECLARED_FEED_KINDS,
-  type BuiltinActivityKind,
   type ClassifierEvent,
 } from "../../src/shared/feedActivity.js";
+import { SPACE_KINDS, SPACE_PALETTE } from "../../src/shared/spacePalette.js";
 import type { DigestEvent, DigestItem, DigestItemKind } from "./models.js";
 
 /**
@@ -36,34 +36,15 @@ export function classifyItemKind(event: DigestEvent): DigestItemKind | null {
 }
 
 /**
- * Canonical default sort: by section order (votes → results → meeting
- * summaries → announcements → word clouds → proposals → projects →
- * conversations), then by timestamp descending inside each kind. Kinds that
- * share a rendered section are adjacent in this order, so grouping in
- * service.ts preserves the timestamp sort within each section.
+ * Canonical default sort: by each kind's `order` in the space type's palette
+ * (src/shared/spacePalette.ts), then a package's declared kinds (A5) in load
+ * order, then by timestamp descending inside each kind. Kinds that share a
+ * rendered section are adjacent in this order, so grouping in service.ts
+ * preserves the timestamp sort within each section.
  */
-const KIND_ORDER: Record<BuiltinActivityKind, number> = {
-  "vote-open": 0,
-  "vote-closed": 1,
-  "vote-results": 1,
-  meeting: 2,
-  announcement: 3,
-  "announcement-author": 4,
-  news: 4,
-  wordcloud: 5,
-  proposal: 6,
-  "proposal-closed": 7,
-  "project-created": 8,
-  "project-updated": 9,
-  conversation: 10,
-  "conversation-results": 11,
-  brief: 12,
-  "brief-response": 13,
-};
-
-/** A declared kind (A5) sorts after the hub's own, in load order. */
-const DECLARED_ORDER: ReadonlyMap<string, number> = new Map([...DECLARED_FEED_KINDS.keys()].map((k, i) => [k, 14 + i]));
-const kindOrder = (kind: string): number => KIND_ORDER[kind as BuiltinActivityKind] ?? DECLARED_ORDER.get(kind) ?? 99;
+const AFTER_SPACE = Math.max(-1, ...SPACE_PALETTE.kinds.map((k) => k.order)) + 1;
+const DECLARED_ORDER: ReadonlyMap<string, number> = new Map([...DECLARED_FEED_KINDS.keys()].map((k, i) => [k, AFTER_SPACE + i]));
+const kindOrder = (kind: string): number => SPACE_KINDS.get(kind)?.order ?? DECLARED_ORDER.get(kind) ?? 99;
 
 export function sortDigestItems(items: DigestItem[]): DigestItem[] {
   return [...items].sort((a, b) => {

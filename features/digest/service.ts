@@ -19,9 +19,9 @@ import {
   DECLARED_FEED_KINDS,
   type Activity,
   type ActivityKind,
-  type BuiltinActivityKind,
   type ClassifierEvent,
 } from "../../src/shared/feedActivity.js";
+import { SPACE_KINDS, SPACE_PALETTE } from "../../src/shared/spacePalette.js";
 import { sortDigestItems } from "./filter.js";
 import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
 import { getSettingSync, KEYS } from "../../src/sdk/index.js";
@@ -366,99 +366,40 @@ function buildSubject(
 
 // --- Sections ---------------------------------------------------------------
 
-type BuiltinDigestSection =
-  | "votes_open"
-  | "vote_results"
-  | "meeting_summaries"
-  | "announcements"
-  | "news"
-  | "word_clouds"
-  | "proposals"
-  | "projects"
-  | "conversations"
-  | "briefs";
+/** A section: the space type's (its palette), or one a package's card kind declares (A5). */
+type DigestSection = string;
 
-/** A section: the hub's own, or one a package's card kind declares (A5). */
-type DigestSection = BuiltinDigestSection | (string & {});
-
-/** Which email section each classifier kind renders under. */
-const SECTION_OF: Record<BuiltinActivityKind, DigestSection> = {
-  "vote-open": "votes_open",
-  "vote-closed": "vote_results",
-  "vote-results": "vote_results",
-  meeting: "meeting_summaries",
-  announcement: "announcements",
-  "announcement-author": "announcements",
-  news: "news",
-  wordcloud: "word_clouds",
-  proposal: "proposals",
-  "proposal-closed": "proposals",
-  "project-created": "projects",
-  "project-updated": "projects",
-  conversation: "conversations",
-  "conversation-results": "conversations",
-  brief: "briefs",
-  // A response belongs with the outcome it answers, not in its own
-  // section — the "Completed — results" section carries both the brief
-  // and, later, the government's reply to it.
-  "brief-response": "briefs",
-};
-
-/** The section a card kind renders under: the hub's table, else the kind's own declaration (A5). */
+/** The section a card kind renders under: the space type's palette, else the kind's own declaration (A5). */
 function sectionOf(kind: ActivityKind): DigestSection {
-  return SECTION_OF[kind as BuiltinActivityKind] ?? DECLARED_FEED_KINDS.get(kind)?.digest.section ?? "announcements";
+  return SPACE_KINDS.get(kind)?.section ?? DECLARED_FEED_KINDS.get(kind)?.digest.section ?? SPACE_PALETTE.fallbackSection;
 }
 
 const SECTION_LABELS: Record<string, string> = {
-  votes_open: "New votes open",
-  vote_results: "New vote results",
-  meeting_summaries: "New meeting summaries",
-  announcements: "Announcements",
-  news: "News",
-  word_clouds: "Word clouds",
-  proposals: "Proposals",
-  projects: "Projects",
-  conversations: "Conversations",
-  briefs: "Completed — results",
+  ...Object.fromEntries(SPACE_PALETTE.sections.map((x) => [x.key, x.heading])),
   // Declared sections (A5), each with its heading.
   ...Object.fromEntries([...DECLARED_FEED_KINDS.values()].map((k) => [k.digest.section, k.digest.heading])),
 };
 
 const SECTION_ORDER: DigestSection[] = [
-  "votes_open",
-  "vote_results",
-  "meeting_summaries",
-  "announcements",
-  "news",
-  "word_clouds",
-  "proposals",
-  "projects",
-  "conversations",
-  // Declared sections (A5), in load order, before the results.
-  ...new Set([...DECLARED_FEED_KINDS.values()].map((k) => k.digest.section)),
-  "briefs",
+  ...new Set([
+    ...SPACE_PALETTE.sections.filter((x) => !x.last).map((x) => x.key),
+    // Declared sections (A5), in load order, before the space type's last ones.
+    ...[...DECLARED_FEED_KINDS.values()].map((k) => k.digest.section),
+    ...SPACE_PALETTE.sections.filter((x) => x.last).map((x) => x.key),
+  ]),
 ];
 
 // --- HTML formatting --------------------------------------------------------
 
 /**
- * Per-PROCESS-TYPE pill hex pairs (2026-08-28) — one color per process
- * type across feed, Outcomes, and this email, keyed by the shared
- * classifier's ActivityColor. Mirror the --type-<color>-* tokens in the
- * UI's theme.css; change BOTH together. Inlined as literals because
- * email clients don't honor CSS vars.
+ * Per-PROCESS-TYPE pill hex pairs (2026-08-28): one color per process type
+ * across feed, Outcomes, and this email, keyed by the shared classifier's
+ * ActivityColor. The space type's palette gives its own (mirroring the UI's
+ * --type-<color>-* tokens), a package its declared ones; "generic" is the
+ * kernel's. Inlined as literals because email clients don't honor CSS vars.
  */
 const PILL_COLORS: Record<string, { bg: string; fg: string }> = {
-  vote: { bg: "#dce5f2", fg: "#1e3a5f" },
-  proposal: { bg: "#eae7f0", fg: "#5f4b8b" },
-  conversation: { bg: "#ddefef", fg: "#0f5e66" },
-  project: { bg: "#e3f2fd", fg: "#1565c0" },
-  wordcloud: { bg: "#edf0dd", fg: "#5c6b2a" },
-  announcement: { bg: "#fbe5d3", fg: "#8c3210" },
-  "announcement-author": { bg: "#e4ddf0", fg: "#3a2c5e" },
-  news: { bg: "#e3e8ec", fg: "#34495a" },
-  meeting: { bg: "#d9ecd9", fg: "#0f4a26" },
-  "official-response": { bg: "#fdf1e0", fg: "#8a5a13" },
+  ...Object.fromEntries(SPACE_PALETTE.colors.flatMap((c) => (c.email ? [[c.key, c.email] as const] : []))),
   // Declared colours (A5), as their packages give them.
   ...Object.fromEntries(DECLARED_COLORS.map((c) => [c.key, { bg: c.bg, fg: c.fg }])),
   generic: { bg: "#dce5f2", fg: "#1f3a66" },
