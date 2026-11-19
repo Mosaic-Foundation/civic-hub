@@ -1777,6 +1777,8 @@ export interface HubSettings {
     hostname: string;
     jurisdiction_name: string | null;
     mode: string;
+    /** Whether the platform has approved the hub for live (2026-11-19). Absent from an older server: not approved. */
+    live_approved?: boolean;
     /** The zone the hub's place suggests, "" when none: what applies while identity.timezone is empty. */
     place_time_zone?: string;
   };
