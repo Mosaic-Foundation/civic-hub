@@ -17,16 +17,16 @@
 // not linked from any non-admin surface.
 
 import { useEffect, useRef, useState } from "react";
-import { useApi } from "../hooks/useApi";
+import { useApi } from "../../../ui/src/hooks/useApi";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/authState";
-import { adminListFeedback, adminMarkQueueSeen, notifyAdminQueuesChanged } from "../services/api";
-import type { FeedbackCategory, FeedbackSubmission } from "../services/api";
-import HelpButton from "../components/HelpButton";
-import { AdminStickyBar } from "../components/AdminSticky";
-import { ForwardButton, MosaicBadge } from "../components/ForwardToCivicSocial";
+import { useAuth } from "../../../ui/src/context/authState";
+import { adminMarkQueueSeen, notifyAdminQueuesChanged } from "../../../ui/src/services/api";
+import { adminListFeedback, type FeedbackCategory, type FeedbackSubmission } from "./api";
+import HelpButton from "../../../ui/src/components/HelpButton";
+import { AdminStickyBar } from "../../../ui/src/components/AdminSticky";
+import { ForwardButton, MosaicBadge } from "./ForwardToCivicSocial";
 import "./AdminFeedback.css";
-import { localTimestamp } from "../utils/dates";
+import { localTimestamp } from "../../../ui/src/utils/dates";
 
 type Filter = FeedbackCategory | "all";
 

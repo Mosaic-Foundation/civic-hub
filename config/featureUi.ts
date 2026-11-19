@@ -5,5 +5,6 @@ import type { FeatureUi } from "../ui/src/features";
 import analyticsUi from "../features/analytics/ui";
 import fediverseUi from "../features/fediverse/ui";
 import pinningUi from "../features/pinning/ui";
+import feedbackUi from "../features/feedback/ui";
 
-export const FEATURE_UI_MODULES: readonly FeatureUi[] = [analyticsUi, fediverseUi, pinningUi];
+export const FEATURE_UI_MODULES: readonly FeatureUi[] = [analyticsUi, fediverseUi, pinningUi, feedbackUi];

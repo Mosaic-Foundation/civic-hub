@@ -42,15 +42,6 @@ const KERNEL_FEATURES = [
     fields: [],
     words: ["search", "find", "full text"],
   },
-  // The address the Feedback page shows (2026-10-08, Adam).
-  {
-    id: "feedback",
-    order: 120,
-    name: "Feedback",
-    what: "A form for residents to report problems or suggest changes.",
-    fields: [{ key: "plugin.feedback.contact_email", kind: "email" }],
-    words: ["feedback", "contact", "bug reports", "report a problem", "suggestions"],
-  },
   {
     id: "admin_digest",
     order: 140,

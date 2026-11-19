@@ -3,8 +3,9 @@
 // (routes, a settings panel) and what only a feature has: an Admin tab, an
 // item in the Admin menu, a block on the About page, and (kernel step 4, for
 // Pinning) a control on every item's page, a card in the right column and a
-// line across the top of the pages. Each is shown only while the feature's
-// switch is on; the kernel names no feature.
+// line across the top of the pages, and (for Feedback) a page for everyone
+// linked from the top bar, the menus and the footer. Each is shown only while
+// the feature's switch is on; the kernel names no feature.
 
 import type { ComponentType, ReactNode } from "react";
 import type { FormApi } from "./pages/settings/pluginFields";
@@ -22,7 +23,20 @@ export interface FeatureUi {
    * navigation's Admin group (icon: navIcons.tsx). With `group: "community"`
    * it sits in the admin rail's Community group instead (beside Moderation).
    */
-  adminTab?: { label: string; path: string; icon: string; group?: "community" };
+  adminTab?: {
+    label: string;
+    path: string;
+    icon: string;
+    group?: "community";
+    /** Its admin queue (FeatureServer.queues): the tab shows what is new there since the admin last opened it. */
+    queue?: string;
+  };
+  /**
+   * A page for everyone on the space (Feedback's form): a link in the
+   * sidebar's space group, the menu drawer and the footer, and with `header`
+   * a button in the top bar.
+   */
+  spaceLink?: SpaceLink;
   /**
    * A control in the action row at the foot of every type's page, beside
    * Archive (components/archiveSlot.tsx). Drawn for any signed-in reader; it
@@ -45,7 +59,40 @@ export interface FeatureUi {
   activitySection?: ComponentType<{ start: string; end: string; label: string }>;
 }
 
+export interface SpaceLink {
+  path: string;
+  /** In the sidebar's space group ("Feedback"). */
+  label: string;
+  /** Its icon there (navIcons.tsx). */
+  icon: string;
+  /** In the drawer and the footer ("Send feedback"). */
+  longLabel: string;
+  /** A button in the top bar: its visible label, its name for screen readers and its icon. */
+  header?: { label: string; ariaLabel: string; Icon: ComponentType };
+  /** Open to a logged-out visitor on a beta space, without the welcome dialog over it. */
+  publicInBeta?: boolean;
+  /**
+   * A form about the page the person came from: the page before it is what a
+   * report is about (services/lastPage.ts).
+   */
+  formPage?: boolean;
+  /** Finishes the default welcome strip's "It's early and still evolving" ("— use Feedback anytime to …"). */
+  welcomeNote?: string;
+  /** A line in the beta welcome dialog pointing to it. */
+  betaNote?: ReactNode;
+}
+
 export const FEATURE_UI: readonly FeatureUi[] = FEATURE_UI_MODULES;
+
+/** The space links of the features that are on, in the features' order. */
+export function featureSpaceLinks(enabled: (id: PluginId) => boolean): ReadonlyArray<SpaceLink & { feature: PluginId }> {
+  return FEATURE_UI.flatMap((u) => (u.spaceLink && enabled(u.feature) ? [{ feature: u.feature, ...u.spaceLink }] : []));
+}
+
+/** Every feature's space link, on or off: the paths a visitor may reach in beta, and the form pages. */
+export function allFeatureSpaceLinks(): readonly SpaceLink[] {
+  return FEATURE_UI.flatMap((u) => (u.spaceLink ? [u.spaceLink] : []));
+}
 
 /** A feature's panel on the Plugins page, or null. */
 export function featureSettingsPanel(id: string, f: FormApi): ReactNode | null {

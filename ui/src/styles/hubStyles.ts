@@ -78,7 +78,6 @@ import "../pages/Feedback.css";
 import "../pages/Welcome.css";
 import "../pages/AdminArchived.css";
 import "../pages/AdminEdits.css";
-import "../pages/AdminFeedback.css";
 import "../pages/AdminReviews.css";
 import "../components/SubmissionPreview.css";
 import "../pages/MySubmissions.css";

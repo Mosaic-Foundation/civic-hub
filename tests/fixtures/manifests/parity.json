@@ -1090,6 +1090,15 @@
     {
       "table": "feedback_submissions",
       "columns": [
+        "hub_id",
+        "id",
+        "created_at",
+        "category",
+        "message",
+        "name",
+        "email",
+        "user_id",
+        "user_agent",
         "screenshot_url",
         "page_path",
         "software_version",
@@ -1100,7 +1109,7 @@
         "mosaic_sent_at",
         "mosaic_sent_by"
       ],
-      "owner": "civic.feedback"
+      "owner": "features/feedback"
     },
     {
       "table": "hub_admin_audit_log",
@@ -1256,7 +1265,7 @@
         "github_issue_url",
         "fixed_notified_at"
       ],
-      "owner": "civic.feedback"
+      "owner": "services/providerInbox"
     },
     {
       "table": "plugin_catalog",

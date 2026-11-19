@@ -231,6 +231,15 @@ export { results } from "../services/kernelResults.js";
 export type { ResultSource, FreshResult } from "../services/kernelResults.js";
 export { offices, recordAdminAct } from "../services/kernelOffices.js";
 
+// --- The provider's inbox and a member's image (kernel step 4, Feedback) ------------------
+// Writing to the people who maintain the software (src/services/providerInbox.ts),
+// and the kernel's image upload, mounted on a feature's own path.
+export { providerInbox, normalizePagePath } from "../services/providerInbox.js";
+export type { ProviderMessage } from "../services/providerInbox.js";
+export type { MosaicStatus as ProviderStatus, MosaicOrigin as ProviderOrigin } from "../db/platformFeedback.js";
+export { handlePostImageUpload as imageUpload } from "../controllers/uploadController.js";
+export { asEmailList } from "../models/hubSettings.js";
+
 // --- What a package checks and serves for a submission (kernel step 1, Conversations) -----
 export { codeOfConduct } from "../services/kernelCodeOfConduct.js";
 export type { CodeOfConductFinding } from "../services/kernelCodeOfConduct.js";
@@ -268,7 +277,7 @@ export { listSubscribedUsers, markDigestSent } from "../modules/civic.auth/index
 export { getEventsSince } from "../events/eventStore.js";
 export { getHiddenProcessIds } from "../services/processService.js";
 export { unsubscribeLinkFor, unsubscribeLinksAvailable } from "../services/unsubscribe.js";
-export { sendEmail } from "../utils/email.js";
+export { sendEmail, unsentReason } from "../utils/email.js";
 export { effectivePostalAddressSync } from "../services/hubSettings.js";
 export { hourInZone } from "../utils/hubTime.js";
 export { hubTimeZone } from "../services/hubTimeZone.js";
@@ -307,6 +316,7 @@ export type {
   FeatureConsoleSection,
   FeatureDigestLine,
   FeatureHost,
+  FeatureQueue,
   FeaturePackage,
   FeatureRateLimit,
   FeatureServer,

@@ -368,6 +368,14 @@ Admin → Pinned lists every pinned item. Your plugin writes no pin code and nee
 be pinned as soon as they have a page (`detailPath`), and they show on the card with your type's label. A space can
 switch Pinning off; your plugin works the same. There is no hook for a plugin to put its own rows on the card.
 
+### Feedback (nothing to do)
+
+Feedback is a plugin of its own too (`features/feedback`, kernel step 4): the form residents use to report a problem or
+suggest something, and Admin → Feedback. A space can switch it off. Your plugin needs nothing for it. If your plugin is a
+feature with an inbox of its own, name its queue (`FeatureServer.queues`): the kernel then counts what is new for each
+admin on your admin tab (`adminTab.queue` in your UI module) and adds a line to the admin digest. A page for everyone
+(a form, say) can ask for the same links Feedback has, in the top bar, sidebar, menu and footer (`spaceLink`).
+
 ### Member information (districts and demographics)
 
 A hub can ask its members which district they live in, their year of birth and, if the hub chooses, their race or

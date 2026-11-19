@@ -16,18 +16,20 @@
 // adds the software version, and the browser is the request's user agent.
 //
 // On submit failure (network down, server 500), we surface the
-// hub's feedback address (hub.feedback_email: its own, else its contact
+// hub's feedback address (feedbackEmail: its own, else its contact
 // address, else the platform's) alongside the error so the user can still
 // get the message through.
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/authState";
-import { submitFeedback, uploadFeedbackScreenshot, type FeedbackCategory } from "../services/api";
-import { lastPage } from "../services/lastPage";
-import PostImagePicker from "../components/PostImagePicker";
-import { useHub } from "../config/hub";
-import "./Feedback.css";
+import { useAuth } from "../../../ui/src/context/authState";
+import { lastPage } from "../../../ui/src/services/lastPage";
+import PostImagePicker from "../../../ui/src/components/PostImagePicker";
+import { useHub } from "../../../ui/src/config/hub";
+import { feedbackContactEmail } from "../../../src/shared/platform";
+import { submitFeedback, uploadFeedbackScreenshot, type FeedbackCategory } from "./api";
+// The form's look, shared with the kernel's Contact Civic.Social page.
+import "../../../ui/src/pages/Feedback.css";
 
 type Side = "hub" | "software";
 
@@ -70,6 +72,9 @@ const MESSAGE_MAX_LEN = 4000;
 
 export default function Feedback() {
   const hub = useHub();
+  // Where the page tells people to write (2026-10-08, Adam): the hub's own
+  // feedback address, else its contact address, else the platform's.
+  const feedbackEmail = feedbackContactEmail(hub.setting("plugin.feedback.contact_email"), hub.setting("legal.contact_email"));
   const { user } = useAuth();
   const [side, setSide] = useState<Side | null>(null);
   const [category, setCategory] = useState<FeedbackCategory | null>(null);
@@ -358,7 +363,7 @@ export default function Feedback() {
           {error && (
             <p className="form-error">
               {error}{" "}
-              <a href={`mailto:${hub.feedback_email}`}>Email us instead.</a>
+              <a href={`mailto:${feedbackEmail}`}>Email us instead.</a>
             </p>
           )}
 
@@ -373,7 +378,7 @@ export default function Feedback() {
 
         <p className="feedback-fallback">
           Prefer email?{" "}
-          <a href={`mailto:${hub.feedback_email}`}>{hub.feedback_email}</a>
+          <a href={`mailto:${feedbackEmail}`}>{feedbackEmail}</a>
         </p>
       </div>
     </div>

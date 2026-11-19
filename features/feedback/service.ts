@@ -1,4 +1,7 @@
-// civic.feedback service — persistence, operator notification, admin read.
+// The Feedback plugin's service (a kernel module until kernel step 4,
+// 2026-11-19): persistence, operator notification, admin read. Its table is
+// the plugin's own (./store.ts); Civic.Social's copy of a Bug or Idea goes
+// through the kernel's provider inbox (SDK `providerInbox`).
 //
 // submitFeedback() writes a row to feedback_submissions. Whether it also
 // emails the operator immediately depends on the category — see
@@ -9,17 +12,24 @@
 // listFeedback() is the admin read path (/admin/feedback). It is the only
 // reader: feedback never flows through emitEvent() and is never public.
 
-import { currentSpaceType } from "../../shared/spaceTypes.js";
-import { ConflictError, NotFoundError, ValidationError } from "../../errors/index.js";
-import { currentHubId } from "../../config/hubContext.js";
-import { sendEmail, unsentReason } from "../../utils/email.js";
-import { generateId } from "../../utils/id.js";
-import { getAdminEmailsSync, hubDisplayNameSync, getSettingSync } from "../../services/hubSettings.js";
-import { KEYS, asEmailList } from "../../models/hubSettings.js";
-import { deploymentCommit } from "../../config/deployment.js";
-import type { MosaicOrigin } from "../../db/platformFeedback.js";
-import { feedbackStore } from "./store.js";
-import { reportError } from "../../utils/reportError.js";
+import {
+  asEmailList,
+  ConflictError,
+  currentHubId,
+  hubDisplayNameSync,
+  NotFoundError,
+  normalizePagePath,
+  offices,
+  providerInbox,
+  reportError,
+  sendEmail,
+  unsentReason,
+  settingsOf,
+  ValidationError,
+  generateId,
+  type ProviderOrigin,
+} from "../../src/sdk/index.js";
+import type { FeedbackStore } from "./store.js";
 import {
   FEEDBACK_CATEGORIES,
   SOFTWARE_STREAM,
@@ -30,13 +40,14 @@ import {
   type SubmitFeedbackInput,
 } from "./models.js";
 
+export { normalizePagePath };
+
 const MESSAGE_MAX_LEN = 4000;
 const DEFAULT_LIST_LIMIT = 200;
 const MAX_LIST_LIMIT = 500;
 const NAME_MAX_LEN = 200;
 const EMAIL_MAX_LEN = 320;
 const UA_MAX_LEN = 500;
-const PAGE_PATH_MAX_LEN = 300;
 
 /**
  * Categories that still trigger an immediate, per-submission email.
@@ -95,19 +106,6 @@ function rowToSubmission(row: Record<string, unknown>): FeedbackSubmission {
   };
 }
 
-/**
- * The page a report is about: a path on this hub, with no query string or
- * fragment (they can carry a code or an address), capped. Anything that is
- * not a plain path is dropped rather than refused: the report still matters.
- */
-export function normalizePagePath(raw: unknown): string | null {
-  if (typeof raw !== "string") return null;
-  const path = raw.trim().split(/[?#]/)[0];
-  if (!path.startsWith("/") || path.startsWith("//")) return null;
-  if (!/^\/[A-Za-z0-9\-._~/%]*$/.test(path)) return null;
-  return path.slice(0, PAGE_PATH_MAX_LEN);
-}
-
 /** Screenshot URLs may only be https, short, and — since the upload route
  *  is signed-in only — only accompany an attributed submission. Anything
  *  else is refused rather than silently dropped, so the form can say why. */
@@ -132,6 +130,7 @@ export function normalizeScreenshotUrl(
 }
 
 export async function submitFeedback(
+  store: FeedbackStore,
   input: SubmitFeedbackInput,
 ): Promise<FeedbackSubmission> {
   if (!isValidCategory(input.category)) {
@@ -169,12 +168,12 @@ export async function submitFeedback(
     user_agent: userAgent,
     screenshot_url: screenshotUrl,
     page_path: normalizePagePath(input.page_path),
-    software_version: deploymentCommit(),
+    software_version: providerInbox.softwareVersion(),
     // Consent only means something with an address to share.
     contact_ok: input.contact_ok === true && email !== null,
   };
 
-  const data = await feedbackStore.get().insertSubmission(row);
+  const data = await store.insertSubmission(row);
 
   let submission = rowToSubmission(data);
 
@@ -184,7 +183,7 @@ export async function submitFeedback(
   const stream = SOFTWARE_STREAM[submission.category];
   if (stream) {
     try {
-      submission = await shareWithMosaic(submission, stream, "resident", "sender");
+      submission = await shareWithMosaic(store, submission, stream, "resident", "sender");
     } catch (err) {
       reportError("feedback.mosaic_copy", "Civic.Social copy failed; the hub has the item", {
         hub: currentHubId(),
@@ -221,13 +220,13 @@ export async function submitFeedback(
 
 /** Write Civic.Social's copy of a hub item and record it on the hub's row. */
 async function shareWithMosaic(
+  store: FeedbackStore,
   s: FeedbackSubmission,
   stream: MosaicHubStream,
-  origin: MosaicOrigin,
+  origin: ProviderOrigin,
   sentBy: MosaicCopy["sent_by"],
 ): Promise<FeedbackSubmission> {
-  const copy = await feedbackStore.get().copyToMosaic({
-    hubId: currentHubId(),
+  const copy = await providerInbox.send({
     sourceFeedbackId: s.id,
     stream,
     origin,
@@ -241,7 +240,7 @@ async function shareWithMosaic(
     contactOk: sentBy === "sender" && s.contact_ok,
     contactEmail: sentBy === "sender" && s.contact_ok ? s.email : null,
   });
-  const updated = await feedbackStore.get().recordMosaicCopy(s.id, {
+  const updated = await store.recordMosaicCopy(s.id, {
     mosaic_item_id: copy.id,
     mosaic_stream: stream,
     mosaic_status: copy.status,
@@ -256,49 +255,18 @@ async function shareWithMosaic(
  * to a stream they choose. Once per item; the sender's address never goes.
  */
 export async function forwardToMosaic(
+  store: FeedbackStore,
   id: string,
   stream: MosaicHubStream,
 ): Promise<FeedbackSubmission> {
   if (stream !== "bug" && stream !== "feature") {
     throw new FeedbackValidationError("stream must be bug or feature");
   }
-  const row = await feedbackStore.get().findSubmission(id);
+  const row = await store.findSubmission(id);
   if (!row) throw new NotFoundError("No such feedback item.");
   const s = rowToSubmission(row);
   if (s.mosaic) throw new ConflictError("This item was already sent to Civic.Social.");
-  return shareWithMosaic(s, stream, "forwarded", "admin");
-}
-
-/**
- * "Contact Civic.Social": a hub admin writes to Civic.Social directly, apart
- * from residents' feedback. The admin's address goes with it (the form says
- * so), and nothing is stored on the hub's Feedback tab.
- */
-export async function contactMosaic(input: {
-  message: unknown;
-  /** The admin's address, when the account has one; without it nothing is offered to reply to. */
-  adminEmail: string | null;
-  pagePath?: unknown;
-  userAgent?: string | null;
-}): Promise<{ id: string }> {
-  const message = typeof input.message === "string" ? input.message.trim() : "";
-  if (!message) throw new FeedbackValidationError("message is required");
-  if (message.length > MESSAGE_MAX_LEN) {
-    throw new FeedbackValidationError(`message must be ${MESSAGE_MAX_LEN} characters or fewer`);
-  }
-  const copy = await feedbackStore.get().copyToMosaic({
-    hubId: currentHubId(),
-    sourceFeedbackId: null,
-    stream: "admin",
-    origin: "admin",
-    message,
-    pagePath: normalizePagePath(input.pagePath),
-    userAgent: input.userAgent?.slice(0, UA_MAX_LEN) ?? null,
-    softwareVersion: deploymentCommit(),
-    contactOk: input.adminEmail !== null,
-    contactEmail: input.adminEmail,
-  });
-  return { id: copy.id };
+  return shareWithMosaic(store, s, stream, "forwarded", "admin");
 }
 
 export interface ListFeedbackOptions {
@@ -321,6 +289,7 @@ export interface ListFeedbackOptions {
  * digest can ask for one category without pulling the table.
  */
 export async function listFeedback(
+  store: FeedbackStore,
   options: ListFeedbackOptions = {},
 ): Promise<FeedbackSubmission[]> {
   if (options.category !== undefined && !isValidCategory(options.category)) {
@@ -333,7 +302,7 @@ export async function listFeedback(
     MAX_LIST_LIMIT,
   );
 
-  const data = await feedbackStore.get().listSubmissions({
+  const data = await store.listSubmissions({
     limit,
     category: options.category,
     since: options.since,
@@ -361,8 +330,8 @@ export function feedbackRecipients(
 
 async function notifyOperator(s: FeedbackSubmission): Promise<void> {
   const recipients = feedbackRecipients(
-    asEmailList(getSettingSync(KEYS.PLUGIN_FEEDBACK_RECIPIENTS)),
-    getAdminEmailsSync(),
+    asEmailList(settingsOf("feedback").get("recipients")),
+    offices.adminEmails(),
   );
   if (recipients.length === 0) {
     console.warn(
@@ -421,7 +390,7 @@ function renderOperatorEmail(s: FeedbackSubmission): string {
           : "Anonymous";
   return `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;">
-      <h1 style="font-size:18px;font-weight:600;margin:0 0 12px;">New ${currentSpaceType().displayName} feedback — ${escapeHtml(s.category)}</h1>
+      <h1 style="font-size:18px;font-weight:600;margin:0 0 12px;">New feedback on ${escapeHtml(hubDisplayNameSync())}: ${escapeHtml(s.category)}</h1>
       <p style="margin:0 0 4px;color:#374151;"><strong>From:</strong> ${fromLabel}</p>
       <p style="margin:12px 0 4px;color:#374151;"><strong>Submitted:</strong> ${escapeHtml(formatDateUS(s.created_at))}</p>
       ${s.screenshot_url ? `<p style="margin:4px 0;color:#374151;"><strong>Screenshot:</strong> <a href="${escapeHtml(s.screenshot_url)}">${escapeHtml(s.screenshot_url)}</a></p>` : ""}

@@ -20,6 +20,10 @@
  * /deliberations/:processId/regenerate left the list. It reached into Briefs
  * (a conversation's summary is made again as its brief, POST
  * /admin/briefs/:id/regenerate), and nothing in the hub's pages called it.
+ *
+ * Kernel step 4, Feedback a plugin (2026-11-19): POST /upload/feedback-screenshot
+ * left the list. The Feedback plugin mounts the same upload on its own path,
+ * POST /feedback/screenshot (in ADDED).
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync } from "node:fs";
@@ -105,6 +109,8 @@ const ADDED: Record<string, string> = {
   "POST /pins/:id": "pin an item, or change its end date or urgent flag",
   "DELETE /pins/:id": "unpin an item",
   "GET /admin/pins": "Admin → Pinned: everything pinned",
+  // Feedback a plugin (kernel step 4, 2026-11-19): its screenshot upload on its own path.
+  "POST /feedback/screenshot": "Feedback: a screenshot for a bug report (signed in), the kernel's image upload",
   // News Sync's own type (2026-11-18): a News item's page reads it.
   "GET /news/:id": "News sync: one News item, for its page",
 };

@@ -7,7 +7,7 @@
 import type { Response } from "express";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
-import { getVoteResultsRecipients } from "./hubSettings.js";
+import { getAdminEmailsSync, getVoteResultsRecipients } from "./hubSettings.js";
 import { auditActor, recordHubAdminAudit, type HubAdminAuditAction } from "./hubAdminAudit.js";
 import type { OfficialIdentity } from "../shared/officialTypes.js";
 
@@ -53,6 +53,11 @@ export const offices = {
    */
   resultRecipients(): Promise<string[]> {
     return getVoteResultsRecipients(currentHubId());
+  },
+
+  /** The space's admins' addresses (its people.admin_emails), for a plugin that tells them something. */
+  adminEmails(): string[] {
+    return [...getAdminEmailsSync()];
   },
 };
 

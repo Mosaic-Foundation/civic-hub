@@ -32,7 +32,6 @@ import { useSyncExternalStore } from "react";
 import { getLoadedHubConfig, setting, subscribeHubConfig, type HubConfig } from "./hubConfig";
 import { hubTimeZone } from "./hubClock";
 import { pluginEnabled, pluginSetup, pluginShown, processTypeEnabled, processTypeShown } from "./plugins";
-import { feedbackContactEmail } from "../../../src/shared/platform";
 import { hubKindOf, participantNoun, personLabel, type HubKind } from "../../../src/shared/hubKind";
 import { resolveTerm, type KernelTerm } from "../../../src/shared/spaceProfile";
 import { currentSpaceType } from "../../../src/shared/spaceTypes";
@@ -392,15 +391,6 @@ const hub = {
 
   get contact_email(): string {
     return setting("legal.contact_email") ?? "";
-  },
-
-  /**
-   * Where the Feedback page tells people to write (2026-10-08, Adam): the
-   * hub's own feedback address, else its contact address, else the
-   * platform's. Never empty.
-   */
-  get feedback_email(): string {
-    return feedbackContactEmail(setting("plugin.feedback.contact_email"), setting("legal.contact_email"));
   },
 
   /**

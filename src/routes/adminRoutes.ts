@@ -38,11 +38,7 @@ import {
   handleRestoreProcess,
   handleListArchivedProcesses,
 } from "../controllers/adminArchiveController.js";
-import {
-  handleAdminListFeedback,
-  handleContactCivicSocial,
-  handleForwardFeedback,
-} from "../controllers/adminFeedbackController.js";
+import { handleContactCivicSocial } from "../controllers/contactProviderController.js";
 import { requireAdmin } from "../middleware/auth.js";
 import { handleCensusDistricts } from "../controllers/aboutController.js";
 import {
@@ -73,8 +69,6 @@ router.use(requireAdmin);
 // Plugin-specific admin surfaces answer 404 on a hub with the plugin off
 // (src/middleware/pluginGate.ts). The shared queues — reviews, archived,
 // edits, moderation of comments — belong to no one plugin and stay.
-router.use("/feedback", requirePlugin("feedback"));
-
 // The plugin packages' admin routes (ADR-014), each behind its plugin's
 // switch and the loader's verdict, after the admin check above.
 mountPackageRoutes(router, "adminRoutes");
@@ -99,13 +93,8 @@ router.get("/edits", handleAdminListEdits);
 router.post("/processes/:id/archive", handleArchiveProcess);
 router.post("/processes/:id/restore", handleRestoreProcess);
 
-// Feedback archive (read-only). Everything residents sent through the
-// feedback form, newest first, optionally filtered to one category.
-// Read-only on purpose — see adminFeedbackController.
-router.get("/feedback", handleAdminListFeedback);
-// "Send to Civic.Social" for one item (feedback routing, 2026-10-13).
-router.post("/feedback/:id/forward", handleForwardFeedback);
-// An admin's own message to Civic.Social. Not behind the Feedback plugin.
+// An admin's own message to Civic.Social. Not behind any plugin (Feedback,
+// residents' messages, is features/feedback).
 router.post("/contact-civic-social", handleContactCivicSocial);
 
 // The numbers on the admin tabs and the account-menu dot: what is new in

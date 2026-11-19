@@ -12,8 +12,13 @@ vi.mock("./packageContributions", () => ({
     { queue: "meeting_summaries", label: "Meeting summaries", icon: "meeting", path: "/admin/meeting-summaries" },
   ],
 }));
+// Activity, and Feedback's page in Community with its queue's count (kernel step 4).
 vi.mock("../features", () => ({
-  FEATURE_UI: [{ feature: "activity", adminTab: { label: "Activity", path: "/admin/activity", icon: "activity" } }],
+  FEATURE_UI: [
+    { feature: "activity", adminTab: { label: "Activity", path: "/admin/activity", icon: "activity" } },
+    { feature: "feedback", adminTab: { label: "Feedback", path: "/admin/feedback", icon: "feedback", group: "community", queue: "feedback" } },
+  ],
+  featureSpaceLinks: () => [],
 }));
 vi.mock("../services/api", () => ({
   adminQueueCounts: () => Promise.resolve({ reviews: 2, briefs: 0, meeting_summaries: 1, feedback: 4, edits: 3, total: 10 }),

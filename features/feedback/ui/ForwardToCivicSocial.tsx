@@ -3,8 +3,8 @@
 // "Send to Civic.Social" button for one that wasn't (a misfiled report).
 
 import { useId, useState } from "react";
-import Modal from "./Modal";
-import { adminForwardFeedback, type FeedbackSubmission, type MosaicCopy, type MosaicStream } from "../services/api";
+import Modal from "../../../ui/src/components/Modal";
+import { adminForwardFeedback, type FeedbackSubmission, type MosaicCopy, type MosaicStream } from "./api";
 
 const STATUS_LABELS: Record<MosaicCopy["status"], string> = {
   received: "Received",

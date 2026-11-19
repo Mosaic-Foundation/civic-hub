@@ -281,7 +281,7 @@ const PEOPLE_LIST_READERS = {
   "src/services/mailGuard.ts": "mail: who may receive the hub's mail",
   "src/jobs/adminDigest.ts": "mail: the admin digest's recipients",
   "src/services/cronAlerts.ts": "mail: meeting-summary notices to admins",
-  "src/modules/civic.feedback/service.ts": "mail: feedback to admins",
+  "src/services/kernelOffices.ts": "mail: offices.adminEmails(), for a plugin that writes to admins (Feedback's notices)",
   "src/services/waitlistNotify.ts": "mail: waitlist notices to admins",
   "src/modules/civic.review/service.ts": "mail: new-submission notices to admins",
   "src/services/privilegedAccounts.ts": "sign-in admission: an address before any account exists",

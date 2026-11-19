@@ -26,6 +26,7 @@ import type {
   FeatureConsoleSection,
   FeatureDigestLine,
   FeatureHost,
+  FeatureQueue,
   FeaturePackage,
   FeatureServer,
   ProcessTypeSummary,
@@ -203,4 +204,11 @@ export function featureConsoleSections(): readonly FeatureConsoleSection[] {
 /** Every feature's admin digest lines, with the feature they belong to. */
 export function featureDigestLines(): ReadonlyArray<{ feature: string; line: FeatureDigestLine }> {
   return load().flatMap((f) => (f.server.digestLines ?? []).map((line) => ({ feature: f.pkg.manifest.feature, line })));
+}
+
+/** Every feature's admin queues, whether its switch is on or not (the caller reads `on`). */
+export function featureQueues(): ReadonlyArray<{ feature: string; queue: FeatureQueue; on: () => boolean }> {
+  return load().flatMap((f) =>
+    (f.server.queues ?? []).map((queue) => ({ feature: f.pkg.manifest.feature, queue, on: () => isPluginEnabledSync(f.pkg.manifest.feature) })),
+  );
 }

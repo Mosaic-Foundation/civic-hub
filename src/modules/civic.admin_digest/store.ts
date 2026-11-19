@@ -9,8 +9,6 @@ import { storeSlot } from "../../processes/storeSlot.js";
 export interface AdminDigestStore {
   /** Each pending review's latest submission (submit or resubmit), from the append-only turns. */
   latestSubmissions(reviewIds: readonly string[]): Promise<Map<string, string>>;
-  /** Feedback received in (since, until]. */
-  countFeedback(since: string, until: string): Promise<number>;
   /** The edit events recorded in (since, until]. */
   editEvents(
     since: string,
@@ -33,10 +31,6 @@ export const adminDigestStore = storeSlot<AdminDigestStore>("civic.admin_digest"
 
 export function latestSubmissions(reviewIds: readonly string[]): Promise<Map<string, string>> {
   return adminDigestStore.get().latestSubmissions(reviewIds);
-}
-
-export function countFeedback(since: string, until: string): Promise<number> {
-  return adminDigestStore.get().countFeedback(since, until);
 }
 
 export function editEvents(

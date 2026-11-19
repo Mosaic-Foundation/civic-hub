@@ -8,7 +8,9 @@
 // cursor on users (<queue>_seen_at); opening the tab stamps it. Reviews and
 // Edits had theirs already; Briefs, Meeting summaries and Feedback got one
 // on 2026-09-06 (migration 20260906180000). Since kernel step 3 a package
-// names its own queue, and its cursor is kept under that name.
+// names its own queue, and its cursor is kept under that name; since step 4 a
+// feature plugin does too (FeatureServer.queues: Feedback's; migration
+// 20261119210000 carried feedback_seen_at over).
 //
 // Moderation is a read-only log and has no count.
 //
@@ -24,10 +26,10 @@ import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { disabledProcessTypes, isProcessTypeEnabled } from "./pluginGate.js";
 import { countPendingByState } from "./processRows.js";
-import { isPluginEnabledSync } from "./hubSettings.js";
 import { countUnseenEdits } from "./editNotifications.js";
 import { queueTypeGroups } from "./publicationQueues.js";
 import { publicationQueues } from "../processes/registry.js";
+import { featureQueues } from "../plugins/features.js";
 import type { PublicationQueue } from "../processes/manifest.js";
 
 /** The hub in scope. Queue counts are only ever read or stamped inside one. */
@@ -45,17 +47,16 @@ const EPOCH = "1970-01-01T00:00:00.000Z";
  */
 const KERNEL_QUEUES = {
   reviews: "reviews_seen_at",
-  feedback: "feedback_seen_at",
   edits: "edits_seen_at",
 } as const;
 type KernelQueue = keyof typeof KERNEL_QUEUES;
 
-/** A queue name: the kernel's three, or a mounted package's. */
-export type AdminQueue = KernelQueue | PublicationQueue;
+/** A queue name: the kernel's two, a mounted package's or a feature's. */
+export type AdminQueue = KernelQueue | PublicationQueue | string;
 
-/** Every queue an admin tab can open: the kernel's, then the packages' in the manifests' order. */
+/** Every queue an admin tab can open: the kernel's, the packages' in the manifests' order, then the features'. */
 export function adminQueues(): string[] {
-  return [...Object.keys(KERNEL_QUEUES), ...publicationQueues()];
+  return [...Object.keys(KERNEL_QUEUES), ...publicationQueues(), ...featureQueues().map((f) => f.queue.name)];
 }
 
 function isKernelQueue(queue: string): queue is KernelQueue {
@@ -104,15 +105,15 @@ export async function getAdminQueueCounts(userId: string): Promise<AdminQueueCou
   const queues = publicationQueues();
   const packageCounts = await Promise.all(queues.map((q) => pendingInQueue(q)));
 
-  const feedback = isPluginEnabledSync("feedback")
-    ? await db().from("feedback_submissions").count().gt("created_at", seen("feedback"))
-    : 0;
+  // A feature's queue, while it is on (Feedback's).
+  const features = featureQueues();
+  const featureCounts = await Promise.all(features.map((f) => (f.on() ? f.queue.count(seen(f.queue.name)) : 0)));
 
   const edits = await countUnseenEdits(userId);
 
   const counts: Record<string, number> = { reviews };
   queues.forEach((q, i) => (counts[q] = packageCounts[i] ?? 0));
-  counts.feedback = feedback;
+  features.forEach((f, i) => (counts[f.queue.name] = Number(featureCounts[i] ?? 0)));
   counts.edits = edits;
   return { ...counts, total: Object.values(counts).reduce((a, b) => a + b, 0) };
 }

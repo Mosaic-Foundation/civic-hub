@@ -7,7 +7,7 @@ import { describe, it, expect } from "vitest";
 import {
   normalizeScreenshotUrl,
   FeedbackValidationError,
-} from "../../src/modules/civic.feedback/service.js";
+} from "../../features/feedback/service.js";
 
 describe("normalizeScreenshotUrl", () => {
   it("passes an https URL through for a signed-in submitter", () => {

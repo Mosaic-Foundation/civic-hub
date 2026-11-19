@@ -9,7 +9,7 @@
 // tests/api/adminDigestTally.test.ts.
 
 import { describe, it, expect } from "vitest";
-import { sendsImmediateEmail } from "../../src/modules/civic.feedback/index.js";
+import { sendsImmediateEmail } from "../../features/feedback/service.js";
 import { digestLineText, renderAdminDigestEmail, shownLines } from "../../src/modules/civic.admin_digest/index.js";
 import type { AdminDigestPayload, DigestLine } from "../../src/modules/civic.admin_digest/index.js";
 import { jobProblemText, problemUrl } from "../../src/modules/civic.admin_digest/service.js";

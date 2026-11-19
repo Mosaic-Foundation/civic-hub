@@ -30,17 +30,6 @@ router.post(
   handlePostImageUpload,
 );
 
-// A screenshot on a bug report (feedback form). Same validation and bucket
-// as the other images; signed-in residents only — the feedback form offers
-// the picker only when signed in, and the service refuses a screenshot on
-// an anonymous submission.
-router.post(
-  "/feedback-screenshot",
-  requirePlugin("feedback"),
-  requireResident,
-  handlePostImageUpload,
-);
-
 // A hub's banner or logo, from the admin Settings page. Stored under the
 // hub's own prefix in the bucket; the URL it returns is what the Identity
 // section then saves to identity.banner_url / identity.logo_url.

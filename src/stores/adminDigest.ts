@@ -1,5 +1,5 @@
 // civic.admin_digest's store (src/modules/civic.admin_digest/store.ts): the
-// digest's reads of review turns, feedback, events and the waitlist, and its
+// digest's reads of review turns, events and the waitlist, and its
 // mark (`admin_digest_marks`), on the hub in scope (ADR-012).
 
 import { forHub, HubDbError, type HubDb } from "../db/forHub.js";
@@ -33,10 +33,6 @@ export const adminDigestStoreImpl: AdminDigestStore = {
       if (!prev || r.created_at > prev) latest.set(r.review_id, r.created_at);
     }
     return latest;
-  },
-
-  async countFeedback(since, until) {
-    return db().from("feedback_submissions").count().gt("created_at", since).lte("created_at", until);
   },
 
   async editEvents(since, until) {

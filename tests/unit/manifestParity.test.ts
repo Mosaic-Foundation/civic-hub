@@ -70,6 +70,10 @@
  * Pinning feature's table (keyed by hub_id and process_id, as a feature's
  * are), its requirement gains urgent and names features/pinning, and its
  * panel gains plugin.pinning.who. Only those (diffed before writing).
+ * And (2026-11-19, Feedback a plugin, kernel step 4): feedback_submissions'
+ * requirement lists every column and names features/feedback, and
+ * platform_feedback's names services/providerInbox (the kernel's). Only those
+ * (diffed before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

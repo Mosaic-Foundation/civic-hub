@@ -4,7 +4,7 @@
 //
 //   Review        Processes, Briefs, Meeting summaries, Edits; a closed
 //                 group's head carries the sum of their counts
-//   Community     Moderation, Announcements, Feedback
+//   Community     Moderation, then features' pages (Pinned, Feedback)
 //   Activity      a plain item (a feature's page, when switched on)
 //   Hub settings  its sections (src/shared/adminAnchors.ts)
 //   and at the foot, in small type: Archived, Setup guide, Contact Civic.Social.
@@ -28,7 +28,7 @@ import { FEATURE_UI } from "../features";
 import { SETTINGS_NAV, SETUP_CHECKLIST_PATH } from "../../../src/shared/adminAnchors";
 import type { NavItem } from "./useNavGroups";
 
-const EMPTY: AdminQueueCounts = { reviews: 0, feedback: 0, edits: 0, total: 0 };
+const EMPTY: AdminQueueCounts = { reviews: 0, edits: 0, total: 0 };
 
 /** Is this an admin page? Every admin route lives under /admin. */
 export function isAdminPath(pathname: string): boolean {
@@ -107,14 +107,13 @@ export function useAdminNav(): AdminNav {
   review.push(item("edits", "Edits", "edits", "/admin/edits", counts.edits));
 
   const community: NavItem[] = [item("moderation", "Moderation", "moderation", "/admin/moderation")];
-  // A feature's page that belongs in Community (Pinning's Pinned, ui/src/features.ts).
+  // A feature's page that belongs in Community (Pinning's Pinned, Feedback;
+  // ui/src/features.ts), with its queue's count when it has one.
   for (const u of FEATURE_UI) {
     if (u.adminTab?.group === "community" && hub.plugins.enabled(u.feature)) {
-      community.push(item(`admin-${u.feature}`, u.adminTab.label, u.adminTab.icon, u.adminTab.path));
+      const count = u.adminTab.queue ? (counts[u.adminTab.queue] ?? 0) : undefined;
+      community.push(item(`admin-${u.feature}`, u.adminTab.label, u.adminTab.icon, u.adminTab.path, count));
     }
-  }
-  if (hub.plugins.enabled("feedback")) {
-    community.push(item("admin-feedback", "Feedback", "feedback", "/admin/feedback", counts.feedback));
   }
 
   // Feature packages' pages (ui/src/features.ts): Activity.

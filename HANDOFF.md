@@ -4,7 +4,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
-## Kernel branch: E2E caught up; the resident digest, the drafting assistant and Pinning are feature packages — 2026-11-19
+## Kernel branch: E2E caught up; the resident digest, the drafting assistant, Pinning and Feedback are feature packages — 2026-11-19
 
 - **E2E (0c96ca3):** dev's E2E run had failed or run out its 30 minutes since Nov 17. Most of the time went on specs
   that minted a resident's session through `tests/fixtures/adminSession` and so had not been asked About you: each
@@ -45,7 +45,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
   6, and the module table now say so: the kernel is identity, security and interoperability (federation:
   ActivityPub now, AT Protocol later) plus the shared services plugins need; the kernel offers services, plugins offer
   features; no space must have admins; a space type lists each plugin as required, on by default or off by default.
-  Moving out next: Feedback, the admin digest, the search page, the Members page (Pinning is done, below).
+  Moving out next: the admin digest, the search page, the Members page (Pinning and Feedback are done, below).
 - **A space type lists its plugins (6570db3).** `SpaceType.plugins` `{ required, on, off }`; `spacePluginRule(id)` and
   `pluginRequired(id)` in `src/shared/spaceTypes.ts`. A required plugin is on whatever its switch says; the settings
   save and Remove refuse to turn it off, and the Plugins page shows "A {space type} needs this plugin, so it is always
@@ -62,6 +62,21 @@ Updated after every Claude Code session. Records what was built, what's incomple
   `adminTab.group: "community"` keeps Admin → Pinned in the rail's Community group. `GET /api/aside` now serves only
   the member count. Migration `20261119200000_pinning_urgent.sql` adds `urgent`, pins every announcement urgent right
   now as an urgent pin until the same date, and renames the saved right-column card `announcements` to `pinned`.
+- **Feedback is a feature plugin** (`features/feedback`: manifest, `models.ts`, `store.ts`, `service.ts`,
+  `routes.ts`, `ui.tsx`, `ui/`), with its off switch (Settings → Plugins → Feedback). It owns `feedback_submissions`.
+  Routes: `POST /feedback`, `POST /feedback/screenshot` (was `/upload/feedback-screenshot`), `GET /admin/feedback`,
+  `POST /admin/feedback/:id/forward`. The kernel keeps the **provider's inbox** (`src/services/providerInbox.ts`, SDK
+  `providerInbox`: the copy of a Bug or Idea that goes to Civic.Social; `contactProvider` behind the kernel's "Contact
+  Civic.Social", which works with Feedback off) and **feature queues** (`FeatureServer.queues`: a feature names its
+  queue, the kernel counts what is new per admin under that name in `users.queues_seen_at` and writes its admin digest
+  line where Feedback's stood). Migration `20261119210000_feedback_seen_by_name.sql` copies `feedback_seen_at` there.
+  UI: two new slots, `spaceLink` (the top-bar button, the sidebar, drawer and footer links, the welcome strip and beta
+  welcome pointers, public in beta, a form page for `lastPage`) and `adminTab.queue` (the tab's count). Small visible
+  changes: the admin's new-feedback email reads "New feedback on {hub name}: {category}" (was "New Civic Hub feedback
+  — {category}"); Contact Civic.Social's foot link reads "Back" and goes to the page the admin came from (was "Back to
+  Feedback"). Left in the kernel for now, as with Pinning: `KEYS.PLUGIN_FEEDBACK_*`, the help and settings-search
+  entries, the admin log's "feedback.forward" wording, the Feedback.css form styles (shared with Contact Civic.Social),
+  and the console's status mirror onto `feedback_submissions` (hosting layer, `src/db/platformFeedback.ts`).
 - **Announcements has no urgent label any more**, and `PluginServer.pinnedCard` is gone (with Announcements'
   `board.ts` and `pinnedCard.ts`, its form's Prominence box, the page's Urgent chip and "Urgent until", the feed card's
   Urgent chip and `FeedProcessMeta.urgent`). News Sync's pinned-item label hook is gone too. Visible: a pinned News

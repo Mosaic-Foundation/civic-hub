@@ -36,7 +36,6 @@ export const Members = page(() => import("./pages/Members"));
 export const Privacy = page(() => import("./pages/Privacy"));
 export const Terms = page(() => import("./pages/Terms"));
 export const CodeOfConduct = page(() => import("./pages/CodeOfConduct"));
-export const Feedback = page(() => import("./pages/Feedback"));
 export const Welcome = page(() => import("./pages/Welcome"));
 export const SignInLink = page(() => import("./pages/SignInLink"));
 // The kit's gallery (Events 3): admins only, in the public layout.
@@ -48,7 +47,6 @@ export const AdminSettings = page(() => import("./pages/AdminSettings"), true);
 export const AdminModeration = page(() => import("./pages/AdminModeration"), true);
 export const AdminArchived = page(() => import("./pages/AdminArchived"), true);
 export const AdminEdits = page(() => import("./pages/AdminEdits"), true);
-export const AdminFeedback = page(() => import("./pages/AdminFeedback"), true);
 export const ContactCivicSocial = page(() => import("./pages/ContactCivicSocial"), true);
 
 // A resident's own settings and submissions

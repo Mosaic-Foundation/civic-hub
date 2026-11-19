@@ -21,9 +21,10 @@ export type DigestLineId =
   | "reviews"
   | "briefs"
   | "meeting_summaries"
-  | "feedback"
   | "edits"
-  | "waitlist";
+  | "waitlist"
+  /** A feature queue's, by its name (FeatureQueue: Feedback's "feedback"). */
+  | (string & {});
 
 export interface DigestLine {
   id: DigestLineId;
@@ -31,7 +32,7 @@ export interface DigestLine {
   noun: { one: string; many: string };
   /** Arrived since the last digest's mark. */
   new_count: number;
-  /** Everything in the queue now, new or not; null for a category with no queue (feedback, edits, jobs). */
+  /** Everything in the queue now, new or not; null for a category with no queue (a feature's, edits, jobs). */
   waiting: number | null;
   /** Of the new ones, how many were flagged (the Code of Conduct check, a meeting summary's quality flag). */
   flagged: number;

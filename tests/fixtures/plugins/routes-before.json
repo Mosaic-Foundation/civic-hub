@@ -148,7 +148,6 @@
  "GET /announcements",
  "POST /upload/post-image",
  "POST /upload/project-image",
- "POST /upload/feedback-screenshot",
  "POST /upload/hub-image",
  "GET /link-preview/",
  "GET /search/",

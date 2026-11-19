@@ -166,8 +166,10 @@ vi.mock("../../packages/civic.proposals/service.js", () => ({
   listProposals: async () => [],
 }));
 
-vi.mock("../../src/modules/civic.feedback/index.js", () => ({
-  listFeedback: async () => [],
+// No feature's admin queue (Feedback's) in the digest here.
+vi.mock("../../src/plugins/features.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/plugins/features.js")>()),
+  featureQueues: () => [],
 }));
 
 // The admin digest's database reads (src/modules/civic.admin_digest/store.ts):
@@ -175,7 +177,6 @@ vi.mock("../../src/modules/civic.feedback/index.js", () => ({
 let digestMark: string | null = null;
 vi.mock("../../src/modules/civic.admin_digest/store.js", () => ({
   latestSubmissions: async () => new Map(),
-  countFeedback: async () => 0,
   editEvents: async () => [],
   waitlistRows: async () => [],
   readMark: async () => digestMark,

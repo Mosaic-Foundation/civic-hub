@@ -31,14 +31,12 @@ import { Link } from "react-router-dom";
 import SectionForm from "./SectionForm";
 import {
   BooleanField,
-  EmailField,
   HourField,
   NumberField,
   type FormApi,
 } from "./pluginFields";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
 import { useHub, type Hub } from "../../config/hub";
-import { feedbackContactEmail } from "../../../../src/shared/platform";
 import { HUB_JOBS_ANCHOR, pluginAnchor } from "../../../../src/shared/adminAnchors";
 import { pluginPanelAnchors } from "../../../../src/shared/settingsSearch";
 import { anchorForKey } from "../../../../src/shared/helpRegistry";
@@ -423,22 +421,6 @@ const FEATURE_PANELS: Partial<Record<PluginId, (f: FormApi) => React.ReactNode>>
         <>
           In the hub's time zone, set under{" "}
           <Link to="/admin/settings/identity">Identity</Link>.
-        </>
-      }
-    />
-  ),
-  feedback: (f) => (
-    <EmailField
-      f={f}
-      k="plugin.feedback.contact_email"
-      label="Address on the Feedback page"
-      placeholder={feedbackContactEmail(undefined, f.data.values["legal.contact_email"])}
-      hint={
-        <>
-          Where the <a href="/feedback" target="_blank" rel="noreferrer">Feedback page</a> tells
-          people to write if they would rather email. Left empty, it shows the contact address
-          under <Link to="/admin/settings/legal">Legal</Link>, or the platform's when that is
-          empty too: the address shown here.
         </>
       }
     />

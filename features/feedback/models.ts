@@ -1,9 +1,9 @@
-// civic.feedback — operator-facing product feedback.
+// The Feedback plugin's data (a kernel module until kernel step 4,
+// 2026-11-19): what residents send through the Feedback form.
 //
-// NOT a civic event. This module exists alongside civic.* siblings
-// for naming consistency only — feedback submissions persist in their
-// own table and never flow through emitEvent(). Public /events readers
-// must not see this surface.
+// NOT a civic event: feedback submissions persist in the plugin's own table
+// and never flow through emitEvent(). Public /events readers must not see
+// this surface.
 
 // "topic" is resident-facing in a way the others are not: it collects
 // subjects the Hub should take up, so an operator choosing launch content

@@ -42,7 +42,6 @@ export type Row = Record<string, unknown>;
 const HOST_TABLE_KEYS: Readonly<Record<string, readonly string[]>> = {
   community_inputs: ["id"],
   events: ["id"],
-  feedback_submissions: ["id"],
   hub_admin_audit_log: ["id"],
   hub_invites: ["id"],
   hub_settings: ["hub_id", "key"],

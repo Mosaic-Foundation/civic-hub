@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useHub } from "../config/hub";
+import { featureSpaceLinks } from "../features";
 import "./WelcomeBanner.css";
 
 const STORAGE_KEY = "welcome-banner-dismissed-v2";
@@ -35,6 +36,8 @@ export default function WelcomeBanner() {
     setVisible(false);
   }
 
+  const welcomeNote = featureSpaceLinks((id) => hub.plugins.enabled(id)).find((l) => l.welcomeNote)?.welcomeNote;
+
   return (
     <section className="welcome-banner">
       <div className="welcome-banner-inner">
@@ -42,20 +45,13 @@ export default function WelcomeBanner() {
           <h2 className="welcome-banner-title">{hub.welcome_strip_title}</h2>
           <p className="welcome-banner-body">
             {hub.welcome_strip}
-            {/* The default goes on to the feedback pointer; a hub's own
-                paragraph is shown as written. The button is the Feedback
-                plugin's; without it, no pointer. */}
+            {/* The default goes on to a feature's pointer (Feedback's); a
+                hub's own paragraph is shown as written. Without one, no
+                pointer. */}
             {!custom && (
               <>
                 {" "}It's early and still evolving
-                {hub.plugins.enabled("feedback") ? (
-                  <>
-                    {" "}— use Feedback anytime to report a
-                    bug, suggest a feature, or share anything else.
-                  </>
-                ) : (
-                  "."
-                )}{" "}
+                {welcomeNote ? <>{" "}— {welcomeNote}</> : "."}{" "}
                 We're building this with you.
               </>
             )}

@@ -25,7 +25,6 @@
 // admin queue), and so is "Vote results awaiting approval" (since 2026-10-07).
 
 import {
-  countFeedback,
   editEvents,
   latestSubmissions,
   moveMark,
@@ -48,7 +47,7 @@ import { jobById } from "../../jobs/registry.js";
 import { problemQueue } from "../../jobs/describe.js";
 import { jobPath, type PluginId } from "../../shared/adminAnchors.js";
 import type { AdminDigestPayload, DigestDetail, DigestLine } from "./models.js";
-import { featureDigestLines } from "../../plugins/features.js";
+import { featureDigestLines, featureQueues } from "../../plugins/features.js";
 
 /** A hub's first digest looks back this far. */
 const FIRST_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -137,17 +136,21 @@ async function briefAndSummaryLines(since: string, until: string, ui: string): P
   return lines;
 }
 
-async function feedbackLine(since: string, until: string, ui: string): Promise<DigestLine | null> {
-  if (!isPluginEnabledSync("feedback")) return null;
-  const n = await countFeedback(since, until);
-  return {
-    id: "feedback",
-    noun: { one: "feedback message", many: "feedback messages" },
-    new_count: n,
-    waiting: null,
-    flagged: 0,
-    url: `${ui}/admin/feedback`,
-  };
+/** A line per feature queue whose feature is on (Feedback's), where Feedback's line stood. */
+async function featureQueueLines(since: string, until: string, ui: string): Promise<DigestLine[]> {
+  const lines: DigestLine[] = [];
+  for (const { queue, on } of featureQueues()) {
+    if (!on()) continue;
+    lines.push({
+      id: queue.name,
+      noun: queue.noun,
+      new_count: await queue.count(since, until),
+      waiting: null,
+      flagged: 0,
+      url: `${ui}${queue.path}`,
+    });
+  }
+  return lines;
 }
 
 async function editsLine(since: string, until: string, sampleIds: ReadonlySet<string>, ui: string): Promise<DigestLine> {
@@ -291,8 +294,7 @@ export async function buildAdminDigest(since: string, until: string): Promise<Ad
   lines.push(await jobsLine(since, until, ui));
   lines.push(await reviewsLine(since, until, sampleIds, ui));
   lines.push(...(await briefAndSummaryLines(since, until, ui)));
-  const feedback = await feedbackLine(since, until, ui);
-  if (feedback) lines.push(feedback);
+  lines.push(...(await featureQueueLines(since, until, ui)));
   lines.push(await editsLine(since, until, sampleIds, ui));
   lines.push(await waitlistLine(since, until, ui));
   const new_total = lines.reduce((sum, l) => sum + l.new_count, 0);

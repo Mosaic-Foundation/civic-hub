@@ -62,7 +62,6 @@ export const HOST_TABLES = [
   "ai_usage",
   "community_inputs",
   "events",
-  "feedback_submissions",
   "hub_admin_audit_log",
   "hub_invites",
   "hub_plugins",

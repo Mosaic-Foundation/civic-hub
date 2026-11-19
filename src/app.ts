@@ -32,7 +32,6 @@ import linkPreviewRoutes from "./routes/linkPreviewRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
 import { jobRouter } from "./routes/jobRoutes.js";
 import { JOBS, internalPath } from "./jobs/registry.js";
-import feedbackRoutes from "./routes/feedbackRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import waitlistRoutes from "./routes/waitlistRoutes.js";
@@ -225,11 +224,6 @@ app.use("/link-preview", linkPreviewRoutes);
 // Backed by Postgres FTS via the search_processes RPC (see
 // supabase/migrations/20260427200000_add_search_doc.sql).
 app.use("/search", requirePlugin("search"), searchRoutes);
-
-// Slice 14 — operator-facing product feedback. Anonymous or authed.
-// Persists to feedback_submissions (NOT events) and best-effort emails
-// the operator. See civic-hub/src/modules/civic.feedback.
-app.use("/feedback", requirePlugin("feedback"), feedbackRoutes);
 
 // Beta waitlist — public endpoint for people to request access.
 app.use("/waitlist", waitlistRoutes);

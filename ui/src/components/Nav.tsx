@@ -8,6 +8,7 @@ import AdminMenu from "./AdminMenu";
 import SharePanel from "./SharePanel";
 import SearchBar from "./SearchBar";
 import { useHub } from "../config/hub";
+import { featureSpaceLinks } from "../features";
 import "./Nav.css";
 
 // Top nav stays minimal: wordmark + search + sign-in. All primary
@@ -25,13 +26,6 @@ function drawerLinks(admin: boolean, hasWelcome: boolean): ReadonlyArray<{ to: s
     { to: "/about", label: "About" },
   ];
 }
-
-// Secondary drawer link — active-input affordance; styled like the
-// primary links (full-weight, regular size), not the muted legal
-// group below it. Slice 14.
-const DRAWER_SECONDARY_LINKS: ReadonlyArray<{ to: string; label: string }> = [
-  { to: "/feedback", label: "Send feedback" },
-];
 
 const DRAWER_LEGAL_LINKS: ReadonlyArray<{ to: string; label: string }> = [
   { to: "/code-of-conduct", label: "Code of Conduct" },
@@ -156,11 +150,11 @@ export default function Nav() {
   }
 
   const location = useLocation();
-  const onFeedbackPage = location.pathname === "/feedback";
 
   const links = drawerLinks(isAdmin, hub.has_welcome);
   const searchEnabled = hub.plugins.enabled("search");
-  const feedbackEnabled = hub.plugins.enabled("feedback");
+  // Features' pages for everyone (Feedback's form; ui/src/features.ts).
+  const spaceLinks = featureSpaceLinks((id) => hub.plugins.enabled(id));
 
   const attention = notifCount + editNotifs.length;
 
@@ -218,22 +212,20 @@ export default function Nav() {
               </div>
             )}
 
-            {feedbackEnabled && (
-              <Link
-                to="/feedback"
-                className={`civic-nav-feedback${onFeedbackPage ? " is-active" : ""}`}
-                aria-label="Give feedback"
-              >
-                {/* The label hides below the header's icon-only breakpoint
-                    (Nav.css); the aria-label keeps the name for readers. */}
-                <span className="civic-nav-feedback-label">Feedback</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M2 8.5L2 15.5L7 15.5L14 20L14 4L7 8.5Z" fill="currentColor"/>
-                  <ellipse cx="14" cy="12" rx="1.2" ry="4.5" fill="currentColor" opacity="0.3"/>
-                  <path d="M17 8.5C18.3 9.5 19 10.7 19 12C19 13.3 18.3 14.5 17 15.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-                  <path d="M19.5 6.5C21.5 8 22.5 9.9 22.5 12C22.5 14.1 21.5 16 19.5 17.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-                </svg>
-              </Link>
+            {spaceLinks.map(({ feature, path, header }) =>
+              header ? (
+                <Link
+                  key={feature}
+                  to={path}
+                  className={`civic-nav-feedback${location.pathname === path ? " is-active" : ""}`}
+                  aria-label={header.ariaLabel}
+                >
+                  {/* The label hides below the header's icon-only breakpoint
+                      (Nav.css); the aria-label keeps the name for readers. */}
+                  <span className="civic-nav-feedback-label">{header.label}</span>
+                  <header.Icon />
+                </Link>
+              ) : null,
             )}
 
             {user ? (
@@ -399,16 +391,18 @@ export default function Nav() {
                 </li>
               ))}
               <li className="civic-nav-drawer-divider" role="separator" aria-hidden="true" />
-              {feedbackEnabled && DRAWER_SECONDARY_LINKS.map((l) => (
-                <li key={l.to}>
+              {/* Features' pages for everyone, styled like the primary links,
+                  not the muted legal group below them. */}
+              {spaceLinks.map((l) => (
+                <li key={l.path}>
                   <NavLink
-                    to={l.to}
+                    to={l.path}
                     className={({ isActive }) =>
                       `civic-nav-drawer-link${isActive ? " is-active" : ""}`
                     }
                     onClick={() => setDrawerOpen(false)}
                   >
-                    {l.label}
+                    {l.longLabel}
                   </NavLink>
                 </li>
               ))}

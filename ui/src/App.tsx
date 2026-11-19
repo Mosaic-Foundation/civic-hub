@@ -1,16 +1,16 @@
-import { Suspense, useEffect, useState } from "react";
+import { Fragment, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/authState";
 import { useHub } from "./config/hub";
 import { whenPlugin } from "./config/plugins";
 import { PROCESS_UI } from "./processes";
-import { FEATURE_UI, featurePageTops } from "./features";
+import { FEATURE_UI, featurePageTops, featureSpaceLinks } from "./features";
 import { detailPathOf, pluginOfType } from "./processes/display";
 import { ArchiveSlotProvider } from "./components/archiveSlot";
 import DetailActions from "./components/DetailActions";
 import ShareBanner from "./components/ShareBanner";
-import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
+import { isBetaPublicPath } from "./config/betaPublicPaths";
 import Nav from "./components/Nav";
 import Sidebar from "./components/Sidebar";
 import AdminDrawer from "./components/AdminDrawer";
@@ -30,13 +30,11 @@ import {
   About,
   AdminArchived,
   AdminEdits,
-  AdminFeedback,
   AdminModeration,
   AdminReviews,
   AdminSettings,
   CodeOfConduct,
   ContactCivicSocial,
-  Feedback,
   Members,
   MySubmissions,
   Privacy,
@@ -219,7 +217,7 @@ function AppContent() {
   // tab, which has no session preview flag — without this gate the dialog
   // would land on top of the very page the visitor clicked through to read.
   const showWelcomeDialog =
-    hub.beta_mode && !user && !loading && !preview && !BETA_PUBLIC_PATHS.has(pathname);
+    hub.beta_mode && !user && !loading && !preview && !isBetaPublicPath(pathname);
 
   // While a logged-out visitor browses in beta preview, the persistent banner
   // is enough of an onboarding cue — suppress the intro popup so we don't stack
@@ -334,12 +332,8 @@ function AppContent() {
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/code-of-conduct" element={<CodeOfConduct />} />
-                {/* Slice 14 — operator-facing feedback form. Open to anonymous
-                    and signed-in users; submissions persist to the
-                    feedback_submissions table and best-effort email the operator. */}
                 <Route path="/welcome" element={<Welcome />} />
                 <Route path="/sign-in" element={<SignInLink />} />
-                <Route path="/feedback" element={whenPlugin("feedback", <Feedback />)} />
                 {/* Slice 11 — admin moderation log. Read-only list of every
                     moderation action, gated server-side via requireAdmin
                     and client-side via the AuthContext.isAdmin flag inside
@@ -347,10 +341,8 @@ function AppContent() {
                 <Route path="/admin/moderation" element={<AdminGuard><AdminModeration /></AdminGuard>} />
                 <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
                 <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
-                {/* Read-only archive of resident feedback, incl. topic suggestions. */}
-                <Route path="/admin/feedback" element={whenPlugin("feedback", <AdminGuard><AdminFeedback /></AdminGuard>)} />
                 {/* An admin writes to Civic.Social directly (feedback routing).
-                    Not behind the Feedback plugin. */}
+                    Not behind any plugin. */}
                 <Route path="/admin/contact-civic-social" element={<AdminGuard><ContactCivicSocial /></AdminGuard>} />
               </Routes>
             </Suspense>
@@ -398,13 +390,13 @@ function SiteFooter() {
           </span>
         </div>
         <nav className="app-footer-links" aria-label="Legal and feedback">
-          {/* Gone with the Feedback plugin (config/plugins.tsx). */}
-          {hub.plugins.enabled("feedback") && (
-            <>
-              <Link to="/feedback">Send feedback</Link>
+          {/* A feature's page for everyone (Feedback's form), while it is on. */}
+          {featureSpaceLinks((id) => hub.plugins.enabled(id)).map((l) => (
+            <Fragment key={l.feature}>
+              <Link to={l.path}>{l.longLabel}</Link>
               <span aria-hidden="true">·</span>
-            </>
-          )}
+            </Fragment>
+          ))}
           <Link to="/privacy">Privacy</Link>
           <span aria-hidden="true">·</span>
           <Link to="/terms">Terms</Link>
