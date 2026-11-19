@@ -349,6 +349,9 @@ function AppContent() {
   );
 }
 
+const SOURCE_CODE_URL =
+  import.meta.env.VITE_SOURCE_CODE_URL || "https://github.com/Mosaic-Foundation/civic-hub";
+
 function SiteFooter() {
   const hub = useHub();
   const { user, loading } = useAuth();
@@ -385,6 +388,13 @@ function SiteFooter() {
           <Link to="/terms">Terms</Link>
           <span aria-hidden="true">·</span>
           <Link to="/code-of-conduct">Code of Conduct</Link>
+          <span aria-hidden="true">·</span>
+          {/* AGPL-3.0 section 13: everyone who uses the hub over the network
+              is offered its source. A hub running modified code must point
+              this at its own source (VITE_SOURCE_CODE_URL). */}
+          <a href={SOURCE_CODE_URL} target="_blank" rel="noopener noreferrer">
+            Source code
+          </a>
         </nav>
         {/* A signed-out reader's look (design pass, decision 9); a signed-in
             person sets theirs in Your settings, on their account. */}

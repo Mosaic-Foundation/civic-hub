@@ -46,3 +46,6 @@ playwright-report/
 
 # Raw jurisdiction sources (scripts/fetch-jurisdiction-sources.sh) — large, re-downloadable; the built list is committed
 config/jurisdictions/sources/
+
+# Private idea list, kept locally and not in the repo (removed 2026-11-18)
+IDEAS.md

@@ -128,7 +128,7 @@ numbers below, or just grep the heading.
 | Feedback routing: the form's question and consent, the copy to Civic.Social, Send to Civic.Social, Contact Civic.Social, the digest's mark | `ui/src/pages/Feedback.tsx`, `ui/src/services/lastPage.ts`, `src/modules/civic.feedback/service.ts` (`forwardToMosaic`, `contactMosaic`), `src/db/platformFeedback.ts` (table `platform_feedback`, `20261015000000`), `ui/src/components/ForwardToCivicSocial.tsx`, `ui/src/pages/ContactCivicSocial.tsx`, `feedbackDigestTitle` in `src/modules/civic.admin_digest/service.ts` |
 | Civic.Social's feedback inbox in the console: duplicates, status back to the hub's badge, the fixed email, the issue link | `src/operator/platformFeedback.ts`, `src/shared/feedbackDuplicates.ts`, `ui/src/console/FeedbackInbox.tsx`; routes `/control/feedback`, `/control/feedback/count`, `PATCH /control/feedback/:id` |
 | A hub's seed values (read only by the seed script) | `config/hubs/<hub>/settings.json` |
-| Ideas backlog incl. multi-tenancy section | `IDEAS.md` (lines ~137–240) |
+| Ideas backlog incl. multi-tenancy section | `IDEAS.md` (kept locally since 2026-11-18, no longer in the repo) |
 | Multi-tenant contracts and phase checklists | `BUILD-PLAN-multi-tenant.md` |
 | Future plans | `BUILD-PLAN-*.md` |
 

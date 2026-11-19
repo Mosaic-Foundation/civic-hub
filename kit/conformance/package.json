@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "The Civic Hub plugin conformance suite: proves a plugin package behaves as its descriptor says, on a local test host (docs/BUILD-A-PLUGIN.md).",
   "type": "module",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "AGPL-3.0-or-later",
   "bin": { "civic-conformance": "./bin/civic-conformance.mjs" },
   "files": ["bin", "cli.ts", "src", "vitest.config.ts", "README.md"],
   "engines": { "node": ">=22.12" },
