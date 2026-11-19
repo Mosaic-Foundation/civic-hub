@@ -153,11 +153,9 @@ test.describe("Demo sign-in and sign-up", () => {
 
     // Onboarding: the word cloud, carrying the vote's address.
     await expect(page).toHaveURL(/\/wordcloud\/.+onboarding=1.*return=/);
-    // A new member is asked About you once (districts and demographics,
-    // 2026-11-16); its card comes up over the cloud and is skipped here.
-    const about = page.getByRole("dialog", { name: /about you/i });
-    await about.getByRole("button", { name: "Skip", exact: true }).first().click();
-    await expect(about).toBeHidden();
+    // About you is never asked while a new account signs up, so its card
+    // does not come up over the cloud (2026-11-18).
+    await expect(page.getByRole("dialog", { name: /about you/i })).toHaveCount(0);
     await page.getByRole("button", { name: /Skip/ }).click();
 
     await expect(page).toHaveURL(new RegExp(`/process/${voteId}$`));

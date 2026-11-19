@@ -4,6 +4,7 @@ import { useAuth } from "../context/authState";
 import { officialFrom } from "./authOfficial";
 import { useHub } from "../config/hub";
 import { afterSignUpStop } from "./packageContributions";
+import { holdAboutYouForSignup } from "../services/aboutYou";
 import { NEXT_STEPS_PATH } from "../pages/settings/nextSteps";
 import {
   requestCode,
@@ -283,6 +284,15 @@ export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
       // the gate-passed user. If the user had closed the modal before
       // reaching this point, no login() ever happened.
       if (pendingAuth) {
+        // Where a package sends a new member first (Word clouds: the hub's
+        // word cloud), worked out before login() so About you can wait.
+        const here = `${window.location.pathname}${window.location.search}`;
+        const stop = needsResidency && pendingAuth.role !== "admin" ? afterSignUpStop(hub, here) : null;
+        // A new account is not asked About you while it signs up: not on the
+        // action waiting on this sign-in, nor on that first stop
+        // (services/aboutYou.ts). Held before login() so the waiting action
+        // sees it.
+        if (needsResidency) holdAboutYouForSignup(stop);
         login(
           tokenToUse,
           nextUser,
@@ -309,12 +319,10 @@ export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
           return;
         }
         if (needsResidency) {
-          const here = `${window.location.pathname}${window.location.search}`;
           // A package may send a new member somewhere first (Word clouds: the hub's word cloud).
-          const target = afterSignUpStop(hub, here);
-          if (target) {
+          if (stop) {
             onComplete();
-            navigate(target);
+            navigate(stop);
             return;
           }
         }

@@ -9,6 +9,13 @@
  * is shown, then lets the action go on, whatever they answered. The server
  * records that they were asked, so the card never shows again, on any device.
  * It never blocks an action: any failure here just lets the action through.
+ *
+ * NOT DURING SIGN-UP (2026-11-18, Adam: the card opened on top of the
+ * onboarding word cloud). A new account is not asked while it is still
+ * signing up: the action that made it sign up, and everything on the
+ * onboarding word cloud, go through without the card. It is first asked the
+ * next time it takes part after that (holdAboutYouForSignup below). The
+ * kernel names no package: the stop is whatever afterSignUpStop returned.
  */
 
 import { request } from "./http";
@@ -81,12 +88,74 @@ export function noteAboutAsked(): void {
 }
 
 /**
+ * Held back after a sign-up. `action`: the one action that made them sign up
+ * has not run yet. `stop`: the path of the first place a package sent the new
+ * member (Word clouds: the onboarding word cloud), where nothing asks; kept
+ * for this tab, so a reload of that page doesn't ask either. `reached`: they
+ * have been there. Once they take part anywhere else after that, it is over.
+ */
+const STOP_KEY = "civic.aboutYou.signupStop";
+let signupHold: { action: boolean; stop: string | null; reached: boolean } | null = loadStop();
+
+function loadStop(): { action: boolean; stop: string | null; reached: boolean } | null {
+  try {
+    const stop = typeof window === "undefined" ? null : window.sessionStorage.getItem(STOP_KEY);
+    return stop ? { action: false, stop, reached: true } : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveStop(stop: string | null): void {
+  try {
+    if (stop) window.sessionStorage.setItem(STOP_KEY, stop);
+    else window.sessionStorage.removeItem(STOP_KEY);
+  } catch {
+    // No storage: the hold lasts for this page load only.
+  }
+}
+
+/**
+ * A new account just signed up (AuthModal). Call before login(), so the
+ * action waiting on the sign-in is held too. `stop`: where a package is
+ * sending them first (afterSignUpStop), or null.
+ */
+export function holdAboutYouForSignup(stop: string | null): void {
+  const path = stop ? stop.split(/[?#]/)[0] : null;
+  signupHold = { action: true, stop: path, reached: false };
+  saveStop(path);
+}
+
+/** Whether this action still belongs to the sign-up; ends the hold once it doesn't. */
+function heldForSignup(): boolean {
+  const hold = signupHold;
+  if (!hold) return false;
+  const here = typeof window === "undefined" ? null : window.location.pathname;
+  if (hold.stop && here === hold.stop) {
+    hold.reached = true;
+    hold.action = false;
+    return true;
+  }
+  if (hold.action) {
+    hold.action = false;
+    if (!hold.stop) signupHold = null;
+    return true;
+  }
+  if (hold.stop && !hold.reached) return true;
+  signupHold = null;
+  saveStop(null);
+  return false;
+}
+
+/**
  * Wait for the one-time card if this member has not been asked yet; resolve
  * at once otherwise. Never rejects.
  */
 export function askAboutYouFirst(): Promise<void> {
   const token = getStoredToken();
   if (!token || askedFor === token || !prompt) return Promise.resolve();
+  // Still signing up: not now, and not recorded as asked.
+  if (heldForSignup()) return Promise.resolve();
   if (!asksAnything(currentAboutConfig())) return Promise.resolve();
   if (!pending) {
     pending = (async () => {

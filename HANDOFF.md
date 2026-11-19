@@ -25,6 +25,10 @@ Updated after every Claude Code session. Records what was built, what's incomple
 - **The module table (docs/KERNEL.md):** the admin digest stays in the kernel (it reports the kernel's own queues and
   job health); the assistant splits (the Code of Conduct check is kernel moderation; the drafting chat becomes a
   feature, next); `civic.receipts` stays in the kernel (decided Nov 17).
+- **Dev merged in (0eda79f, About you not during sign-up).** On this branch the hold names no package: AuthModal works
+  out the first stop (`afterSignUpStop`) before `login()` and hands it to `holdAboutYouForSignup(stop)`; nothing asks on
+  that path (kept in sessionStorage for a reload), and the first action anywhere else after reaching it ends the hold.
+  Word clouds needed no change, so no new catalog entry. `signupWording.spec.ts` now checks the card never shows.
 - **The drafting assistant is a feature package:** `features/assistant/` (`routes.ts` for the draft chat's
   `message` and `suggest`, `service.ts`, `systemPrompt.ts`), mounted at `/assistant` behind the plugin switch. The
   kernel keeps the Code of Conduct check (`src/services/codeOfConductAi.ts`: `getHubConfig`, `checkTextAgainstCoC`,
@@ -491,6 +495,9 @@ ballot tags), so release with `./scripts/release.sh dev`. Design: Adam, 2026-11-
   is awaited by the api.ts calls that take part (vote, support, comment, draft submit, project sentiment, word cloud,
   conversation vote and statement). Showing it POSTs `/user/about/asked`; Skip lets the action go on. Events'
   "going" is in the Events package (its own fetch), so it does not trigger the card.
+  Never during sign-up (2026-11-18): `holdAboutYouForSignup()` (AuthModal, before `login()`) holds it for the
+  action that made a new account sign up and, when they are sent to the onboarding word cloud, until the cloud
+  page unmounts; it never shows on `/wordcloud/…?onboarding=1`. Test: `ui/src/services/aboutYou.test.ts`.
 - **Find it by address**: `POST /user/about/district-lookup` → the new `geocoder` adapter (`src/hosting/censusGeocoder.ts`,
   US Census geocoder, `layers=all`, County Subdivisions; fake in `src/adapters/fakes/geocoder.ts`), loose match to
   the list (`matchDistrict`). The address is not stored, logged or put in an error; 10 lookups an hour per member.
