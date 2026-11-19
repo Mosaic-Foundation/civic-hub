@@ -41,6 +41,12 @@ Updated after every Claude Code session. Records what was built, what's incomple
   (lint). `feedActivity.ts`, `theme.ts`, `manifest.ts`, the digest feature and the feed card read it; `ActivityKind`,
   `ActivityColor` and `ThemeTypeKey` are plain strings, and `BUILTIN_THEME_TYPE_KEYS` is gone.
   `tests/unit/spacePalette.test.ts` pins the old orders and values. No package changed, so no catalog entries.
+- **The kernel rule changed (Adam, Nov 19): "if it can be a plugin, it is one."** `docs/KERNEL.md` §1, rules 5 and
+  6, and the module table now say so: the kernel is identity, security and interoperability (federation:
+  ActivityPub now, AT Protocol later) plus the shared services plugins need; the kernel offers services, plugins offer
+  features; no space must have admins; a space type lists each plugin as required, on by default or off by default.
+  Moving out next: Pinning (urgent becomes a flag on a pin; "who can pin" setting, default admins; Announcements'
+  urgent and `PluginServer.pinnedCard` go), Feedback, the admin digest, the search page, the Members page.
 - **Step 4: the space type is the deployment's setting.** One line in `config/plugins.json`, `"space": "spaces/civic"`
   (or `null`), picks it. `npm run plugins:sync` writes `config/space.ts`, `config/spaceType.ts` (new),
   `config/spacePalette.ts` and `config/spacePalette.css` from it (they say "Do not edit"; CI's `--check` holds them).

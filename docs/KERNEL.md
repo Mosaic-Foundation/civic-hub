@@ -12,19 +12,26 @@ draft approach" (Nov 13, Google Doc); ADR-009 to ADR-019 in this repository's hi
 
 ## 1. What it is
 
-**One kernel, many space types.** Every Mosaic space (a Civic Hub, a representative's space, a club, a newsroom) runs
-on the same kernel. The kernel is the shared core: identity and sign-in, permissions, the public record (the one
-emission path, the wire, the feed), the process runtime, the plugin runtime and its slots, settings, storage,
-scheduled jobs, mail, drafting and review, export. It is not a space type and it carries no field's words.
+**One kernel, many space types.** Every Mosaic space (a Civic Hub, a representative's space, a club, a family, a
+newsroom) runs on the same kernel. The kernel is small on purpose. It does three things: **identity** (sign-in,
+accounts, who belongs to a space, member and space DIDs), **security** (permission checks, the audit log, what each
+plugin may touch) and **interoperability** (the public record, the wire format other servers read, and federation:
+ActivityPub now, AT Protocol and others later). To do them it also runs the plugin system and the SDK plugins are
+built with, and the shared services every plugin needs: the settings store, storage, export, scheduled jobs, mail
+transport and the search index. It is not a space type and it carries no field's words.
+
+Like the Linux kernel (a metaphor, Adam, Nov 19): a small core with a stable interface, and everything people see
+built on top of it. A distribution such as Ubuntu decides what comes installed; here that is the space type. Unlike
+Linux, our kernel also owns how spaces talk to each other, and it keeps no drivers inside: features are plugins.
 
 | Term | Meaning | Example |
 | --- | --- | --- |
 | Kernel | The shared core above. One codebase, stewarded by Mosaic. Replaces "space engine". | `mosaic-kernel` (after step 5) |
 | Engine | A complete implementation that can run spaces: Mosaic's is the kernel plus plugins. Spaces are portable between engines. | Mosaic's engine |
 | Profile | One field of work's words, roles, credential types and stricter rules, bound to the kernel. A document for people plus a small file the software reads. Shared by every space type in that field. | the civic profile |
-| Space type | A starter kit: one profile, default plugins, settings, pinned parts. Consulted at a space's birth. | Civic Hub |
+| Space type | A starter kit: one profile, and for each plugin whether it is required, on by default or off by default; default settings; which samples a new space starts with. Consulted at a space's birth. | Civic Hub |
 | Space | One running instance, configured freely by its admins after birth. | Floyd Civic Hub |
-| Plugin | Anything in the plugin registry an admin can turn on or off. Kinds: **process** (votes, events), **feature** (meeting summaries, Activity, Fediverse), **identity** (sign-in methods, credential exchange). | Events |
+| Plugin | Anything in the plugin registry. Kinds: **process** (votes, events), **feature** (pinning, digests, Activity, Fediverse), **identity** (sign-in methods, credential exchange). A space's admins turn it on or off, unless its space type requires it. | Events |
 
 The specs and the conformance suite are the kernel's constitution: they make it the reference implementation of an
 open standard, not a proprietary centre, so a second engine that passes the suite is as good as ours.
@@ -41,11 +48,21 @@ open standard, not a proprietary centre, so a second engine that passes the suit
    Every process plugin shows its complete outcome on its own closed page with Briefs off (Adam, 2026-11-17).
 4. **Words are free, meanings are fixed.** Kernel and plugin code use neutral words. A profile renames them; it never
    invents a new kind of thing or changes what one means. Anything a profile adds names the kernel thing it maps to.
-5. **Kernel test.** Something goes in the kernel when two or more unrelated plugins need it, it means the same thing
-   in any space type once its words are swapped, and it holds member data or results people must be able to trust.
-   If only some spaces want it, it is still kernel, behind a setting; a kernel service that is off returns nothing.
-6. **No always-on plugins.** If no space can work without it, it is kernel. If a space type needs it to carry its
-   name honestly, the space type pins it (pinning: not built yet).
+5. **If it can be a plugin, it is one** (Adam, Nov 19; replaces the Nov 17 kernel test). The kernel holds only
+   what identity, security and interoperability need, and the shared services plugins are built on. Everything else a
+   person sees and uses (beyond signing in and the settings shell) is a plugin, even when nearly every space wants it. When in doubt, it is a plugin. The test:
+   could a space of some type reasonably run without it? Then it is a plugin.
+   - **The kernel offers services; plugins offer features.** Where a feature needs something every plugin shares,
+     the shared part is a kernel service and the feature is a plugin: the search index is the kernel's and the
+     search page a plugin; who belongs to a space is the kernel's and the Members page a plugin; the lists of what
+     is waiting (review, feedback, the waiting list) are the kernel's and the admin's daily email a plugin.
+   - **Settings are a sign.** Something with its own settings and screens is almost always a plugin.
+   - **No space must have admins.** The kernel always knows who may change what (that is security), but a space type
+     may give every member every role, as a peer group would. Admin features are plugins.
+6. **Required plugins are still plugins.** A space type lists each plugin as **required** (on, and its admins cannot
+   turn it off), **on by default** or **off by default**. A plugin a space type cannot carry its name without is
+   required there, not moved into the kernel; another space type may leave it out. No plugin is required everywhere:
+   if every space truly needs it, it is a kernel service.
 7. **The public record only grows.** Identifiers already on the wire (`civic.vote`, activity and process addresses)
    never change. Wire changes only add fields; readers ignore fields they don't know. A breaking change gets a new
    version and the old form is served through a support window.
@@ -88,12 +105,15 @@ Still civic or plugin-shaped inside `src/`, to be sorted in step 3:
 
 | Module | Goes to |
 | --- | --- |
-| `civic.auth`, `civic.review`, `civic.drafts`, `civic.search`, `civic.process_links`, `civic.feedback`, `civic.input`, `civic.link_preview` | kernel |
+| `civic.auth`, `civic.review`, `civic.drafts`, `civic.process_links`, `civic.input`, `civic.link_preview` | kernel |
+| `civic.search` | split (Nov 19): the index every plugin's items go into stays a kernel service; the search page and box become a feature plugin |
+| `civic.feedback` | feature plugin (Nov 19), on by default in Civic Hub. The kernel keeps the list of feedback waiting, which other plugins may read |
+| Members (the member count and faces, the Members page) | feature plugin (Nov 19). Who belongs to a space stays the kernel's |
 | `civic.digest` | done (Nov 19): a feature plugin, `features/digest/` (its job, assembly and formatting; it reads the hub through the SDK). Its signed unsubscribe links are the kernel's, since notices sign theirs the same way: `src/services/unsubscribe.ts` (moved, Nov 19) |
-| `civic.admin_digest` | kernel (Nov 19, was "feature plugin"): it reports the kernel's own review queues, feedback, waiting list and job health to the hub's admins, which every space type needs, and as a feature it would have to read all of them through the feature host. Plugins and features add lines to it (`digestLines`) |
+| `civic.admin_digest` | feature plugin (Nov 19; was kernel): the admin's daily email. The kernel keeps the lists of what is waiting it reports, and plugins still add lines (`digestLines`). A space without admins leaves it out |
 | `civic.assistant` | split: the Code of Conduct check stays in the kernel (moderation, `src/services/kernelCodeOfConduct.ts`); the drafting assistant (its chat, prompts and suggestions) becomes a feature plugin. **Done 2026-11-19:** `features/assistant/`; the check's AI side is `src/services/codeOfConductAi.ts`, the shared response parsing `src/services/assistantResponse.ts`, the types `src/models/assistant.ts`; `GET /assistant/:type/config` stays a kernel route |
 | `src/jobs/newsSync.ts`, `src/modules/civic.news_sync/` | done (Nov 18): News Sync is its own plugin (Adam, Nov 18), not part of Announcements, and works with Announcements off. Its job, feed reading and News page live in `packages/civic.news_sync/` (0.2.0, on SDK v1) |
-| Pinning (`src/services/pins.ts`, Admin → Pinned, the Pin button on every item's page, the Pinned card) | kernel: a hub core feature, admins only (Adam, Nov 18). Plugins write no pin code. Urgent stays an Announcements feature, shown first on the Pinned card through `PluginServer.pinnedCard`. Done (pinning phase 2, Nov 18): pins in the hub's `process_pins` table |
+| Pinning (`src/services/pins.ts`, Admin → Pinned, the Pin button on every item's page, the Pinned card) | feature plugin (Nov 19; was kernel): pin any item, whatever its plugin, to the Pinned card. Its settings say who may pin (default: admins). A pin can be flagged urgent, which replaces Announcements' own urgent (dropped, Adam Nov 19). No plugin contributes to the card (`PluginServer.pinnedCard` goes) |
 | `civic.receipts` | kernel (decided Nov 17, with Votes 0.4.0; `docs/kernel/SURFACE.md`): every secret-ballot type needs the same audited code, which Votes reaches through the SDK's `ballots` |
 | `src/services/brief*.ts`, `src/processes/spawnBrief.ts` | done: the Briefs plugin listens for the kernel's "process closed" (`src/services/processClosed.ts`) and gets the `process.result` the kernel owns |
 | `src/debug/seedDeliberationMocks.ts` | done (step 1): the Conversations plugin |
@@ -131,7 +151,7 @@ exists (`civic-conformance`).
 | 1 | The eight first-party plugins onto SDK v1 and the kit (no imports of hub pages or engine internals) | SDK v1: done for all eight (Nov 17). Pages on the kit: not started (`MOVED_HUB_PAGES`) |
 | 2 | Neutral roles and terms; the civic profile file | done (Nov 17): `src/shared/spaceProfile.ts`, `src/shared/profiles/civic.ts`, `term()`; packages move their descriptors to `member`/`accountable` at their next release |
 | 3 | Sort the civic modules (table above); replace the kernel's checks of plugins by name with events | under way (Nov 17): the kernel's `process.closed` event (Briefs listens; the kernel no longer makes briefs), and package contributions in place of five name checks. Then a type's own closed line for the digest (`resultLine`), a package's own check of its settings (`checkSetting`), and the kernel's `/process/:id` link (`ui/src/pages/ProcessLink.tsx`). Then what a package adds to the kernel's pages (`contributes`: the brief pointer, review queues in the admin rail, the welcome strip). Then sign-up's stop (`contributes.afterSignUp`). Then sample content: the kernel's plugin sample hook (`PluginServer.samples`, `SampleKit`; Word clouds seeds its own), and the Civic Hub's curated samples and development seed moved out of the kernel into the space type layer (`spaces/civic/`, named in `config/space.ts`). Then News Sync into its own package (Nov 18), which leaves no engine file reaching into a package. Then pinning phase 2 (Nov 18): pins in the hub's own table, and Announcements' urgent items reach the Pinned card through `PluginServer.pinnedCard`. Then the modules (Nov 19): the resident digest and the drafting assistant are feature packages. Then the feed's filters (Nov 19): a type's card rule names its own surface, and a type builds a card from its payload (`fromPayload`); Announcements, News Sync and Meeting summaries add their own filter pills (`feedFilter` on their UI modules), and News Sync words its card and owns its settings panel. The kernel names none of them. Then the colour and kind vocabulary (Nov 19): the Civic Hub's colour families, card kinds and digest sections are its palette, `spaces/civic/palette.ts`, named in `config/spacePalette.ts` and read only by `src/shared/spacePalette.ts`; the feed, theme and digest read it, and their orders and colours are unchanged. Left for step 4: a few kernel words that name civic plugins (settings search, plugin setup hints) |
-| 4 | Space types as data (profile, defaults, pins); the deployment picks its type from a setting | under way (Nov 19): the palette's colours (`--type-<key>-*` and the older `--pill-<kind>-*`, light and dark) are `spaces/civic/palette.css`, loaded through `config/spacePalette.css` right after `theme.css`; the built CSS is unchanged. The kernel keeps `--type-generic-*` and `--pill-vote-*` (the general control accent). Then plugin settings' notes, search words and "needs setup" rules moved into the packages' manifests (`pluginSection.fields[].help`, `words`, `search`, `setup`). Then the hub features' entries: a feature package's is its manifest's `pluginSection`, and `src/shared/hubFeatures.ts` lists only the kernel's own. Then plugin events in the Install confirmation's words (`eventWords`). Then the space type as a setting: one line in `config/plugins.json` (`"space": "spaces/civic"`, or null), from which `plugins:sync` writes the four `config/space*` files; the Civic Hub's record and profile moved to `spaces/civic/type.ts` and `profile.ts`, and the kernel has a neutral record for a deployment with none. Left: Events' panel words (with its next release) |
+| 4 | Space types as data (profile, defaults, pins); the deployment picks its type from a setting | under way (Nov 19): the palette's colours (`--type-<key>-*` and the older `--pill-<kind>-*`, light and dark) are `spaces/civic/palette.css`, loaded through `config/spacePalette.css` right after `theme.css`; the built CSS is unchanged. The kernel keeps `--type-generic-*` and `--pill-vote-*` (the general control accent). Then plugin settings' notes, search words and "needs setup" rules moved into the packages' manifests (`pluginSection.fields[].help`, `words`, `search`, `setup`). Then the hub features' entries: a feature package's is its manifest's `pluginSection`, and `src/shared/hubFeatures.ts` lists only the kernel's own. Then plugin events in the Install confirmation's words (`eventWords`). Then the space type as a setting: one line in `config/plugins.json` (`"space": "spaces/civic"`, or null), from which `plugins:sync` writes the four `config/space*` files; the Civic Hub's record and profile moved to `spaces/civic/type.ts` and `profile.ts`, and the kernel has a neutral record for a deployment with none. Then (Nov 19) the new rule 5: Pinning, Feedback, the admin digest, the search page and the Members page move out into feature plugins; a space type lists each plugin as required, on or off by default; each plugin carries its own default colour (a space type may override it) and its own samples, written in the space's words. Left: Events' panel words (with its next release) |
 | 5 | Split into `mosaic-kernel` (after identity phases 1 and 2 merge); rename packages `@mosaic/...` | not started |
 | 6 | The four conformance layers; kernel releases run Civic Hub's tests; update bot | not started |
 | 7 | Kernel 1.0; civic-hub on it | not started |
