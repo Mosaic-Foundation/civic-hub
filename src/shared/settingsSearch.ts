@@ -18,8 +18,9 @@
 //
 // A plugin package carries its own entries in its manifest: its settings'
 // labels and words (pluginSection.search) and its panel's words
-// (pluginSection.words). One there wins over this list, which keeps the hub's
-// own settings and the hub features' (kernel step 4).
+// (pluginSection.words); a hub feature's panel words are in its entry
+// (src/shared/hubFeatures.ts or its manifest's pluginSection). One there wins
+// over this list, which keeps the hub's own settings (kernel step 4).
 //
 // The link: /admin/settings/<section>#<anchorForKey(key)>. Every "?" button
 // (HelpButton) carries that anchor, so the page scrolls to the setting's own
@@ -94,18 +95,10 @@ export const SEARCH_WORDS: Readonly<Record<string, SearchWords>> = {
   },
   "settings.plugins": { words: ["features", "modules", "add-ons", "addons", "extensions", "apps", "turn on", "turn off"] },
 
-  // Hub features' panels (labels from each feature; a plugin package's panel
-  // words are in its manifest).
+  // Events' panel (Events is released: its words move to its manifest with
+  // its next version). Every other plugin's and feature's panel words are
+  // with its entry (pluginSection.words, or src/shared/hubFeatures.ts).
   "plugins.events": { words: ["events", "calendar", "meetings", "happenings", "schedule"] },
-  "plugins.pinning": { words: ["pin", "pinned", "sticky", "right column", "featured"] },
-  "plugins.assistant": { words: ["ai", "artificial intelligence", "writing help", "llm", "claude", "chatbot"] },
-  "plugins.search": { words: ["search", "find", "full text"] },
-  "plugins.feedback": { words: ["feedback", "contact", "bug reports", "report a problem", "suggestions"] },
-  "plugins.digest": { words: ["digest", "newsletter", "summary email", "weekly email", "daily email"] },
-  "plugins.admin_digest": { words: ["admin email", "daily email", "admin summary", "notifications"] },
-  "plugins.members": { words: ["members", "member count", "faces", "avatars", "directory", "residents list"] },
-  "plugins.fediverse": { words: ["fediverse", "mastodon", "activitypub", "follow", "followers", "social media", "bluesky"] },
-  "plugins.analytics": { words: ["activity", "analytics", "statistics", "stats", "metrics", "numbers", "reporting", "participation counts"] },
 
   // Parts of sections.
   "participation.threshold": {

@@ -18,6 +18,7 @@ import type { ProcessStatus } from "../models/process.js";
 import type { SchemaRequirement } from "../db/schemaRequirement.js";
 import type { SettingFieldSpec } from "../shared/hubSettingsSections.js";
 import type { PluginSetupRule } from "../shared/pluginSetup.js";
+import type { HubFeature } from "../shared/hubFeatures.js";
 import type { ThemeTypeKey } from "../shared/theme.js";
 import type { ActivityRecipe, WireObjectRecipe } from "../shared/activityRecipe.js";
 import { AS2_TERMS } from "../shared/as2Terms.js";
@@ -331,6 +332,12 @@ export interface FeatureManifest {
   tables: readonly TableDeclaration[];
   requiredSchema: readonly SchemaRequirement[];
   jobs: readonly ManifestJob[];
+  /**
+   * Its part of the Plugins settings section (kernel step 4): its name, its
+   * one line, its settings and its panel's search words, so the kernel's
+   * list of hub features (src/shared/hubFeatures.ts) need not name it.
+   */
+  pluginSection?: Omit<HubFeature, "id">;
 }
 
 /** Declare a feature's manifest, keeping its literal values (its table names join forHub's TableName). */

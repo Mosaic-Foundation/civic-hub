@@ -20,4 +20,11 @@ export const DIGEST_MANIFEST = defineFeatureManifest({
       description: "Resident email digest, per hub in its own send hour",
     },
   ],
+  pluginSection: {
+    order: 130,
+    name: "Email digest",
+    what: "A summary email of new activity to each resident who has not unsubscribed.",
+    fields: [{ key: "plugin.digest.send_hour", kind: "hour" }],
+    words: ["digest", "newsletter", "summary email", "weekly email", "daily email"],
+  },
 });

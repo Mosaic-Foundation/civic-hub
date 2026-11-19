@@ -41,6 +41,12 @@ Updated after every Claude Code session. Records what was built, what's incomple
   (lint). `feedActivity.ts`, `theme.ts`, `manifest.ts`, the digest feature and the feed card read it; `ActivityKind`,
   `ActivityColor` and `ThemeTypeKey` are plain strings, and `BUILTIN_THEME_TYPE_KEYS` is gone.
   `tests/unit/spacePalette.test.ts` pins the old orders and values. No package changed, so no catalog entries.
+- **Step 4: the hub features' entries.** A feature package's place in the Plugins section (name, one line, settings,
+  panel search words, `defaultOn`) is its manifest's `pluginSection` (`FeatureManifest.pluginSection`): Writing
+  assistant, Email digest, Activity and Fediverse carry theirs. `src/shared/hubFeatures.ts` lists only the kernel's own
+  features (Pinning, Search, Feedback, Admin digest, Members), each with its `words`, and adds the packages' from
+  `FEATURE_MANIFESTS`, sorted by order (unchanged). `settingsSearch.ts` keeps only Events' panel words. Feature
+  packages are not in the catalog, so no catalog entries. Nothing on screen changes.
 - **Step 4: plugin settings' words live with the plugins.** A manifest's `pluginSection` now carries each setting's
   "?" note (`fields[].help`, written into `helpRegistry.json` by `npm run plugins:sync`, unchanged there), its panel's
   search words (`words`), its settings' search labels (`search`, which existed) and its "needs setup" rule (`setup`;

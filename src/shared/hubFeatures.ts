@@ -2,11 +2,14 @@
 // (Architecture 2, 2026-10-21; ADR-009). Each has a `plugin.<id>.enabled`
 // switch and a place in the Plugins settings section, exactly like a process
 // plugin, and the same settings keys as before the split. Process plugins
-// come from the process manifests (src/shared/processManifests.ts); this is
-// the one hand-kept list left, because a feature is part of the hub itself.
+// come from the process manifests (src/shared/processManifests.ts); a feature
+// package's entry from its manifest's pluginSection (src/shared/
+// featureManifests.ts; kernel step 4). The kernel's own features, the ones
+// built into it, are listed here.
 // Shared with the UI: imports nothing from the server.
 
 import type { SettingFieldSpec } from "./hubSettingsSections.js";
+import { FEATURE_MANIFESTS } from "./featureManifests.js";
 
 export interface HubFeature {
   id: string;
@@ -18,6 +21,8 @@ export interface HubFeature {
   what: string;
   /** Its settings beyond `plugin.<id>.enabled`. */
   fields: readonly SettingFieldSpec[];
+  /** Other words an admin might type in the settings search for its panel. */
+  words?: readonly string[];
   /**
    * False for a feature a hub must switch on itself (the Fediverse account,
    * 2026-11-13: it speaks to other servers in the hub's name). Every other
@@ -26,7 +31,8 @@ export interface HubFeature {
   defaultOn?: boolean;
 }
 
-export const HUB_FEATURES = [
+/** The kernel's own features: built into it, for every space type. */
+const KERNEL_FEATURES = [
   // Pinning any item to the Pinned card (Adam, 2026-11-18): the hub's
   // own, for every plugin's items, admins only. Off: no Pin controls, no
   // Admin → Pinned, and the card shows no pinned rows (urgent announcements
@@ -37,13 +43,33 @@ export const HUB_FEATURES = [
     name: "Pinning",
     what: "Built into the hub: admins pin any item to the Pinned card, with an optional end date. Urgent announcements are listed first.",
     fields: [],
+    words: ["pin", "pinned", "sticky", "right column", "featured"],
   },
-  { id: "assistant", order: 100, name: "Writing assistant", what: "AI help while drafting a vote, proposal, project or conversation.", fields: [] },
-  { id: "search", order: 110, name: "Search", what: "Full-text search across everything on the hub.", fields: [] },
+  {
+    id: "search",
+    order: 110,
+    name: "Search",
+    what: "Full-text search across everything on the hub.",
+    fields: [],
+    words: ["search", "find", "full text"],
+  },
   // The address the Feedback page shows (2026-10-08, Adam).
-  { id: "feedback", order: 120, name: "Feedback", what: "A form for residents to report problems or suggest changes.", fields: [{ key: "plugin.feedback.contact_email", kind: "email" }] },
-  { id: "digest", order: 130, name: "Email digest", what: "A summary email of new activity to each resident who has not unsubscribed.", fields: [{ key: "plugin.digest.send_hour", kind: "hour" }] },
-  { id: "admin_digest", order: 140, name: "Admin digest", what: "A daily email to admins counting what is new since the last one, with what is waiting beside it. Not sent when nothing is new.", fields: [] },
+  {
+    id: "feedback",
+    order: 120,
+    name: "Feedback",
+    what: "A form for residents to report problems or suggest changes.",
+    fields: [{ key: "plugin.feedback.contact_email", kind: "email" }],
+    words: ["feedback", "contact", "bug reports", "report a problem", "suggestions"],
+  },
+  {
+    id: "admin_digest",
+    order: 140,
+    name: "Admin digest",
+    what: "A daily email to admins counting what is new since the last one, with what is waiting beside it. Not sent when nothing is new.",
+    fields: [],
+    words: ["admin email", "daily email", "admin summary", "notifications"],
+  },
   // The member count, avatar stack and Members page (Adam, 2026-10-14).
   // Share this hub's invites are the hub's own, not this feature's.
   {
@@ -55,40 +81,24 @@ export const HUB_FEATURES = [
       { key: "plugin.members.min_count", kind: "number", min: 0, max: 100000 },
       { key: "plugin.members.page_before_threshold", kind: "boolean" },
     ],
-  },
-  // Activity: the participation record (analytics slice, 2026-10-27; ADR-016).
-  // Built as a feature package (features/analytics/). Public numbers is off
-  // until the hub's admin turns it on.
-  {
-    id: "analytics",
-    order: 160,
-    name: "Activity",
-    what: "Counts of participation by period and kind, for admins; optionally public, and for outside organisations you give a reporting key.",
-    fields: [{ key: "plugin.analytics.public_numbers", kind: "boolean" }],
-  },
-  // Following the hub from Mastodon and the rest of the fediverse (plan of
-  // 2026-11-12; features/fediverse/). Off until the hub switches it on: once
-  // on, other servers hold the hub's account and its followers.
-  {
-    id: "fediverse",
-    order: 170,
-    name: "Fediverse",
-    what: "An account people can follow from Mastodon and other fediverse apps, and a Share on Mastodon button on each page.",
-    fields: [
-      { key: "plugin.fediverse.post_mode", kind: "choice", options: ["each", "daily", "weekly"] },
-      { key: "plugin.fediverse.hashtags", kind: "text", maxLength: 200 },
-      { key: "plugin.fediverse.blocked_servers", kind: "textarea", maxLength: 5000 },
-    ],
-    defaultOn: false,
+    words: ["members", "member count", "faces", "avatars", "directory", "residents list"],
   },
 ] as const satisfies readonly HubFeature[];
 
-export type HubFeatureId = (typeof HUB_FEATURES)[number]["id"];
+/** Every hub feature, the kernel's and each feature package's, in Plugins-section order. */
+export const HUB_FEATURES: readonly (HubFeature & { id: HubFeatureId })[] = [
+  ...KERNEL_FEATURES,
+  ...FEATURE_MANIFESTS.flatMap((m) => (m.pluginSection ? [{ id: m.feature as HubFeatureId, ...m.pluginSection }] : [])),
+].sort((a, b) => a.order - b.order);
+
+export type HubFeatureId =
+  | (typeof KERNEL_FEATURES)[number]["id"]
+  | Extract<(typeof FEATURE_MANIFESTS)[number], { pluginSection: object }>["feature"];
 
 export const HUB_FEATURE_IDS: readonly HubFeatureId[] = HUB_FEATURES.map((f) => f.id);
 
 /** Whether a plugin or feature is on for a hub that never set its switch. */
 export function pluginDefaultOn(id: string): boolean {
-  const feature = (HUB_FEATURES as readonly HubFeature[]).find((f) => f.id === id);
+  const feature = HUB_FEATURES.find((f) => f.id === id);
   return feature?.defaultOn ?? true;
 }

@@ -9,4 +9,11 @@ export const ASSISTANT_MANIFEST = defineFeatureManifest({
   tables: [],
   requiredSchema: [],
   jobs: [],
+  pluginSection: {
+    order: 100,
+    name: "Writing assistant",
+    what: "AI help while drafting a vote, proposal, project or conversation.",
+    fields: [],
+    words: ["ai", "artificial intelligence", "writing help", "llm", "claude", "chatbot"],
+  },
 });
