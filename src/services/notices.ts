@@ -22,7 +22,7 @@ import { inChunks } from "../db/inChunks.js";
 import { sendEmail } from "../utils/email.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 import { env } from "../config/env.js";
-import { buildUnsubscribeUrl } from "../modules/civic.digest/index.js";
+import { buildUnsubscribeUrl } from "./unsubscribe.js";
 import { hubDisplayNameSync } from "./hubSettings.js";
 import { NotFoundError, ValidationError } from "../errors/index.js";
 import { processHeads } from "./processRows.js";

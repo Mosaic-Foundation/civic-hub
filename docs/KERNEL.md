@@ -89,10 +89,12 @@ Still civic or plugin-shaped inside `src/`, to be sorted in step 3:
 | Module | Goes to |
 | --- | --- |
 | `civic.auth`, `civic.review`, `civic.drafts`, `civic.search`, `civic.process_links`, `civic.feedback`, `civic.input`, `civic.link_preview` | kernel |
-| `civic.digest`, `civic.admin_digest`, `civic.assistant` | feature plugins |
+| `civic.digest` | a feature plugin (`features/digest/`, next). Its signed unsubscribe links are the kernel's, since notices sign theirs the same way: `src/services/unsubscribe.ts` (moved, Nov 19) |
+| `civic.admin_digest` | kernel (Nov 19, was "feature plugin"): it reports the kernel's own review queues, feedback, waiting list and job health to the hub's admins, which every space type needs, and as a feature it would have to read all of them through the feature host. Plugins and features add lines to it (`digestLines`) |
+| `civic.assistant` | split: the Code of Conduct check stays in the kernel (moderation, `src/services/kernelCodeOfConduct.ts`); the drafting assistant (its chat, prompts and suggestions) becomes a feature plugin |
 | `src/jobs/newsSync.ts`, `src/modules/civic.news_sync/` | done (Nov 18): News Sync is its own plugin (Adam, Nov 18), not part of Announcements, and works with Announcements off. Its job, feed reading and News page live in `packages/civic.news_sync/` (0.2.0, on SDK v1) |
 | Pinning (`src/services/pins.ts`, Admin → Pinned, the Pin button on every item's page, the Pinned card) | kernel: a hub core feature, admins only (Adam, Nov 18). Plugins write no pin code. Urgent stays an Announcements feature, shown first on the Pinned card through `PluginServer.pinnedCard`. Done (pinning phase 2, Nov 18): pins in the hub's `process_pins` table |
-| `civic.receipts` | the Votes plugin |
+| `civic.receipts` | kernel (decided Nov 17, with Votes 0.4.0; `docs/kernel/SURFACE.md`): every secret-ballot type needs the same audited code, which Votes reaches through the SDK's `ballots` |
 | `src/services/brief*.ts`, `src/processes/spawnBrief.ts` | done: the Briefs plugin listens for the kernel's "process closed" (`src/services/processClosed.ts`) and gets the `process.result` the kernel owns |
 | `src/debug/seedDeliberationMocks.ts` | done (step 1): the Conversations plugin |
 

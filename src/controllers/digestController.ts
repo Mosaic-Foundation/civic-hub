@@ -21,10 +21,10 @@
 import { env } from "../config/env.js";
 import { ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
-import { verifyUnsubscribeToken } from "../modules/civic.digest/index.js";
+import { verifyUnsubscribeToken } from "../services/unsubscribe.js";
 import { setAppearance, setDigestFrequency, setMastodonHandle, setNoticesEmail, getUser } from "../modules/civic.auth/index.js";
 import { APPEARANCES, type Appearance } from "../modules/civic.auth/models.js";
-import type { UnsubscribePurpose } from "../modules/civic.digest/unsubscribe.js";
+import type { UnsubscribePurpose } from "../services/unsubscribe.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { hubDisplayNameSync } from "../services/hubSettings.js";

@@ -1,4 +1,6 @@
-// civic.digest/unsubscribe.ts — HMAC-signed unsubscribe tokens.
+// src/services/unsubscribe.ts — HMAC-signed unsubscribe tokens (the kernel's:
+// notices and the digest both sign their links with them; moved out of
+// civic.digest in kernel step 3).
 //
 // The token is the credential: no auth required to call /unsubscribe,
 // and the link in every digest email is permanent (no expiry — a user

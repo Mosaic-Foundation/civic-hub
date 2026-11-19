@@ -217,7 +217,7 @@ beforeAll(async () => {
     method: "PATCH",
     body: JSON.stringify({ full_name: `Resident ${MARKER_B}`, digest_frequency_days: 1 }),
   });
-  const { buildUnsubscribeToken } = await import("../../src/modules/civic.digest/unsubscribe.js");
+  const { buildUnsubscribeToken } = await import("../../src/services/unsubscribe.js");
   B.unsubscribeToken = buildUnsubscribeToken(B.resident, DIGEST_SECRET);
   B.noticesToken = buildUnsubscribeToken(B.resident, DIGEST_SECRET, "unsub_notices");
   const [ar] = (await localRest(`users?select=id&hub_id=eq.athens&email=eq.${MARKER_A}@example.test`)) as Array<{ id: string }>;

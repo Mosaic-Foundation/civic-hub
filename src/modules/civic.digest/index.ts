@@ -38,4 +38,4 @@ export {
   buildUnsubscribeToken,
   buildUnsubscribeUrl,
   verifyUnsubscribeToken,
-} from "./unsubscribe.js";
+} from "../../services/unsubscribe.js";

@@ -7,7 +7,7 @@ import {
   buildUnsubscribeToken,
   buildUnsubscribeUrl,
   verifyUnsubscribeToken,
-} from "../../src/modules/civic.digest/unsubscribe.js";
+} from "../../src/services/unsubscribe.js";
 
 const SECRET = "a-test-secret-of-enough-length";
 
