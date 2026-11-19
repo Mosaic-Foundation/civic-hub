@@ -360,6 +360,8 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
       });
     }
     return out;
+    // hubConfig: a kind words its card from the settings as they stand now, read inside.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleEvents, processMeta, removedProcessIds, hubConfig]);
 
   const hasMore = nextCursor !== null;
