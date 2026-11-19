@@ -1,0 +1,603 @@
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  ApiError,
+  AuthModal,
+  ShareMoment,
+  announceInput,
+  resolveActorId,
+  submitInput,
+  useAction,
+  useCommentIdentityMode,
+  useRequireAuth,
+  useSpace,
+} from "@civic-social/plugin-sdk/ui";
+import type { ActionResult, HeldReceiptPayload, ProcessState, VoteState } from "./api";
+import {
+  submitVote,
+  submitApprovalVote,
+  supportVote,
+  unsupportVote,
+} from "./api";
+import { dropHeldReceipt, getHeldReceipt, isMine, localDay, saveHeldReceipt, type HeldReceipt } from "./voteReceipts";
+import { downloadReceipt } from "./receiptFile";
+import ResultBars from "./ResultBars";
+import ReceiptCode from "./ReceiptCode";
+
+const COMMENT_MAX = 500;
+
+/** Where an element sits on the screen now, held for the next two seconds. */
+function holdPlace(el: HTMLElement): { top: number; until: number } {
+  return { top: el.getBoundingClientRect().top, until: Date.now() + 2000 };
+}
+
+interface Props {
+  process: VoteState;
+  actor: string;
+  /** The process as the action's answer has it (null: read it again). */
+  onView: (view: ProcessState | null) => void;
+}
+
+export default function VotePanel({ process, actor, onView }: Props) {
+  const space = useSpace();
+  // Every action here runs through one runner: one at a time, "…ing" while
+  // it runs, the page updated from the answer's view.
+  const action = useAction("Your vote didn't go through. Please try again.");
+  const loading = action.busy;
+  const error = action.error;
+  // The receipt file: written here, in the browser (services/receiptFile.ts).
+  const download = useAction("The receipt couldn't be made. Please try again.");
+  const checkMode = process.check_mode ?? "show_choice";
+
+  function saveReceiptFile(receipt: HeldReceipt) {
+    return download.run(() =>
+      downloadReceipt({
+        hubName: space.name,
+        voteTitle: process.title,
+        votedOn: receipt.voted_on ?? localDay(),
+        code: receipt.receipt_id,
+        checkUrl: `${window.location.origin}/votes/${process.id}/log#receipt=${encodeURIComponent(receipt.receipt_id)}`,
+        mode: checkMode,
+      }),
+    );
+  }
+
+  /**
+   * The receipt this browser holds, in one compact box, the same on the open
+   * and the closed vote (Adam, 2026-10-13): the download button with the
+   * code beside it, "Check it" below, the privacy line last.
+   */
+  function receiptBox(receipt: HeldReceipt) {
+    return (
+      <div className="vote-receipt-box">
+        <div className="vote-receipt-row">
+          <button
+            type="button"
+            className="vote-receipt-download-btn"
+            onClick={() => saveReceiptFile(receipt)}
+            disabled={download.busy}
+            aria-busy={download.busy}
+          >
+            {download.busy ? "Preparing…" : "Download receipt (PDF)"}
+          </button>
+          <p className="vote-receipt-id">
+            <span className="visually-hidden">Your receipt: </span>
+            <ReceiptCode code={receipt.receipt_id} />
+          </p>
+        </div>
+        {download.error && <p className="error">{download.error}</p>}
+        {/* The receipt rides in the fragment, which the browser never sends
+            to a server, so no request log records it. */}
+        <Link
+          to={`/votes/${process.id}/log#receipt=${encodeURIComponent(receipt.receipt_id)}`}
+          className="vote-receipt-verify-link"
+        >
+          Check it
+        </Link>
+        <p className="vote-receipt-privacy form-hint">
+          {checkMode === "show_choice"
+            ? "Nothing links you to this code. Keep it private: after the vote closes, anyone with it can see how this ballot was cast."
+            : "Nothing links you to this code. After the vote closes, it shows only that your ballot was counted."}
+        </p>
+      </div>
+    );
+  }
+  const [justVoted, setJustVoted] = useState<string | string[] | null>(null);
+  const [voteWasUpdated, setVoteWasUpdated] = useState(false);
+  // The receipt this browser holds for this vote, if any. The hub cannot
+  // look it up: it keeps nothing that links this person to their ballot.
+  const [held, setHeld] = useState<HeldReceipt | null>(() => getHeldReceipt(actor, process.id));
+  // Voted, and this browser has no receipt: the vote counts, but only the
+  // browser it was cast from can change it.
+  const [votedElsewhere, setVotedElsewhere] = useState(false);
+  const [receiptNotKept, setReceiptNotKept] = useState(false);
+  // The account a receipt is kept under. A vote cast right after signing up
+  // runs from a callback made before sign-in, when `actor` was still
+  // "anonymous": read the latest value, and ask the server if it is not in yet.
+  const actorRef = useRef(actor);
+  useEffect(() => {
+    actorRef.current = actor;
+  }, [actor]);
+  const [comment, setComment] = useState("");
+  const [commentAnonymous, setCommentAnonymous] = useState(false);
+  const [commentSubmitted, setCommentSubmitted] = useState(false);
+  const [commentWarning, setCommentWarning] = useState<string | null>(null);
+  const commentIdentityMode = useCommentIdentityMode();
+  const [approvalSelections, setApprovalSelections] = useState<Set<string>>(new Set());
+  const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } = useRequireAuth();
+
+  const isActive = process.status === "active";
+  const isDone = process.status === "closed" || process.status === "finalized";
+  const isProposed = process.status === "proposed";
+  const isThresholdMet = process.status === "threshold_met";
+  const canSeeResults = process.tally !== null;
+  const isApproval = process.method === "approval";
+
+  // A different account or vote: read what this browser holds for it.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- re-reads this browser's receipt when the account or vote changes
+    setHeld(getHeldReceipt(actor, process.id));
+    setVotedElsewhere(false);
+  }, [actor, process.id]);
+
+  // Voted with no receipt here: voted from another browser. (Ballots from
+  // before receipts moved to the voter could once be collected here; none
+  // are left, and that route is gone, 2026-11-10.)
+  useEffect(() => {
+    if (!isActive || process.has_voted !== true || held) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- follows the vote's state as read
+    setVotedElsewhere(true);
+  }, [isActive, process.has_voted, held]);
+
+  /** The signed-in account's id, even when the vote was cast from a pre-sign-in callback. */
+  async function keeperId(): Promise<string> {
+    const known = actorRef.current;
+    if (known && known !== "anonymous") return known;
+    return resolveActorId();
+  }
+
+  // Voting never moves the page (2026-10-13). A vote folds the comment field
+  // above the ballot away and adds the receipt below it; Chrome's scroll
+  // anchoring hides that only sometimes, and Safari's not at all. So the
+  // ballot's place on the screen is noted when a vote is cast and put back
+  // after each render for a moment.
+  const ballotRef = useRef<HTMLDivElement>(null);
+  const ballotHold = useRef<{ top: number; until: number } | null>(null);
+  // The voter's own scrolling ends the hold at once: it never pulls them back.
+  useEffect(() => {
+    const release = () => {
+      ballotHold.current = null;
+    };
+    const keys = (e: KeyboardEvent) => {
+      if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(e.key)) release();
+    };
+    window.addEventListener("wheel", release, { passive: true });
+    window.addEventListener("touchmove", release, { passive: true });
+    window.addEventListener("keydown", keys);
+    return () => {
+      window.removeEventListener("wheel", release);
+      window.removeEventListener("touchmove", release);
+      window.removeEventListener("keydown", keys);
+    };
+  }, []);
+  useLayoutEffect(() => {
+    const hold = ballotHold.current;
+    const el = ballotRef.current;
+    if (!hold || !el) return;
+    if (Date.now() > hold.until) {
+      ballotHold.current = null;
+      return;
+    }
+    const drift = el.getBoundingClientRect().top - hold.top;
+    if (Math.abs(drift) > 1) window.scrollBy(0, drift);
+  });
+
+  /**
+   * Cast a ballot, or change it with the receipt this browser holds, and
+   * keep the receipt. `send` makes the request for one method's ballot.
+   */
+  async function castBallot(
+    choice: string | string[],
+    send: (receipt: HeldReceiptPayload | null) => Promise<ActionResult>,
+  ) {
+    setCommentWarning(null);
+    if (ballotRef.current) ballotHold.current = holdPlace(ballotRef.current);
+    await action.run(
+      async () => {
+        let current = held;
+        let result: ActionResult;
+        try {
+          result = await send(current ? { receipt_id: current.receipt_id, change_key: current.change_key } : null);
+        } catch (err) {
+          if (err instanceof ApiError && err.code === "receipt_without_vote") {
+            // A receipt on this browser that is not this account's ballot:
+            // forget it and vote without it.
+            dropHeldReceipt(actor, process.id);
+            current = null;
+            setHeld(null);
+            result = await send(null);
+          } else {
+            throw err;
+          }
+        }
+        const payload = result.result as Record<string, unknown>;
+        const receiptId = typeof payload?.receipt_id === "string" ? payload.receipt_id : null;
+        const changeKey = typeof payload?.change_key === "string" ? payload.change_key : current?.change_key ?? null;
+        setJustVoted(choice);
+        setVoteWasUpdated(payload?.vote_updated === true);
+        if (receiptId && changeKey) {
+          const next: HeldReceipt = { receipt_id: receiptId, change_key: changeKey, choice, voted_on: localDay() };
+          // Kept before it is shown, so a re-read of storage finds it.
+          setReceiptNotKept(!saveHeldReceipt(await keeperId(), process.id, next));
+          setHeld(next);
+        }
+        // The tally and "has voted" from the answer, before the comment.
+        onView(result.view);
+        await submitCommentIfPresent();
+      },
+      {
+        onError: (err) => {
+          if (err instanceof ApiError && (err.code === "already_voted" || err.code === "receipt_not_accepted")) {
+            if (err.code === "receipt_not_accepted") {
+              dropHeldReceipt(actor, process.id);
+              setHeld(null);
+            }
+            setVotedElsewhere(true);
+          }
+        },
+      },
+    );
+  }
+
+  function doVote(option: string) {
+    return castBallot(option, (receipt) => submitVote(process.id, actor, option, receipt));
+  }
+
+  async function doApprovalVote() {
+    const selections = Array.from(approvalSelections);
+    if (selections.length === 0) {
+      action.setError("Select at least one option");
+      return;
+    }
+    await castBallot(selections, (receipt) => submitApprovalVote(process.id, actor, selections, receipt));
+  }
+
+  async function submitCommentIfPresent() {
+    const trimmed = comment.trim();
+    if (trimmed.length > 0) {
+      try {
+        const input = await submitInput(
+          process.id,
+          trimmed,
+          commentIdentityMode === "anonymous_only" || commentAnonymous,
+        );
+        announceInput(process.id, input);
+        setCommentSubmitted(true);
+        setComment("");
+      } catch (commentErr) {
+        const msg = commentErr instanceof Error ? commentErr.message : "Failed to submit comment";
+        setCommentWarning(
+          `Your vote was recorded, but the comment couldn't be saved: ${msg}`,
+        );
+      }
+    }
+  }
+
+  function handleVote(option: string) {
+    requireAuth(() => doVote(option));
+  }
+
+  function handleApprovalSubmit() {
+    requireAuth(() => doApprovalVote());
+  }
+
+  function toggleApprovalOption(option: string) {
+    setApprovalSelections((prev) => {
+      const next = new Set(prev);
+      if (next.has(option)) next.delete(option);
+      else next.add(option);
+      return next;
+    });
+  }
+
+  function doSupport() {
+    return action.run(async () => onView((await supportVote(process.id, actor)).view));
+  }
+
+  function handleSupport() {
+    requireAuth(() => doSupport());
+  }
+
+  function handleUnsupport() {
+    return action.run(async () => onView((await unsupportVote(process.id, actor)).view));
+  }
+
+  function formatCurrentVote(vote: string | string[] | null): string | null {
+    if (vote === null) return null;
+    if (Array.isArray(vote)) return vote.join(", ");
+    return vote;
+  }
+
+  return (
+    <div className="vote-panel">
+      {showAuthModal && (
+        <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
+      )}
+
+      {/* Proposal/support phase */}
+      {(isProposed || isThresholdMet) && (
+        <div className="proposal-endorsement">
+          <h4>Endorsements</h4>
+          <div className="proposal-progress">
+            <div className="proposal-progress-track">
+              <div
+                className="proposal-progress-fill"
+                style={{ width: `${Math.min(100, Math.round((process.support_count / process.support_threshold) * 100))}%` }}
+              />
+            </div>
+            <span className="proposal-progress-label">
+              {process.support_count} of {process.support_threshold} endorsements
+            </span>
+          </div>
+          {isProposed && (
+            <>
+              <p className="proposal-needs">
+                Needs {process.support_threshold - process.support_count} more endorsement{process.support_threshold - process.support_count !== 1 ? "s" : ""} to proceed to an official vote
+              </p>
+              {process.has_supported ? (
+                <div className="endorsement-actions">
+                  <p className="endorse-confirmation">You endorsed this proposal</p>
+                  <button
+                    className="unendorse-button"
+                    onClick={handleUnsupport}
+                    disabled={loading}
+                  >
+                    {loading ? "Removing..." : "Remove Endorsement"}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="endorse-button"
+                  onClick={handleSupport}
+                  disabled={loading}
+                >
+                  {loading ? "Endorsing..." : "Endorse Proposal"}
+                </button>
+              )}
+            </>
+          )}
+          {isThresholdMet && (
+            <p className="proposal-needs">Threshold reached — awaiting activation</p>
+          )}
+          {error && <p className="error">{error}</p>}
+        </div>
+      )}
+
+      {/* Draft state */}
+      {process.status === "draft" && (
+        <div className="vote-options">
+          <h4>Draft</h4>
+          <p>This process is still being configured.</p>
+        </div>
+      )}
+
+      {/* Active voting */}
+      {isActive && (() => {
+        const currentVote = justVoted ?? held?.choice ?? null;
+        const hasExistingVote = currentVote !== null;
+
+        // Voted, and this browser holds no receipt: the vote counts, and only
+        // the browser it was cast from can change it. Say so plainly rather
+        // than offer buttons that would be refused.
+        if (!hasExistingVote && (votedElsewhere || (process.has_voted === true && !held))) {
+          return (
+            <div className="vote-options">
+              <h4>Your vote</h4>
+              <div className="vote-receipt vote-receipt-elsewhere">
+                <p className="vote-receipt-title">You've already voted, and your vote is counted</p>
+                <p className="vote-receipt-explanation">
+                  {votedElsewhere
+                    ? "You can change it only from the browser where you voted, until voting closes. " +
+                      "We don't keep any record that links you to your ballot, so this browser has no way to find it."
+                    : "Checking this browser for your receipt…"}
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+        <div className="vote-options">
+          <h4>{hasExistingVote ? "Your vote" : "Cast your vote"}</h4>
+          <p className="vote-privacy-notice">
+            {hasExistingVote
+              ? "You can change your vote at any time before voting closes. Votes are private — only totals are shown."
+              : "Votes are private. Only total results are shown."}
+          </p>
+
+          {!hasExistingVote && (
+            <div className="vote-comment-field">
+              <label className="vote-comment-label" htmlFor="vote-comment">
+                Your comment <span className="vote-comment-optional">(optional)</span>
+              </label>
+              <textarea
+                id="vote-comment"
+                className="vote-comment-textarea"
+                value={comment}
+                onChange={(e) => setComment(e.target.value.slice(0, COMMENT_MAX))}
+                placeholder={`Share concerns, suggestions, context, or any thoughts worth passing on to ${space.governingBodyRef}. Submitted when you cast your vote.`}
+                rows={3}
+                maxLength={COMMENT_MAX}
+                disabled={loading}
+              />
+              <span className="vote-comment-counter">
+                {comment.length} / {COMMENT_MAX}
+              </span>
+              {commentIdentityMode === "anonymous_optional" && comment.trim().length > 0 && (
+                <label className="auth-checkbox-label comment-anonymous-toggle">
+                  <input
+                    type="checkbox"
+                    checked={commentAnonymous}
+                    onChange={(e) => setCommentAnonymous(e.target.checked)}
+                    disabled={loading}
+                  />
+                  <span>Post my comment anonymously</span>
+                </label>
+              )}
+            </div>
+          )}
+
+          {/* Yes/No/Unsure — original button-per-option */}
+          {!isApproval && (
+            <div className="vote-buttons" ref={ballotRef}>
+              {process.options.map((option) => (
+                <button
+                  key={option}
+                  className={`vote-button ${currentVote === option ? "voted" : ""}`}
+                  onClick={() => handleVote(option)}
+                  disabled={loading}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Approval — checkboxes + submit */}
+          {isApproval && (
+            <div className="approval-ballot" ref={ballotRef}>
+              <p className="approval-instruction">Select all options you approve of:</p>
+              <div className="approval-choices">
+                {process.options.map((option) => {
+                  const isSelected = approvalSelections.has(option);
+                  const wasVoted = Array.isArray(currentVote) && currentVote.includes(option);
+                  return (
+                    <label
+                      key={option}
+                      className={`approval-choice ${isSelected ? "approval-choice-selected" : ""} ${wasVoted && !justVoted ? "approval-choice-previous" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleApprovalOption(option)}
+                        disabled={loading}
+                      />
+                      <span className="approval-choice-label">{option}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <button
+                className="approval-submit-btn"
+                onClick={handleApprovalSubmit}
+                disabled={loading || approvalSelections.size === 0}
+              >
+                {loading ? "Submitting..." : hasExistingVote ? "Update vote" : "Submit vote"}
+              </button>
+            </div>
+          )}
+
+          {justVoted && commentSubmitted && (
+            <p className="vote-confirmation">
+              Your vote and comment have been submitted.
+            </p>
+          )}
+          {commentWarning && (
+            <p className="vote-comment-warning">{commentWarning}</p>
+          )}
+          {hasExistingVote && (
+            <div className="vote-receipt">
+              <p className="vote-receipt-title">
+                {voteWasUpdated ? "Your vote has been updated" : "Your vote has been recorded"}
+              </p>
+              {isApproval && currentVote && (
+                <p className="vote-receipt-choices">
+                  You approved: {formatCurrentVote(currentVote)}
+                </p>
+              )}
+              {receiptNotKept && (
+                <p className="vote-comment-warning">
+                  This browser won't keep your receipt, so you won't be able to change
+                  your vote. Your vote is counted. Copy the receipt below if you want to
+                  check it after voting closes.
+                </p>
+              )}
+              {held && receiptBox(held)}
+              {/* The share moment lives HERE, inside the receipt, not up
+                  beside the share icons at the top of the page. On a long
+                  issue page those icons are several screens above where the
+                  ballot is, so the old note appeared where nobody was looking
+                  at the instant it fired (Adam, 2026-09-05: "it just looks
+                  busy and small and not really an obvious reminder"). This is
+                  where the person just acted and is already reading. */}
+              <ShareMoment
+                processId={process.id}
+                text="Your vote is in — share this so more neighbors vote too."
+              />
+            </div>
+          )}
+          {error && <p className="error">{error}</p>}
+        </div>
+        );
+      })()}
+
+      {/* Closed / finalized voting */}
+      {isDone && (
+        <div className="vote-options">
+          <h4>{process.status === "finalized" ? "Voting finalized" : "Voting closed"}</h4>
+          {/* The receipt this browser holds: check it now, or keep the file. */}
+          {held && (
+            <div className="vote-receipt">
+              <p className="vote-receipt-title">Your receipt</p>
+              {receiptBox(held)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* View Vote Log — only shown when vote is closed or finalized */}
+      {isDone && (
+        <div className="vote-log-link-section">
+          <Link to={`/votes/${process.id}/log`} className="vote-log-link-button">
+            View Vote Log
+          </Link>
+        </div>
+      )}
+
+      {/* Results — visible after voting, when closed, or finalized */}
+      {(isActive || isDone) && (
+        <div className="vote-tally">
+          <h4>Results</h4>
+          {isApproval && canSeeResults && (
+            <p className="tally-method-note">
+              Approval voting — percentages show the share of voters who approved each option.
+            </p>
+          )}
+          {canSeeResults ? (
+            <>
+              <ResultBars
+                rows={process.options.map((option) => {
+                  const count = process.tally![option] ?? 0;
+                  const total = process.total_votes ?? 0;
+                  return {
+                    key: option,
+                    label: option,
+                    count,
+                    pct: total > 0 ? Math.round((count / total) * 100) : 0,
+                    // This browser's own ballot, from its receipt (open or closed).
+                    mine: isMine(justVoted ?? held?.choice, option),
+                  };
+                })}
+              />
+              <p className="tally-total">{process.total_votes} total votes</p>
+            </>
+          ) : (
+            <p className="results-hidden">
+              Results will be visible after you vote.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -18,7 +18,6 @@ import {
   type SettingsSectionId,
 } from "../shared/hubSettingsSections.js";
 import { validateThemeValue } from "../shared/theme.js";
-import { parseWixFields } from "../shared/wixFields.js";
 import { ASIDE_CARDS_MAX, ASIDE_CARD_ID_SHAPE } from "../shared/asideCards.js";
 import { DISTRICTS_MAX, DISTRICT_ID_SHAPE, DISTRICT_NAME_MAX } from "../shared/aboutYou.js";
 
@@ -249,10 +248,11 @@ export function normalizeValue(
     }
 
     case "wix_fields": {
+      // One line of text, as "text" is; Meeting summaries checks the
+      // columns itself (its server's checkSetting, kernel step 3). The kind
+      // stays for a package that still declares it.
       const v = raw.trim();
       if (/[\r\n]/.test(v)) return { error: `${key} must be one line.` };
-      const { errors } = parseWixFields(v);
-      if (errors.length > 0) return { error: `${key}: ${errors[0]}` };
       return withinLength(key, v, spec.maxLength ?? DEFAULT_TEXT_MAX_LENGTH);
     }
 

@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { useIsWideViewport } from "../hooks/useIsWideViewport";
 import SampleBadge from "./SampleBadge";
-import { ListCard, StatusChip } from "../kit";
+import { ListCard } from "../kit";
 import type { ActivityColor, ActivityKind } from "../../../src/shared/feedActivity";
+import { SPACE_KINDS } from "../../../src/shared/spacePalette";
 import { absoluteTime, relativeTime } from "../utils/dates";
 
 /**
@@ -57,8 +58,6 @@ export interface FeedPostView {
    * metadata it already fetches lazily — see Feed.tsx::buildEngagement.
    */
   engagement?: string | null;
-  /** An announcement marked urgent right now: a red Urgent label beside the pill. */
-  urgent?: boolean;
 }
 
 interface Props {
@@ -127,12 +126,7 @@ export default function FeedPost({ post }: Props) {
       kindLabel={post.pillLabel}
       title={post.title}
       badges={
-        post.sample || post.urgent ? (
-          <>
-            {post.urgent && <StatusChip tone="alert">Urgent</StatusChip>}
-            {post.sample && <SampleBadge />}
-          </>
-        ) : undefined
+        post.sample ? <SampleBadge /> : undefined
       }
       meta={[
         post.note ? <span key="note" className="feed-post-note">{post.note}</span> : null,
@@ -156,7 +150,7 @@ export default function FeedPost({ post }: Props) {
       {post.engagement && (
         <p
           className={
-            post.pillKind === "brief-response"
+            SPACE_KINDS.get(post.pillKind)?.context
               ? "feed-post-engagement feed-post-engagement--context"
               : "feed-post-engagement"
           }

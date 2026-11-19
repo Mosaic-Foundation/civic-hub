@@ -64,6 +64,20 @@
  * (diffed before writing).
  * And (2026-11-18, pinning any item): the hub feature `pinning` (order 95,
  * after News sync) and its switch. Only those (diffed before writing).
+ * And (2026-11-18, pinning phase 2): the host gains process_pins (exported,
+ * keyed by process_id) and its requirement. Only those (diffed before writing).
+ * And (2026-11-19, Pinning a plugin, kernel step 4): process_pins becomes the
+ * Pinning feature's table (keyed by hub_id and process_id, as a feature's
+ * are), its requirement gains urgent and names features/pinning, and its
+ * panel gains plugin.pinning.who. Only those (diffed before writing).
+ * And (2026-11-19, Feedback a plugin, kernel step 4): feedback_submissions'
+ * requirement lists every column and names features/feedback, and
+ * platform_feedback's names services/providerInbox (the kernel's). Only those
+ * (diffed before writing).
+ * And (2026-11-19, the Admin digest a plugin, kernel step 4): admin_digest_marks'
+ * requirement names features/admin_digest, and the admin_digest job moves to
+ * the end of JOBS, after the other features' (vercel.json's crons follow).
+ * Only those (diffed before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -93,7 +107,9 @@ describe("lists derived from the manifests equal the hand-maintained ones", () =
     TABLE_KEYS,
     mappedEventTypes: mappedEventTypes(),
     PLUGIN_SECTION_ORDER,
-    plugins_section: SETTINGS_SECTIONS.plugins,
+    // A field's "?" note moved into its manifest (kernel step 4, Nov 19); it is
+    // the same note helpRegistry.json has, so the fields compare without it.
+    plugins_section: SETTINGS_SECTIONS.plugins.map(({ help: _help, ...f }) => f),
     JOBS,
     requirements: currentRequirements(),
     process_types: processTypeDisplays(),

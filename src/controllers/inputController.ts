@@ -10,6 +10,7 @@ import {
   type CommentPhase,
 } from "../modules/civic.input/index.js";
 import { getProcess } from "../services/processService.js";
+import { inputTargetPhase } from "../services/packageContributions.js";
 import { isProcessTypeEnabled } from "../services/pluginGate.js";
 import { getProcessHandler } from "../processes/registry.js";
 import {
@@ -25,8 +26,9 @@ import {
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { currentHubId } from "../config/hubContext.js";
 /** Whether a proposal exists. Loaded on first use, never as the engine starts (engine 2, ADR-017). */
-const proposalExists = async (id: string): Promise<boolean> =>
-  (await import("../../packages/civic.proposals/service.js")).proposalExists(id);
+// Something a package takes comments on that is no process (a proposal): the
+// package says so (PluginServer.inputTargets, kernel step 3).
+const proposalExists = async (id: string): Promise<boolean> => (await inputTargetPhase(id)) !== null;
 import { readSourceProposalId } from "../services/processRows.js";
 
 /**
@@ -74,7 +76,7 @@ export const handleSubmitInput = route(async (req, res) => {
     // "vote" keeps its meaning (the panel draws a divider between a
     // vote's comments and the ones carried over from its proposal);
     // every other type's comment is just a comment.
-    phase = process.definition.type === "civic.vote" ? "vote" : "comment";
+    phase = getProcessHandler(process.definition.type)?.commentPhase ?? "comment";
   } else if (await proposalExists(processId)) {
     jurisdiction = defaultJurisdiction();
     phase = "proposal";

@@ -58,10 +58,12 @@ const STYLES = join(ROOT, "ui/src/styles");
 
 /**
  * What the SDK's UI entry takes from the hub rather than the kit, by name:
- * the drafting shell (it knows the hub's sign-in, assistant and header) and
- * the type of a package's UI module (types only).
+ * the drafting shell (it knows the hub's sign-in, assistant and header), the
+ * hub's clock, and the kernel's UI surface for a package's pages
+ * (ui/src/host/index.ts, kernel step 1), plus the type of a package's UI
+ * module (types only).
  */
-const HOST_PROVIDED = new Set(["ui/src/components/DraftShell.tsx", "ui/src/config/hubClock.ts"]);
+const HOST_PROVIDED = new Set(["ui/src/components/DraftShell.tsx", "ui/src/config/hubClock.ts", "ui/src/host/index.ts"]);
 
 describe("the kit and the tokens stand alone", () => {
   it("ui/src/kit reaches only itself and the tokens", () => {

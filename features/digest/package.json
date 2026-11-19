@@ -1,0 +1,7 @@
+{
+  "name": "@civic-social/feature-digest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Email digest: a summary email of new activity to each resident who has not unsubscribed, in the hub's own send hour (ADR-016). A hub feature built as a plugin package is."
+}

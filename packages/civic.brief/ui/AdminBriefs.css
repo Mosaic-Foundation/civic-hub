@@ -1,0 +1,135 @@
+.brief-positions-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  line-height: var(--line-height-relaxed);
+}
+
+/* --- Brief source-type tag + read-only detail sections --- */
+/* Its size, case and spacing are the kit's .status-badge (the hub's sheet,
+   which used to load after this one and set them). */
+.admin-brief-source-tag {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.admin-brief-section-block {
+  margin: 0 0 var(--space-4);
+}
+
+.admin-brief-section-block h4 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-body-size);
+}
+
+/* --- Vote-context snapshot (read-only block on admin review) --- */
+
+.admin-vote-context {
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--color-surface-sunken);
+  border: var(--card-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  line-height: var(--line-height-normal);
+}
+
+.admin-vote-context-description p {
+  margin: 0 0 var(--space-2);
+}
+
+.admin-vote-context-description p:last-child {
+  margin-bottom: 0;
+}
+
+.admin-vote-context-options-label {
+  margin: var(--space-2) 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-small-size);
+}
+
+.admin-vote-context ul {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.admin-vote-context-window {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small-size);
+  color: var(--color-text-muted);
+}
+
+/* --- Vote description preview on admin list rows --- */
+
+.admin-vote-description-preview {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-small-size);
+  line-height: var(--line-height-normal);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* --- Brief review: per-brief delivery recipient picker ------------------ */
+
+.admin-recipient-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.admin-recipient-row .form-input {
+  margin: 0;
+}
+
+/* Email narrower than label — the label is the half that renders publicly
+   and tends to be longer ("Jane Doe, Board of Supervisors"). */
+.admin-recipient-row .form-input:first-child {
+  flex: 2;
+}
+.admin-recipient-row .form-input:nth-child(2) {
+  flex: 3;
+}
+
+/* Bundle marker on a grouped recipient row — reads as the office the
+   public receipt will collapse this person into. */
+.admin-recipient-group-chip {
+  flex: 0 0 auto;
+  padding: var(--space-0-5) var(--space-2);
+  font-size: var(--text-caption-size);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  color: var(--type-brief-fg);
+  background: var(--type-brief-bg);
+  border-radius: var(--radius-pill);
+}
+
+.admin-recipient-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* The whole-office adds lead the row and carry the brief accent so they
+   read as a different kind of action than the one-person adds. */
+.admin-recipient-group-add {
+  font-weight: var(--font-weight-semibold);
+  border-color: var(--type-brief-fg);
+  color: var(--type-brief-fg);
+}
+
+@media (max-width: 640px) {
+  .admin-recipient-group-chip {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-recipient-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -1,3 +1,5 @@
+import { allFeatureSpaceLinks } from "../features";
+
 /**
  * Routes a logged-out visitor can reach during beta mode without going
  * through the front door: standalone info/legal pages that are linked from
@@ -12,13 +14,17 @@
 export const BETA_PUBLIC_PATHS: ReadonlySet<string> = new Set([
   "/welcome",
   "/about",
-  "/feedback",
   "/code-of-conduct",
   "/privacy",
   "/terms",
   // The code email's sign-in link (sign-in slice, 2026-10-14).
   "/sign-in",
 ]);
+
+/** A page a logged-out visitor reaches in beta: the list above, or a feature's page that asks to be (Feedback's form). */
+export function isBetaPublicPath(pathname: string): boolean {
+  return BETA_PUBLIC_PATHS.has(pathname) || allFeatureSpaceLinks().some((l) => l.publicInBeta && l.path === pathname);
+}
 
 /**
  * The standalone legal pages. The re-acceptance modal (ReAcceptModal) opens

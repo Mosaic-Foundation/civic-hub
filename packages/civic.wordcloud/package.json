@@ -1,10 +1,11 @@
 {
   "name": "@civic-social/plugin-wordcloud",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Word clouds: one-word answers gathered into a cloud. A Civic Hub plugin package (docs/PLUGIN-PACKAGE.md).",
+  "description": "Word clouds: one-word answers gathered into a cloud. A plugin package on the kernel surface, SDK version 1 (docs/KERNEL.md).",
   "peerDependencies": {
+    "@civic-social/plugin-sdk": "^0.1.0",
     "express": "^4.22.3"
   }
 }

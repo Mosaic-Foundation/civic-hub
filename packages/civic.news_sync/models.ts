@@ -39,7 +39,7 @@ export interface NewsProcessState {
   created_at: string;
   /** On items relabelled from announcements only: the label they were given then. */
   author_role?: string;
-  // Pinned marks (src/shared/announcementBoard.ts) are flat fields any item may carry.
+  // Pins are the hub's own (process_pins), not part of the item.
 }
 
 /** First N characters of the body in the event's payload. */
@@ -49,3 +49,29 @@ export const BODY_MAX = 5000;
 
 /** The pill when a hub names none. */
 export const DEFAULT_NEWS_PILL = "News";
+
+/**
+ * The "From" label a hub's posts are copied in with: its setting
+ * (plugin.news_sync.from_label), else "<place> Government", what synced posts
+ * have always been labelled, else "Local Government" where the hub serves no
+ * place.
+ */
+export function newsFromLabel(setting: string | null | undefined, place: string | null | undefined): string {
+  const own = setting?.trim();
+  if (own) return own;
+  return place ? `${place} Government` : "Local Government";
+}
+
+/** The pill a hub's posts are copied in with: its setting (plugin.news_sync.pill_label), else "News". */
+export function newsPillLabel(setting: string | null | undefined): string {
+  return setting?.trim() || DEFAULT_NEWS_PILL;
+}
+
+/**
+ * Who a News item is from, as its card and page say it: the hub's From label
+ * as set now, else what the item itself says. Each hub has one source, so the
+ * setting names every item, including ones copied in before a change.
+ */
+export function newsFromNow(currentSetting: string | null | undefined, itemFrom: string): string {
+  return currentSetting?.trim() || itemFrom;
+}

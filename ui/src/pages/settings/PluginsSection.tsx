@@ -31,18 +31,11 @@ import { Link } from "react-router-dom";
 import SectionForm from "./SectionForm";
 import {
   BooleanField,
-  ChoiceField,
-  EmailField,
   HourField,
-  NumberField,
-  TextField,
-  UrlField,
   type FormApi,
 } from "./pluginFields";
-import { DEFAULT_NEWS_PILL, newsFromLabel } from "../../../../src/shared/newsSource";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
 import { useHub, type Hub } from "../../config/hub";
-import { feedbackContactEmail } from "../../../../src/shared/platform";
 import { HUB_JOBS_ANCHOR, pluginAnchor } from "../../../../src/shared/adminAnchors";
 import { pluginPanelAnchors } from "../../../../src/shared/settingsSearch";
 import { anchorForKey } from "../../../../src/shared/helpRegistry";
@@ -50,6 +43,7 @@ import { anchorForKey } from "../../../../src/shared/helpRegistry";
 import { useAnchoredOpen } from "../../hooks/useAnchor";
 import HelpButton from "../../components/HelpButton";
 import { HUB_FEATURES } from "../../../../src/shared/hubFeatures";
+import { currentSpaceType, pluginRequired } from "../../../../src/shared/spaceTypes";
 import { pluginHasDeadlines, processPluginCopy } from "../../processes/display";
 import { processSettingsPanel } from "../../processes";
 import { PluginInstallControls } from "./PluginInstall";
@@ -59,8 +53,6 @@ import {
   adminGetPluginLiveCounts,
   adminListPluginInstalls,
   type PluginInstall,
-  type MemberSummary,
-  getMemberSummary,
   type JobRunRecord,
   type JobRunsEntry,
 } from "../../services/api";
@@ -85,46 +77,6 @@ function digestCopy(hub: Hub): { name: string; what: string } {
 function pluginCopy(id: PluginId, hub: Hub): { name: string; what: string } {
   if (id === "digest") return digestCopy(hub);
   return processPluginCopy(id) ?? HUB_FEATURES.find((f) => f.id === id) ?? { name: id, what: "" };
-}
-
-const NEWS_CONNECTOR_LABELS: Record<string, string> = {
-  "wix-cms": "Wix blog feed",
-};
-
-/**
- * News Sync's panel: where the posts come from, and how they read on the feed
- * (src/shared/newsSource.ts). Its posts are News items of their own, so it
- * needs nothing else switched on (2026-11-18).
- */
-function NewsSyncPanel({ f }: { f: FormApi }) {
-  const hub = useHub();
-  const place = hub.isPlace ? hub.jurisdiction.split(",")[0]?.trim() : null;
-  return (
-    <>
-      <ChoiceField
-        f={f}
-        k="plugin.news_sync.connector"
-        label="Kind of feed"
-        labels={NEWS_CONNECTOR_LABELS}
-        emptyLabel="Not set up"
-      />
-      <UrlField f={f} k="plugin.news_sync.source_url" label="Feed address" hint="Both must be set for news sync to run." />
-      <TextField
-        f={f}
-        k="plugin.news_sync.from_label"
-        label="From label"
-        placeholder={newsFromLabel(null, place)}
-        hint={'Shown on each synced post as "From …", so residents know where it came from. Applies to every synced post, including ones copied in earlier. Left empty, it reads as shown here.'}
-      />
-      <TextField
-        f={f}
-        k="plugin.news_sync.pill_label"
-        label="Pill label"
-        placeholder={DEFAULT_NEWS_PILL}
-        hint={'The tag on each synced post in the feed, and the name of its filter: "County news", "Government announcement". Applies to every synced post, including ones copied in earlier. Left empty, it reads "News". An admin can pin any post from its page.'}
-      />
-    </>
-  );
 }
 
 const NO_COUNTS: Record<string, number> = {};
@@ -279,7 +231,10 @@ function PluginCard({
       </div>
       {open && (
         <div id={bodyId} className="plugin-card-body">
-          {install ? (
+          {pluginRequired(id) ? (
+            // The space type requires it (kernel rule 6): no switch, no Remove.
+            <p className="form-hint">A {currentSpaceType().displayName} needs this plugin, so it is always on.</p>
+          ) : install ? (
             <PluginInstallControls install={install} onChanged={onInstallChange} />
           ) : (
             <BooleanField f={f} k={`plugin.${id}.enabled`} label={`${pluginCopy(id, hub).name} on`} />
@@ -454,7 +409,6 @@ function LiveItemsWarning({ id, live }: { id: PluginId; live: number }) {
 // The hub features' own panels. A process plugin's panel comes from its type's
 // module (ui/src/processes/), through processSettingsPanel.
 const FEATURE_PANELS: Partial<Record<PluginId, (f: FormApi) => React.ReactNode>> = {
-  news_sync: (f) => <NewsSyncPanel f={f} />,
   digest: (f) => (
     <HourField
       f={f}
@@ -468,58 +422,8 @@ const FEATURE_PANELS: Partial<Record<PluginId, (f: FormApi) => React.ReactNode>>
       }
     />
   ),
-  feedback: (f) => (
-    <EmailField
-      f={f}
-      k="plugin.feedback.contact_email"
-      label="Address on the Feedback page"
-      placeholder={feedbackContactEmail(undefined, f.data.values["legal.contact_email"])}
-      hint={
-        <>
-          Where the <a href="/feedback" target="_blank" rel="noreferrer">Feedback page</a> tells
-          people to write if they would rather email. Left empty, it shows the contact address
-          under <Link to="/admin/settings/legal">Legal</Link>, or the platform's when that is
-          empty too: the address shown here.
-        </>
-      }
-    />
-  ),
-  members: (f) => (
-    <>
-      <MemberCountLine saved={f.data.values["plugin.members.min_count"] ?? ""} />
-      <NumberField
-        f={f}
-        k="plugin.members.min_count"
-        label="Show members from"
-        unit="members"
-        placeholder="0"
-        hint="Until the hub has this many members, residents see no member count, no faces and no Members page. Admins always see them. Empty or 0 shows them from the first member."
-      />
-      <BooleanField
-        f={f}
-        k="plugin.members.page_before_threshold"
-        label="Show the Members page before then"
-        hint="The page and its place in the menus appear for members now; the count on the home page still waits."
-      />
-    </>
-  ),
 };
 
 function settingsPanel(f: FormApi, id: PluginId): React.ReactNode | null {
   return processSettingsPanel(id, f) ?? FEATURE_PANELS[id]?.(f) ?? featureSettingsPanel(id, f) ?? null;
-}
-
-/**
- * How many members the hub has now, which only admins see before the
- * threshold. Read again when a save changes the threshold (`saved`).
- */
-function MemberCountLine({ saved }: { saved: string }) {
-  const { data: summary } = useApi<MemberSummary>("members/summary", () => getMemberSummary(), { rereadOn: saved });
-  if (!summary || summary.count === null) return null;
-  return (
-    <p className="form-hint" data-testid="members-now">
-      This hub has {summary.count.toLocaleString()} {summary.count === 1 ? "member" : "members"}
-      {summary.shown === false ? "; residents don't see the count yet." : "; residents see the count."}
-    </p>
-  );
 }

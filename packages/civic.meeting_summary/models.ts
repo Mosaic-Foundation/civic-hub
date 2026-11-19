@@ -267,7 +267,7 @@ export interface FetchPdfFn {
 }
 
 /** A transcript line: the `video` adapter's (src/adapters/video.ts). */
-import { type TranscriptSegment } from "@civic-social/plugin-sdk/first-party";
+import { type TranscriptSegment } from "@civic-social/plugin-sdk";
 export type { TranscriptSegment };
 
 export interface FetchYouTubeTranscriptFn {
@@ -275,7 +275,7 @@ export interface FetchYouTubeTranscriptFn {
 }
 
 // The model call's shape lives in src/shared/, where the news sync reads it too (engine 2, B10).
-import type { CallClaudeFn } from "../../src/shared/meetingSummaryRules.js";
+import type { CallClaudeFn } from "./rules.js";
 export type { CallClaudeFn };
 
 // --- Configuration ---------------------------------------------------------
@@ -317,7 +317,7 @@ export interface MeetingSummaryConfig {
   collection_name?: string;
   /**
    * `plugin.meeting_summary.wix_fields`: which collection columns hold the
-   * date, type, documents and recordings (src/shared/wixFields.ts). Empty
+   * date, type, documents and recordings (./wixFields.ts). Empty
    * reads as the defaults.
    */
   wix_fields?: string;

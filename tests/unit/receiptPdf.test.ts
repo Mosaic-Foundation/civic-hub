@@ -6,7 +6,7 @@ import {
   longDay,
   receiptFileName,
   type ReceiptFileInput,
-} from "../../src/shared/receiptPdf.js";
+} from "../../packages/civic.vote/ui/receiptPdf.js";
 
 const base: ReceiptFileInput = {
   hubName: "Test Civic Hub",

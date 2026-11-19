@@ -4,7 +4,7 @@
 //
 //   Review        Processes, Briefs, Meeting summaries, Edits; a closed
 //                 group's head carries the sum of their counts
-//   Community     Moderation, Announcements, Feedback
+//   Community     Moderation, then features' pages (Pinned, Feedback)
 //   Activity      a plain item (a feature's page, when switched on)
 //   Hub settings  its sections (src/shared/adminAnchors.ts)
 //   and at the foot, in small type: Archived, Setup guide, Contact Civic.Social.
@@ -22,12 +22,13 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useApi } from "./useApi";
 import { adminQueueCounts, ADMIN_QUEUES_CHANGED, type AdminQueueCounts } from "../services/api";
+import { adminQueueTabs } from "../components/packageContributions";
 import { useHub } from "../config/hub";
 import { FEATURE_UI } from "../features";
 import { SETTINGS_NAV, SETUP_CHECKLIST_PATH } from "../../../src/shared/adminAnchors";
 import type { NavItem } from "./useNavGroups";
 
-const EMPTY: AdminQueueCounts = { reviews: 0, briefs: 0, meeting_summaries: 0, feedback: 0, edits: 0, total: 0 };
+const EMPTY: AdminQueueCounts = { reviews: 0, edits: 0, total: 0 };
 
 /** Is this an admin page? Every admin route lives under /admin. */
 export function isAdminPath(pathname: string): boolean {
@@ -98,28 +99,27 @@ export function useAdminNav(): AdminNav {
   });
 
   const review: NavItem[] = [item("processes", "Processes", "reviews", "/admin/reviews", counts.reviews)];
-  // Hidden when the hub switched the plugin off (config/plugins.tsx).
-  if (hub.plugins.enabled("brief")) review.push(item("briefs", "Briefs", "outcome", "/admin/briefs", counts.briefs));
-  if (hub.plugins.enabled("meeting_summary")) {
-    review.push(item("meeting-summaries", "Meeting summaries", "meeting", "/admin/meeting-summaries", counts.meeting_summaries));
+  // The packages' review queues (Briefs, Meeting summaries), while their
+  // plugin is on (components/packageContributions.ts).
+  for (const q of adminQueueTabs(hub)) {
+    review.push(item(q.path.replace(/^\/admin\//, ""), q.label, q.icon, q.path, counts[q.queue] ?? 0));
   }
   review.push(item("edits", "Edits", "edits", "/admin/edits", counts.edits));
 
   const community: NavItem[] = [item("moderation", "Moderation", "moderation", "/admin/moderation")];
-  // Everything pinned to the right column's card, any type (2026-11-18).
-  if (hub.plugins.enabled("pinning")) community.push(item("admin-pinned", "Pinned", "pin", "/admin/pinned"));
-  // Pinned and urgent announcements (2026-11-15), while the plugin is on.
-  if (hub.plugins.enabled("announcement")) {
-    community.push(item("admin-announcements", "Announcements", "announcement", "/admin/announcements"));
-  }
-  if (hub.plugins.enabled("feedback")) {
-    community.push(item("admin-feedback", "Feedback", "feedback", "/admin/feedback", counts.feedback));
+  // A feature's page that belongs in Community (Pinning's Pinned, Feedback;
+  // ui/src/features.ts), with its queue's count when it has one.
+  for (const u of FEATURE_UI) {
+    if (u.adminTab?.group === "community" && hub.plugins.enabled(u.feature)) {
+      const count = u.adminTab.queue ? (counts[u.adminTab.queue] ?? 0) : undefined;
+      community.push(item(`admin-${u.feature}`, u.adminTab.label, u.adminTab.icon, u.adminTab.path, count));
+    }
   }
 
   // Feature packages' pages (ui/src/features.ts): Activity.
   const singles: AdminNavSingle[] = [];
   for (const u of FEATURE_UI) {
-    if (u.adminTab && hub.plugins.enabled(u.feature)) {
+    if (u.adminTab && !u.adminTab.group && hub.plugins.enabled(u.feature)) {
       singles.push({ kind: "item", item: item(u.feature, u.adminTab.label, u.adminTab.icon, u.adminTab.path) });
     }
   }

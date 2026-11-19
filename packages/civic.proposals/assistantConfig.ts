@@ -4,14 +4,7 @@
 // the best-practices doc, the brainstorm/review guidance, the form's field
 // schema and inline guidance, and the storage adapter for proposal drafts.
 
-import {
-  type AssistantTypeConfig,
-  KEYS,
-  getDraft,
-  appendConversation,
-  saveReviewResult,
-  applyGeneratedDraft,
-} from "@civic-social/plugin-sdk/first-party";
+import { type AssistantTypeConfig, draftsOf } from "@civic-social/plugin-sdk";
 import { proposalDraftKind } from "./draftKind.js";
 
 /**
@@ -36,7 +29,8 @@ export const proposalAssistantConfig: AssistantTypeConfig = {
   returningGreeting:
     "I can see your draft so far. Ask me to review it, strengthen a section, or find sources — or tell me what you're working on.",
   bestPractices: PROPOSAL_BEST_PRACTICES_FALLBACK,
-  bestPracticesDocument: KEYS.LEGAL_PROPOSAL_BEST_PRACTICES,
+  // The hub's document (a setting key): its own guide, or the shared placeless one.
+  bestPracticesDocument: "legal.proposal_best_practices",
   bestPracticesTitle: "Proposal Best Practices",
   brainstormGuidance: `For Issue: What's the concern, in your own words? What have you seen or experienced that brings this up? Who do you think is affected? What outcome would you want?
 For Idea: What would you like to see happen? Why does it matter to you? Who else might want this?
@@ -65,17 +59,8 @@ Project. Action-oriented. Focus on who would benefit, what it would take, who's 
       hint: "Link anything that backs a factual claim — official documents, news articles, meeting minutes. Opinions don't need sources.",
     },
   ],
-  draftStore: {
-    async get(id) {
-      const draft = await getDraft(proposalDraftKind.spec, id);
-      return draft ? ({ ...draft } as never) : undefined;
-    },
-    appendConversation: (id, userMessage, assistantMessage) =>
-      appendConversation(proposalDraftKind.spec, id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions, checkedHash) =>
-      saveReviewResult(proposalDraftKind.spec, id, suggestions, checkedHash),
-    applyGeneratedDraft: async (id, draft) => {
-      await applyGeneratedDraft(proposalDraftKind.spec, id, { ...draft });
-    },
+  // The kernel's store for this kind's drafts, read when the assistant runs.
+  get draftStore() {
+    return draftsOf(proposalDraftKind).assistantStore();
   },
 };

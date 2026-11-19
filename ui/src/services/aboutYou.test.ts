@@ -26,6 +26,7 @@ beforeEach(() => {
 
 afterEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe("About you after a sign-up", () => {
@@ -37,7 +38,7 @@ describe("About you after a sign-up", () => {
 
   it("without an onboarding cloud: not on the action that made them sign up, then on the next", async () => {
     const { askAboutYouFirst, holdAboutYouForSignup, prompt } = await load();
-    holdAboutYouForSignup(false);
+    holdAboutYouForSignup(null);
     await askAboutYouFirst();
     expect(prompt).not.toHaveBeenCalled();
     expect(request).not.toHaveBeenCalled();
@@ -46,25 +47,39 @@ describe("About you after a sign-up", () => {
   });
 
   it("with an onboarding cloud: not until they leave it", async () => {
-    const { askAboutYouFirst, holdAboutYouForSignup, releaseAboutYouOnboardingHold, prompt } = await load();
-    holdAboutYouForSignup(true);
+    const { askAboutYouFirst, holdAboutYouForSignup, prompt } = await load();
+    holdAboutYouForSignup("/wordcloud/w1?onboarding=1&return=%2Fprocess%2Fabc");
     await askAboutYouFirst(); // the vote that made them sign up
     window.history.replaceState(null, "", "/wordcloud/w1?onboarding=1&return=%2Fprocess%2Fabc");
     await askAboutYouFirst(); // their word on the cloud
     await askAboutYouFirst();
     expect(prompt).not.toHaveBeenCalled();
-    releaseAboutYouOnboardingHold();
     window.history.replaceState(null, "", "/process/abc");
     await askAboutYouFirst();
     expect(prompt).toHaveBeenCalledTimes(1);
   });
 
   it("never over the onboarding cloud, even after a reload of it", async () => {
-    const { askAboutYouFirst, prompt } = await load();
+    const first = await load();
+    first.holdAboutYouForSignup("/wordcloud/w1?onboarding=1");
+    await first.askAboutYouFirst();
     window.history.replaceState(null, "", "/wordcloud/w1?onboarding=1");
+    const { askAboutYouFirst, prompt } = await load(); // the reload
     await askAboutYouFirst();
     expect(prompt).not.toHaveBeenCalled();
-    window.history.replaceState(null, "", "/wordcloud/w1");
+    window.history.replaceState(null, "", "/");
+    await askAboutYouFirst();
+    expect(prompt).toHaveBeenCalledTimes(1);
+  });
+
+  it("names no package: any first stop a package gives is held the same way", async () => {
+    const { askAboutYouFirst, holdAboutYouForSignup, prompt } = await load();
+    holdAboutYouForSignup("/somewhere/welcome");
+    await askAboutYouFirst();
+    window.history.replaceState(null, "", "/somewhere/welcome");
+    await askAboutYouFirst();
+    expect(prompt).not.toHaveBeenCalled();
+    window.history.replaceState(null, "", "/process/abc");
     await askAboutYouFirst();
     expect(prompt).toHaveBeenCalledTimes(1);
   });

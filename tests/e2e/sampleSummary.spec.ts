@@ -13,7 +13,7 @@
  */
 
 import { test, expect, type APIRequestContext } from "@playwright/test";
-import { localRest, mintSession, storedSetting } from "../fixtures/adminSession.js";
+import { localRest, mintSession, storedSetting } from "./sessions";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 import { E2E_API_BASE as API } from "./hubApi";
 

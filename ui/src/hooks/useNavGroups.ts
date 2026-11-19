@@ -3,7 +3,7 @@
 //
 //   sections  Feed, then the enabled types' sections and Members, in the
 //             hub's Section order (config/navigation.ts);
-//   hub       Share this hub (members), Feedback, Welcome (when written), About;
+//   hub       Share this hub (members), features' pages (Feedback), Welcome (when written), About;
 //   admin     Reviews (with what is new), Moderation, the switched-on features'
 //             pages (Activity), Hub settings, Plugins, Contact Civic.Social:
 //             admins only;
@@ -19,7 +19,7 @@ import { useNavData } from "../context/navDataState";
 import { navSections } from "../config/navigation";
 import { useHub } from "../config/hub";
 import { sectionForPath } from "../../../src/shared/navSections";
-import { FEATURE_UI } from "../features";
+import { FEATURE_UI, featureSpaceLinks } from "../features";
 
 export interface NavItem {
   id: string;
@@ -103,13 +103,14 @@ export function useNavGroups({ onShare }: { onShare: () => void }): NavGroups {
     to: s.path,
     current: s.id === currentSection,
     // Read as "Members 7,925": the word already says what the number counts.
-    ...(s.id === "members" && data.memberCount ? { count: data.memberCount } : {}),
+    ...(data.sectionCounts[s.id] ? { count: data.sectionCounts[s.id] } : {}),
   }));
 
   const hubLinks: NavItem[] = [];
   if (user?.is_resident) hubLinks.push({ id: "share", label: "Share this hub", icon: "share", onSelect: onShare });
-  if (hub.plugins.enabled("feedback")) {
-    hubLinks.push({ id: "feedback", label: "Feedback", icon: "feedback", to: "/feedback", current: pathname === "/feedback" });
+  // A feature's page for everyone (Feedback's form; ui/src/features.ts).
+  for (const l of featureSpaceLinks(hub.plugins.enabled)) {
+    hubLinks.push({ id: l.feature, label: l.label, icon: l.icon, to: l.path, current: pathname === l.path });
   }
   // Only when the hub has written one (review R27).
   if (hub.has_welcome) {
@@ -129,7 +130,7 @@ export function useNavGroups({ onShare }: { onShare: () => void }): NavGroups {
           current: REVIEW_PATHS.some((p) => pathname.startsWith(p)),
         },
         ...ADMIN_PAGES.slice(0, 1).map(({ match, ...page }) => ({ ...page, current: match(pathname) })),
-        ...FEATURE_UI.filter((u) => u.adminTab && hub.plugins.enabled(u.feature)).map((u) => ({
+        ...FEATURE_UI.filter((u) => u.adminTab && !u.adminTab.group && hub.plugins.enabled(u.feature)).map((u) => ({
           id: u.feature,
           label: u.adminTab!.label,
           icon: u.adminTab!.icon,

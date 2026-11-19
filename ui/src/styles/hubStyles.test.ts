@@ -17,9 +17,13 @@ function cssFiles(dir: string): string[] {
 
 describe("styles/hubStyles.ts", () => {
   it("imports every stylesheet of the hub app, so none is left to load in a later order", () => {
-    const listed = [...readFileSync(join(here, "hubStyles.ts"), "utf8").matchAll(/^import "([^"]+)";/gm)].map((m) =>
+    const imported = [...readFileSync(join(here, "hubStyles.ts"), "utf8").matchAll(/^import "([^"]+)";/gm)].map((m) =>
       relative(src, join(here, m[1]!)),
     );
+    // The space type's palette colours load right after theme.css, from the
+    // hosting layer's config/ (kernel step 4); the rest are the app's own.
+    expect(imported[1]).toBe("../../config/spacePalette.css");
+    const listed = imported.filter((f) => !f.startsWith(".."));
     const all = cssFiles(src).filter(
       // The console and the start page are other apps; the design system and
       // the token sets are @imported by theme.css.

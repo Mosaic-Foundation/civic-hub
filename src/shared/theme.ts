@@ -19,25 +19,24 @@
 // (what part five stored) still parses, as { primary }.
 
 import { DECLARED_COLORS } from "./feedActivity.js";
+import { SPACE_COLOR_KEYS, SPACE_PALETTE } from "./spacePalette.js";
 
-export const BUILTIN_THEME_TYPE_KEYS = [
-  "vote",
-  "proposal",
-  "conversation",
-  "project",
-  "announcement",
-  // Posts News Sync copies in (its own type since 2026-11-18).
-  "news",
-  "meeting",
-  "brief",
-  "wordcloud",
-] as const;
-/** A colour family: the hub's own, or one a package declares with its card kind (engine 2, A5). */
-export type ThemeTypeKey = (typeof BUILTIN_THEME_TYPE_KEYS)[number] | (string & {});
-/** Every colour family an admin may pick a hue for: the hub's own, then the packages' (A5). */
+/** The space type's themeable colour families (its palette), in its order. */
+const SPACE_THEME_COLORS = SPACE_PALETTE.colors.flatMap((c) => (c.theme ? [{ key: c.key, ...c.theme }] : []));
+
+/**
+ * The packages' own colour families that the space type's palette does not
+ * list (A5; kernel step 4). A family the palette lists is the palette's: its
+ * values, and whether the theme offers it, override the package's.
+ */
+const PACKAGE_ONLY_COLORS = DECLARED_COLORS.filter((c) => !SPACE_COLOR_KEYS.has(c.key));
+
+/** A colour family: the space type's, or one a package declares with its card kind (engine 2, A5). */
+export type ThemeTypeKey = string;
+/** Every colour family an admin may pick a hue for: the space type's, then the packages' (A5). */
 export const THEME_TYPE_KEYS: readonly ThemeTypeKey[] = [
-  ...BUILTIN_THEME_TYPE_KEYS,
-  ...DECLARED_COLORS.map((c) => c.key).filter((k) => !(BUILTIN_THEME_TYPE_KEYS as readonly string[]).includes(k)),
+  ...SPACE_THEME_COLORS.map((c) => c.key),
+  ...PACKAGE_ONLY_COLORS.map((c) => c.key),
 ];
 
 export interface HubTheme {
@@ -96,17 +95,9 @@ export const DEFAULT_THEME_COLORS = {
   accent: "#b8501f",
   background: "#fcfbf8",
   types: {
-    vote: "#15294c",
-    proposal: "#5f4b8b",
-    conversation: "#0f5e66",
-    project: "#1565c0",
-    announcement: "#6e3013",
-    news: "#34495a",
-    meeting: "#2a7340",
-    brief: "#6e3013",
-    wordcloud: "#5c6b2a",
-    // The packages' declared colours (A5).
-    ...Object.fromEntries(DECLARED_COLORS.map((c) => [c.key, c.fg])),
+    // The space type's default hues, then the packages' own for the rest.
+    ...Object.fromEntries(SPACE_THEME_COLORS.map((c) => [c.key, c.hue])),
+    ...Object.fromEntries(PACKAGE_ONLY_COLORS.map((c) => [c.key, c.fg])),
   } as Record<ThemeTypeKey, string>,
 };
 
@@ -317,16 +308,8 @@ export function typePair(hue: string): { fg: string; bg: string } {
 }
 
 const TYPE_LABELS: Record<ThemeTypeKey, string> = {
-  vote: "Votes",
-  proposal: "Proposals",
-  conversation: "Conversations",
-  project: "Projects",
-  announcement: "Announcements",
-  news: "News",
-  meeting: "Meeting summaries",
-  brief: "Civic briefs",
-  wordcloud: "Word clouds",
-  ...Object.fromEntries(DECLARED_COLORS.map((c) => [c.key, c.label])),
+  ...Object.fromEntries(SPACE_THEME_COLORS.map((c) => [c.key, c.label])),
+  ...Object.fromEntries(PACKAGE_ONLY_COLORS.map((c) => [c.key, c.label])),
 };
 
 export function themeTypeLabel(key: ThemeTypeKey): string {
@@ -334,37 +317,27 @@ export function themeTypeLabel(key: ThemeTypeKey): string {
 }
 
 /**
- * The stylesheet for the packages' declared colour families (A5): each
- * family's default tokens (a theme's picked hue still wins, set inline on the
- * root), and the feed card's edge and pill. The hub's own families are in
- * theme.css and Feed.css; the UI adds this once at boot. Empty when no package
- * declares one.
+ * The stylesheet for the packages' own colour families (A5; kernel step 4):
+ * each family's default tokens, light and dark, and the feed card's edge and
+ * pill. A family the space type's palette lists is left to the palette's
+ * stylesheet (config/spacePalette.css), so the space type overrides the
+ * package; a theme's picked hue wins over both, set inline on
+ * the root. The UI adds this once at boot. Empty when no package declares one.
  */
 export function declaredTypeStylesheet(): string {
-  return DECLARED_COLORS.filter((c) => /^[a-z][a-z0-9-]*$/.test(c.key) && isHexColor(c.fg) && isHexColor(c.bg))
+  return PACKAGE_ONLY_COLORS.filter((c) => /^[a-z][a-z0-9-]*$/.test(c.key) && isHexColor(c.fg) && isHexColor(c.bg))
     .map(
       (c) =>
         `:root{--type-${c.key}-bg:${c.bg};--type-${c.key}-fg:${c.fg}}\n` +
+        (c.dark && isHexColor(c.dark.fg) && isHexColor(c.dark.bg)
+          ? `:root[data-mode="dark"],[data-mode="dark"] .theme-scope{--type-${c.key}-bg:${c.dark.bg};--type-${c.key}-fg:${c.dark.fg}}\n`
+          : "") +
         `.feed-post--type-${c.key}{--feed-kind:var(--type-${c.key}-fg)}\n` +
         `.feed-pill--type-${c.key}{background:var(--type-${c.key}-bg);color:var(--type-${c.key}-fg)}\n`,
     )
     .join("");
 }
 
-/**
- * The legacy --pill-* names a type also drives, so older surfaces follow.
- * Not vote: --pill-vote-* doubles as the general control accent (~25 sites
- * in App.css), which should follow primary, not the votes hue.
- */
-const LEGACY_PILLS: Partial<Record<ThemeTypeKey, string[]>> = {
-  proposal: ["proposal"],
-  conversation: ["conversation"],
-  project: ["project"],
-  wordcloud: ["wordcloud"],
-  announcement: ["announcement"],
-  meeting: ["meeting"],
-  brief: ["brief"],
-};
 
 /**
  * Everything a theme sets. Only what the admin (or the preset) chose is
@@ -428,13 +401,13 @@ export function resolveTheme(theme: HubTheme): ResolvedTheme {
     vars["--ds-color-paper-200"] = mix(background, BLACK, 0.07);
   }
 
-  // A type follows the base colour it follows by default (vote → primary,
-  // announcement and brief → accent) unless the admin picked its own hue.
+  // A type follows the base colour its palette says it follows (the Civic
+  // Hub's votes follow primary; announcements and briefs, accent) unless the
+  // admin picked its own hue.
   const types = { ...DEFAULT_THEME_COLORS.types };
-  if (chosen.primary) types.vote = mix(primary, BLACK, 0.4);
-  if (chosen.accent) {
-    types.announcement = mix(accent, BLACK, 0.4);
-    types.brief = mix(accent, BLACK, 0.4);
+  for (const c of SPACE_THEME_COLORS) {
+    if (c.follows === "primary" && chosen.primary) types[c.key] = mix(primary, BLACK, 0.4);
+    if (c.follows === "accent" && chosen.accent) types[c.key] = mix(accent, BLACK, 0.4);
   }
   for (const key of THEME_TYPE_KEYS) {
     const picked = theme.types?.[key];
@@ -451,13 +424,14 @@ export function resolveTheme(theme: HubTheme): ResolvedTheme {
     }
     vars[`--type-${key}-fg`] = fg;
     vars[`--type-${key}-bg`] = bg;
-    for (const pill of LEGACY_PILLS[key] ?? []) {
-      vars[`--pill-${pill}-fg`] = fg;
-      vars[`--pill-${pill}-bg`] = bg;
+    const family = SPACE_THEME_COLORS.find((c) => c.key === key);
+    if (family?.legacyPill) {
+      vars[`--pill-${key}-fg`] = fg;
+      vars[`--pill-${key}-bg`] = bg;
     }
-    if (key === "brief") {
-      vars["--type-brief-rule"] = mix(fg, WHITE, 0.35);
-      vars["--type-brief-wash"] = mix(picked, WHITE, 0.94);
+    if (family?.ruleAndWash) {
+      vars[`--type-${key}-rule`] = mix(fg, WHITE, 0.35);
+      vars[`--type-${key}-wash`] = mix(picked, WHITE, 0.94);
     }
   }
 

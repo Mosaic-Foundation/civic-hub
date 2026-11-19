@@ -17,8 +17,8 @@
 
 import { createHash } from "node:crypto";
 import { getProcessHandler } from "../processes/registry.js";
-import type { AssistantDraft, DraftState } from "../modules/civic.assistant/index.js";
-import type { Suggestion } from "../modules/civic.assistant/models.js";
+import type { AssistantDraft, DraftState } from "../models/assistant.js";
+import type { Suggestion } from "../models/assistant.js";
 import { getDraft, saveReviewResult } from "../modules/civic.drafts/index.js";
 import { loadedPackages } from "../plugins/loader.js";
 

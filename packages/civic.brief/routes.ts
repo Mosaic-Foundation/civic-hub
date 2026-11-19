@@ -9,7 +9,7 @@ import {
   handleListBriefs,
   handlePostBriefResponse,
 } from "./controller.js";
-import { requireOfficial } from "@civic-social/plugin-sdk/first-party";
+import { requireOfficial } from "@civic-social/plugin-sdk";
 
 const router = Router();
 

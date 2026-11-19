@@ -2,7 +2,7 @@
 //
 // Feed first, always. Then the sections of the enabled process types (from
 // the registry: TypeDisplay.section, served as `process_types`) and the hub's
-// own Members page, in the hub's Section order (`nav.section_order`), with any
+// hub features' sections (the Members page), in the hub's Section order (`nav.section_order`), with any
 // section the order does not name after it in the default order. That one
 // list is what the top tabs, the sidebar and the More sheet draw, and its
 // first four are the phone's bottom bar (Adam, 2026-10-14). The Navigation
@@ -13,6 +13,7 @@
 // layout; they are links, not sections, and are not ordered.
 
 import type { ProcessTypeDisplay } from "./typeDisplay.js";
+import { FEATURE_MANIFEST_LIST } from "./featureManifests.js";
 
 export interface NavSection {
   id: string;
@@ -40,13 +41,14 @@ export const FEED_SECTION: NavSection = {
 };
 
 /**
- * The hub's own sections, beside the types'. Members comes after Outcomes by
- * default; it is the Members plugin's (2026-10-14), so its switch, and its
- * threshold through `enabled`, decide whether it is drawn.
+ * The hub features' sections, beside the types' (FeatureManifest.section; the
+ * Members page, after Outcomes by default). Each is its feature's, so its
+ * switch, and what its feature says through `enabled`, decide whether it is
+ * drawn.
  */
-const HUB_SECTIONS: ReadonlyArray<NavSection & { order: number; plugin: string }> = [
-  { id: "members", label: "Members", short: "Members", path: "/members", detailPaths: [], icon: "members", kind: "hub", order: 60, plugin: "members" },
-];
+const HUB_SECTIONS: ReadonlyArray<NavSection & { order: number; plugin: string }> = FEATURE_MANIFEST_LIST.flatMap((m) =>
+  m.section ? [{ ...m.section, detailPaths: [], kind: "hub" as const, plugin: m.feature }] : [],
+);
 
 /** How many sections the phone's bar shows before More (Feed is the first of them). */
 export const BAR_SECTION_COUNT = 4;
@@ -65,8 +67,8 @@ export function parseSectionOrder(value: string | undefined): string[] {
 /**
  * Every section the hub has now, Feed first, in the hub's order.
  *
- * `enabled(plugin)` is the hub's plugin switch (for Members, also whether the
- * reader may see the page yet: the Members plugin's threshold). A section the order names but
+ * `enabled(plugin)` is the hub's plugin switch (for a feature's section, also
+ * whether the reader may see it yet: the Members plugin's threshold). A section the order names but
  * the hub doesn't have is skipped; one it has but the order doesn't name (a
  * plugin just switched on) comes after the named ones, in default order.
  */

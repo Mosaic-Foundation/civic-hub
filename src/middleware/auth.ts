@@ -209,6 +209,41 @@ export const requireOfficial = route(async (req, res, next) => {
 export const requireBoardOrAdmin = requireAnnouncementPoster;
 
 /**
+ * SDK version 1's name for the guard (kernel step 1): an account that may post
+ * for the space, an administrator or someone the admins list as an author
+ * (docs/KERNEL.md §3: an accountable person, or a group's voice).
+ */
+export const requireAuthor = requireAnnouncementPoster;
+
+/** Who the author is, as requireAuthor found them: for the byline. */
+export interface AuthorOf {
+  /** "admin" may change anyone's posts; "author" only their own. */
+  role: "admin" | "author";
+  /** The one label a post carries: the office or group for someone who is both. */
+  label: string;
+  /** The display name the admins set for a listed author, when they set one. */
+  name: string | null;
+  /** The public role the author holds (the kernel's accountable role), or null. */
+  accountable: { type: string; title: string } | null;
+}
+
+/** The author requireAuthor admitted. Throws (500) on a route it did not guard. */
+export function authorshipOf(res: Response): AuthorOf {
+  const role = res.locals.effectiveRole as AuthorOf["role"] | undefined;
+  const label = res.locals.authorLabel as string | undefined;
+  if (!role || typeof label !== "string") {
+    throw new Error("authorshipOf called on a route requireAuthor did not guard");
+  }
+  const official = (res.locals.authorOfficial as { type: string; title: string } | null | undefined) ?? null;
+  return {
+    role,
+    label,
+    name: (res.locals.authorName as string | null | undefined) ?? null,
+    accountable: official ? { type: official.type, title: official.title } : null,
+  };
+}
+
+/**
  * Helper: pull the authenticated user from res.locals, or throw 500.
  * Use inside controllers that are gated by requireAuth/requireResident/requireAdmin.
  */

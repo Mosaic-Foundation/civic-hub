@@ -48,6 +48,7 @@ import { HUB_FEATURE_IDS } from "../shared/hubFeatures.js";
 import { hostMappedEventTypes } from "../events/activitySerializer.js";
 import { loadedPackages } from "../plugins/loader.js";
 import { configuredPackageOfType } from "../plugins/mountedState.js";
+import { namesRole } from "../shared/spaceProfile.js";
 
 // civic.vote_results + civic.announcement + civic.meeting_summary are
 // registered here but can be omitted by hubs that don't want those
@@ -155,6 +156,11 @@ export function publicationOf(type: string): Publication | undefined {
 }
 
 /** The types whose unpublished records wait in an admin queue, in registry order. */
+/** Every publication queue a mounted type names, in the manifests' order. */
+export function publicationQueues(): PublicationQueue[] {
+  return [...new Set(MANIFESTS.flatMap((m) => (m.publication ? [m.publication.queue] : [])))];
+}
+
 export function typesPublishedThrough(queue: PublicationQueue): string[] {
   return MANIFESTS.filter((m) => m.publication?.queue === queue).map((m) => m.descriptor.type);
 }
@@ -213,7 +219,7 @@ export function declaredAction(type: string, action: string): ActionDescriptor |
  */
 export function residentActionsOf(type: string): string[] {
   return (getDescriptor(type)?.actions ?? [])
-    .filter((a) => a.callers.includes("resident"))
+    .filter((a) => namesRole(a.callers, "member"))
     .map((a) => a.name);
 }
 

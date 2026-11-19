@@ -1,0 +1,32 @@
+/* Projects listing page.
+   Base card styling (border, radius, shadow, hover, success accent)
+   comes from the shared process-card block in App.css. */
+
+.project-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.project-card-header h3 {
+  flex: 1;
+  margin: 0;
+  font-size: var(--text-body-size);
+}
+
+.project-sentiment-bar {
+  display: flex;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: var(--space-xs) 0 0;
+}
+
+.sentiment-support {
+  color: var(--color-success);
+}
+
+.sentiment-oppose {
+  color: var(--color-error);
+}

@@ -8,13 +8,14 @@ import { normalizeValue } from "../../src/models/hubSettingsWrite.js";
 import { fieldSpec } from "../../src/shared/hubSettingsSections.js";
 import { PUBLIC_KEY_LIST } from "../../src/models/hubSettings.js";
 
-const HUB = [...ASIDE_CARD_IDS];
+// The kernel's two and Pinning's card, as the UI's registry orders them.
+const HUB = [ASIDE_CARD_IDS[0], "pinned", ASIDE_CARD_IDS[1]];
 
 describe("the right column's cards", () => {
   it("are all shown in the default order when nothing is stored", () => {
     expect(orderedAsideCards(parseAsideCards(undefined), HUB)).toEqual([
       { id: "coming_up", shown: true },
-      { id: "announcements", shown: true },
+      { id: "pinned", shown: true },
       { id: "about", shown: true },
     ]);
   });
@@ -30,13 +31,13 @@ describe("the right column's cards", () => {
     expect(orderedAsideCards(stored, HUB)).toEqual([
       { id: "about", shown: true },
       { id: "coming_up", shown: false },
-      { id: "announcements", shown: true },
+      { id: "pinned", shown: true },
     ]);
   });
 
   it("keep a card the hub doesn't draw when the order is saved", () => {
     const stored = parseAsideCards('[{"id":"plugin_card","shown":false},{"id":"about","shown":true}]');
-    const drawn = [{ id: "coming_up", shown: true }, { id: "about", shown: false }, { id: "announcements", shown: true }];
+    const drawn = [{ id: "coming_up", shown: true }, { id: "about", shown: false }, { id: "pinned", shown: true }];
     expect(withOrder(stored, drawn)).toEqual([...drawn, { id: "plugin_card", shown: false }]);
   });
 

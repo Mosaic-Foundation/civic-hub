@@ -5,7 +5,7 @@
 //
 // Run with: node --env-file=.env --import tsx scripts/dryRunUserDigest.ts --hub <slug>
 
-import { assembleDigestForUser } from "../src/modules/civic.digest/index.js";
+import { assembleDigestForUser } from "../features/digest/service.js";
 import {
   DRY_RUN_USER_DIGEST_HUB,
   DRY_RUN_USER_DIGEST_SINCE,

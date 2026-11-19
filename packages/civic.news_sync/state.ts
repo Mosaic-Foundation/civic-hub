@@ -1,7 +1,9 @@
 // The News item's state, its read model and its event payload. Pure.
 
-import { ValidationError } from "@civic-social/plugin-sdk/first-party";
+import { ValidationError } from "@civic-social/plugin-sdk";
 import { BODY_MAX, BODY_PREVIEW_LEN, DEFAULT_NEWS_PILL, TITLE_MAX, type NewsProcessState, type NewsSource } from "./models.js";
+
+export { newsFromLabel, newsPillLabel } from "./models.js";
 
 function text(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";

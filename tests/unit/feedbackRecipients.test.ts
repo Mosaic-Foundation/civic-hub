@@ -4,7 +4,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { feedbackRecipients } from "../../src/modules/civic.feedback/service.js";
+import { feedbackRecipients } from "../../features/feedback/service.js";
 
 describe("feedbackRecipients", () => {
   it("uses the configured recipient when there is one", () => {
@@ -25,7 +25,7 @@ describe("feedbackRecipients", () => {
 
   it("names no personal address in the module", () => {
     const src = readFileSync(
-      join(__dirname, "../../src/modules/civic.feedback/service.ts"),
+      join(__dirname, "../../features/feedback/service.ts"),
       "utf8",
     );
     expect(src).not.toMatch(/[a-z0-9._%+-]+@civic\.social/i);

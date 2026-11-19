@@ -62,4 +62,12 @@ export const ANALYTICS_MANIFEST = defineFeatureManifest({
       description: "Activity counts from the event log: the day's events and each period's residents, per hub",
     },
   ],
+  // Public numbers is off until the hub's admin turns it on.
+  pluginSection: {
+    order: 160,
+    name: "Activity",
+    what: "Counts of participation by period and kind, for admins; optionally public, and for outside organisations you give a reporting key.",
+    fields: [{ key: "plugin.analytics.public_numbers", kind: "boolean" }],
+    words: ["activity", "analytics", "statistics", "stats", "metrics", "numbers", "reporting", "participation counts"],
+  },
 });

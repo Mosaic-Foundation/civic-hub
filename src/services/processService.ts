@@ -56,10 +56,7 @@ import {
   HOST_EVENT_TYPES,
   type ActionDescriptor,
 } from "../processes/descriptor.js";
-import {
-  spawnBriefFromClosedProcess,
-  findExistingBriefId,
-} from "../processes/spawnBrief.js";
+import { announceClosed, anyoneListensForClosed } from "./processClosed.js";
 import { forHub, type HubDb } from "../db/forHub.js";
 import type { ActionCaller } from "../processes/types.js";
 import { callerMayCall, subjectIsOfficial } from "../authz/canActor.js";
@@ -85,6 +82,7 @@ import type { PluginId } from "../models/hubSettings.js";
 import { readAll } from "../db/readAll.js";
 import { getUser } from "../modules/civic.auth/index.js";
 import { notifyCreatorArchived } from "../modules/civic.review/email.js";
+import { namesRole } from "../shared/spaceProfile.js";
 
 /** The hub in scope. Processes are only ever read or written inside one. */
 function db(): HubDb {
@@ -286,6 +284,31 @@ export async function getAllProcesses(types?: string[]): Promise<Process[]> {
   return data.map((r) => rowToProcess(r));
 }
 
+/**
+ * The newest public processes of these types whose state holds each `where`
+ * value at its key (compared as text: `{ urgent: "true" }`), at most `limit`.
+ * processesOf().list({ where, limit }).
+ */
+export async function getProcessesWhere(
+  types: readonly string[],
+  opts: { where?: Readonly<Record<string, string>>; limit: number },
+): Promise<Process[]> {
+  let q = db()
+    .from("processes")
+    .select<ProcessRow>("*")
+    .not("status", "in", nonPublicStatusFilter())
+    .in("type", [...types]);
+  for (const [key, value] of Object.entries(opts.where ?? {})) {
+    if (!/^[a-z_][a-z0-9_]*$/.test(key)) throw new Error(`getProcessesWhere: ${key} is not a state key`);
+    q = q.eq(`state->>${key}`, value);
+  }
+  const data = await q
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
+    .limit(Math.max(1, Math.min(opts.limit, 1000)));
+  return data.map((r) => rowToProcess(r));
+}
+
 // --- Action dispatch -------------------------------------------------------
 
 /** A resident called an action their handler does not open to residents. */
@@ -362,7 +385,7 @@ async function attemptAction(
   // everything else is an admin's or the hub's. Checked before the status, so
   // a refused caller learns nothing about where the process is.
   const declared = declaredAction(handler.type, action.type);
-  const official = caller === "resident" && Boolean(declared?.callers.includes("official")) && (await subjectIsOfficial(action.actor));
+  const official = caller === "member" && namesRole(declared?.callers, "accountable") && (await subjectIsOfficial(action.actor));
   if (!callerMayCall(caller, declared, process, action.actor, official)) {
     throw new ActionNotAllowedError(action.type);
   }
@@ -382,7 +405,7 @@ async function attemptAction(
   // as closed, so a resident gets what a closed one answers: the type's own
   // refusal (its manifest's deadlineRefusal). Admin and hub actions go on to
   // the handler as before (the job's close, an admin's late close).
-  if (caller === "resident" && handler.descriptor.deadline && (await asRead(process)) !== process) {
+  if (caller === "member" && handler.descriptor.deadline && (await asRead(process)) !== process) {
     const refusal = getManifest(handler.type)?.deadlineRefusal;
     throw new ConflictError(refusal?.message ?? "This has closed.", refusal?.code ?? "process_closed");
   }
@@ -462,28 +485,18 @@ async function attemptAction(
 
   for (const fn of afterCommit) await fn();
 
-  // Universal brief seam: when a process transitions INTO a terminal state,
-  // spawn its Civic Brief (pending admin review) if its handler produces one.
-  // A no-op for types without generateBrief. Only the action whose write won
-  // gets here, and the spawn is insert-or-skip on a unique index, so a
-  // process has one brief. Best-effort: a failure must never wedge the close.
+  // The kernel's "process closed" event (kernel step 3): when a process
+  // enters a closed status, the packages that listen hear it (Briefs makes
+  // its brief this way). Only the action whose write won gets here, so it is
+  // said once. Never wedges the close: announceClosed logs a listener's
+  // failure and carries on.
   const enteredTerminal =
     !isTerminalStatus(previousStatus) && isTerminalStatus(process.status);
-  if (enteredTerminal && handler.generateBrief) {
-    try {
-      const existing = await findExistingBriefId(process.id);
-      if (!existing) {
-        // As stored after the after-commit work, which may have written to it
-        // (a conversation's summary is made there since 2026-10-16).
-        const latest = afterCommit.length > 0 ? ((await getProcess(process.id)) ?? process) : process;
-        await spawnBriefFromClosedProcess(latest, action.actor);
-      }
-    } catch (err) {
-      console.warn(
-        `[brief] spawn on close of ${process.id} failed (close proceeds):`,
-        err instanceof Error ? err.message : err,
-      );
-    }
+  if (enteredTerminal && anyoneListensForClosed()) {
+    // As stored after the after-commit work, which may have written to it
+    // (a conversation's summary is made there since 2026-10-16).
+    const latest = afterCommit.length > 0 ? ((await getProcess(process.id)) ?? process) : process;
+    await announceClosed(latest, action.actor);
   }
 
   return { process, result };
@@ -820,13 +833,15 @@ async function enrichProcessCreator(
  * that mark or leave out sample content by process: the feed's badge, the
  * admin digest.
  */
-export async function getSampleProcessIds(): Promise<Set<string>> {
-  const rows = await db()
+export async function getSampleProcessIds(types?: readonly string[]): Promise<Set<string>> {
+  let q = db()
     .from("processes")
     .select<{ id: string }>("id")
     .eq("is_sample", true)
     // A visitor's demo submission is stored as sample but shows no badge.
     .eq("added_in_demo", false);
+  if (types && types.length > 0) q = q.in("type", [...types]);
+  const rows = await q;
   return new Set(rows.map((r) => r.id));
 }
 

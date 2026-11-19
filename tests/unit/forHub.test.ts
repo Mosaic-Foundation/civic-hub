@@ -97,7 +97,8 @@ describe("forHub — construction", () => {
     // 49 since 20261115000000 (fediverse phase 2): fediverse_kv, fediverse_posts, fediverse_deliveries.
     // 51 since 20261116000000 (fediverse phase 3): fediverse_replies, fediverse_reactions.
     // 52 since 20261116030000 (districts and demographics): member_about.
-    expect(HUB_TABLES).toHaveLength(52);
+    // 53 since 20261118230000 (pinning phase 2): process_pins.
+    expect(HUB_TABLES).toHaveLength(53);
     expect(HUB_TABLES).not.toContain("hubs");
   });
 });

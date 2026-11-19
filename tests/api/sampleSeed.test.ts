@@ -134,7 +134,12 @@ describe("a county hub created with sample content", () => {
 
   it("gives the sample conversation the default Polis address when the hub names none", async () => {
     const [row] = (await localRest(`processes?select=state&id=eq.proc_sample_${COUNTY}_deliberation_rentals`)) as Row[];
-    expect(row.state.polis_base_url).toBe("https://polis.civic.social/seed-sample-deliberation_rentals");
+    // The address the start action uses (the deliberation adapter's default):
+    // the platform's server, or the in-memory Polis when the hub runs fake adapters.
+    expect([
+      "https://polis.civic.social/seed-sample-deliberation_rentals",
+      "https://polis.fake.invalid/seed-sample-deliberation_rentals",
+    ]).toContain(row.state.polis_base_url);
   });
 
   it("marks every event sample, and serves none on GET /events", async () => {

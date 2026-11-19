@@ -1,10 +1,12 @@
 {
   "name": "@civic-social/plugin-news-sync",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "News Sync: posts copied in from another site's news feed, each a News item of its own. A Civic Hub plugin package (docs/PLUGIN-PACKAGE.md).",
   "peerDependencies": {
+    "@civic-social/plugin-sdk": "^0.1.0",
+    "cheerio": "^1.2.0",
     "express": "^4.22.3"
   }
 }

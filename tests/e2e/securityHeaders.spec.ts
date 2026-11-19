@@ -14,7 +14,7 @@
 
 import { test, expect, type Page } from "@playwright/test";
 import { E2E_API_BASE } from "./hubApi.js";
-import { mintSession } from "../fixtures/adminSession.js";
+import { mintSession } from "./sessions";
 import { CONTENT_SECURITY_POLICY } from "../../src/shared/securityHeaders.js";
 
 

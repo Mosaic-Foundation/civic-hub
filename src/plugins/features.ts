@@ -26,12 +26,14 @@ import type {
   FeatureConsoleSection,
   FeatureDigestLine,
   FeatureHost,
+  FeatureQueue,
   FeaturePackage,
   FeatureServer,
   ProcessTypeSummary,
 } from "./feature.js";
 import type { GrantedDb } from "./package.js";
 import { refuseReach } from "./grant.js";
+import { memberCreation } from "../processes/descriptorTypes.js";
 
 /** PostgREST answers at most this many rows; a range that fills it is split. */
 const ROW_LIMIT = 1000;
@@ -56,7 +58,7 @@ const summaryOf = (m: (typeof MANIFEST_LIST)[number]): ProcessTypeSummary => ({
   type: m.descriptor.type,
   label: ownName(m) ?? m.descriptor.display.label,
   plural: ownName(m) ? (ownName(m)!.endsWith("s") ? ownName(m)! : `${ownName(m)}s`) : m.descriptor.display.plural,
-  residentCreated: m.descriptor.creation.resident !== null,
+  residentCreated: memberCreation(m.descriptor.creation) !== null,
   participation: (m.participation as ParticipationDeclaration | undefined) ?? null,
 });
 
@@ -189,6 +191,19 @@ export function featureDiscovery(): Record<string, Record<string, unknown>> {
   return out;
 }
 
+/** What each switched-on feature adds to the space's config, by feature id (FeatureServer.hubConfig). */
+export async function featureHubConfig(): Promise<Record<string, Record<string, unknown>>> {
+  const said = await Promise.all(
+    load().map(async (f) => {
+      const id = f.pkg.manifest.feature;
+      if (!f.server.hubConfig || !isPluginEnabledSync(id)) return null;
+      const value = await f.server.hubConfig();
+      return value ? ([id, value] as const) : null;
+    }),
+  );
+  return Object.fromEntries(said.filter((e) => e !== null));
+}
+
 /** Every feature's job runners, by job id. */
 export function featureJobRunners(): Readonly<Record<string, JobRunner>> {
   return Object.fromEntries(load().flatMap((f) => Object.entries(f.server.jobs ?? {})));
@@ -202,4 +217,11 @@ export function featureConsoleSections(): readonly FeatureConsoleSection[] {
 /** Every feature's admin digest lines, with the feature they belong to. */
 export function featureDigestLines(): ReadonlyArray<{ feature: string; line: FeatureDigestLine }> {
   return load().flatMap((f) => (f.server.digestLines ?? []).map((line) => ({ feature: f.pkg.manifest.feature, line })));
+}
+
+/** Every feature's admin queues, whether its switch is on or not (the caller reads `on`). */
+export function featureQueues(): ReadonlyArray<{ feature: string; queue: FeatureQueue; on: () => boolean }> {
+  return load().flatMap((f) =>
+    (f.server.queues ?? []).map((queue) => ({ feature: f.pkg.manifest.feature, queue, on: () => isPluginEnabledSync(f.pkg.manifest.feature) })),
+  );
 }

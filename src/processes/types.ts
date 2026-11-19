@@ -7,6 +7,7 @@
 //   - producing a summary for list views
 
 import { Process, ProcessAction, CreateProcessInput } from "../models/process.js";
+import type { CivicEvent, CreateEventInput } from "../models/event.js";
 import type { SubmissionField, SubmissionSource } from "../shared/submissionPreview.js";
 import type { BriefContent } from "./contracts/briefContent.js";
 import type { SchemaRequirement } from "../db/schemaContract.js";
@@ -245,7 +246,7 @@ export interface ProcessHandler {
    * assistant affordance only for types that declare it. A handler without
    * this simply gets a plain form: no assistant affordance, no assistant
    * routes. This is the single seam — no per-type assistant logic may live
-   * outside the handler and the generic civic.assistant module.
+   * outside the handler and the generic assistant feature.
    */
   getAssistantConfig?(): AssistantTypeConfig;
 
@@ -392,6 +393,28 @@ export interface ProcessHandler {
   generateBrief?(process: Process): BriefContent | null | Promise<BriefContent | null>;
 
   /**
+   * What a comment on one of its processes is called in the comment list
+   * (kernel step 3): "vote" for a vote, whose panel draws a divider between
+   * its comments and the ones carried over from its proposal. Default
+   * "comment".
+   */
+  commentPhase?: "vote" | "comment";
+
+  /**
+   * What one of its result events came to, as one line for a digest row
+   * ("Yes 12 · No 5"), read from the event's data; "" when there is nothing
+   * to say (kernel step 3: the digest used to keep the vote's own copy).
+   */
+  resultLine?(data: Record<string, unknown> | undefined): string;
+
+  /**
+   * Whether a process waiting for an admin's review is flagged for a closer
+   * look (kernel step 3): a meeting summary whose quality check failed. The
+   * admin digest counts these; default false.
+   */
+  flaggedForReview?(process: Process): boolean;
+
+  /**
    * Optional: a fresh brief for a closed process, for an admin's Regenerate
    * (Actions slice, 2026-10-13). Omit it and Regenerate runs generateBrief
    * again. A type whose brief rests on work done at close (a conversation's
@@ -406,6 +429,17 @@ export interface ProcessHandler {
   regenerateBrief?(process: Process): Promise<RegeneratedBrief | null>;
 
   /**
+   * Optional: what the process keeps from its result once that result is
+   * written up (kernel step 1, Conversations 0.3.0): the state it takes from
+   * the content, or null for nothing. A conversation keeps the summary its
+   * result was written into, so its own closed page shows it with no other
+   * package's help. The kernel asks it when a result is first written and
+   * when a new version is made (src/services/kernelResults.ts); omit it and
+   * the process keeps nothing.
+   */
+  keepResult?(process: Process, content: BriefContent): Record<string, unknown> | null;
+
+  /**
    * Optional: what the source process becomes when its brief is published
    * (src/services/briefFinalize.ts). Omit it and the source is simply set to
    * "finalized" (conversations, proposals, projects). A vote finalizes
@@ -413,7 +447,7 @@ export interface ProcessHandler {
    * changes the process (status, state); briefFinalize saves it.
    * Architecture 2: replaces briefFinalize's switch on the type.
    */
-  finalizeAfterBrief?(process: Process, actor: string): Promise<void>;
+  finalizeAfterBrief?(process: Process, actor: string, emit?: (input: CreateEventInput) => Promise<CivicEvent>): Promise<void>;
 
   /**
    * Optional: the fields a feed card shows for one of its processes, read
@@ -469,11 +503,11 @@ export type ActionDispatcher = (
 ) => Promise<{ process: Process; result: Record<string, unknown> }>;
 
 /**
- * Who is calling executeAction. "resident" is held to the actions its
- * descriptor opens to residents (or to the process's creator, when the
- * resident is the creator); "admin" (a hub admin, checked by the caller) and
- * "system" (the hub acting on its own: a deadline close, an approval's
- * activation, a seed) to the actions open to them. A required argument, so no
- * call site gets a default.
+ * Who is calling executeAction, in the kernel's role names (kernel step 2).
+ * "member" is held to the actions its descriptor opens to members (or to the
+ * process's creator, when the member is the creator); "admin" (a space admin,
+ * checked by the caller) and "system" (the space acting on its own: a
+ * deadline close, an approval's activation, a seed) to the actions open to
+ * them. A required argument, so no call site gets a default.
  */
-export type ActionCaller = "resident" | "admin" | "system";
+export type ActionCaller = "member" | "admin" | "system";

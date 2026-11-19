@@ -32,8 +32,9 @@ import { useSyncExternalStore } from "react";
 import { getLoadedHubConfig, setting, subscribeHubConfig, type HubConfig } from "./hubConfig";
 import { hubTimeZone } from "./hubClock";
 import { pluginEnabled, pluginSetup, pluginShown, processTypeEnabled, processTypeShown } from "./plugins";
-import { feedbackContactEmail } from "../../../src/shared/platform";
 import { hubKindOf, participantNoun, personLabel, type HubKind } from "../../../src/shared/hubKind";
+import { resolveTerm, type KernelTerm } from "../../../src/shared/spaceProfile";
+import { currentSpaceType } from "../../../src/shared/spaceTypes";
 import {
   defaultBetaBanner,
   defaultIntroBody,
@@ -44,6 +45,16 @@ import {
   type HubCopyContext,
 } from "../../../src/shared/hubCopy";
 import { defaultGoverningBodyShort } from "../../../src/shared/jurisdictionType";
+
+/**
+ * Settings an older build carried in build-time variables (before hub
+ * settings), read when the hub has not saved its own: the server's
+ * ENV_FALLBACKS (src/models/hubSettings.ts) for the browser's side.
+ */
+const LEGACY_BUILD_ENV: Readonly<Record<string, string | undefined>> = {
+  "plugin.wordcloud.onboarding_id": import.meta.env.VITE_HUB_ONBOARDING_WORDCLOUD_ID,
+  "plugin.conversation.polis_url": import.meta.env.VITE_HUB_POLIS_URL,
+};
 
 /** Env var, trimmed, or undefined when unset or blank. */
 function env(value: string | undefined): string | undefined {
@@ -222,6 +233,16 @@ const hub = {
     return participantNoun(hubKindOf(setting("identity.hub_kind")), count, setting("copy.resident_noun"));
   },
 
+  /**
+   * A kernel word (docs/KERNEL.md §3) for this hub, by count: its own word,
+   * else the civic profile's, else the kernel's neutral word. `noun(n)` is
+   * `term("member", n)`.
+   */
+  term(t: KernelTerm, count = 1): string {
+    const own = t === "member" ? setting("copy.resident_noun") : null;
+    return resolveTerm(t, currentSpaceType().profile, { kind: hubKindOf(setting("identity.hub_kind")), own }, count);
+  },
+
   /** The byline of someone whose name is not shown: "Resident", "Member"… */
   get person_label(): string {
     return personLabel(hubKindOf(setting("identity.hub_kind")), setting("copy.resident_noun"));
@@ -373,15 +394,6 @@ const hub = {
   },
 
   /**
-   * Where the Feedback page tells people to write (2026-10-08, Adam): the
-   * hub's own feedback address, else its contact address, else the
-   * platform's. Never empty.
-   */
-  get feedback_email(): string {
-    return feedbackContactEmail(setting("plugin.feedback.contact_email"), setting("legal.contact_email"));
-  },
-
-  /**
    * REMOVED in Phase 1 part two: `demo_mode` and `demo_bypass_code`.
    *
    * A demo hub is now a `beta.demo_mode` settings row, read only on the
@@ -427,14 +439,6 @@ const hub = {
     );
   },
 
-  get onboarding_wordcloud_id(): string {
-    return (
-      setting("plugin.wordcloud.onboarding_id") ??
-      env(import.meta.env.VITE_HUB_ONBOARDING_WORDCLOUD_ID) ??
-      ""
-    );
-  },
-
   /**
    * The served config itself (identity: slug, place code, DID; process
    * types; content flags), or null when the app runs on build-time fallbacks.
@@ -443,9 +447,13 @@ const hub = {
     return getLoadedHubConfig();
   },
 
-  /** One settings key, or undefined when this hub has not configured it. */
+  /**
+   * One settings key, or undefined when this hub has not configured it. A
+   * setting an older build carried in a build-time variable falls back to it.
+   * A package's page reads its own through useSpace().setting (kernel step 3).
+   */
   setting(key: string): string | undefined {
-    return setting(key);
+    return setting(key) ?? env(LEGACY_BUILD_ENV[key]);
   },
 
   /**

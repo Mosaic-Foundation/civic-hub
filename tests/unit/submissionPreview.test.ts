@@ -82,8 +82,21 @@ describe("submission preview — generic content walk", () => {
       ["options", "options"],
       ["config.voting_duration_ms", "duration"],
     ]);
-    expect(fields[0].value).toBe("Choose all options you approve of");
+    // The kernel's walk shows the stored value; Votes' describeSubmission names the method (kernel step 3).
+    expect(fields[0].value).toBe("approval");
     expect(fields.find((f) => f.key === "supporters")).toBeUndefined();
+  });
+
+  it("Votes names the method itself (kernel step 3)", async () => {
+    const { default: vote } = await import("../../packages/civic.vote/handler.js");
+    const fields = vote.describeSubmission!({
+      type: "civic.vote",
+      title: "Which step first?",
+      description: "…",
+      content: null,
+      state: { method: "approval", options: ["A", "B"] },
+    });
+    expect(fields.find((f) => f.key === "method")?.value).toBe("Choose all options you approve of");
   });
 
   it("reaches into state for a conversation's seeds, sources, window, goal", () => {

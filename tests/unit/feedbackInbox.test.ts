@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { parseFeedbackPatch, renderFixedEmail } from "../../src/operator/platformFeedback.js";
-import { normalizePagePath } from "../../src/modules/civic.feedback/index.js";
+import { normalizePagePath } from "../../src/services/providerInbox.js";
 
 describe("inbox changes", () => {
   it("accepts the three statuses and a GitHub issue link", () => {

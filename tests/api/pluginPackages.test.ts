@@ -19,6 +19,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import pg from "pg";
+import { readFileSync } from "node:fs";
 import { call } from "../fixtures/hostCall.js";
 import { mintSession } from "../fixtures/adminSession.js";
 import { approveEntry, archiveHub, catalog, createHub, setRequired, signApproved, withdrawEntry } from "../fixtures/operator.js";
@@ -199,7 +200,7 @@ describe("a hub's plugin packages", () => {
     expect(civic.status).toBe(200);
     const listed = civic.body.plugins as Array<{ package: string; version: string; type: string; signed: boolean }>;
     expect(listed.length).toBeGreaterThanOrEqual(9);
-    expect(listed).toContainEqual(expect.objectContaining({ package: WORDCLOUD, version: "0.2.0", type: "civic.wordcloud" }));
+    expect(listed).toContainEqual(expect.objectContaining({ package: WORDCLOUD, version: "0.3.0", type: "civic.wordcloud" }));
     // Signed approvals (ADR-015): with a catalog key, every package listed runs on a verified signature.
     const health = await call("GET", "/health", HOST);
     if (health.body.plugins.signatures.key) {
@@ -328,6 +329,8 @@ describe("signed approvals", () => {
 // summary, and its Plugins page says why and offers the update.
 describe("versions and updates", () => {
   const BRIEF = "@civic-social/plugin-brief";
+  /** The release of Briefs this deployment runs (its package.json), whatever number it has reached. */
+  const BRIEF_NOW = (JSON.parse(readFileSync(new URL("../../packages/civic.brief/package.json", import.meta.url), "utf8")) as { version: string }).version;
   const AI_LINE = "Use the hub's AI service. Each use counts against the hub's daily AI allowance.";
 
   /** The hub as one that has not approved Briefs 0.2.0: 0.1.0, with 0.1.0's grant (no AI). */
@@ -364,7 +367,7 @@ describe("versions and updates", () => {
     expect(briefs.update_available).toBe(true);
     const pkg = (briefs.packages as Array<any>).find((p) => p.package === BRIEF);
     expect(pkg.version).toBe("0.1.0");
-    expect(pkg.update).toEqual({ version: "0.3.0", adds: [AI_LINE], drops: [] });
+    expect(pkg.update).toEqual({ version: BRIEF_NOW, adds: [AI_LINE], drops: [] });
     expect(pkg.grant.cannot).toContain("Use AI.");
   });
 
@@ -375,11 +378,11 @@ describe("versions and updates", () => {
     expect(updated.status, JSON.stringify(updated.body)).toBe(200);
     expect(updated.body.plugin.update_available).toBe(false);
     const row = (await db.query("SELECT version, capabilities, upgraded_from, upgraded_by FROM hub_plugins WHERE hub_id = $1 AND package = $2", [SLUG, BRIEF])).rows[0];
-    expect(row).toMatchObject({ version: "0.3.0", upgraded_from: "0.1.0" });
+    expect(row).toMatchObject({ version: BRIEF_NOW, upgraded_from: "0.1.0" });
     expect(row.capabilities.adapters).toContain("ai");
     expect(row.upgraded_by).not.toBe("system:required");
     const log = (await db.query("SELECT after FROM hub_admin_audit_log WHERE hub_id = $1 AND action = 'plugin.update' ORDER BY at DESC LIMIT 1", [SLUG])).rows[0];
-    expect(log.after).toMatchObject({ version: "0.3.0", adds: [AI_LINE] });
+    expect(log.after).toMatchObject({ version: BRIEF_NOW, adds: [AI_LINE] });
 
     const { content } = await closedConversationBrief(`Allowed ${run}`);
     expect(content.deliberation.narrative).toBeUndefined();
@@ -395,7 +398,9 @@ describe("versions and updates", () => {
     expect((await call("POST", `/process/${id}/action`, HOST, { type: "process.activate", payload: {} }, admin)).status).toBe(200);
     expect((await one("vote")).update_available).toBe(true);
     expect((await call("POST", "/admin/hub/plugins/vote/update", HOST, {}, admin)).status).toBe(200);
-    expect((await record("@civic-social/plugin-vote")).version).toBe("0.3.0");
+    // The release this deployment runs (its package.json), whatever number it has reached.
+    const current = (JSON.parse(readFileSync(new URL("../../packages/civic.vote/package.json", import.meta.url), "utf8")) as { version: string }).version;
+    expect((await record("@civic-social/plugin-vote")).version).toBe(current);
     const read = await call("GET", `/process/${id}/state`, HOST, undefined, admin);
     expect(read.status).toBe(200);
     expect(read.body.status ?? read.body.lifecycle).toBe("active");
@@ -408,8 +413,8 @@ describe("versions and updates", () => {
   it("a version marked required moves every hub on an older one, with a notice on its Plugins page", async () => {
     await briefsBehind();
     const view = { body: await catalog() };
-    const entry = view.body.entries.find((e: any) => e.package === BRIEF && e.version === "0.3.0" && e.status === "approved" && e.matches_deployment);
-    expect(entry, "Briefs 0.3.0 is approved and running").toBeTruthy();
+    const entry = view.body.entries.find((e: any) => e.package === BRIEF && e.version === BRIEF_NOW && e.status === "approved" && e.matches_deployment);
+    expect(entry, `Briefs ${BRIEF_NOW} is approved and running`).toBeTruthy();
     const wasRequired = entry.required as boolean;
     try {
       if (wasRequired) {
@@ -418,11 +423,11 @@ describe("versions and updates", () => {
       const marked = await setRequired(entry.id, true);
       expect(marked.status, JSON.stringify(marked.body)).toBe(200);
       const row = (await db.query("SELECT version, upgraded_from, upgraded_by FROM hub_plugins WHERE hub_id = $1 AND package = $2", [SLUG, BRIEF])).rows[0];
-      expect(row).toEqual({ version: "0.3.0", upgraded_from: "0.1.0", upgraded_by: "system:required" });
+      expect(row).toEqual({ version: BRIEF_NOW, upgraded_from: "0.1.0", upgraded_by: "system:required" });
       const briefs = await one("brief");
       expect(briefs.update_available).toBe(false);
       const pkg = (briefs.packages as Array<any>).find((p) => p.package === BRIEF);
-      expect(pkg.required_update).toMatchObject({ from: "0.1.0", to: "0.3.0" });
+      expect(pkg.required_update).toMatchObject({ from: "0.1.0", to: BRIEF_NOW });
     } finally {
       if (!wasRequired) {
         await setRequired(entry.id, false);

@@ -29,6 +29,14 @@ for (const ui of MODULES) {
 
 const BY_TYPE: ReadonlyMap<string, ProcessUi> = new Map(PROCESS_UI.map((u) => [u.type, u]));
 
+/** The feed's own filter pills the types add, in manifest order, with the plugin each is shown under. */
+export function feedFilters(): Array<NonNullable<ProcessUi["feedFilter"]> & { plugin: string }> {
+  return MANIFEST_LIST.flatMap((m) => {
+    const filter = BY_TYPE.get(m.descriptor.type)?.feedFilter;
+    return filter ? [{ ...filter, plugin: m.descriptor.plugin }] : [];
+  });
+}
+
 /** A type's UI module, or undefined for a type this build has no UI for. */
 export function processUiOf(type: string | undefined): ProcessUi | undefined {
   return type ? BY_TYPE.get(type) : undefined;

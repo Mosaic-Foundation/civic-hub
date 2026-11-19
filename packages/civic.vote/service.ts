@@ -11,9 +11,9 @@
 // Action functions are async because event emission is durable — the host
 // hub awaits the DB write before the action completes.
 
-import { CHECK_MODES, DEFAULT_CHECK_MODE, checkModeOf, isCheckMode } from "../../src/shared/checkMode.js";
-import { filledOptions, overlongOption, VOTE_OPTION_MAX } from "../../src/shared/voteOptions.js";
-import { ConflictError, ValidationError } from "@civic-social/plugin-sdk/first-party";
+import { CHECK_MODES, DEFAULT_CHECK_MODE, checkModeOf, isCheckMode } from "./checkMode.js";
+import { filledOptions, overlongOption, VOTE_OPTION_MAX } from "./voteOptions.js";
+import { ConflictError, ValidationError } from "@civic-social/plugin-sdk";
 import type {
   VoteConfig,
   VoteProcessState,

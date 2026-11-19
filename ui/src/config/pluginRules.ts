@@ -3,26 +3,6 @@
 // or a loaded config. config/plugins.tsx applies them to the loaded config.
 
 /**
- * Where a brand-new account lands: the hub's word cloud, when it names one
- * AND Word clouds is switched on; otherwise null (stay where they are, the
- * home page for a fresh sign-up). A switched-off cloud would be "Page not
- * found" as the very first thing a new member sees.
- */
-export function onboardingTarget(
-  onboardingId: string | undefined | null,
-  wordcloudEnabled: boolean,
-  returnTo?: string | null,
-): string | null {
-  const id = onboardingId?.trim();
-  if (!id || !wordcloudEnabled) return null;
-  // Where the new account was when it signed up (review R24): the word
-  // cloud's Skip and Continue go back there, not to the home page.
-  const back = safeReturnPath(returnTo);
-  const ret = back && back !== "/" ? `&return=${encodeURIComponent(back)}` : "";
-  return `/wordcloud/${encodeURIComponent(id)}?onboarding=1${ret}`;
-}
-
-/**
  * A path on this site to send someone back to, or null. Only a local path:
  * "/process/abc?x=1" passes; "//elsewhere.example", "https://…" and
  * "javascript:…" do not, so the parameter cannot become an open redirect.

@@ -5,7 +5,7 @@ import {
   handleSetSentiment,
   handleCompleteProject,
 } from "./controller.js";
-import { requireResident } from "@civic-social/plugin-sdk/first-party";
+import { requireResident } from "@civic-social/plugin-sdk";
 
 const router = Router();
 

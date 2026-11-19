@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useHub } from "../config/hub";
+import { featureSpaceLinks } from "../features";
 import AuthModal from "./AuthModal";
 import Modal from "./Modal";
 import WaitlistForm from "./WaitlistForm";
@@ -62,13 +63,14 @@ function WelcomeDialog({ onSignIn }: { onSignIn: () => void }) {
           Browse the site &rarr;
         </button>
       </div>
-      {/* The button is the Feedback plugin's; without it, no pointer. */}
-      {hub.plugins.enabled("feedback") && (
-        <p className="beta-welcome-feedback-note">
-          Have a look around and tell us what you think — use the{" "}
-          <strong>Feedback</strong> button at the top of any page.
-        </p>
-      )}
+      {/* A feature's pointer (Feedback's); without one, none. */}
+      {featureSpaceLinks((id) => hub.plugins.enabled(id))
+        .filter((l) => l.betaNote)
+        .map((l) => (
+          <p key={l.feature} className="beta-welcome-feedback-note">
+            {l.betaNote}
+          </p>
+        ))}
 
       <WaitlistForm
         heading="Join the waitlist"

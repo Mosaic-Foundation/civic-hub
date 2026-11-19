@@ -1,22 +1,19 @@
 import { createPolisDeliberationHandler } from "./handler.js";
 import { createPolisAdapter } from "./adapter/polisAdapter.js";
-import { describeSubmissionFields } from "../../src/shared/submissionPreview.js";
 import { deliberationDraftKind } from "./draftKind.js";
 import {
   emitEvent,
-  setDraftStatus,
+  draftsOf,
+  describeSubmissionFields,
   generateId,
   closeThroughDispatcher,
-  getActionDispatcher,
   afterActionCommits,
   UnavailableError,
   isPastDeadline,
-  defaultJurisdiction,
+  hubContext,
+  processesOf,
+  settingsOf,
   str,
-  getSettingSync,
-  KEYS,
-  getProcess,
-  briefIdForSource,
   type PluginHost,
   type Process,
   type ProcessHandler,
@@ -25,13 +22,26 @@ import {
   type DeliberationResult,
   type DeliberationSummary,
   type FeedProcessMeta,
-} from "@civic-social/plugin-sdk/first-party";
+} from "@civic-social/plugin-sdk";
 import type { PolisHostInterface } from "./hostInterface.js";
 import type { PolisAdapter } from "./adapter/types.js";
 import type { PolisDeliberationState } from "./types.js";
 import { deliberationAssistantConfig } from "./assistantConfig.js";
 import { POLIS_DELIBERATION_MANIFEST } from "./manifest.js";
 import { conversationHost } from "./host.js";
+import { summaryFromResult } from "./resultSummary.js";
+
+const CONVERSATION_TYPE = "civic.polis_deliberation";
+/** The kernel's view of this package's processes (asked for where used: the SDK binds as the hub loads). */
+const ownProcesses = () => processesOf(CONVERSATION_TYPE);
+
+let _handler: ProcessHandler | null = null;
+
+/** This package's own handler, once the hub has booted it (its list and its deadline read). */
+export function conversationHandler(): ProcessHandler {
+  if (!_handler) throw new Error("Deliberation boot not called yet");
+  return _handler;
+}
 
 let _adapter: PolisAdapter | null = null;
 
@@ -81,7 +91,7 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
   // The address is read per call, for the hub in scope: the hub setting, or
   // the default (the cleanup slice, Audit 3's Polis findings).
   const service = () => pluginHost.adapter("deliberation");
-  const polisBaseUrl = (): string => service().baseUrl(getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL));
+  const polisBaseUrl = (): string => service().baseUrl(settingsOf("conversation").get("polis_url"));
 
   // One real adapter per Polis address and service, made on first use; the
   // hub's adapter picks the one for the hub in scope on every call, and turns
@@ -169,7 +179,7 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
         event_type: input.event_type,
         actor: input.actor,
         process_id: processId,
-        jurisdiction: input.jurisdiction || defaultJurisdiction(),
+        jurisdiction: input.jurisdiction || hubContext().place,
         processType,
         data: input.data,
       });
@@ -194,7 +204,7 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
     afterCommit: afterActionCommits,
     async recordResultLater(processId: string) {
       try {
-        await getActionDispatcher()(processId, { type: "record_result", actor: "system:conversation-close", payload: {} });
+        await ownProcesses().actAsSystem(processId, "record_result", "system:conversation-close");
       } catch (err) {
         console.error(
           `[deliberation] recording ${processId}'s result after its close failed; an admin can regenerate its brief:`,
@@ -218,13 +228,13 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
   const sharedReadModel = shared.getReadModel.bind(shared);
   handler.getReadModel = async (process: Process, actor?: string) => {
     const model = await sharedReadModel(process as never, actor);
-    // Its brief's summary (as published, or as made while unpublished) since
-    // plugin session 2; a conversation closed before then shows its own until
-    // its brief is made again.
-    const fromBrief = await summaryFromBrief(process);
+    // Its own summary: the one its result was written up into (kept below,
+    // keepResult), else, once closed with a result, the result's own figures
+    // with no written summary. It reads no other package's processes.
+    const summary = ownSummary(process);
     return {
       ...model,
-      ...(fromBrief ? { summary: fromBrief, summary_status: "complete" } : {}),
+      ...(summary ? { summary, summary_status: "complete" } : {}),
       has_submitted: actor ? await hasSubmittedStatement(process.id, actor) : false,
     };
   };
@@ -232,7 +242,7 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
   // Drafting: where a creator revises a draft. Set here (not in the portable
   // shared handler) so the shared module stays free of hub-specific routing.
   handler.draftPath = (draftId: string) => `/deliberations/new?draft=${encodeURIComponent(draftId)}`;
-  handler.reopenDraft = (draftId: string) => setDraftStatus(deliberationDraftKind.spec, draftId, "drafting");
+  handler.reopenDraft = (draftId: string) => draftsOf(deliberationDraftKind).setStatus(draftId, "drafting");
 
   // A conversation's submission lives on state (seed statements, sources,
   // window, participant goal) — extend the generic content walk with those
@@ -299,18 +309,10 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
     });
   };
 
-  // Universal brief: a closed conversation's outcome is its Civic Brief.
-  // Reads the already-generated Polis summary off state (no Polis call) and
-  // maps it into the type-agnostic BriefContent. Returns null if the summary
-  // isn't complete (e.g. summarization failed) — the close then produces no
-  // brief rather than an empty one. Wired on the hub side so the portable
-  // shared handler stays free of the brief module.
-  // Regenerate (Actions slice): ask for the summary again and build the brief
-  // from it. The conversation takes the new summary once that version of the
-  // brief is published (src/services/briefRegenerate.ts), so the page and the
-  // brief show one summary; the brief keeps the versions it replaces.
   // Regenerate (the brief's admin action): the result pulled from Polis again,
-  // handed to the brief, which writes the summary again.
+  // handed to the brief, which writes the summary again. The conversation
+  // keeps the new summary (keepResult below) at once while its brief is
+  // unpublished, or once that version is published.
   handler.regenerateBrief = async (process: Process): Promise<RegeneratedBrief | null> => {
     const state = process.state as unknown as PolisDeliberationState;
     if (!state.polis_conversation_id || !_adapter) return null;
@@ -342,6 +344,13 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
     return typeof participants === "number" ? participants : null;
   };
 
+  // What the conversation keeps once its result is written up (by Briefs,
+  // which writes the summary with the AI): the summary, so its own page shows
+  // it with Briefs on or off (kernel step 1). The kernel asks when the result
+  // is first written and when an admin makes it again.
+  handler.keepResult = (_process: Process, content: BriefContent): Record<string, unknown> | null =>
+    content.deliberation ? { summary: content.deliberation } : null;
+
   // The brief is made from the result the close recorded; the brief writes
   // the summary and lays it out (packages/civic.brief/finalize.ts). A
   // conversation closed before plugin session 2 made its brief from its own
@@ -363,16 +372,16 @@ export function bootDeliberation(pluginHost: PluginHost): ProcessHandler {
     };
   };
 
+  _handler = handler;
   return handler;
 }
 
-/** The summary its brief wrote (a conversation closed since plugin session 2), or null. */
-async function summaryFromBrief(process: Process): Promise<DeliberationSummary | null> {
-  if (process.status !== "closed" && process.status !== "finalized") return null;
-  const briefId = await briefIdForSource(process.id);
-  const brief = briefId ? await getProcess(briefId) : null;
-  const content = (brief?.state as { content?: BriefContent } | undefined)?.content;
-  return content?.deliberation ?? null;
+/** A closed conversation's summary as its page shows it: the written one it kept, else its result's own figures, or null. */
+function ownSummary(process: Process): DeliberationSummary | null {
+  const state = process.state as unknown as PolisDeliberationState;
+  if (state.summary) return state.summary;
+  if ((process.status !== "closed" && process.status !== "finalized") || !state.result) return null;
+  return summaryFromResult(state.result, process.updatedAt);
 }
 
 /** Whether this person has put a statement into this conversation. */

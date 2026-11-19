@@ -2,8 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
-import { DEADLINE_CLOSE_INPUT } from "../../src/shared/deadlineClose.js";
+import { DEADLINE_CLOSE_INPUT, defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
 
 /**
  * What a vote is (src/processes/descriptor.ts). Residents support while it
@@ -139,6 +138,11 @@ const descriptor = defineDescriptor({
 export const VOTE_MANIFEST = defineManifest({
   descriptor,
   color: "vote",
+  // Its colours' defaults (kernel step 4: each plugin carries its own). The
+  // Civic Hub's palette lists the same keys (a few following its base colours), and wins.
+  colors: [
+    { key: "vote", label: "Votes", fg: "#15294c", bg: "#dce5f2", dark: { fg: "#9db6e0", bg: "#222a38" }, email: { fg: "#1e3a5f", bg: "#dce5f2" } },
+  ],
   detailPath: (id) => `/process/${id}`,
   // The two-table split below is the anonymous-ballot guarantee, not an
   // accident of normalization: vote_records knows the choice but not the
@@ -183,11 +187,31 @@ export const VOTE_MANIFEST = defineManifest({
     name: "Votes",
     what: "Advisory votes residents propose and cast, with results.",
     fields: [
-      { key: "plugin.vote.min_duration_days", kind: "number", min: 1, max: 365 },
-      { key: "plugin.vote.max_duration_days", kind: "number", min: 1, max: 365 },
-      { key: "plugin.vote.default_duration_days", kind: "number", min: 1, max: 365 },
-      { key: "plugin.vote.default_check_mode", kind: "choice", options: ["show_choice", "counted_only"] },
+      {
+        key: "plugin.vote.min_duration_days", kind: "number", min: 1, max: 365,
+        help: { text: "The shortest voting window a drafter may pick for a vote, in days (1 to 365). Left empty, it is 14.", page: "/reference/plugins", anchor: "plugin-vote-min-duration-days" },
+      },
+      {
+        key: "plugin.vote.max_duration_days", kind: "number", min: 1, max: 365,
+        help: { text: "The longest voting window a drafter may pick for a vote, in days (1 to 365). Left empty, it is 90.", page: "/reference/plugins", anchor: "plugin-vote-max-duration-days" },
+      },
+      {
+        key: "plugin.vote.default_duration_days", kind: "number", min: 1, max: 365,
+        help: { text: "The voting window a new draft starts with, in days (1 to 365). The drafter can change it within the shortest and longest. Left empty, it is 42.", page: "/reference/plugins", anchor: "plugin-vote-default-duration-days" },
+      },
+      {
+        key: "plugin.vote.default_check_mode", kind: "choice", options: ["show_choice", "counted_only"],
+        help: { text: "What a receipt code shows after a vote closes: how that ballot was cast, or only that it was counted. The drafter can choose the other; it is fixed once approved.", page: "/reference/plugins", anchor: "plugin-vote-default-check-mode" },
+      },
     ],
+    words: ["voting", "ballot", "ballots", "poll", "polls", "advisory vote"],
+    help: { text: "Advisory votes people propose and cast. Off hides the Votes pages and stops new votes. While off, nothing closes at its deadline until the plugin is back on.", page: "/reference/plugins", anchor: "plugins-vote" },
+    search: {
+      "plugin.vote.min_duration_days": { label: "Shortest voting window", words: ["minimum vote length", "vote duration", "how long votes run"] },
+      "plugin.vote.max_duration_days": { label: "Longest voting window", words: ["maximum vote length", "vote duration", "how long votes run"] },
+      "plugin.vote.default_duration_days": { label: "Default voting window", words: ["vote length", "vote duration", "how long votes run"] },
+      "plugin.vote.default_check_mode": { label: "Receipt check, for new votes", words: ["receipt", "ballot check", "verify vote", "show choice"] },
+    },
   },
   activities: {},
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).

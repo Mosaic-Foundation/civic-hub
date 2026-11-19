@@ -1,16 +1,16 @@
-import { Suspense, useEffect, useState } from "react";
+import { Fragment, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/authState";
 import { useHub } from "./config/hub";
 import { whenPlugin } from "./config/plugins";
 import { PROCESS_UI } from "./processes";
-import { FEATURE_UI } from "./features";
+import { FEATURE_UI, featurePageTops, featureSpaceLinks } from "./features";
 import { detailPathOf, pluginOfType } from "./processes/display";
 import { ArchiveSlotProvider } from "./components/archiveSlot";
 import DetailActions from "./components/DetailActions";
 import ShareBanner from "./components/ShareBanner";
-import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
+import { isBetaPublicPath } from "./config/betaPublicPaths";
 import Nav from "./components/Nav";
 import Sidebar from "./components/Sidebar";
 import AdminDrawer from "./components/AdminDrawer";
@@ -22,25 +22,21 @@ import BottomBar from "./components/BottomBar";
 import { NavDataProvider } from "./context/NavDataContext";
 import { navLayout } from "./config/navigation";
 import HubBanner from "./components/HubBanner";
-import WordcloudTeaser from "./components/WordcloudTeaser";
+import { WelcomeStripSlot } from "./components/PackageSlots";
 import FeedVotesTabs from "./components/FeedVotesTabs";
 import Home from "./pages/Home";
+import ProcessLink, { type ProcessLinkPage } from "./pages/ProcessLink";
 import {
   About,
   AdminArchived,
-  AdminPinned,
   AdminEdits,
-  AdminFeedback,
   AdminModeration,
   AdminReviews,
   AdminSettings,
   CodeOfConduct,
   ContactCivicSocial,
-  Feedback,
-  Members,
   MySubmissions,
   Privacy,
-  Search as SearchPage,
   Settings,
   SignInLink,
   KitGallery,
@@ -65,7 +61,6 @@ import { useIsWideViewport } from "./hooks/useIsWideViewport";
 import { useTypingFocus } from "./hooks/useTypingFocus";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import AsideColumn from "./aside/AsideColumn";
-import UrgentLine from "./aside/UrgentLine";
 import { THREE_COLUMN_QUERY, pageHasAside } from "./aside/asidePages";
 import AuthModal from "./components/AuthModal";
 import "./App.css";
@@ -118,7 +113,7 @@ function processRoutes() {
     // The type's detail page (its manifest's detailPath) carries the
     // framework's archive control (components/archiveSlot.tsx).
     const detail = detailPathOf(ui.type, ":id");
-    return ui.routes.map((r) => {
+    return ui.routes.filter((r) => r.path !== PROCESS_LINK).map((r) => {
       const element =
         r.path === detail && !r.admin ? (
           <ArchiveSlotProvider type={ui.type} row={DetailActions}>
@@ -128,9 +123,36 @@ function processRoutes() {
           r.element
         );
       const page = r.admin ? <AdminGuard>{element}</AdminGuard> : element;
-      return <Route key={`${ui.type} ${r.path}`} path={r.path} element={r.ungated || !plugin ? page : whenPlugin(plugin, page)} />;
+      return <Route key={`${ui.type} ${r.path}`} path={r.path} element={!plugin ? page : whenPlugin(plugin, page)} />;
     });
   });
+}
+
+/**
+ * /process/:id is the kernel's (pages/ProcessLink.tsx): a type whose page
+ * lives there registers it, and the kernel hands the link to it while its
+ * plugin is on, else sends the link to the process's own type's page.
+ */
+const PROCESS_LINK = "/process/:id";
+const processLinkPages: ProcessLinkPage[] = PROCESS_UI.flatMap((ui) =>
+  ui.routes
+    .filter((r) => r.path === PROCESS_LINK && !r.admin)
+    .map((r) => ({
+      type: ui.type,
+      plugin: pluginOfType(ui.type),
+      element:
+        detailPathOf(ui.type, ":id") === PROCESS_LINK ? (
+          <ArchiveSlotProvider type={ui.type} row={DetailActions}>
+            {r.element}
+          </ArchiveSlotProvider>
+        ) : (
+          r.element
+        ),
+    })),
+);
+
+function processLinkRoute() {
+  return <Route key="process-link" path={PROCESS_LINK} element={<ProcessLink pages={processLinkPages} />} />;
 }
 
 /** Every feature package's pages (ui/src/features.ts), each behind its feature's switch. */
@@ -193,7 +215,7 @@ function AppContent() {
   // tab, which has no session preview flag — without this gate the dialog
   // would land on top of the very page the visitor clicked through to read.
   const showWelcomeDialog =
-    hub.beta_mode && !user && !loading && !preview && !BETA_PUBLIC_PATHS.has(pathname);
+    hub.beta_mode && !user && !loading && !preview && !isBetaPublicPath(pathname);
 
   // While a logged-out visitor browses in beta preview, the persistent banner
   // is enough of an onboarding cue — suppress the intro popup so we don't stack
@@ -231,8 +253,8 @@ function AppContent() {
   const bannersInColumn = layout === "sidebar" && wide && !cardLayout;
   const teaserAndBanner = (
     <>
-      {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
-      {!inAdmin && hub.plugins.enabled("wordcloud") && <WordcloudTeaser />}
+      {/* What packages add to the strip (Word clouds' teaser), while their plugin is on. */}
+      {!inAdmin && <WelcomeStripSlot />}
       <BannerSlot />
     </>
   );
@@ -248,8 +270,8 @@ function AppContent() {
       {/* Demo hubs (Phase 7): explains the Sample badge; admins get the
           link to remove the sample content. */}
       {hub.demo_mode && <DemoBanner />}
-      {/* The newest urgent announcement, on every public page (aside/UrgentLine.tsx). */}
-      {!inAdmin && hub.plugins.enabled("announcement") && <UrgentLine />}
+      {/* A feature's line across the top of every public page (Pinning's urgent pin). */}
+      {!inAdmin && featurePageTops((id) => hub.plugins.enabled(id)).map(({ feature, Top }) => <Top key={feature} />)}
     </>
   );
 
@@ -287,6 +309,7 @@ function AppContent() {
             <Suspense fallback={<p className="page-loading" aria-busy="true">Loading…</p>}>
               <Routes>
                 <Route path="/" element={<Home />} />
+                {processLinkRoute()}
                 {processRoutes()}
                 {featureRoutes()}
                 <Route path="/my-submissions" element={<MySubmissions />} />
@@ -298,34 +321,24 @@ function AppContent() {
                 <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
                 <Route path="/admin/settings/:section" element={<AdminGuard><AdminSettings /></AdminGuard>} />
                 <Route path="/settings" element={<Settings />} />
-                <Route path="/members" element={whenPlugin("members", <Members />)} />
                 <Route path="/about" element={<About />} />
-                <Route path="/search" element={whenPlugin("search", <SearchPage />)} />
                 {/* Slice 11 — legal pages. Routes resolve via React Router so
                     cross-document links (Terms → Privacy etc.) don't trigger
                     full-page reloads. */}
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/code-of-conduct" element={<CodeOfConduct />} />
-                {/* Slice 14 — operator-facing feedback form. Open to anonymous
-                    and signed-in users; submissions persist to the
-                    feedback_submissions table and best-effort email the operator. */}
                 <Route path="/welcome" element={<Welcome />} />
                 <Route path="/sign-in" element={<SignInLink />} />
-                <Route path="/feedback" element={whenPlugin("feedback", <Feedback />)} />
                 {/* Slice 11 — admin moderation log. Read-only list of every
                     moderation action, gated server-side via requireAdmin
                     and client-side via the AuthContext.isAdmin flag inside
                     the page. */}
                 <Route path="/admin/moderation" element={<AdminGuard><AdminModeration /></AdminGuard>} />
                 <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
-                {/* Everything pinned to the right column's card (2026-11-18), while Pinning is on. */}
-                <Route path="/admin/pinned" element={whenPlugin("pinning", <AdminGuard><AdminPinned /></AdminGuard>)} />
                 <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
-                {/* Read-only archive of resident feedback, incl. topic suggestions. */}
-                <Route path="/admin/feedback" element={whenPlugin("feedback", <AdminGuard><AdminFeedback /></AdminGuard>)} />
                 {/* An admin writes to Civic.Social directly (feedback routing).
-                    Not behind the Feedback plugin. */}
+                    Not behind any plugin. */}
                 <Route path="/admin/contact-civic-social" element={<AdminGuard><ContactCivicSocial /></AdminGuard>} />
               </Routes>
             </Suspense>
@@ -376,13 +389,13 @@ function SiteFooter() {
           </span>
         </div>
         <nav className="app-footer-links" aria-label="Legal and feedback">
-          {/* Gone with the Feedback plugin (config/plugins.tsx). */}
-          {hub.plugins.enabled("feedback") && (
-            <>
-              <Link to="/feedback">Send feedback</Link>
+          {/* A feature's page for everyone (Feedback's form), while it is on. */}
+          {featureSpaceLinks((id) => hub.plugins.enabled(id)).map((l) => (
+            <Fragment key={l.feature}>
+              <Link to={l.path}>{l.longLabel}</Link>
               <span aria-hidden="true">·</span>
-            </>
-          )}
+            </Fragment>
+          ))}
           <Link to="/privacy">Privacy</Link>
           <span aria-hidden="true">·</span>
           <Link to="/terms">Terms</Link>

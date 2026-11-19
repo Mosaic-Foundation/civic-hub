@@ -1,16 +1,17 @@
 // The announcement plugin package (docs/PLUGIN-PACKAGE.md): its manifest, and
 // what the hub runs when it loads it.
 
-import type { PluginPackage } from "@civic-social/plugin-sdk/first-party";
+import type { PluginPackage } from "@civic-social/plugin-sdk";
 import manifest from "./manifest.js";
 import handler from "./handler.js";
 import routes, { listRouter } from "./routes.js";
-import adminRoutes, { boardRouter } from "./adminRoutes.js";
+import adminRoutes from "./adminRoutes.js";
 import { announcementHost } from "./host.js";
+import { announcementSamples } from "./samples.js";
 
 const announcementPackage: PluginPackage = {
   name: "@civic-social/plugin-announcement",
-  version: "0.3.0",
+  version: "0.4.0",
   displayName: "Announcements",
   manifest,
   server(host) {
@@ -24,9 +25,8 @@ const announcementPackage: PluginPackage = {
       ],
       adminRoutes: [
         { path: "/moderation/announcements", router: adminRoutes },
-        // Admin → Announcements: pinned and urgent, pin and unpin.
-        { path: "/announcements", router: boardRouter },
       ],
+      samples: announcementSamples,
     };
   },
 };

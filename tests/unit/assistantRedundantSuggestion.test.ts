@@ -6,8 +6,8 @@
 // code-side backstop.
 
 import { describe, it, expect, vi } from "vitest";
-import { callAssistant } from "../../src/modules/civic.assistant/service";
-import type { CallClaudeMultiTurnFn } from "../../src/modules/civic.assistant/service";
+import { callAssistant } from "../../features/assistant/service";
+import type { CallClaudeMultiTurnFn } from "../../src/services/codeOfConductAi";
 import { deliberationAssistantConfig } from "../../packages/civic.polis_deliberation/assistantConfig";
 
 const baseInput = {

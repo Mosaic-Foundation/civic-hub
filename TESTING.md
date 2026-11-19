@@ -87,6 +87,34 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Kernel branch: pinning phase 2 (2026-11-18)
+
+- **Unit:** 2,827 pass. `pinRules.test.ts` (was `announcementBoard.test.ts`): the hub's pin rules
+  (`src/shared/pinRules.ts`) and Announcements' urgent rules (`packages/civic.announcement/board.ts`).
+  `announcementBoardCopy.test.ts` is gone (the two copies differ by design now). `forHub`, `exportManifest` and the
+  parity fixture gain `process_pins` (exported, keyed by `process_id`); `pluginRoutes` loses the three
+  `/admin/announcements` routes. UI: 110 pass.
+- **API:** 1,085 pass in both modes (4 sandbox-only `events.test.ts` failures). `announcementUrgent.test.ts` (was
+  `announcementBoard.test.ts`): urgent as before; the plugin's pin routes answer 404 and a `pinned` field on its form
+  is ignored; an announcement is pinned through `/admin/processes/:id/pin` like any item; an urgent pinned item shows
+  once, at the top; a passed end date in `process_pins` drops off; ten at most. `aside.test.ts` allows `card_title`
+  and `type_label`; `leakHarness` drops the three routes.
+- **Migration** `20261118230000_process_pins.sql`: checked by hand that it copies a pinned item's state (who, when,
+  end date), skips a date that doesn't parse, and applies twice.
+- **Catalog:** Announcements 0.4.0 and News Sync 0.2.0 regenerated; conformance green.
+
+## Kernel branch: dev merged, News Sync whole in its package (2026-11-18)
+
+- **Unit:** 2,828 pass. `cronHubIsolation` runs the job from the package (its own items through `processesOf`, the
+  hub's place stamped by the kernel's create); `newsSync` and `pluginGate` read the feed code and connector ids from
+  `packages/civic.news_sync/sync/`; `packageBoundary` loses the reach-list tests (the list is gone);
+  `announcementBoardCopy` takes dev's "any item" wording into Announcements' copy; `manifestParity` and
+  `jobRegistry` take news_sync's new place in the cron list. UI: 110 pass, `hubStyles` gains `AdminPinned.css`.
+- **Catalog:** News Sync 0.2.0 (`20261118211124`) and Announcements 0.4.0 (`20261118211140`) regenerated against a
+  local stack; conformance green.
+- **API:** 1,085 pass in both modes (service role on :3000, minted tokens on :3001); the 4 `events.test.ts` failures are the sandbox-only ones, as before.
+- `kernel-surface --count`: 0 names, 0 paths for all ten packages.
+
 ## Pinning, phase 1 (2026-11-18)
 
 - **API** `pinAnyItem.test.ts` (now 8): Admin → Pinned lists a pinned vote with the count (403 for a resident); the
@@ -112,6 +140,153 @@ first time that layer has been runnable from a clean checkout.
   The migration was tried on a copy of the old row shape (synced post relabelled, hand-posted one untouched,
   updated_at kept, show_as → pill_label). Checked in the browser: the feed card ("Town news", From line, opens the
   original), the News page, Pin on its page, the right column's "Pinned" card.
+## Kernel step 3, fifth part: sample content (2026-11-17)
+
+- **Unit:** 2,819 passed, plus `samplesHook.test.ts` (the kernel's plan: space samples, then plugin defaults, skipped
+  keys, `needs`; every civic template's type; Word clouds' answer times) and `packageBoundary` (the `spaces/` fence).
+  **API:** 1,065 passed (the 4 `events.test.ts` failures are this sandbox's only); `sampleSeed.test.ts` seeds through
+  the new path, Word clouds' sample and onboarding setting included. `catalog:add` green for Word clouds.
+
+## Kernel step 3, fourth part: sign-up's stop (2026-11-17)
+
+- **UI:** 110 passed (`PackageSlots.test.tsx`: the stop only while Word clouds is on, never off-site). **Unit:** 2,818
+  passed (`hubWording`, `pluginSwitches` read Word clouds' `onboardingStop`). `catalog:add` green for Word clouds.
+
+## Kernel step 3, third part: package contributions (2026-11-17)
+
+- **UI:** 109 passed. New `ui/src/components/PackageSlots.test.tsx`: a package's process-page addition, review queue
+  and welcome strip show only while its plugin is on. `AdminRail.test.tsx` takes the queues from the packages.
+  **Unit:** 2,818 passed (`manifestParity` fixture gains `queues_seen_at`).
+  **API:** 1,065 passed, `adminQueueCounts.test.ts` among them (counts and "opened" by queue name); the 4 failures are
+  `events.test.ts`'s sandbox-only ones. `catalog:add` green for Briefs, Meeting summaries and Word clouds.
+
+## Kernel step 3, second part: closed line, settings check, /process link (2026-11-17)
+
+- **Unit:** 2,815 passed. `digest-parity.test.ts`: a closed vote's digest row reads its final count from Votes'
+  `resultLine`. `meetingSummaryGeneric.test.ts`: a bad Wix field list is refused by the package's own `checkSetting`.
+  **UI:** new `ui/src/pages/ProcessLink.test.tsx`: the link is the vote's page with Votes on, sends a proposal's old
+  link to its page with Votes off, and shows "Page not found" for a vote with Votes off.
+  **API:** 1,065 passed; the 4 failures are `events.test.ts`'s sandbox-only ones. `catalog:add` green for Votes and
+  Meeting summaries.
+
+## Kernel step 3, first part: "process closed" and package contributions (2026-11-17)
+
+- **Unit:** 2,815 passed. `processManifest.test.ts`: a grant may listen for `process.closed`, and the Install words say
+  so. `submissionPreview.test.ts`: the kernel's walk shows a vote's stored method; Votes' `describeSubmission` names it.
+  **API:** 1,065 passed (brief made on close, Briefs-off conversation makes none, regenerate, publish); the 4 failures
+  are `events.test.ts`'s sandbox-only ones. `catalog:add` green for Briefs, Votes, Meeting summaries and Proposals.
+
+## Kernel step 2: neutral roles and terms, the civic profile (2026-11-17)
+
+- **Unit:** 2,813 passed. New `tests/unit/spaceProfile.test.ts`: the four roles and the old names read as two of them;
+  word resolution in order (own word, profile by kind, profile, neutral); a bad profile refused; the civic profile
+  gives the same participant words as before for every kind of hub; `memberCreation` reads either name and every
+  shipped type names exactly one. `canActor.test.ts`: either role name opens an action; the caller is `member`.
+  `hubContext.test.ts`: `term()`. `authzParity` maps the old rules' `resident` caller to `member`. **UI:** 102 passed,
+  typecheck clean. **API:** 1,065 passed; the 4 failures are `events.test.ts`'s, which need `athens.localhost`
+  (sandbox only). Conformance for every shipped type passes in the API suite; `kit/scripts/prove.ts` (the SDK tour on
+  the new names) could not install in the sandbox (an npm bug), so CI runs it.
+
+## Kernel step 1: Conversations 0.4.0 on the kernel surface, step 1 complete (2026-11-17)
+
+- **Unit:** 2,792 passed. `packageBoundary`'s version 0 example is a package that does not exist (none here is on
+  version 0 now); `pluginRoutes`' fixture drops `POST /deliberations/:processId/regenerate`, gone on purpose; the
+  place-name check exempts the moved development mocks as it did under `src/debug/`. **UI:** 102 passed, typecheck
+  and build clean. **API:** 1,064 passed; the 5 failures are the ones dev also has (`leakHarness`'s missing news-sync plan, `events.test.ts`'s four that need `athens.localhost`); `briefRegenerate.test.ts` now checks that the conversation
+  keeps its brief's summary, takes a staged one on Publish (keeping the one it replaced), shows its result's figures
+  (`narrative: "unwritten"`) when no summary was kept, and closes with Briefs off showing its own figures and no
+  brief. `conversationSummary.spec.ts` (Playwright) expects the kept summary.
+- **Conformance:** `catalog:add` green for Conversations 0.4.0 and, again, Briefs 0.4.0 (its regenerate changed).
+- **By hand:** the conversations list, an active seeded conversation (its mock statements), one closed early with
+  its summary, a finalized one, and the drafting page, beside dev's on Athens at 1100 and 390 px: every element's
+  computed style and position the same apart from sub-pixel text widths.
+
+---
+
+## Kernel step 1: Briefs 0.4.0 on the kernel surface (2026-11-17)
+
+- **Unit:** 2,792 passed (`packageBoundary`'s version 0 example is Conversations now; the reach list drops
+  `briefResponses.ts`). **UI:** 102 passed, typecheck and build clean. **API:** passes apart from the failures
+  dev also has (`leakHarness`'s missing `GET /admin/news-sync/items` plan) and `events.test.ts`'s four, which need
+  `athens.localhost` to resolve. `pluginPackages.test.ts` reads Briefs' version from its package.json.
+- **Conformance:** `catalog:add` green for Briefs 0.4.0 (steps 17 and 22 skipped: `MOVED_HUB_PAGES`).
+- **By hand:** Outcomes, a published brief signed out, as an official (the response form) and as an admin, the admin
+  list, a pending and a published review, beside dev's: every element's computed style and position the same (1px
+  text-width noise) after the one cascade fix, no console errors.
+
+---
+
+## Kernel step 1: Votes 0.4.0 on the kernel surface (2026-11-17)
+
+- **Unit:** 2,792 passed (`pluginGate.test.ts` reads the duration range from Votes' `settings.ts`; `packageBoundary`'s
+  version 0 example is Briefs now). **UI:** 102 passed, typecheck and build clean. **API:** 1,064 passed locally;
+  the same five fail as on dev.
+- **Conformance:** `catalog:add` green for Votes 0.4.0 (steps 17 and 22 skipped: `MOVED_HUB_PAGES`).
+- **By hand:** the list, a proposed, an open and a finished vote, the vote log and the drafting page, signed out and as
+  an admin, beside dev's: every element's computed style and position the same (1px text-width noise), no console
+  errors.
+
+---
+
+## Kernel step 1: Meeting summaries 0.3.0 on the kernel surface (2026-11-17)
+
+- **Unit:** 2,792 passed. `meetingSummaryRulesCopy.test.ts` also holds the package's Wix column map equal to the
+  hub's. **API:** 1,066 passed locally; the same five fail as on dev.
+- **Conformance:** `catalog:add` green for Meeting summaries 0.3.0 (steps 17 and 22 skipped: `MOVED_HUB_PAGES`).
+- **By hand:** a published summary's page (signed out and as an admin), the admin list and a review page, beside
+  dev's: every element's computed style and position the same, no console errors.
+
+---
+
+## Kernel step 1: Projects 0.3.0 on the kernel surface (2026-11-17)
+
+- **Unit:** 2,790 passed. **API:** 1,066 passed locally; the same five fail as on dev.
+- **Conformance:** `catalog:add` green for Projects 0.3.0 (steps 17 and 22 skipped: `MOVED_HUB_PAGES`).
+- **By hand:** the list, a project's page and the drafting page, and Proposals' three pages, screenshotted beside
+  dev's: the same, no console errors.
+
+---
+
+## Kernel step 1: Proposals 0.3.0 on the kernel surface (2026-11-17)
+
+- **Unit:** `hubContext.test.ts`: `place` (and "local" without one), `participantNoun` by hub kind and the hub's own
+  word. 2,790 passed.
+- **API:** `proposals.test.ts`: another type's id is not found through `/proposals/:id` or its support routes, and
+  support on its own answers with the view. 1,068 passed locally; the same five fail as on dev (`events.test.ts` 4,
+  `leakHarness.test.ts`).
+- **Conformance:** `catalog:add` green for Proposals 0.3.0 (steps 17 and 22 skipped: `MOVED_HUB_PAGES`).
+- **By hand:** the list, a proposal's page and the drafting page render from the package, no console errors.
+
+---
+
+## Kernel step 1: Announcements 0.4.0 on the kernel surface (2026-11-17)
+
+- **Unit:** `announcementBoardCopy.test.ts`: the package's pinned and urgent rules and the hub's copy have the same
+  code. 2,763 passed.
+- **API:** 1,048 passed locally; the same five fail as on the commit before step 1 (`events.test.ts` 4,
+  `leakHarness.test.ts`).
+- **Conformance:** `catalog:add` green for Announcements 0.4.0 (21 passed, steps 17 and 22 skipped:
+  `MOVED_HUB_PAGES`).
+- **By hand:** the announcement page and form render from the package, no console errors.
+
+---
+
+## Kernel step 1: Word clouds on the kernel surface, Word clouds 0.3.0 (2026-11-17)
+
+- **Unit:**
+  - `packageBoundary.test.ts`: the version 0 cases now use Votes (Word clouds is on version 1). New: a package on
+    SDK version 1 is held to the outside rule, `/first-party` refused even though it peer-depends on the SDK, and
+    only its UI files (`ui.tsx`, `ui/`) take `@civic-social/plugin-sdk/ui` and React.
+  - `kitPortable.test.ts`: `HOST_PROVIDED` names `ui/src/host/index.ts`, the kernel's UI surface for a package's pages.
+- **API:** `pluginPackages.test.ts` expects Word clouds 0.3.0 in `civic.json`. Run locally on the run-anywhere stack
+  (Postgres 16 and PostgREST without Docker): 1,049 passed; `events.test.ts` (4) and `leakHarness.test.ts`
+  (`GET /admin/news-sync/items` has no plan) fail the same way on the commit before this one.
+- **Conformance:** `catalog:add` green for Word clouds 0.3.0: 22 passed, steps 17 and 22 skipped for this one
+  release (`MOVED_HUB_PAGES`: its pages are the hub's, moved as they were). Step 17 now reads the pages in `ui/`
+  too, and the ink-on-primary check every stylesheet in the package.
+- **By hand:** the word cloud page and Create page render from the package (headless Chromium, no console errors).
+
+---
 
 ## Districts and demographics (2026-11-16)
 - **Unit:** `tests/unit/aboutYou.test.ts` (terms, questions, age groups, the Census name match, the district list

@@ -27,7 +27,6 @@
 //
 // Both go through the same resolution order, so they cannot disagree.
 
-import { DEFAULT_CHECK_MODE, isCheckMode, type CheckMode } from "../shared/checkMode.js";
 import { envVar, processEnv } from "../config/env.js";
 import { ValidationError } from "../errors/index.js";
 import {
@@ -56,6 +55,7 @@ import {
 } from "../models/hubSettings.js";
 import { pluginPackageMounted } from "../plugins/mountedState.js";
 import { pluginDefaultOn } from "../shared/hubFeatures.js";
+import { pluginRequired } from "../shared/spaceTypes.js";
 
 export { KEYS, publicSubset, invalidateHubSettings };
 export type { SettingsMap };
@@ -193,7 +193,7 @@ export async function getPublicSettings(
     const key = `plugin.${id}.enabled`;
     // A plugin whose package this deployment did not mount reads as off,
     // as it does on the server (src/plugins/mountedState.ts).
-    out[key] = pluginPackageMounted(id) && asBoolean(resolve(map, key), pluginDefaultOn(id)) ? "true" : "false";
+    out[key] = pluginPackageMounted(id) && (pluginRequired(id) || asBoolean(resolve(map, key), pluginDefaultOn(id))) ? "true" : "false";
     // Winding down (ADR-014): on, but nothing new of its kind can be started.
     if (asBoolean(resolve(map, `plugin.${id}.winding_down`), false)) out[`plugin.${id}.winding_down`] = "true";
   }
@@ -712,9 +712,10 @@ export function hubDisplayNameSync(): string {
 /**
  * Everything is on unless a hub explicitly switches it off, or its plugin
  * package is not mounted on this deployment (src/plugins/mountedState.ts).
+ * A plugin the space type requires is on whatever its switch says.
  */
 export function isPluginEnabledSync(pluginId: string): boolean {
-  return pluginPackageMounted(pluginId) && asBoolean(getSettingSync(`plugin.${pluginId}.enabled`), pluginDefaultOn(pluginId));
+  return pluginPackageMounted(pluginId) && (pluginRequired(pluginId) || asBoolean(getSettingSync(`plugin.${pluginId}.enabled`), pluginDefaultOn(pluginId)));
 }
 
 /**
@@ -730,30 +731,7 @@ export async function isPluginEnabled(
   hubId: string | null,
   pluginId: string,
 ): Promise<boolean> {
-  return pluginPackageMounted(pluginId) && asBoolean(await getSetting(hubId, `plugin.${pluginId}.enabled`), pluginDefaultOn(pluginId));
-}
-
-/**
- * The range of voting windows a resident may choose on this hub, in days, and
- * where a new draft starts. Unset keys keep the numbers that were in code
- * before they were settings (14, 90, 42). A range an admin set backwards is
- * put the right way round, and the default is kept inside it, so a
- * half-edited range can never make every duration invalid.
- */
-export const VOTE_DURATION_DEFAULTS = { minDays: 14, maxDays: 90, defaultDays: 42 } as const;
-const DURATION_DAYS_CEILING = 365;
-
-export function voteDurationLimitsSync(): { minDays: number; maxDays: number; defaultDays: number } {
-  const days = (key: string, fallback: number) => {
-    const n = asNumber(getSettingSync(key), fallback);
-    return Number.isInteger(n) && n >= 1 && n <= DURATION_DAYS_CEILING ? n : fallback;
-  };
-  let minDays = days(KEYS.PLUGIN_VOTE_MIN_DURATION_DAYS, VOTE_DURATION_DEFAULTS.minDays);
-  let maxDays = days(KEYS.PLUGIN_VOTE_MAX_DURATION_DAYS, VOTE_DURATION_DEFAULTS.maxDays);
-  if (minDays > maxDays) [minDays, maxDays] = [maxDays, minDays];
-  const wanted = days(KEYS.PLUGIN_VOTE_DEFAULT_DURATION_DAYS, VOTE_DURATION_DEFAULTS.defaultDays);
-  const defaultDays = Math.min(maxDays, Math.max(minDays, wanted));
-  return { minDays, maxDays, defaultDays };
+  return pluginPackageMounted(pluginId) && (pluginRequired(pluginId) || asBoolean(await getSetting(hubId, `plugin.${pluginId}.enabled`), pluginDefaultOn(pluginId)));
 }
 
 /**
@@ -794,8 +772,3 @@ export async function setSupportThreshold(
 
 export { getWaitlist, type WaitlistEntry } from "../db/waitlistStore.js";
 
-/** The receipt check mode a new vote's draft starts with (src/shared/checkMode.ts). */
-export function defaultCheckModeSync(): CheckMode {
-  const v = getSettingSync(KEYS.PLUGIN_VOTE_DEFAULT_CHECK_MODE);
-  return isCheckMode(v) ? v : DEFAULT_CHECK_MODE;
-}

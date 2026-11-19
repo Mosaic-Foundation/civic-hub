@@ -29,4 +29,28 @@ describe("hubContext()", () => {
   it("serves the hub's zone to anyone", () => {
     expect(isPublicKey("identity.timezone")).toBe(true);
   });
+
+  // Kernel step 1: the scope it serves and what it calls the people taking part.
+  it("knows its place, or 'local' without one", () => {
+    expect(runWithHub(FLOYD_HUB, {}, hubContext).place).toBe(FLOYD_HUB.jurisdiction_code);
+    expect(runWithHub({ ...FLOYD_HUB, jurisdiction_code: null }, {}, hubContext).place).toBe("local");
+  });
+
+  it("names the people taking part as the hub does", () => {
+    const noun = (settings: Record<string, string>, n: number) => runWithHub(FLOYD_HUB, settings, () => hubContext().participantNoun(n));
+    expect(noun({ "identity.hub_kind": "place" }, 1)).toBe("resident");
+    expect(noun({ "identity.hub_kind": "place" }, 3)).toBe("residents");
+    expect(noun({ "identity.hub_kind": "organization" }, 2)).toBe("members");
+    expect(noun({ "identity.hub_kind": "place", "copy.resident_noun": "neighbor" }, 2)).toBe("neighbors");
+  });
+
+  // Kernel step 2: the kernel's words, as the civic profile names them.
+  it("names the kernel's words as the hub does: term()", async () => {
+    const { term } = await import("../../src/sdk/index.js");
+    const at = (settings: Record<string, string>, f: () => string) => runWithHub(FLOYD_HUB, settings, f);
+    expect(at({}, () => hubContext().term("member", 2))).toBe("residents");
+    expect(at({ "copy.resident_noun": "neighbor" }, () => term("member"))).toBe("neighbor");
+    expect(at({}, () => term("accountable", 2))).toBe("officials");
+    expect(at({ "identity.hub_kind": "issue" }, () => term("space"))).toBe("hub");
+  });
 });

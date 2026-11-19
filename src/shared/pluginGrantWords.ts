@@ -33,11 +33,15 @@ export const ADAPTER_PLAIN: Readonly<Record<
   },
 };
 
-/** The plain phrase for one event type, completing "when …". */
-export function eventPlain(eventType: string): string {
-  return EVENT_PLAIN[eventType] ?? humanize(eventType);
+/**
+ * The plain phrase for one event type, completing "when …": the plugin's own
+ * words (its manifest's eventWords), else the kernel's for the shared ones.
+ */
+export function eventPlain(eventType: string, own: Readonly<Record<string, string>> = {}): string {
+  return own[eventType] ?? EVENT_PLAIN[eventType] ?? humanize(eventType);
 }
 
+/** The shared event types every process may emit; a plugin words its own (eventWords). */
 const EVENT_PLAIN: Readonly<Record<string, string>> = {
   "civic.process.proposed": "one is proposed",
   "civic.process.threshold_met": "one has enough support",
@@ -49,13 +53,6 @@ const EVENT_PLAIN: Readonly<Record<string, string>> = {
   "civic.process.result_published": "it publishes a result or a post",
   "civic.process.outcome_recorded": "an outcome is recorded",
   "civic.process.action_taken": "someone responds to it",
-  "civic.proposal.submitted": "a proposal is submitted",
-  "civic.proposal.supported": "someone supports a proposal",
-  "civic.proposal.support_withdrawn": "someone withdraws their support",
-  "civic.proposal.closed": "a proposal closes",
-  "civic.project.created": "a project is added",
-  "civic.project.updated": "a project is updated",
-  "civic.project.sentiment_changed": "someone says how they feel about a project",
 };
 
 function humanize(eventType: string): string {

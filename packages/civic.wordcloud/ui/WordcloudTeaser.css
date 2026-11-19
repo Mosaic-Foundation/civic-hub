@@ -1,0 +1,94 @@
+.wc-teaser {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-4);
+  background: var(--color-primary-wash);
+  color: var(--pill-vote-fg);
+  font-size: var(--text-small-size);
+  line-height: 1.2;
+  text-decoration: none;
+  border-bottom: var(--border-width) solid var(--color-border-subtle);
+  transition: background 0.15s ease;
+}
+
+.wc-teaser:hover {
+  background: var(--color-primary-tint);
+}
+
+.wc-teaser-icon {
+  font-size: var(--text-small-size);
+  opacity: 0.8;
+}
+
+.wc-teaser-label {
+  font-weight: 600;
+}
+
+.wc-teaser-sep {
+  opacity: 0.45;
+}
+
+/* Fixed-width-ish slot so rotating words don't jiggle the layout. */
+.wc-teaser-rotator {
+  display: inline-flex;
+  min-width: 7ch;
+  justify-content: flex-start;
+}
+
+.wc-teaser-word {
+  font-weight: 600;
+  font-style: italic;
+  animation: wc-word-in 0.45s ease;
+}
+
+.wc-teaser-cta {
+  font-weight: 700;
+  transition: transform 0.15s ease;
+}
+
+.wc-teaser:hover .wc-teaser-cta {
+  transform: translateX(2px);
+}
+
+@keyframes wc-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-1));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wc-teaser-word {
+    animation: none;
+  }
+}
+
+/* Mobile: keep the label for clarity, just tighten spacing and cap the
+   rotating word so a long entry can't push the row out of bounds. */
+@media (max-width: 560px) {
+  .wc-teaser {
+    gap: var(--space-1-5);
+    padding: var(--space-1-5) var(--space-3);
+  }
+  .wc-teaser-rotator {
+    min-width: 0;
+    max-width: 40vw;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+/* The focused drafting layout at phone width hides the strip, as it hides the
+   hub's header and banner (the kernel's DraftingForm.css). */
+@media (max-width: 768px) {
+  html.drafting-focus .wc-teaser {
+    display: none;
+  }
+}

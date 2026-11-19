@@ -15,9 +15,13 @@
  */
 
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
-import { localRest, mintSession } from "../fixtures/adminSession.js";
+import { localRest, mintSession } from "./sessions";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 import { E2E_API_BASE as API } from "./hubApi";
+import { readFileSync } from "node:fs";
+
+/** The checkout's Word clouds version, as its card shows it. */
+const WORDCLOUD_VERSION = (JSON.parse(readFileSync("packages/civic.wordcloud/package.json", "utf8")) as { version: string }).version;
 
 async function hubId(request: APIRequestContext): Promise<string> {
   return ((await (await request.get(`${API}/hub-config`)).json()) as { hub: { id: string } }).hub.id;
@@ -60,7 +64,7 @@ test.describe("Install and Remove on the Plugins page", () => {
     await visitAs(page, token);
     await page.goto("/admin/settings/plugins#wordcloud");
     const card = page.getByRole("region", { name: "Word clouds", exact: true });
-    await expect(card.getByText("version 0.2.0", { exact: false })).toBeVisible();
+    await expect(card.getByText(`version ${WORDCLOUD_VERSION}`, { exact: false })).toBeVisible();
 
     await card.getByRole("button", { name: "Remove…" }).click();
     const remove = page.getByRole("dialog", { name: "Remove Word clouds?" });
@@ -79,7 +83,7 @@ test.describe("Install and Remove on the Plugins page", () => {
     await expect(dialog.getByText(/Keep its own records on this hub: residents' one-word answers/)).toBeVisible();
     await expect(dialog.getByText("It will not be able to:")).toBeVisible();
     await expect(dialog.getByText("Send email.", { exact: true })).toBeVisible();
-    await expect(dialog.getByText(/Version 0\.2\.0, checked by Civic\.Social on/)).toBeVisible();
+    await expect(dialog.getByText(new RegExp(`Version ${WORDCLOUD_VERSION.replace(/\./g, "\\.")}, checked by Civic\\.Social on`))).toBeVisible();
     await dialog.getByRole("button", { name: "Install", exact: true }).click();
     await expect(card.locator(".plugin-card-state")).toHaveText("Installed");
 

@@ -1,8 +1,8 @@
 // civic.meeting_summary: a plain-language summary of a public meeting
-// (manifest: ./manifest.ts).
+// (manifest: ./manifest.ts). Its pages are its own (./ui/), built from the
+// SDK's UI entry alone, and load when first opened.
 
-import { AdminMeetingSummaries, MeetingSummary } from "../../ui/src/lazyPages";
-import { getMeetingSummary } from "../../ui/src/services/api";
+import { lazy } from "react";
 import {
   BooleanField,
   ChoiceField,
@@ -11,9 +11,15 @@ import {
   TextAreaField,
   TextField,
   UrlField,
-} from "../../ui/src/pages/settings/pluginFields";
-import { formatCount, formatDuration, formatMeetingDate } from "../../ui/src/processes/feedText";
-import type { ProcessUi } from "../../ui/src/processes/types";
+  formatCount,
+  formatDuration,
+  formatMeetingDate,
+  type ProcessUi,
+} from "@civic-social/plugin-sdk/ui";
+import { getMeetingSummary } from "./ui/api";
+
+const MeetingSummary = lazy(() => import("./ui/MeetingSummary"));
+const AdminMeetingSummaries = lazy(() => import("./ui/AdminMeetingSummaries"));
 
 const MEETING_CONNECTOR_LABELS: Record<string, string> = {
   auto: "Automatic (try each source below)",
@@ -24,6 +30,18 @@ const MEETING_CONNECTOR_LABELS: Record<string, string> = {
 
 const meetingSummaryUi: ProcessUi = {
   type: "civic.meeting_summary",
+  // Its own filter pill above the feed (the kernel names none): "Supervisors
+  // meeting summaries", or "Meeting summaries" where the space names no
+  // governing body. The card pill reads the same.
+  feedFilter: {
+    surface: "meeting_summary",
+    label: (space) => (space.governingBodyShort ? `${space.governingBodyShort} meeting summaries` : "Meeting summaries"),
+    pillClass: "meeting",
+  },
+  // Its review queue in the admin rail (the kernel counts what is new).
+  contributes: {
+    adminQueue: { queue: "meeting_summaries", label: "Meeting summaries", icon: "meeting", path: "/admin/meeting-summaries" },
+  },
   routes: [
     { path: "/admin/meeting-summaries", element: <AdminMeetingSummaries />, admin: true },
     { path: "/admin/meeting-summaries/:id", element: <AdminMeetingSummaries />, admin: true },

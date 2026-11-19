@@ -4,23 +4,23 @@
 // one ProcessUi, and index.ts lists them. App, the feed, the Plugins page and
 // the link picker read the list instead of keeping a hand map of types.
 
-import type { ReactElement, ReactNode } from "react";
+import type { ComponentType, ReactElement, ReactNode } from "react";
 import type { Activity, ActivityKind } from "../../../src/shared/feedActivity";
 import type { CivicEvent, RelationType } from "../services/api";
 import type { FormApi } from "../pages/settings/pluginFields";
+import type { SpaceView } from "../host";
 
-/** One page of a type: its path, and who may open it. */
+/**
+ * One page of a type: its path, and who may open it. A type whose page lives
+ * at "/process/:id" (its manifest's detailPath) registers it at that path; the
+ * kernel owns the link and hands it over while the type's plugin is on
+ * (pages/ProcessLink.tsx).
+ */
 export interface ProcessRoute {
   path: string;
   element: ReactElement;
   /** Wrapped in <AdminGuard>. */
   admin?: true;
-  /**
-   * Mounted without the plugin gate: the page itself shows "not found" for a
-   * record whose own plugin is off (the generic /process/:id page, which
-   * hands every type to its own page and so cannot know the plugin up front).
-   */
-  ungated?: true;
 }
 
 /**
@@ -48,8 +48,6 @@ export interface ProcessMeta {
   lastEditedAt?: string | null;
   blockCount?: number;
   maxStartSeconds?: number | null;
-  /** An announcement marked urgent right now: the card's red Urgent label. */
-  urgent?: boolean;
 }
 
 /** The text of a feed card: derived from the classified kind, the event and the fetched meta. */
@@ -57,6 +55,11 @@ export interface CardText {
   title: string;
   summary: string;
   authorName?: string | null;
+  /**
+   * The card's pill, where the type words it from the space as it stands now
+   * (News Sync: the hub's pill label). Unset: the type's own label.
+   */
+  pill?: string;
   /** Event-derived metadata line. When set, it wins over the Feed
    *  container's fetched-meta engagement (which knows nothing about
    *  this event's payload). */
@@ -105,8 +108,55 @@ export interface ProcessUi {
   routes: ReadonlyArray<ProcessRoute>;
   /** How this type's feed kinds render. */
   feed?: Partial<Record<ActivityKind, FeedKindUi>>;
+  /**
+   * A filter pill of its own above the feed, for the surface its card rules
+   * name (src/shared/feedActivity.ts FEED_SURFACES), shown while its plugin
+   * is. `pillClass` is the FeedFilter.css modifier (feed-filter-pill--<it>).
+   */
+  feedFilter?: { surface: string; label: (space: SpaceView) => string; pillClass: string };
   /** Its plugin's panel on the Plugins page; only on the type whose manifest carries pluginSection. */
   settingsPanel?: (f: FormApi) => ReactNode;
   /** The relation the link picker offers first when linking FROM a process of this type. */
   linkRelation?: RelationType;
+  /** What this type's package adds to the kernel's own pages, while its plugin is on. */
+  contributes?: PackageContributions;
+}
+
+/**
+ * What a package adds to the kernel's own pages (kernel step 3). The kernel
+ * draws each one where it belongs and names no package; a contribution shows
+ * only while its package's plugin is on.
+ */
+export interface PackageContributions {
+  /**
+   * Drawn at the top of every process page, under its header (the page mounts
+   * ProcessPageTop). Briefs: "The final brief is published. Read the brief".
+   * Draws nothing where it has nothing to say.
+   */
+  processTop?: ComponentType<{ processId: string }>;
+  /** A tab in the admin rail's Review group, with its count of what is new. */
+  adminQueue?: AdminQueueTab;
+  /** Drawn in the strip across the top of the hub's public pages (Word clouds' teaser). */
+  welcomeStrip?: ComponentType;
+  /**
+   * Where a new member goes right after signing up, or null to stay put
+   * (Word clouds: the hub's word cloud). `back` is the page they signed up
+   * on, to come back to: a local path the kernel checked, or null. The first
+   * package with somewhere to send them wins.
+   */
+  afterSignUp?: (back: string | null) => string | null;
+}
+
+/**
+ * A package's review queue in the admin rail. `queue` is the publication queue
+ * its manifest names (`publication.queue`): the kernel counts what arrived
+ * since the admin last opened `path`, and opening it clears the count
+ * (markAdminQueueSeen(queue)).
+ */
+export interface AdminQueueTab {
+  queue: string;
+  label: string;
+  /** An icon name the kernel's rail knows (components/icons). */
+  icon: string;
+  path: string;
 }

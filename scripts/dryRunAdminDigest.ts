@@ -7,10 +7,8 @@
 // Pass --stub to render a non-empty payload regardless of the live DB
 // state (useful to verify the email layout when dev queues are empty).
 
-import {
-  buildAdminDigest,
-  renderAdminDigestEmail,
-} from "../src/modules/civic.admin_digest/index.js";
+import { adminWindow } from "../src/modules/civic.admin_waiting/index.js";
+import { renderAdminDigestEmail } from "../features/admin_digest/digest.js";
 import { buildStubAdminDigestPayload } from "../tests/fixtures/samples/dryRunAdminDigest.js";
 import type { Hub } from "../src/models/hub.js";
 import { withScriptHub } from "./lib/hubScope.js";
@@ -21,7 +19,7 @@ async function main(_hub: Hub) {
   // the last digest left, and a dry run must not move it.
   const until = new Date().toISOString();
   const since = new Date(Date.now() - 86_400_000).toISOString();
-  const payload = useStub ? buildStubAdminDigestPayload(until) : await buildAdminDigest(since, until);
+  const payload = useStub ? buildStubAdminDigestPayload(until) : await adminWindow(since, until);
   console.log("--- payload ---");
   console.log(JSON.stringify(payload, null, 2));
   console.log("");

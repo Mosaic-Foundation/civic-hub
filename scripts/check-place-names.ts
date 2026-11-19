@@ -74,14 +74,16 @@ export const PLACE_NAME_PATTERNS: readonly RegExp[] = [
  * County wording where a hub may be a town, a school district or no place at
  * all: "county government", "the county", "county employees" (2026-10-07,
  * review R53). The word on its own stays legal — "county" is a type of place,
- * and a type id. Not applied under src/debug/: the dev-only seed data there
- * is written for a county hub and never reaches another (CIVIC_ALLOW_SEED).
+ * and a type id. Not applied under src/debug/, nor to the conversation's
+ * stand-in Polis answers for the development seed (moved out of src/debug/ in
+ * kernel step 1): that seed data is written for a county hub and never reaches
+ * another (CIVIC_ALLOW_SEED).
  */
 export const COUNTY_WORDING_PATTERNS: readonly RegExp[] = [
   /\bthe county\b/i,
   /\bcounty (government|employees|staff|officials|residents|board)\b/i,
 ];
-const COUNTY_WORDING_EXEMPT = ["src/debug/"];
+const COUNTY_WORDING_EXEMPT = ["src/debug/", "packages/civic.polis_deliberation/mocks.ts"];
 
 export interface Hit {
   file: string; // repo-relative, forward slashes

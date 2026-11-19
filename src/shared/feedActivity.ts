@@ -6,7 +6,7 @@
 //   1. ui/src/components/Feed.tsx        (kindFromEvent — the inclusion gate)
 //   2. ui/src/components/FeedPost.tsx    (eventToPost — the renderer)
 //   3. ui/src/components/FeedFilter.tsx  (buildFilterPredicate — the ?type= filter)
-//   4. src/modules/civic.digest/filter.ts (isDigestRenderable + classifyItemKind)
+//   4. features/digest/filter.ts (isDigestRenderable + classifyItemKind)
 // They could not be diffed mechanically (a flat Set vs a data-shape switch)
 // and had already drifted — generic "Activity" cards, a wordcloud mislabeled
 // as a vote in the digest, proposals/projects/conversations visible in-app but
@@ -14,10 +14,11 @@
 //
 // SHARED ACROSS BOTH RUNTIMES — consumed by:
 //   - the Vite frontend (Feed / FeedPost / FeedFilter), and
-//   - the Node backend (civic.digest filter + service).
-// It MUST therefore stay framework-agnostic and free of server code: its one
-// import is the process manifests (plain data, src/shared/processManifests.ts;
-// eslint keeps it to that).
+//   - the Node backend (the digest feature's filter + service, features/digest/).
+// It MUST therefore stay framework-agnostic and free of server code: it
+// imports only plain data, the process manifests
+// (src/shared/processManifests.ts) and the space type's palette
+// (src/shared/spacePalette.ts).
 // Do NOT fork this logic back into the consumers — that drift is the bug this
 // module exists to kill. Frontend imports it by relative path; the backend
 // gets it via `src/**/*`.
@@ -36,17 +37,23 @@
 // via emitEvent) as the single discriminator, falling back to the legacy
 // data-shape checks for historical events emitted before the field existed.
 
-import { syncedSourceView } from "./newsSource.js";
 import { LEGACY_TYPES, MANIFEST_LIST } from "./processManifests.js";
+import { SPACE_PALETTE } from "./spacePalette.js";
 
 /**
  * Coarse content category — aligned 1:1 with the FeedFilter `?type=` keys so
  * the inclusion gate, the filter predicate, and the rendered pills can never
- * disagree (the "filter shows fewer than All" bug). Votes, vote-results,
- * wordclouds, proposals, projects, and conversations all live under
- * "activity"; announcements and meeting summaries get their own filter pill.
+ * disagree (the "filter shows fewer than All" bug). "activity" is the
+ * kernel's own, where most cards go; a type's card rule may name a surface of
+ * its own (Announcements' "announcement", News Sync's "news", Meeting
+ * summaries' "meeting_summary"), which gets its own filter pill while that
+ * type's plugin is shown (its UI module's `feedFilter`). The kernel names none
+ * of them (kernel step 3, Nov 19): FEED_SURFACES lists what the manifests name.
  */
-export type ActivitySurface = "announcement" | "news" | "meeting_summary" | "activity";
+export type ActivitySurface = string;
+
+/** The kernel's own surface: every card no type gives a surface of its own. */
+export const ACTIVITY_SURFACE = "activity";
 
 /**
  * Fine-grained render variant. Each consumer maps this to its own presentation
@@ -54,30 +61,14 @@ export type ActivitySurface = "announcement" | "news" | "meeting_summary" | "act
  * pill color) via a total, exhaustively-checked switch — stable mappings, not
  * the brittle data-shape sniffing this module replaces.
  */
-export type BuiltinActivityKind =
-  | "vote-open"
-  | "vote-closed" // a vote's own results, published when it closes (2026-10-07)
-  | "vote-results" // legacy civic.vote_results records
-  | "announcement" // admin / synced (Floyd County Gov)
-  | "announcement-author" // board member / committee / other authored
-  | "news" // a post News Sync copied in from another site (civic.news; Adam, 2026-11-18)
-  | "meeting"
-  | "wordcloud"
-  | "proposal"
-  | "proposal-closed"
-  | "project-created"
-  | "project-updated"
-  | "conversation"
-  | "conversation-results" // legacy deliberation outcome delivered (close)
-  | "brief" // universal civic.brief published — the final result of any process
-  | "brief-response"; // an official responded to a published brief (anchored)
-
 /**
- * A card kind: the hub's own, or one a package declares in its manifest's
- * `feed.kinds` (engine 2, A5: the Events plugin's "event"). Consumers switch
- * on the hub's own and read a declared one from DECLARED_FEED_KINDS.
+ * A card kind: one a type's card rule names ("vote-open"), listed with its
+ * digest section and order in the space type's palette
+ * (src/shared/spacePalette.ts), or one a package declares in its manifest's
+ * `feed.kinds` (engine 2, A5: the Events plugin's "event"). The kernel names
+ * none but "brief", the card of a published Civic Brief.
  */
-export type ActivityKind = BuiltinActivityKind | (string & {});
+export type ActivityKind = string;
 
 /**
  * THE color decision (2026-08-28, Adam): every surface colors a card, row,
@@ -88,31 +79,12 @@ export type ActivityKind = BuiltinActivityKind | (string & {});
  * the Outcomes index, and the email digest can never disagree again
  * (they previously kept three drifting palettes keyed by kind).
  *
- * Each key maps to a `--type-<key>-bg/-fg` token pair in the UI's
- * theme.css and a literal hex pair in civic.digest/service.ts
- * PILL_COLORS (emails cannot read CSS variables).
- *
- * Two non-process keys on purpose: "announcement-author" preserves the
- * elected-official vs hub-admin announcement distinction, and
- * "official-response" is an ACT (the government answering a brief), not
- * a process — it keeps its gold everywhere.
+ * Each key maps to a `--type-<key>-bg/-fg` token pair in the UI and an
+ * email pill pair; the space type's palette (src/shared/spacePalette.ts)
+ * lists its keys, and a package declares its own with its card kind (A5).
+ * The kernel's own is "generic".
  */
-export type BuiltinActivityColor =
-  | "vote"
-  | "proposal"
-  | "conversation"
-  | "project"
-  | "wordcloud"
-  | "announcement"
-  | "announcement-author"
-  // Posts News Sync copies in from another site (2026-11-16, Adam).
-  | "news"
-  | "meeting"
-  | "official-response"
-  | "generic";
-
-/** A colour key: the hub's own, or one a package declares with its card kind (A5). */
-export type ActivityColor = BuiltinActivityColor | (string & {});
+export type ActivityColor = string;
 
 export interface Activity {
   surface: ActivitySurface;
@@ -193,14 +165,23 @@ export type FeedHref =
   /** The page of the process a data field names, else the event's own. */
   | { detailOf: string };
 
-/** A card, or one of the two whose pill is built from the payload. */
+/**
+ * A card built from its event's payload by the type that declares it
+ * (Announcements: the pill is the author's role; News Sync: the pill and
+ * "From" line are its source's). `surface` and `color` are what it is usually
+ * filed under and coloured, read where no event is at hand (the filter list,
+ * a type's colour); `fromPayload` gives the card itself.
+ */
+export interface PayloadCard {
+  surface: ActivitySurface;
+  color: ActivityColor;
+  fromPayload: (data: Record<string, unknown>, actionUrl: string) => Activity;
+}
+
+/** A card, one built from its payload, or a published Civic Brief (it wears its source's colour and pill). */
 export type FeedCard =
   | { surface: ActivitySurface; kind: ActivityKind; color: ActivityColor; pill: string; href: FeedHref }
-  /** An announcement: its pill is the author's role (classifyAnnouncement). */
-  | "announcement"
-  /** A News item: its pill and "From" line are its source's (classifyNews). */
-  | "news"
-  /** A published Civic Brief: it wears its source's colour and pill. */
+  | PayloadCard
   | "brief";
 
 /** One event of a type that makes a feed card. */
@@ -234,6 +215,27 @@ export interface FeedBriefStyle {
 }
 
 /**
+ * A colour family a package carries (engine 2, A5; every package's own
+ * default since kernel step 4, Nov 19: "each plugin carries its own default
+ * colour"). Its light pair, and optionally its dark pair and its email pill.
+ * The space type's palette may list the same key, and then its values win
+ * (src/shared/spacePalette.ts); an admin's theme wins over both.
+ */
+export interface PackageColor {
+  /** Lowercase letters, digits and hyphens: the UI's `--type-<key>-*` tokens. */
+  key: string;
+  /** What Settings → Theme calls it. */
+  label: string;
+  /** The light mode's text colour and wash, #rrggbb. Its fg is the theme's default hue. */
+  fg: string;
+  bg: string;
+  /** The dark mode's (a light tone for words, a dark tint behind). Absent: the kernel's neutral dark. */
+  dark?: { fg: string; bg: string };
+  /** Its pill in the email digest. Absent: the light pair. */
+  email?: { fg: string; bg: string };
+}
+
+/**
  * A card kind a package adds (engine 2, A5): what its pill and card edge are
  * coloured, what the theme calls the colour, and where the email digest puts
  * it. Every surface reads these; no hub list names the kind.
@@ -242,7 +244,7 @@ export interface FeedKindDeclaration {
   /** The kind its `cards` rules name ("event"). Not one of the hub's own. */
   kind: string;
   /** Its colour family: a key of its own, the default text colour and wash, and the theme's label. */
-  color: { key: string; fg: string; bg: string; label: string };
+  color: PackageColor;
   /** The digest's section for it: a key, the heading, and the line under a card's title. */
   digest: { section: string; heading: string; summary?: (data: Record<string, unknown>) => string | null };
 }
@@ -260,10 +262,18 @@ export const DECLARED_FEED_KINDS: ReadonlyMap<string, FeedKindDeclaration & { ty
   MANIFEST_LIST.flatMap((m) => (m.feed?.kinds ?? []).map((k) => [k.kind, { ...k, type: m.descriptor.type }] as const)),
 );
 
-/** Every colour family the configured packages declare (A5), in load order. */
-export const DECLARED_COLORS: ReadonlyArray<FeedKindDeclaration["color"]> = [
-  ...new Map([...DECLARED_FEED_KINDS.values()].map((k) => [k.color.key, k.color] as const)).values(),
-];
+/**
+ * Every colour family the configured packages declare, in load order: each
+ * manifest's own `colors`, then its card kinds' (A5). The first declaration
+ * of a key stands.
+ */
+export const DECLARED_COLORS: readonly PackageColor[] = (() => {
+  const byKey = new Map<string, PackageColor>();
+  for (const m of MANIFEST_LIST) {
+    for (const c of [...(m.colors ?? []), ...(m.feed?.kinds ?? []).map((k) => k.color)]) if (!byKey.has(c.key)) byKey.set(c.key, c);
+  }
+  return [...byKey.values()];
+})();
 
 interface TableRule extends FeedCardRule {
   type: string;
@@ -293,6 +303,20 @@ const BRIEF_STYLES: ReadonlyMap<string, FeedBriefStyle> = new Map(
 );
 
 /**
+ * Every surface a card can be filed under: the ones the manifests' card rules
+ * name, in load order, then the kernel's "activity". The feed's `?surface=`
+ * accepts these alone.
+ */
+export const FEED_SURFACES: readonly ActivitySurface[] = [
+  ...new Set(
+    MANIFEST_LIST.flatMap((m) =>
+      (m.feed?.cards ?? []).flatMap((r) => (typeof r.card === "object" && r.card.surface !== ACTIVITY_SURFACE ? [r.card.surface] : [])),
+    ),
+  ),
+  ACTIVITY_SURFACE,
+];
+
+/**
  * The only event types `classifyActivity` can return a card for: every event
  * a manifest's feed rule names. The feed asks the database for these types
  * alone (2026-10-07), so a page of cards is not a scan through every ballot
@@ -307,23 +331,9 @@ export const FEED_EVENT_TYPES: readonly string[] = [...RULES.keys()];
  * /api/feed's process_meta, GET /api/feed/meta), and the feed seeds its
  * metadata cache with it for these kinds only.
  */
-export const FEED_META_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>([
-  "vote-open",
-  "vote-closed",
-  "vote-results",
-  "meeting",
-  "wordcloud",
-  "project-created",
-  "project-updated",
-  "conversation",
-  "conversation-results",
-  "announcement",
-  "announcement-author",
-  "news",
-  // A brief's card is its publish event; a regenerated version replaces its
-  // headline in place, marked "Updated <date>" (Actions slice).
-  "brief",
-]);
+export const FEED_META_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(
+  SPACE_PALETTE.kinds.filter((k) => k.meta).map((k) => k.kind),
+);
 
 /**
  * Classify a civic event into its feed/digest presentation, or null when the
@@ -331,13 +341,27 @@ export const FEED_META_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(
  * digest all share. Default-closed: an event no rule names makes no card.
  */
 export function classifyActivity(event: ClassifierEvent): Activity | null {
+  const pick = pickRule(event);
+  return pick ? cardFor(pick, event, event.data ?? {}) : null;
+}
+
+/**
+ * The process type whose card rule classified this event (the vote, for its
+ * closing count), or undefined when no card is made. The digest asks that
+ * type's handler for its own line (kernel step 3).
+ */
+export function classifiedType(event: ClassifierEvent): string | undefined {
+  return pickRule(event)?.type;
+}
+
+function pickRule(event: ClassifierEvent): TableRule | undefined {
   // Review-lifecycle events are restricted admin/creator correspondence —
   // admins receive them on the events endpoint for the moderation log, but
   // they are never public activity. Excluded regardless of viewer.
-  if (event.event_type.startsWith("civic.review.")) return null;
+  if (event.event_type.startsWith("civic.review.")) return undefined;
 
   const rules = RULES.get(event.event_type);
-  if (!rules) return null;
+  if (!rules) return undefined;
   const data = event.data ?? {};
   const processType = processTypeOf(event);
   const holds = (r: TableRule) => !r.when || Object.entries(r.when).every(([k, v]) => data[k] === v);
@@ -352,19 +376,17 @@ export function classifyActivity(event: ClassifierEvent): Activity | null {
     (processType !== undefined ? rules.find((r) => r.match !== "event" && r.type === processType && holds(r)) : undefined) ??
     rules.find((r) => r.match !== "event" && hasLegacy(r) && holds(r)) ??
     (processType === undefined ? rules.find((r) => r.untypedDefault && holds(r)) : undefined);
-  return pick ? cardFor(pick, event, data) : null;
+  return pick;
 }
 
 function cardFor(rule: TableRule, event: ClassifierEvent, data: Record<string, unknown>): Activity {
   const card = rule.card;
-  if (card === "announcement") return classifyAnnouncement(data, event.action_url);
-  if (card === "news") return classifyNews(data, event.action_url);
   if (card === "brief") {
     const brief = (data.brief ?? {}) as { source_process_type?: unknown };
     const srcType = typeof brief.source_process_type === "string" ? brief.source_process_type : "";
     const style = BRIEF_STYLES.get(srcType);
     return {
-      surface: "activity",
+      surface: ACTIVITY_SURFACE,
       kind: "brief",
       color: style?.color ?? "generic",
       pill: style?.pill ?? "Civic Brief",
@@ -372,6 +394,7 @@ function cardFor(rule: TableRule, event: ClassifierEvent, data: Record<string, u
       href: rule.detail(event.process_id),
     };
   }
+  if ("fromPayload" in card) return card.fromPayload(data, event.action_url);
   const href =
     card.href === "detail"
       ? rule.detail(event.process_id)
@@ -395,86 +418,3 @@ export function briefResponseContext(sourceType: unknown): string {
   return `Responding to the community's Civic Brief on this ${noun}`;
 }
 
-function classifyAnnouncement(
-  data: Record<string, unknown>,
-  actionUrl: string,
-): Activity {
-  const ann = data.announcement as
-    | { author_role?: unknown; source?: { origin?: unknown } | null }
-    | undefined;
-  const rawRole =
-    typeof ann?.author_role === "string" ? ann.author_role : null;
-  // Legacy "board" → "Board member"; lowercase "admin"/unset → "Admin"; any
-  // other free-form role ("Planning Committee", …) is shown verbatim.
-  const normalized =
-    rawRole === "board"
-      ? "Board member"
-      : rawRole === "admin" || !rawRole
-        ? "Admin"
-        : rawRole;
-  const isAdmin = normalized === "Admin";
-  // Posts News Sync copied in before it became its own plugin (2026-11-18)
-  // were announcements with a `source` (keyed on its presence, not its origin
-  // string, which changed when the module was renamed). Their processes are
-  // News items now (migration 20261118180000), and their stored events read
-  // as News cards, whatever the hub's old "show as" said.
-  const synced = syncedSourceView(ann?.source);
-  if (synced) {
-    return { surface: "news", kind: "news", color: "news", pill: NEWS_PILL, from: synced.label ?? normalized, href: actionUrl };
-  }
-  return {
-    surface: "announcement",
-    // Non-admin authors (board members, committees) get a distinct pill +
-    // border color so residents can tell elected-official posts from the hub
-    // administrator's.
-    kind: isAdmin ? "announcement" : "announcement-author",
-    color: isAdmin ? "announcement" : "announcement-author",
-    pill: abbreviateGovernment(normalized),
-    href: actionUrl,
-  };
-}
-
-/** A News item's pill when its source names none. */
-const NEWS_PILL = "News";
-
-/**
- * A News item (civic.news): its own filter and colour, the pill and "From"
- * line its source was given when it was copied in (a reader that knows the
- * hub's current settings words both from them; one source per hub), and a
- * link to the original.
- */
-function classifyNews(data: Record<string, unknown>, actionUrl: string): Activity {
-  const source = ((data.news as { source?: unknown } | undefined)?.source ?? {}) as { label?: unknown; pill?: unknown };
-  const pill = typeof source.pill === "string" && source.pill.trim() ? source.pill.trim() : NEWS_PILL;
-  const from = typeof source.label === "string" && source.label.trim() ? source.label.trim() : undefined;
-  return { surface: "news", kind: "news", color: "news", pill, ...(from ? { from } : {}), href: actionUrl };
-}
-
-/**
- * Width-saver for announcement pill labels: "Floyd County Government" →
- * "Floyd County Gov". Single source of truth for both the feed and the email
- * digest (previously duplicated in FeedPost.tsx and digest/service.ts).
- */
-function abbreviateGovernment(label: string): string {
-  return label.replace(/\bGovernment\b/gi, "Gov");
-}
-
-/**
- * One line of a vote's final count for a card or digest row, most votes
- * first: "Yes 12 · No 5 · Unsure 1". Empty when the event carries no tally
- * or nobody voted.
- * Options are stored by their label, so the keys read as written.
- */
-export function voteResultLine(data: Record<string, unknown> | undefined): string {
-  const result = (data?.result ?? {}) as { tally?: unknown };
-  const tally = result.tally;
-  if (!tally || typeof tally !== "object") return "";
-  const counts = Object.entries(tally as Record<string, unknown>).filter(
-    (e): e is [string, number] => typeof e[1] === "number",
-  );
-  if (counts.every(([, n]) => n === 0)) return "";
-  return counts
-    .sort((a, b) => b[1] - a[1])
-    .map(([option, count]) => `${option} ${count}`)
-    .join(" · ");
-}

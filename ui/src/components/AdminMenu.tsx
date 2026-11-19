@@ -67,7 +67,7 @@ export default function AdminMenu() {
           >
             <MenuItem label="Reviews" count={reviews} onClick={() => choose(() => navigate(reviewsTo))} />
             <MenuItem label="Moderation" onClick={() => choose(() => navigate("/admin/moderation"))} />
-            {FEATURE_UI.filter((u) => u.adminTab && hub.plugins.enabled(u.feature)).map((u) => (
+            {FEATURE_UI.filter((u) => u.adminTab && !u.adminTab.group && hub.plugins.enabled(u.feature)).map((u) => (
               <MenuItem key={u.feature} label={u.adminTab!.label} onClick={() => choose(() => navigate(u.adminTab!.path))} />
             ))}
             <MenuItem label="Hub settings" onClick={() => choose(() => navigate("/admin/settings"))} />

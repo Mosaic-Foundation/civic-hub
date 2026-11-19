@@ -17,7 +17,7 @@ import { postalAddressFrom } from "../../src/services/hubSettings.js";
 import { redirectPointsAt } from "../../scripts/lib/hubPurge.js";
 import { parseCsv, parseCsvObjects, toCsv } from "../../scripts/lib/csv.js";
 import { hubKindOf, isHubKind, participantNoun } from "../../src/shared/hubKind.js";
-import { kindsWithSamples, templatesFor } from "../../src/services/sampleTemplates.js";
+import { kindsWithSamples, templatesFor } from "../../spaces/civic/sampleTemplates.js";
 import { applySubstitutions, documentSettingDefault, resolveKindSections } from "../../src/services/hubDocuments.js";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";

@@ -2,7 +2,7 @@
 // the hub in scope, through the database its host hands it (its granted
 // tables only).
 
-import { HubDbError, readAll, type GrantedDb } from "@civic-social/plugin-sdk/first-party";
+import { HubDbError, readAll, type GrantedDb } from "@civic-social/plugin-sdk";
 import type { ResponseRow, SubmissionRow, WordcloudStore } from "./store.js";
 
 export function createWordcloudStore(db: () => GrantedDb): WordcloudStore {
@@ -23,6 +23,10 @@ export function createWordcloudStore(db: () => GrantedDb): WordcloudStore {
         if (row.author_id && err instanceof HubDbError && err.code === "23505") return "duplicate";
         throw err;
       }
+    },
+
+    async insertSamples(rows) {
+      if (rows.length) await db().from("wordcloud_submissions").insert([...rows]);
     },
 
     async visibleBodies(processId, promptId) {

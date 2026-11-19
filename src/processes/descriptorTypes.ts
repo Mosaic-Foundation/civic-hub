@@ -5,19 +5,25 @@
 
 import type { ProcessStatus } from "../models/process.js";
 import type { TypeDisplay } from "../shared/typeDisplay.js";
+import type { LegacyRoleName } from "../shared/spaceProfile.js";
 
 /**
- * Who may call an action through executeAction.
- *   resident: any signed-in resident;
- *   creator:  the resident who created the process (a project's Complete);
- *   admin:    a hub admin;
- *   official: a resident holding a public office (users.official_type, set
- *             by an admin; engine 2, A6), as the seam answers it;
- *   system:   the hub acting on its own (a deadline close, an approval's
- *             activation, a seed).
- * An admin may call anything a resident, creator or official may.
+ * Who may call an action through executeAction, in the kernel's role names
+ * (src/shared/spaceProfile.ts, kernel step 2):
+ *   member:      any signed-in member (a resident, on a Civic Hub);
+ *   creator:     the member who created the process (a project's Complete);
+ *   admin:       a space admin;
+ *   accountable: a member holding a public role (an official, on a Civic Hub:
+ *                users.official_type, set by an admin; engine 2, A6), as the
+ *                seam answers it;
+ *   system:      the space acting on its own (a deadline close, an approval's
+ *                activation, a seed).
+ * An admin may call anything a member, creator or accountable person may.
+ * "resident" and "official" are the names before step 2, still read as
+ * member and accountable (LEGACY_ROLE_NAMES); new descriptors write the
+ * kernel's names.
  */
-export type DescriptorRole = "resident" | "creator" | "official" | "admin" | "system";
+export type DescriptorRole = "member" | "creator" | "accountable" | "admin" | "system" | LegacyRoleName;
 
 /**
  * Plugin architecture §2. Tier 1: first-party code in the hub's process.
@@ -101,6 +107,19 @@ export interface OutsideService {
   participation: ReadonlyArray<{ method: "POST"; path: string; body: Record<string, unknown> }>;
 }
 
+/** How a member creates a process of a type (descriptor `creation.member`). */
+export interface MemberCreation {
+  drafts: string;
+  publish_at_once?: readonly ("accountable" | "official")[];
+}
+
+/** A descriptor's member creation, by either name; null when members cannot create it. */
+export function memberCreation(
+  creation: { member?: MemberCreation | null; resident?: MemberCreation | null } | null | undefined,
+): MemberCreation | null {
+  return creation?.member ?? creation?.resident ?? null;
+}
+
 export interface ProcessTypeDescriptor<P extends string = string> {
   type: string;
   version: string;
@@ -120,12 +139,16 @@ export interface ProcessTypeDescriptor<P extends string = string> {
   /** How a process of this type comes into being. */
   creation: {
     /**
-     * A resident drafts one: the API path of its drafts. Null: residents
-     * cannot create it. `publish_at_once`: who else skips the review wait
-     * beside an admin (engine 2, A6): "official" for a type whose officials
-     * publish directly (Events).
+     * A member drafts one: the API path of its drafts. Null or absent:
+     * members cannot create it. `publish_at_once`: who else skips the review
+     * wait beside an admin (engine 2, A6): "accountable" for a type whose
+     * accountable people publish directly (Events' officials).
+     * `resident` is its name before kernel step 2, still read; a descriptor
+     * names one or the other (memberCreation reads it).
      */
-    resident: { drafts: string; publish_at_once?: readonly "official"[] } | null;
+    member?: MemberCreation | null;
+    /** @deprecated The name of `member` before kernel step 2. */
+    resident?: MemberCreation | null;
     /** An admin creates one directly. */
     admin: boolean;
     /** The hub creates one itself (a brief on close, a meeting summary job). */
@@ -144,7 +167,7 @@ export interface ProcessTypeDescriptor<P extends string = string> {
    * plugin author supplies these so the suite can drive the type with no
    * type-specific test code:
    *   draft:  the fields of a submittable draft, for a type residents draft
-   *           (PATCHed onto a new draft at creation.resident.drafts);
+   *           (PATCHed onto a new draft at creation.member.drafts);
    *   create: the request an admin makes to create one directly (POST to
    *           `path`, default /process).
    */

@@ -1,0 +1,61 @@
+/* A News item's page (./NewsItem.tsx): the same look as an announcement's
+   page, its own copy so neither plugin needs the other. */
+
+.news-item-page {
+  padding: var(--space-6);
+}
+
+.news-item-status {
+  color: var(--color-text-subtle);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  text-align: center;
+  padding: var(--space-xl) var(--space-md);
+}
+
+.news-item-status-error {
+  color: var(--color-text);
+}
+
+.news-item-header {
+  margin: 0 0 var(--space-xl);
+}
+
+.news-item-eyebrow {
+  margin: 0;
+  color: var(--color-brand);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+/* Its margin is App.css's ".page h1" (loaded later). */
+.news-item-header h1 {
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-tight);
+}
+
+.news-item-meta {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+.news-item-body {
+  margin: 0 0 var(--space-xl);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: var(--color-text);
+}
+
+.news-item-paragraph {
+  margin: 0 0 var(--space-md);
+  white-space: pre-wrap;
+}
+
+.news-item-paragraph:last-child {
+  margin-bottom: 0;
+}

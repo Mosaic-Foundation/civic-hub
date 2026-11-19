@@ -19,11 +19,11 @@
 //
 // Pure functions only; the controller and the tests share them.
 
-import { ConflictError, resolveTimeZone } from "@civic-social/plugin-sdk/first-party";
+import { ConflictError, resolveTimeZone } from "@civic-social/plugin-sdk";
 import type { SummaryBlock, TranscriptSegment } from "./models.js";
 
 // The thresholds' defaults live in src/shared/, where the hub's job reports read them (engine 2, B10).
-export { RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS } from "../../src/shared/meetingSummaryRules.js";
+export { RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS } from "./rules.js";
 
 /**
  * A whole-number days setting, or its default when unset or not a whole

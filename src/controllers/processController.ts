@@ -128,19 +128,29 @@ export async function viewFor(res: Response, id: string): Promise<Record<string,
   return (await getProcessState(id, { actor: user.id, audience: "member" })) ?? null;
 }
 
+/** Whether a process's type is the one expected, or one of those expected (a package's own types). */
+function isOfType(actual: unknown, expected: string | readonly string[]): boolean {
+  return typeof expected === "string" ? actual === expected : expected.includes(actual as string);
+}
+
 /**
  * One process as GET /process/:id/state reads it, for a type's own page
  * (`/proposals/:id`, `/projects/:id`): one read model per type, so the page
  * and an action's `view` are the same shape. 404 for another type's id.
  */
-export async function readAsPage(req: Request, id: string, type: string, notFound: string): Promise<Record<string, unknown>> {
+export async function readAsPage(
+  req: Request,
+  id: string,
+  type: string | readonly string[],
+  notFound: string,
+): Promise<Record<string, unknown>> {
   const caller = await resolveCallerUser(req);
   const state = await getProcessState(id, {
     actor: caller?.id,
     audience: caller ? "member" : "public",
     anonNumbers: caller ? undefined : await buildProcessAnonNumbers(id),
   });
-  if (!state || state.type !== type) throw new NotFoundError(notFound);
+  if (!state || !isOfType(state.type, type)) throw new NotFoundError(notFound);
   return state;
 }
 
@@ -163,13 +173,13 @@ export async function actOnProcess(
   id: string,
   type: string,
   payload: Record<string, unknown>,
-  expectedType?: string,
+  expectedType?: string | readonly string[],
 ): Promise<{ process: Process; result: Record<string, unknown> }> {
   const user = getAuthUser(res);
   const actor = getActor(res);
   const target = await getProcess(id);
   if (!target || !isProcessTypeEnabled(target.definition.type)) throw new NotFoundError("Process not found");
-  if (expectedType && target.definition.type !== expectedType) throw new NotFoundError("Process not found");
+  if (expectedType && !isOfType(target.definition.type, expectedType)) throw new NotFoundError("Process not found");
   if (!isPubliclyFetchable(target.status) && !(await canActor(actor, "process.see_unpublished", { process: target })).allowed) {
     throw new NotFoundError("Process not found");
   }

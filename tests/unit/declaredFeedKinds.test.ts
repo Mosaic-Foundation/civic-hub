@@ -5,13 +5,13 @@
 import { describe, expect, it } from "vitest";
 import { DECLARED_COLORS, DECLARED_FEED_KINDS } from "../../src/shared/feedActivity.js";
 import {
-  BUILTIN_THEME_TYPE_KEYS,
   DEFAULT_THEME_COLORS,
   THEME_TYPE_KEYS,
   declaredTypeStylesheet,
   themeTypeLabel,
 } from "../../src/shared/theme.js";
 import { MANIFEST_LIST } from "../../src/shared/processManifests.js";
+import { SPACE_PALETTE } from "../../src/shared/spacePalette.js";
 import { checkManifests } from "../../src/processes/manifest.js";
 
 describe("declared feed kinds", () => {
@@ -20,8 +20,9 @@ describe("declared feed kinds", () => {
     expect(DECLARED_COLORS.map((c) => c.key)).toContain("event");
   });
 
-  it("join the theme's colour families after the hub's own", () => {
-    expect(THEME_TYPE_KEYS.slice(0, BUILTIN_THEME_TYPE_KEYS.length)).toEqual([...BUILTIN_THEME_TYPE_KEYS]);
+  it("join the theme's colour families after the space type's own", () => {
+    const own = SPACE_PALETTE.colors.filter((c) => c.theme).map((c) => c.key);
+    expect(THEME_TYPE_KEYS.slice(0, own.length)).toEqual(own);
     expect(THEME_TYPE_KEYS).toContain("event");
     expect(DEFAULT_THEME_COLORS.types.event).toBe("#8a2456");
     expect(themeTypeLabel("event")).toBe("Events");

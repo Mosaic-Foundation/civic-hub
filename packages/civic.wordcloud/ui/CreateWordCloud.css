@@ -1,0 +1,53 @@
+.create-wordcloud-page {
+  padding: var(--space-lg);
+  max-width: var(--width-prose);
+  margin: 0 auto;
+}
+
+
+.create-wordcloud-status {
+  color: var(--color-text-subtle);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  text-align: center;
+  padding: var(--space-xl) var(--space-md);
+}
+
+.create-wordcloud-lede {
+  margin: 0 0 var(--space-lg);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-base);
+}
+
+.create-wordcloud-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.create-wordcloud-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.create-wordcloud-submit {
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.create-wordcloud-submit:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.create-wordcloud-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

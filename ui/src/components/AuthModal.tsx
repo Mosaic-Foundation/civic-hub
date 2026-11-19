@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/authState";
 import { officialFrom } from "./authOfficial";
 import { useHub } from "../config/hub";
-import { onboardingTarget } from "../config/pluginRules";
+import { afterSignUpStop } from "./packageContributions";
 import { holdAboutYouForSignup } from "../services/aboutYou";
 import { NEXT_STEPS_PATH } from "../pages/settings/nextSteps";
 import {
@@ -284,15 +284,15 @@ export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
       // the gate-passed user. If the user had closed the modal before
       // reaching this point, no login() ever happened.
       if (pendingAuth) {
+        // Where a package sends a new member first (Word clouds: the hub's
+        // word cloud), worked out before login() so About you can wait.
+        const here = `${window.location.pathname}${window.location.search}`;
+        const stop = needsResidency && pendingAuth.role !== "admin" ? afterSignUpStop(hub, here) : null;
         // A new account is not asked About you while it signs up: not on the
-        // action waiting on this sign-in, nor over the onboarding word cloud
+        // action waiting on this sign-in, nor on that first stop
         // (services/aboutYou.ts). Held before login() so the waiting action
         // sees it.
-        const signupOnboarding =
-          needsResidency && pendingAuth.role !== "admin"
-            ? onboardingTarget(hub.onboarding_wordcloud_id, hub.plugins.enabled("wordcloud"), null) !== null
-            : false;
-        if (needsResidency) holdAboutYouForSignup(signupOnboarding);
+        if (needsResidency) holdAboutYouForSignup(stop);
         login(
           tokenToUse,
           nextUser,
@@ -319,11 +319,10 @@ export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
           return;
         }
         if (needsResidency) {
-          const here = `${window.location.pathname}${window.location.search}`;
-          const target = onboardingTarget(hub.onboarding_wordcloud_id, hub.plugins.enabled("wordcloud"), here);
-          if (target) {
+          // A package may send a new member somewhere first (Word clouds: the hub's word cloud).
+          if (stop) {
             onComplete();
-            navigate(target);
+            navigate(stop);
             return;
           }
         }

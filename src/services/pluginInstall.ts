@@ -33,6 +33,7 @@
 // A hub only ever sees plugins whose packages are approved in the catalog and
 // mounted on this deployment.
 
+import { currentSpaceType, pluginRequired } from "../shared/spaceTypes.js";
 import { ConflictError, NotFoundError, ValidationError } from "../errors/index.js";
 import { currentHubId } from "../config/hubContext.js";
 import { applyPluginChange, readHubPlugins, type HubPluginRow, type PluginChange } from "../db/hubPlugins.js";
@@ -140,9 +141,10 @@ function view(
     const v = verdicts.find((x) => x.package === p.pkg.name);
     const holds = Object.fromEntries(p.pkg.manifest.tables.map((t) => [t.name, t.holds]));
     const record = mine.find((r) => r.package === p.pkg.name);
-    const deployed = { name: p.pkg.displayName, caps: p.pkg.manifest.capabilities, holds };
+    const says = p.pkg.manifest.eventWords;
+    const deployed = { name: p.pkg.displayName, caps: p.pkg.manifest.capabilities, holds, says };
     // What the hub approved, while it has the plugin; otherwise what Install would record.
-    const approved = installed && record ? { name: p.pkg.displayName, caps: record.capabilities, holds } : deployed;
+    const approved = installed && record ? { name: p.pkg.displayName, caps: record.capabilities, holds, says } : deployed;
     const behind = installed && record && Boolean(v?.mounted) && compareVersions(record.version, p.pkg.version) < 0;
     return {
       package: p.pkg.name,
@@ -291,6 +293,8 @@ export async function removePlugin(
   actor: { id: string; audit: string },
 ): Promise<PluginInstallView> {
   if (mode !== "stop" && mode !== "wind_down") throw new ValidationError('Send { "mode": "stop" } or { "mode": "wind_down" }.');
+  // A plugin the space type requires stays (kernel rule 6).
+  if (pluginRequired(plugin)) throw new ValidationError(`A ${currentSpaceType().displayName} needs this plugin, so it cannot be removed.`);
   const current = await one(plugin);
   if (current.state === "removed" || current.state === "unavailable") return current;
   // With deadlines and nothing open, there is nothing to wait for: it stops now.

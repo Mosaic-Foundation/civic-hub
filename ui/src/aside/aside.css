@@ -135,11 +135,6 @@
   font-size: var(--text-small-size);
 }
 
-.aside-about-count {
-  color: var(--color-text);
-  font-weight: var(--font-weight-semibold);
-}
-
 .aside-about-actions {
   display: flex;
   flex-wrap: wrap;

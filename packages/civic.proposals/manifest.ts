@@ -2,8 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
-import { DEADLINE_CLOSE_INPUT } from "../../src/shared/deadlineClose.js";
+import { defineDescriptor, defineManifest, DEADLINE_CLOSE_INPUT } from "@civic-social/plugin-sdk/manifest";
 
 /**
  * What a proposal is (src/processes/descriptor.ts). Residents support it, or
@@ -78,6 +77,11 @@ const descriptor = defineDescriptor({
 export const PROPOSAL_MANIFEST = defineManifest({
   descriptor,
   color: "proposal",
+  // Its colours' defaults (kernel step 4: each plugin carries its own). The
+  // Civic Hub's palette lists the same keys (a few following its base colours), and wins.
+  colors: [
+    { key: "proposal", label: "Proposals", fg: "#5f4b8b", bg: "#eae7f0", dark: { fg: "#b9a6e0", bg: "#2a2538" } },
+  ],
   detailPath: (id) => `/proposal/${id}`,
   requiredSchema: [
     { table: "proposals", owner: "civic.proposals" },
@@ -92,7 +96,10 @@ export const PROPOSAL_MANIFEST = defineManifest({
   pluginSection: {
  order: 20,
  name: "Proposals",
- what: "Ideas residents float for discussion and support.", fields: [] },
+ what: "Ideas residents float for discussion and support.", fields: [],
+    words: ["proposals", "ideas", "suggestions", "petition", "petitions", "propose"],
+    help: { text: "Ideas people float for discussion and support. Off hides the Proposals pages and stops new ones. While off, nothing closes at its deadline.", page: "/reference/plugins", anchor: "plugins-proposal" },
+  },
   activities: {
     "civic.proposal.submitted": { type: "Create", object: { kind: "civic", class: "civic:Proposal", id: "process", name: "title" } },
     // AS2's own verb for endorsement: no civic term needed (spec §3.1 rule 1).
@@ -100,6 +107,13 @@ export const PROPOSAL_MANIFEST = defineManifest({
     // Withdrawing support undoes the Like above.
     "civic.proposal.support_withdrawn": { type: "Undo", object: { kind: "civic", class: "civic:Proposal", id: "process" } },
     "civic.proposal.closed": { type: "civic:End", object: { kind: "process", terminalState: "closed" } },
+  },
+  // Its events in the Install confirmation's words ("when …").
+  eventWords: {
+    "civic.proposal.submitted": "a proposal is submitted",
+    "civic.proposal.supported": "someone supports a proposal",
+    "civic.proposal.support_withdrawn": "someone withdraws their support",
+    "civic.proposal.closed": "a proposal closes",
   },
   legacyActivities: {
     // Its emitter exists (./events.ts) but nothing calls it;

@@ -208,7 +208,7 @@ capabilities: {
 | Field | What it means | What the admin reads |
 |---|---|---|
 | `activities.emit` | The events it writes. Must equal the descriptor's `emits`. | "Add entries to the hub's public record about its own items: when an answer comes in, one closes and it publishes a result." |
-| `activities.listen` | Must be empty: the hub delivers no events to plugins yet. | |
+| `activities.listen` | The kernel events it listens for: `process.closed` only, today. `server(host)` returns `on.processClosed` for it. | |
 | `state.tables` | Its tables. Must equal the manifest's `tables`. | "Keep its own records on this hub: residents' answers to straw polls, one each. It cannot read or change anything else the hub keeps." |
 | `adapters` | The outside services it uses, through the hub: `ai`, `mail`, `video`, `deliberation`, `objectStore`, `web`. Empty for the straw poll. | "Use the hub's AI service…", or, when absent, "It will not be able to: Use AI. Send email." |
 | `network.egress` | Must be empty: a plugin reaches an outside service only through an adapter. | "Contact any service outside this hub." (cannot) |
@@ -343,7 +343,10 @@ None of these is required; each has a step in the suite where you use it (`docs/
   the action.
 - **Show who took part** as the hub would: `namesFor(req, processId, accounts)` in a route of its own.
 - **Have words for its own statuses** (an event is scheduled, past or cancelled): manifest `statuses`.
-- **Have its own feed card colour and digest section:** manifest `feed.kinds`.
+- **Have its own colour:** manifest `colors` (a key, a label, the light pair, and optionally the dark pair and the email
+  pill), and name its key in `color`. It is your plugin's default: a space type's palette may set the same key, and an
+  admin's theme sets either. A space type that lists your key wins, so a hub looks the same whichever plugins it runs.
+- **Have its own feed card kind and digest section:** manifest `feed.kinds` (its colour may sit on the kind).
 - **Open an action to officials**, or let officials publish without review: the `official` caller,
   `creation.resident.publish_at_once: ["official"]`.
 - **Say that an act is not taking part** (taking back "going"): `participation.withdrawal`.
@@ -361,11 +364,27 @@ None of these is required; each has a step in the suite where you use it (`docs/
 
 ### Pinning (nothing to do)
 
-An admin can pin any item to the Pinned card, with an optional end date: from the Pin button the hub draws at the
-bottom of every item page (beside Archive); Admin → Pinned lists every pinned item. Only admins pin. The hub stores the pin and records each change as a
-`civic.process.updated` with `data.pin`. A plugin writes no pin code and needs nothing in its manifest: its items can be
-pinned as soon as they have a page (`detailPath`). A hub can switch Pinning off (Plugins → Pinning); every Pin control
-disappears and plugins work the same.
+Pinning is a plugin of its own (`features/pinning`, kernel step 4): whoever the space allows (admins by default, or
+every member) pins any item to the Pinned card, with an optional end date, and may mark a pin urgent (listed first,
+and the line across the top of the pages). Its Pin button sits at the bottom of every item page, beside Archive;
+Admin → Pinned lists every pinned item. Your plugin writes no pin code and needs nothing in its manifest: its items can
+be pinned as soon as they have a page (`detailPath`), and they show on the card with your type's label. A space can
+switch Pinning off; your plugin works the same. There is no hook for a plugin to put its own rows on the card.
+
+### Feedback (nothing to do)
+
+Feedback is a plugin of its own too (`features/feedback`, kernel step 4): the form residents use to report a problem or
+suggest something, and Admin → Feedback. A space can switch it off. Your plugin needs nothing for it. If your plugin is a
+feature with an inbox of its own, name its queue (`FeatureServer.queues`): the kernel then counts what is new for each
+admin on your admin tab (`adminTab.queue` in your UI module) and adds a line to the admin digest. A page for everyone
+(a form, say) can ask for the same links Feedback has, in the top bar, sidebar, menu and footer (`spaceLink`).
+
+### Members (nothing to do)
+
+The member count, the faces on the home page and the Members page are a plugin of their own (`features/members`, kernel
+step 4). Who has joined a space is the kernel's: a plugin that needs it reads `membership` (`count()`, `summary()`,
+`list(offset)`; never an address). A feature with a page of its own in the navigation declares it in its manifest
+(`section`), and its UI module can say who sees it yet and the number beside it (`section.shown`, `section.count`).
 
 ### Member information (districts and demographics)
 
@@ -427,6 +446,62 @@ const strawPollUi: ProcessUi = {
 };
 export default strawPollUi;
 ```
+
+A type can also add to the hub's own pages with `contributes`, drawn only while its plugin is on:
+
+- `processTop`: a component (given `processId`) drawn at the top of every process page, under its header. Briefs
+  draws its "Read the brief" pointer there.
+- `adminQueue`: a tab in the admin rail's Review group (`{ queue, label, icon, path }`), with the count of what arrived
+  since the admin last opened it. `queue` is the name your manifest gives `publication.queue`; your admin page calls
+  `markAdminQueueSeen(queue)` when it opens.
+- `welcomeStrip`: a component drawn in the strip across the top of the hub's public pages (Word clouds' teaser).
+- `afterSignUp`: where a new member goes right after signing up (Word clouds: the hub's word cloud), given the page
+  they signed up on as a checked local path to come back to, or null.
+
+A page reads its own settings with `useSpace().setting("plugin.<your id>.…")`.
+
+### Sample content: `samples`
+
+A new hub can start with sample content so it does not look empty, and a plugin can make its own. Return
+`samples` from `server(host)`:
+
+```ts
+import type { SampleKit, SampleTemplate } from "@civic-social/plugin-sdk";
+
+async function seed(template: SampleTemplate, kit: SampleKit) {
+  const p = await kit.create({                       // marked as sample; dated `template.at` days from now
+    title: kit.fill("Lunch for {HUB_NAME}?"),        // the hub's names filled in
+    description: "",
+    state: { question: kit.fill(String(template.question)) },
+  });
+  // ...your own records through host.db(), your events with kit.emitAt(kit.at(-2))
+}
+
+return {
+  handler,
+  samples: {
+    seed,
+    defaults: () => [{ key: "straw_poll_lunch", by: "TEAM", at: -3, question: "Pizza or tacos?" }],
+  },
+};
+```
+
+- `seed(template, kit)` makes one sample of your type. The hub's space type may bring its own templates for your type
+  (the Civic Hub brings a word cloud, for instance); `defaults()` are yours, used only where the space type brings
+  none of your type. A key is unique on the hub; the sample's process id is made from it.
+- The kit gives you the hub's sample people (`kit.author("JORDAN")`; `by` on a template), times relative to now
+  (`kit.at(days, minutes)`, `at` on a template), `kit.fill(text)` for `{HUB_NAME}`, `{JURISDICTION}` and
+  `{GOVERNING_BODY}`, `create`, `save`, `comment`, `process(key)` (the sample this one is made from), `ballots(processId,
+  choices)` for anonymous sample ballots (the kernel keeps every ballot), and `adoptSetting(key, value)` to set one of your
+  own settings when the hub has none (Word clouds makes its sample the hub's word cloud this way).
+- Optional: `title(template)` names a sample in the admin's lists when its name is not `title` (Briefs: the headline);
+  `refresh` keeps a demo hub current (`live(template)` for a sample there to show something live, `reason(template, row,
+  window)` for why it must be replaced now, `window.near(deadline)` for "within a few days"); `repair(template, state,
+  fill)` gives an older sample a field added since.
+- Everything a sample creates is marked as sample: its events never reach the public log or a digest, and the admin's
+  Remove sample content takes all of it. Send nothing outside the hub from a seed.
+- Every first-party type seeds its own: `packages/<pkg>/samples.ts` (Word clouds is the shortest; Votes shows ballots
+  and `refresh`). The words are the space type's (the Civic Hub's: `spaces/civic/sampleTemplates.ts`).
 
 ## 7. Run the suite
 

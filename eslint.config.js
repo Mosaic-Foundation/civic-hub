@@ -279,9 +279,8 @@ const PEOPLE_LIST_READERS = {
   "src/controllers/adminSettingsController.ts": "the admin panel shows the lists",
   "src/operator/hubs.ts": "the console sets a hub's admins through the operator API (create, handover)",
   "src/services/mailGuard.ts": "mail: who may receive the hub's mail",
-  "src/jobs/adminDigest.ts": "mail: the admin digest's recipients",
   "src/services/cronAlerts.ts": "mail: meeting-summary notices to admins",
-  "src/modules/civic.feedback/service.ts": "mail: feedback to admins",
+  "src/services/kernelOffices.ts": "mail: offices.adminEmails(), for a plugin that writes to admins (Feedback's notices)",
   "src/services/waitlistNotify.ts": "mail: waitlist notices to admins",
   "src/modules/civic.review/service.ts": "mail: new-submission notices to admins",
   "src/services/privilegedAccounts.ts": "sign-in admission: an address before any account exists",
@@ -364,21 +363,21 @@ const authzSeamRule = {
 // manifest.ts reaches only src/shared/ and src/processes/manifest.ts, because
 // the UI reads it. In the other direction, engine code (src/) never imports a
 // package: the hub loads them from the configured list (config/plugins/).
-// The engine files that still reach into one are listed below with why; the
-// list only shrinks (tests/unit/packageBoundary.test.ts fails on an entry
-// that no longer reaches a package).
-export const PACKAGE_REACH_NOT_YET = {
-  "src/services/sampleSeed.ts": "seeds every type's sample content by calling its service; each package should contribute its own samples",
-  "src/debug/seedData.ts": "the debug seed writes a sample conversation's state in the conversation package's type",
-  "src/processes/spawnBrief.ts": "makes the pending brief when a process closes: its state type (BriefProcessState) and its aggregation event (emitBriefAggregationCompleted)",
-  "src/services/briefRegenerate.ts": "regenerates a brief: builds its state (createBriefState), emits its updated event and types its content",
-  "src/services/briefResponses.ts": "stores the brief's responses and types them (BriefResponseRecord)",
-  "src/debug/autoSeed.ts": "seeds an announcement's published state and events (emitPublicationEvents, AnnouncementProcessState) for the development scenarios",
-  "src/jobs/newsSync.ts": "posts each news item as an announcement: its result-published event (emitAnnouncementResultPublished) and its state types",
-  "src/modules/civic.admin_digest/service.ts": "the admin digest sorts summaries waiting for review by their quality flag (effectiveQualityFlag)",
-  "src/controllers/debugController.ts": "the development reset empties the proposals (clearProposals) along with the other modules' records",
-  "src/controllers/inputController.ts": "checks that the proposal an input names exists (proposalExists) before it is accepted",
-};
+// No engine file is let through any more: the last (the news sync job) moved
+// into its package on 2026-11-18, so the list of exceptions is gone.
+
+// A space type (kernel step 3; src/plugins/space.ts) is the layer above the
+// kernel: spaces/<dir>/ (the Civic Hub's is spaces/civic/). It may use the
+// kernel's own modules and the packages it curates, a package's values only
+// by await import() (ADR-017); never a feature
+// package or the configured lists. The engine reaches a space type only
+// through config/space.ts, which the hosting layer writes, and reads that
+// file in one place.
+const SPACES_DIR = "spaces/";
+const SPACE_READERS = { "src/plugins/spaceType.ts": "config/space.ts" };
+// The space type's palette (plain data the UI reads too) has one reader as well.
+const PALETTE_READERS = { "src/shared/spacePalette.ts": "config/spacePalette.ts" };
+const SPACE_TYPE_READERS = { "src/shared/spaceTypes.ts": "config/spaceType.ts" };
 
 const PACKAGES_DIR = "packages/";
 // A feature package (ADR-016): a hub feature built as a plugin package is,
@@ -391,6 +390,9 @@ const FEATURES_DIR = "features/";
 // name. kit/conformance checks the same rule for a submitted package.
 const OUTSIDE_DIR = "examples/";
 const OUTSIDE_SDK = ["@civic-social/plugin-sdk", "@civic-social/plugin-sdk/manifest"];
+// A package's UI files (ui.tsx and its ui/ directory) also take the SDK's UI
+// entry and the React the hub runs (kernel step 1; kit/conformance/src/fence.ts).
+const OUTSIDE_UI = ["@civic-social/plugin-sdk/ui", "react", "react-router-dom"];
 const FEATURE_LIST_READERS = {
   "src/plugins/features.ts": "config/features.ts",
   "src/shared/featureManifests.ts": "config/featureManifests.ts",
@@ -453,6 +455,7 @@ const packageBoundaryRule = {
     if (inOutside) {
       const dir = rel.split("/").slice(0, 2).join("/");
       const manifest = rel === `${dir}/manifest.ts`;
+      const uiFile = rel === `${dir}/ui.tsx` || rel.startsWith(`${dir}/ui/`);
       const checkOutside = (node, spec) => {
         if (typeof spec !== "string") return;
         if (spec.startsWith(".")) {
@@ -460,15 +463,20 @@ const packageBoundaryRule = {
           if (!target.startsWith(`${dir}/`)) context.report({ node, message: `"${spec}": a package imports only its own files and the SDK by name (ADR-015).` });
           return;
         }
+        // The SDK by one of its entries, never another path under its name: a peer
+        // dependency on the SDK does not open version 0 (/first-party).
+        const sdkPath = spec.startsWith("@civic-social/plugin-sdk/");
         const allowed = manifest
           ? spec === "@civic-social/plugin-sdk/manifest"
-          : OUTSIDE_SDK.includes(spec) || spec.startsWith("node:") || peerDependencies(dir).includes(spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0]);
+          : OUTSIDE_SDK.includes(spec) ||
+            (uiFile && OUTSIDE_UI.includes(spec)) ||
+            (!sdkPath && (spec.startsWith("node:") || peerDependencies(dir).includes(spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0])));
         if (!allowed) {
           context.report({
             node,
             message: manifest
               ? `"${spec}": a manifest is plain data; it imports only @civic-social/plugin-sdk/manifest (ADR-015).`
-              : `"${spec}": a package written outside the hub imports @civic-social/plugin-sdk (and /manifest), node: built-ins and its peerDependencies (ADR-015).`,
+              : `"${spec}": a package written outside the hub imports @civic-social/plugin-sdk (and /manifest; its UI files /ui and React), node: built-ins and its peerDependencies (ADR-015).`,
           });
         }
       };
@@ -480,7 +488,8 @@ const packageBoundaryRule = {
       };
     }
     const inFeature = rel.startsWith(FEATURES_DIR);
-    if (!inPackage && !inEngine && !inFeature) return {};
+    const inSpace = rel.startsWith(SPACES_DIR);
+    if (!inPackage && !inEngine && !inFeature && !inSpace) return {};
     const pkgDir = inPackage || inFeature ? rel.split("/").slice(0, 2).join("/") : null;
     const isManifest = (inPackage || inFeature) && rel === `${pkgDir}/manifest.ts`;
 
@@ -525,11 +534,26 @@ const packageBoundaryRule = {
       }
       if (!spec.startsWith(".")) return;
       const target = relative(ROOT, resolve(dirname(file), spec)).split("\\").join("/").replace(/\.js$/, ".ts");
-      if (target.startsWith(PACKAGES_DIR) && !(rel in PACKAGE_REACH_NOT_YET)) {
+      if (inEngine && target.startsWith(SPACES_DIR)) {
+        context.report({ node, message: `"${spec}": the engine never imports a space type; it reads the hub's in config/space.ts (src/plugins/spaceType.ts).` });
+      }
+      if (inEngine && target === "config/space.ts" && SPACE_READERS[rel] !== target) {
+        context.report({ node, message: `"${spec}": only src/plugins/spaceType.ts reads the hub's space type (config/space.ts).` });
+      }
+      if (target === "config/spaceType.ts" && SPACE_TYPE_READERS[rel] !== target) {
+        context.report({ node, message: `"${spec}": only src/shared/spaceTypes.ts reads the space type's record (config/spaceType.ts).` });
+      }
+      if (target === "config/spacePalette.ts" && PALETTE_READERS[rel] !== target) {
+        context.report({ node, message: `"${spec}": only src/shared/spacePalette.ts reads the space type's palette (config/spacePalette.ts).` });
+      }
+      if (inSpace && target.startsWith(SPACES_DIR) && !target.startsWith(rel.split("/").slice(0, 2).join("/") + "/")) {
+        context.report({ node, message: `"${spec}": a space type imports only its own files of spaces/.` });
+      }
+      if (target.startsWith(PACKAGES_DIR) && inEngine) {
         context.report({ node, message: `"${spec}": the engine never imports a plugin package; the hub loads them from config/plugins.json (ADR-014).` });
       } else if (target.startsWith(PACKAGES_DIR) && node.type !== "ImportExpression" && node.importKind !== "type" && node.exportKind !== "type") {
-        // Even a file still allowed to reach a package loads it on first use
-        // (await import()), never as the engine starts: a package imports the
+        // A space type loads a package's values on first use (await import()),
+        // never as the engine starts: a package imports the
         // SDK by name, and the hub hands the SDK its engine only once the
         // engine has loaded (ADR-017; the compiled server failed to start).
         context.report({ node, message: `"${spec}": load a package's values with await import() where they are used; only its types may be imported statically (ADR-017).` });
@@ -560,7 +584,7 @@ export default [
     ignores: ["node_modules/**", "dist/**", "ui/**", "test-results/**", "backups/**", "supabase/**", "features/*/ui/**"],
   },
   {
-    files: ["src/**/*.ts", "packages/**/*.ts", "features/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "kit/**/*.ts", "examples/**/*.ts"],
+    files: ["src/**/*.ts", "packages/**/*.ts", "features/**/*.ts", "spaces/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "kit/**/*.ts", "examples/**/*.ts"],
     languageOptions: { parser: tsParser, sourceType: "module", ecmaVersion: "latest" },
     // Other plugins' disable comments may exist in the tree; they are not errors here.
     linterOptions: { reportUnusedDisableDirectives: "off" },
@@ -571,7 +595,7 @@ export default [
   // environment only through src/config/env.ts. Scripts and tests read their
   // own.
   {
-    files: ["src/**/*.ts", "packages/**/*.ts", "features/**/*.ts", "api/**/*.ts"],
+    files: ["src/**/*.ts", "packages/**/*.ts", "features/**/*.ts", "spaces/**/*.ts", "api/**/*.ts"],
     ignores: ["src/config/env.ts"],
     rules: {
       "no-restricted-properties": [
@@ -634,16 +658,16 @@ export default [
     },
   },
   // The feed classifier is shared with the UI: its imports are the
-  // manifest list (Architecture 2; it was import-free before) and the
-  // import-free reader of a News Sync post's source (2026-11-16).
+  // manifest list (Architecture 2; it was import-free before) and the space
+  // type's palette (kernel step 3, Nov 19), both plain data.
   {
     files: ["src/shared/feedActivity.ts"],
     rules: {
       "no-restricted-imports": ["error", {
         patterns: [{
-          regex: "^(?!\\./processManifests\\.js$|\\./newsSource\\.js$)",
+          regex: "^(?!\\./processManifests\\.js$|\\./spacePalette\\.js$)",
           allowTypeImports: true,
-          message: "feedActivity imports only the manifest list (src/shared/processManifests.ts) and src/shared/newsSource.ts.",
+          message: "feedActivity imports only the manifest list (src/shared/processManifests.ts) and the palette (src/shared/spacePalette.ts).",
         }],
       }],
     },

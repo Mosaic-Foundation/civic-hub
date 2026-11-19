@@ -12,7 +12,7 @@
 import { deploymentCommit } from "../../config/deployment.js";
 import { forHub } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
-import { memberVisibility } from "../../services/members.js";
+import { memberCount } from "../../services/members.js";
 import { listHubs, type ControlHub } from "../hubs.js";
 import { inHubScope } from "../inHub.js";
 import { hubHealth, type HubHealth } from "./hubHealth.js";
@@ -55,8 +55,8 @@ export function hubGroup(hub: Pick<ControlHub, "archived_at" | "mode">): HubGrou
 async function hubCounts(hubId: string): Promise<{ members: number; last: string | null }> {
   return inHubScope(hubId, async () => {
     const db = forHub(currentHubId());
-    const [visibility, newest] = await Promise.all([
-      memberVisibility(),
+    const [members, newest] = await Promise.all([
+      memberCount(),
       db
         .from("events")
         .select<{ recorded_at: string }>("recorded_at")
@@ -64,7 +64,7 @@ async function hubCounts(hubId: string): Promise<{ members: number; last: string
         .order("recorded_at", { ascending: false })
         .limit(1),
     ]);
-    return { members: visibility.count, last: newest[0]?.recorded_at ?? null };
+    return { members, last: newest[0]?.recorded_at ?? null };
   });
 }
 

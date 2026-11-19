@@ -10,6 +10,11 @@
 //   config/plugins/server.ts      each package's server entry and its files (what
 //                                 its content hash covers), for the loader;
 //   config/plugins/ui.ts          each package's UI module;
+//   config/space.ts, config/spaceType.ts, config/spacePalette.ts,
+//   config/spacePalette.css      the space type the deployment picks
+//                                 (config/plugins.json's "space": "spaces/<dir>",
+//                                 or null for none; kernel step 4): its server
+//                                 part, its record, its palette and its colours;
 //   supabase/migrations/<ts>_pkg_<id>__<name>.sql
 //                                 a byte-for-byte copy of each file in a
 //                                 package's migrations/, applied in timestamp
@@ -55,6 +60,41 @@ export function readConfiguredList(root = ROOT): string[] {
   return dirs;
 }
 
+/** The space type the deployment picks (config/plugins.json's "space"): its directory, or null. */
+export function readConfiguredSpace(root = ROOT): string | null {
+  const parsed = JSON.parse(readFileSync(join(root, "config", "plugins.json"), "utf8")) as { space?: unknown };
+  const space = parsed.space ?? null;
+  if (space !== null && (typeof space !== "string" || !/^spaces\/[a-z0-9._-]+$/.test(space))) {
+    fail('config/plugins.json\'s "space" must be "spaces/<dir>" or null');
+  }
+  return space as string | null;
+}
+
+/** The files that name the deployment's space type, or say it has none. */
+export function spaceFiles(space: string | null): Record<string, string> {
+  const head = (what: string) =>
+    HEADER + `// The deployment's space type (config/plugins.json's "space"): ${what}\n\n`;
+  return {
+    "config/space.ts":
+      head("its server part. The kernel reads it in one place, src/plugins/spaceType.ts.") +
+      'import type { SpaceServer } from "../src/plugins/space.js";\n' +
+      (space ? `import space from "../${space}/index.js";\n\nexport const SPACE: SpaceServer | null = space;\n` : "\nexport const SPACE: SpaceServer | null = null;\n"),
+    "config/spaceType.ts":
+      head("its record (names, mail, profile). Read only by src/shared/spaceTypes.ts.") +
+      'import type { SpaceType } from "../src/shared/spaceTypes.js";\n' +
+      (space ? `import type_ from "../${space}/type.js";\n\nexport const SPACE_TYPE: SpaceType | null = type_;\n` : "\nexport const SPACE_TYPE: SpaceType | null = null;\n"),
+    "config/spacePalette.ts":
+      head("its palette. Read only by src/shared/spacePalette.ts. Plain data, because the UI reads it too.") +
+      'import type { SpacePalette } from "../src/shared/spacePalette.js";\n' +
+      (space ? `import palette from "../${space}/palette.js";\n\nexport const PALETTE: SpacePalette | null = palette;\n` : "\nexport const PALETTE: SpacePalette | null = null;\n"),
+    "config/spacePalette.css":
+      "/* Written by `npm run plugins:sync` from config/plugins.json. Do not edit.\n" +
+      "   The colours of the deployment's space type's palette, loaded right after the\n" +
+      "   kernel's theme.css (ui/src/styles/hubStyles.ts). Empty with no space type. */\n" +
+      (space ? `@import "../${space}/palette.css";\n` : ""),
+  };
+}
+
 /** A package's migration file names, sorted, each `<14-digit timestamp>_<name>.sql`. */
 function packageMigrations(dir: string): string[] {
   const m = join(ROOT, dir, "migrations");
@@ -94,7 +134,14 @@ async function main(): Promise<void> {
 
   const imports = (from: string, file: string, ext: string) =>
     dirs.map((d, i) => `import ${from}${i} from "../../${d}/${file}${ext}";`).join("\n");
+  const space = readConfiguredSpace();
+  if (space) {
+    for (const f of ["index.ts", "type.ts", "palette.ts", "palette.css"]) {
+      if (!existsSync(join(ROOT, space, f))) fail(`${space}: missing ${f} (a space type's files; docs/KERNEL.md)`);
+    }
+  }
   const files: Record<string, string> = {
+    ...spaceFiles(space),
     "config/plugins/manifests.ts":
       HEADER +
       "// Every configured package's manifest, in load order: plain data the server and the UI both read.\n\n" +
@@ -168,7 +215,10 @@ async function main(): Promise<void> {
 interface DerivedManifest {
   descriptor: { plugin: string };
   detailPath(id: string): string;
-  pluginSection?: { help?: { text: string; page: string; anchor: string; pending?: boolean } };
+  pluginSection?: {
+    help?: { text: string; page: string; anchor: string; pending?: boolean };
+    fields?: ReadonlyArray<{ key: string; help?: { text: string; page: string; anchor: string; pending?: boolean } }>;
+  };
 }
 
 /**
@@ -184,7 +234,9 @@ const LEGACY_SHARE_PATHS = ["/vote-results"];
  *     page path, and the legacy ones. The block is rewritten only when the
  *     set of paths changes, keeping its order (new ones go last);
  *   - src/shared/helpRegistry.json: `plugins.<id>` for each manifest that
- *     declares its help note, in place, or after the last plugins.* key.
+ *     declares its help note, in place, or after the last plugins.* key; and
+ *     each of its settings' notes (`fields[].help`, kernel step 4) under the
+ *     setting's key, in place, or after the last plugin.* key.
  */
 export function derivedFiles(manifests: readonly DerivedManifest[], root = ROOT): Array<[string, string]> {
   const out: Array<[string, string]> = [];
@@ -209,18 +261,20 @@ export function derivedFiles(manifests: readonly DerivedManifest[], root = ROOT)
   const helpText = readFileSync(join(root, "src/shared/helpRegistry.json"), "utf8");
   const help = JSON.parse(helpText) as Record<string, unknown>;
   let next: Record<string, unknown> = { ...help };
-  for (const m of manifests) {
-    const note = m.pluginSection?.help;
-    if (!note) continue;
-    const key = `plugins.${m.descriptor.plugin}`;
+  const put = (key: string, note: { text: string; page: string; anchor: string; pending?: boolean }, prefix: string) => {
     const entry = { text: note.text, page: note.page, anchor: note.anchor, ...(note.pending ? { pending: true } : {}) };
     if (key in next) {
       next[key] = entry;
     } else {
       const keys = Object.keys(next);
-      const after = keys.reduce((last, k, i) => (k.startsWith("plugins.") ? i : last), keys.length - 1);
+      const after = keys.reduce((last, k, i) => (k.startsWith(prefix) ? i : last), keys.length - 1);
       next = Object.fromEntries([...keys.slice(0, after + 1).map((k) => [k, next[k]]), [key, entry], ...keys.slice(after + 1).map((k) => [k, next[k]])]);
     }
+  };
+  for (const m of manifests) {
+    const note = m.pluginSection?.help;
+    if (note) put(`plugins.${m.descriptor.plugin}`, note, "plugins.");
+    for (const f of m.pluginSection?.fields ?? []) if (f.help) put(f.key, f.help, "plugin.");
   }
   const helpBody = JSON.stringify(next, null, 2) + "\n";
   if (helpBody !== helpText) out.push(["src/shared/helpRegistry.json", helpBody]);

@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { digestLine } from "../../features/analytics/digest.js";
-import { renderAdminDigestEmail } from "../../src/modules/civic.admin_digest/index.js";
+import { renderAdminDigestEmail } from "../../features/admin_digest/digest.js";
 import type { FeatureHost } from "../../src/plugins/feature.js";
 
 const untouchable: FeatureHost = {

@@ -25,7 +25,7 @@ import { transitionProcess } from "../../src/db/atomic.js";
 import { currentHubId } from "../../src/config/hubContext.js";
 import { buildEvent, emitEvent } from "../../src/events/eventEmitter.js";
 import { getProcess } from "../../src/services/processService.js";
-import { findExistingBriefId } from "../../src/processes/spawnBrief.js";
+import { briefIdForSource as findExistingBriefId } from "../../src/services/processRows.js";
 import {
   finalizeVote,
   getVotingMethod,

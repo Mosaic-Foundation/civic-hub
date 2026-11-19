@@ -9,12 +9,9 @@
 import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useApi } from "../../hooks/useApi";
-import PatternAvatar from "../../components/PatternAvatar";
 import { useHub } from "../../config/hub";
-import "../Members.css";
+import { featurePeopleSections } from "../../features";
 import {
-  adminGetHiddenMembers,
   adminGetHubPeople,
   adminRequestPeopleCode,
   adminSetHubPeople,
@@ -203,49 +200,11 @@ export default function PeopleSection() {
         )}
       </div>
 
-      {/* The Members plugin's (2026-10-14): gone while it is off. */}
-      {hub.plugins.enabled("members") && <HiddenMembers />}
+      {/* A feature's own part (the Members plugin's hidden members; ui/src/features.ts). */}
+      {featurePeopleSections(hub.plugins.enabled).map(({ feature, Section }) => (
+        <Section key={feature} />
+      ))}
     </section>
-  );
-}
-
-/**
- * Members who hid themselves from the Members page and the home page's
- * stack (members and invites slice). Admins are the only people who see
- * them, here; still no addresses.
- */
-function HiddenMembers() {
-  const { data, error: loadError } = useApi("admin/hidden-members", () => adminGetHiddenMembers());
-  const error = loadError ? `Could not load the members: ${loadError.message}` : null;
-  return (
-    <div className="admin-hidden-members" id="hidden-members" style={{ marginTop: "var(--space-lg)" }}>
-      <h3 className="settings-subsection-title">
-        Hidden members
-        <HelpButton k="people.hidden_members" label="Hidden members" />
-      </h3>
-      {error && <p className="form-error">{error}</p>}
-      {data && (
-        <>
-          <p className="form-hint">
-            {data.count.toLocaleString()} {data.count === 1 ? "member" : "members"} in all.{" "}
-            {data.hidden.length === 0
-              ? "Nobody has hidden themselves from the Members page."
-              : `${data.hidden.length === 1 ? "1 has" : `${data.hidden.length} have`} hidden themselves from the Members page and the home page. Only admins see them, here.`}
-          </p>
-          {data.hidden.length > 0 && (
-            <ul className="members-list" aria-label="Hidden members">
-              {data.hidden.map((m) => (
-                <li key={m.avatar} className="members-item">
-                  <PatternAvatar seed={m.avatar} size={32} />
-                  <span className="members-name">{m.name}</span>
-                  {m.is_admin && <span className="members-admin">Admin</span>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
-    </div>
   );
 }
 

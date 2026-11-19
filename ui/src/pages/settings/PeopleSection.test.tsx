@@ -6,10 +6,11 @@ import PeopleSection from "./PeopleSection";
 const people = vi.fn();
 
 vi.mock("../../config/hub", () => ({ useHub: () => ({ plugins: { enabled: () => false } }) }));
+// The features' parts (the Members plugin's hidden members) are their own tests'.
+vi.mock("../../features", () => ({ featurePeopleSections: () => [] }));
 vi.mock("./hubSettingsState", () => ({ useHubSettings: () => ({ setDirty: () => {} }), useUnsavedChangesGuard: () => {} }));
 vi.mock("../../services/api", () => ({
   adminGetHubPeople: () => people(),
-  adminGetHiddenMembers: vi.fn(),
   adminRequestPeopleCode: vi.fn(),
   adminSetHubPeople: vi.fn(),
 }));

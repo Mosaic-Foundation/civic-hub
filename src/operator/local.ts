@@ -16,7 +16,7 @@ import { withHubScope } from "../config/hubContext.js";
 import { refreshSamples } from "../services/sampleRefresh.js";
 import { describeJobRun } from "../jobs/describe.js";
 import { recordJobRun } from "../services/jobRuns.js";
-import { kindsWithSamples, samplePreviews, sampleTemplateTitles } from "../services/sampleTemplates.js";
+import { sampleKinds, samplePreviews, sampleTitles } from "../services/sampleCatalog.js";
 import { sampleNames } from "../services/sampleNames.js";
 import { describeInvites } from "../services/adminInvite.js";
 import { legalSummaries } from "../services/hubDocuments.js";
@@ -114,7 +114,7 @@ export function localOperator(): OperatorApi {
         plugin_names: { ...PLUGIN_NAMES },
         plugin_defaults: Object.fromEntries(PLUGIN_IDS.map((id) => [id, pluginDefaultOn(id)])),
         // The create form disables "Start with sample content" for the rest.
-        sample_kinds: kindsWithSamples(),
+        sample_kinds: sampleKinds(),
         production_database: isProductionDatabase(),
         hub_specific_env_vars: hubSpecificEnvVars(),
         create_refusal: productionCreateGuard(hubs.length),
@@ -211,7 +211,7 @@ export function localOperator(): OperatorApi {
         const run = describeJobRun("sample_refresh", { status: 200, body: report as unknown as Record<string, unknown> });
         if (run) await recordJobRun("sample_refresh", started, run, { ...report, trigger: "console" });
         // Titles beside the ids, filled with this hub's names (3b follow-up).
-        return { refresh: report, titles: sampleTemplateTitles(sampleNames()) };
+        return { refresh: report, titles: await sampleTitles(sampleNames()) };
       });
     },
     async archive(hubId) {

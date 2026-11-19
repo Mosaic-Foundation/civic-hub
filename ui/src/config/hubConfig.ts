@@ -54,8 +54,11 @@ export interface HubConfig {
    * a plugin's type needs no UI change. Optional, like plugin_setup.
    */
   process_types?: ProcessTypeDisplay[];
-  /** The Members plugin: whether residents get the Members page yet (absent while it is off). */
-  members?: { page_shown: boolean };
+  /**
+   * What each switched-on hub feature's server says its UI needs first, by
+   * feature id (the Members plugin's `{ page_shown }`). Optional, like plugin_setup.
+   */
+  features?: Record<string, Record<string, unknown>>;
   /**
    * The hub's clock: its time zone setting, else its place's zone, else UTC,
    * and which (src/shared/hubTimeZone.ts; Events 3). Optional, like plugin_setup.

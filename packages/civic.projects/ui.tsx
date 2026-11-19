@@ -1,9 +1,14 @@
 // civic.project: a community project with updates, comments and sentiment
-// (manifest: packages/civic.projects/manifest.ts).
+// (manifest: packages/civic.projects/manifest.ts). Its pages are its own
+// (./ui/), built from the SDK's UI entry alone, and load when first opened.
 
-import { NewProject, ProjectDetail, Projects } from "../../ui/src/lazyPages";
-import { getProjectDetail } from "../../ui/src/services/api";
-import type { FeedKindUi, ProcessUi } from "../../ui/src/processes/types";
+import { lazy } from "react";
+import type { FeedKindUi, ProcessUi } from "@civic-social/plugin-sdk/ui";
+import { getProjectDetail } from "./ui/api";
+
+const Projects = lazy(() => import("./ui/Projects"));
+const NewProject = lazy(() => import("./ui/NewProject"));
+const ProjectDetail = lazy(() => import("./ui/ProjectDetail"));
 
 // Phase 3 fix — projects previously fell through to getAnnouncement(id)
 // and 404'd; fetch the real project detail (title + banner image).

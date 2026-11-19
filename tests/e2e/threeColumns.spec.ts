@@ -11,7 +11,7 @@
  *    there, its wash flaring into the edge above and below (Adam, 2026-11-08).
  * 8. The cards: Coming up (the calendar's next events however far out, date
  *    first, three, then "See all events"; Adam after dev; events only since
- *    Events 4, 2026-11-09), the latest announcements, About. A card with
+ *    Events 4, 2026-11-09), Pinned (the Pinning plugin's), About. A card with
  *    nothing to show is not drawn. A vote about to close is a "closing soon"
  *    card in the feed instead.
  * 9. Appearance → Right column: each card switched on or off, put in order by
@@ -95,9 +95,9 @@ test("three columns at full width: a card on the left, the feed centred, the car
   // Under the rows, the way to the whole calendar while Events is on.
   const allEvents = coming.getByRole("link", { name: "See all events" });
   if (await allEvents.count()) await expect(allEvents).toHaveAttribute("href", "/events");
-  // About is always there; Announcements only when the hub has some.
+  // About is always there; Pinned only when something is pinned.
   await expect(aside(page).getByRole("region", { name: /^About / })).toBeVisible();
-  expect((await cardIds(page)).filter((id) => id !== "announcements")).toEqual(["coming_up", "about"]);
+  expect((await cardIds(page)).filter((id) => id !== "pinned")).toEqual(["coming_up", "about"]);
 
   // The left column is a rounded card, flush left; the cards flush right; the feed between.
   const sidebar = page.locator(".hub-sidebar");
@@ -211,13 +211,13 @@ test("an admin picks Three columns and sets the right column's cards", async ({ 
   await expect(page.locator("#nav-aside-cards")).toHaveCount(0);
   await page.locator("#nav-layout").getByText("Three columns").click();
   const list = page.getByRole("list", { name: "Right column cards" });
-  await expect(list.locator(".kit-sortable-name")).toHaveText(["Coming up", "Announcements", "About"]);
+  await expect(list.locator(".kit-sortable-name")).toHaveText(["Coming up", "Pinned", "About"]);
 
   // Up and Down from the keyboard; the button keeps focus.
   const aboutUp = page.getByRole("button", { name: "Move About up" });
   await aboutUp.click();
   await expect(aboutUp).toBeFocused();
-  await expect(list.locator(".kit-sortable-name")).toHaveText(["Coming up", "About", "Announcements"]);
+  await expect(list.locator(".kit-sortable-name")).toHaveText(["Coming up", "About", "Pinned"]);
   // Dragged by its handle with the pointer.
   const handle = list.locator('[data-id="about"] .kit-sortable-handle');
   const target = (await list.locator('[data-id="coming_up"]').boundingBox())!;
@@ -226,9 +226,9 @@ test("an admin picks Three columns and sets the right column's cards", async ({ 
   await page.mouse.down();
   await page.mouse.move(from.x + from.width / 2, target.y + 4, { steps: 8 });
   await page.mouse.up();
-  await expect(list.locator(".kit-sortable-name")).toHaveText(["About", "Coming up", "Announcements"]);
-  // Announcements off.
-  const show = page.getByRole("switch", { name: "Show Announcements" });
+  await expect(list.locator(".kit-sortable-name")).toHaveText(["About", "Coming up", "Pinned"]);
+  // Pinned off.
+  const show = page.getByRole("switch", { name: "Show Pinned" });
   await expect(show).toBeChecked();
   await show.uncheck();
   await expect(show).not.toBeChecked();
@@ -239,7 +239,7 @@ test("an admin picks Three columns and sets the right column's cards", async ({ 
   expect(JSON.parse((await storedSetting(hub, "nav.aside_cards")) ?? "[]")).toEqual([
     { id: "about", shown: true },
     { id: "coming_up", shown: true },
-    { id: "announcements", shown: false },
+    { id: "pinned", shown: false },
   ]);
 
   // The hub draws them so.

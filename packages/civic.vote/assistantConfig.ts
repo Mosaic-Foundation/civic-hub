@@ -2,15 +2,7 @@
 // via ProcessHandler.getAssistantConfig. See proposalAssistantConfig.ts for
 // the pattern.
 
-import {
-  type AssistantTypeConfig,
-  type DraftField,
-  getDraft,
-  appendConversation,
-  saveReviewResult,
-  applyGeneratedDraft,
-  updateDraft,
-} from "@civic-social/plugin-sdk/first-party";
+import { draftsOf, type AssistantTypeConfig, type DraftField } from "@civic-social/plugin-sdk";
 import { voteDraftKind, type VoteDraft } from "./draftKind.js";
 
 const VOTE_BEST_PRACTICES = `# Vote Best Practices — Civic Hub
@@ -76,7 +68,7 @@ Same constraints as proposals:
 /**
  * Which extra assistant fields each voting method needs, beyond the shared
  * title / description / sources. THE place a method declares its fields: the
- * client mirrors this (ui/src/services/voteMethods.ts) to decide which help
+ * client mirrors this (./ui/voteMethods.ts) to decide which help
  * chips to show, and `activeFields` below feeds it to the assistant's prompt
  * and reply schema. A method added later (ranked choice, say) declares its
  * own line here and is handled everywhere without another branch (Adam,
@@ -133,29 +125,32 @@ The draft state names the voting method. When it is Approval, the Options field 
       example: "Extend hours to Sundays\nExtend weekday evenings instead\nKeep the current hours",
     },
   ],
-  draftStore: {
-    async get(id) {
-      const draft = await getDraft<VoteDraft>(voteDraftKind.spec, id);
-      if (!draft) return undefined;
-      // The assistant reads options as one-per-line text; the form stores an
-      // array. Method rides along so activeFields (and the prompt) can tell
-      // whether options apply at all.
-      return {
-        ...draft,
-        considerations: "",
-        options: (draft.custom_options ?? []).filter((o) => o.trim()).join("\n"),
-        method: draft.method,
-      };
-    },
-    appendConversation: (id, userMessage, assistantMessage) =>
-      appendConversation(voteDraftKind.spec, id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions, checkedHash) =>
-      saveReviewResult(voteDraftKind.spec, id, suggestions, checkedHash),
-    applyGeneratedDraft: async (id, draft) => {
-      await applyGeneratedDraft(voteDraftKind.spec, id, { title: draft.title, description: draft.description, sources: draft.sources });
-      // A first draft for an approval vote may carry its options too.
-      const options = (draft.options ?? "").split("\n").map((o) => o.trim()).filter(Boolean);
-      if (options.length >= 2) await updateDraft(voteDraftKind.spec, id, { custom_options: options });
-    },
+  // Asked for when the assistant runs (the SDK binds as the hub loads).
+  get draftStore() {
+    const drafts = draftsOf(voteDraftKind);
+    const store = drafts.assistantStore({
+      async get(id) {
+        const draft = (await drafts.get(id)) as VoteDraft | undefined;
+        if (!draft) return undefined;
+        // The assistant reads options as one-per-line text; the form stores an
+        // array. Method rides along so activeFields (and the prompt) can tell
+        // whether options apply at all.
+        return {
+          ...draft,
+          considerations: "",
+          options: (draft.custom_options ?? []).filter((o) => o.trim()).join("\n"),
+          method: draft.method,
+        } as never;
+      },
+    });
+    return {
+      ...store,
+      applyGeneratedDraft: async (id: string, draft: Parameters<typeof store.applyGeneratedDraft>[1]) => {
+        await store.applyGeneratedDraft(id, draft);
+        // A first draft for an approval vote may carry its options too.
+        const options = (draft.options ?? "").split("\n").map((o) => o.trim()).filter(Boolean);
+        if (options.length >= 2) await drafts.update(id, { custom_options: options });
+      },
+    };
   },
 };

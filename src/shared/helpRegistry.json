@@ -122,7 +122,7 @@
     "anchor": "plugins-meeting-summary"
   },
   "plugins.pinning": {
-    "text": "Built into the hub, not a library plugin. Admins pin any item to the Pinned card from its page, with an optional end date; Admin → Pinned lists them. Off, nothing shows as pinned; urgent announcements still do.",
+    "text": "Pin any item to the Pinned card in the right column, with an optional end date, and mark a pin urgent to list it first and show it as a line across the top of every page. Admin → Pinned lists them. Off, nothing shows as pinned.",
     "page": "/reference/plugins",
     "anchor": "plugins-pinning",
     "pending": true
@@ -612,6 +612,12 @@
     "text": "Ask members their race or ethnicity. Off unless switched on. Results show totals only, with groups under 5 hidden.",
     "page": "/reference/settings/participation",
     "anchor": "about-ask-race",
+    "pending": true
+  },
+  "plugin.pinning.who": {
+    "text": "Who may pin items and mark them urgent: admins only (the default), or every member.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-pinning-who",
     "pending": true
   }
 }

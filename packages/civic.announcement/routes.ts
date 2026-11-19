@@ -13,12 +13,12 @@ import {
   handleListAnnouncements,
   handleUpdateAnnouncement,
 } from "./controller.js";
-import { requireBoardOrAdmin } from "@civic-social/plugin-sdk/first-party";
+import { requireAuthor } from "@civic-social/plugin-sdk";
 
 const router = Router();
 
-router.post("/", requireBoardOrAdmin, handleCreateAnnouncement);
-router.patch("/:id", requireBoardOrAdmin, handleUpdateAnnouncement);
+router.post("/", requireAuthor, handleCreateAnnouncement);
+router.patch("/:id", requireAuthor, handleUpdateAnnouncement);
 router.get("/:id", handleGetAnnouncement);
 
 // Public list — separate path so it doesn't collide with /announcement/:id

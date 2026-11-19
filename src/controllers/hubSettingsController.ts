@@ -19,6 +19,7 @@
 // refused and nothing in the write is stored.
 
 import { NotFoundError, ValidationError } from "../errors/index.js";
+import { packageSettingProblem } from "../services/packageContributions.js";
 import { route } from "../http/route.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { currentHub, currentHubId } from "../config/hubContext.js";
@@ -34,8 +35,9 @@ import { KEYS, KEY_ALIASES } from "../models/hubSettings.js";
 import { countLiveProcessesByPlugin, getProcess } from "../services/processService.js";
 import { latestJobRuns } from "../services/jobRuns.js";
 import { JOBS, isPlatformJob, type HubJobSpec } from "../jobs/registry.js";
-import { JOB_NAMES } from "../modules/civic.admin_digest/index.js";
+import { JOB_NAMES } from "../modules/civic.admin_waiting/index.js";
 import { validateSettingsWrite } from "../models/hubSettingsWrite.js";
+import { currentSpaceType, pluginRequired } from "../shared/spaceTypes.js";
 import { auditActor, recordHubAdminAudit } from "../services/hubAdminAudit.js";
 import {
   EDITABLE_SETTING_KEYS,
@@ -211,6 +213,22 @@ export const handlePutHubSettings = route(async (req, res) => {
       ...(result.unknownKeys ? { unknown_keys: result.unknownKeys } : {}),
     });
     return;
+  }
+  // A plugin the space type requires cannot be switched off (kernel rule 6).
+  for (const e of result.entries) {
+    const m = /^plugin\.(.+)\.enabled$/.exec(e.key);
+    if (m && e.value === "false" && pluginRequired(m[1]!)) {
+      throw new ValidationError(`${e.key}: a ${currentSpaceType().displayName} needs this plugin, so it stays on.`);
+    }
+  }
+  // A plugin's own setting is checked by its own package too (its server's
+  // checkSetting, kernel step 3): Meeting summaries reads its Wix columns.
+  for (const e of result.entries) {
+    const problem = packageSettingProblem(e.key, e.value);
+    if (problem) {
+      res.status(400).json({ error: `${e.key}: ${problem}`, code: "invalid_settings" });
+      return;
+    }
   }
 
   // A document saved exactly as its shared template is stored as "" — the

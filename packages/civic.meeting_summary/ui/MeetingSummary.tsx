@@ -1,0 +1,353 @@
+import { useEffect, useRef, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  AdminArchiveButton,
+  RelatedProcesses,
+  SampleBadge,
+  ShareButton,
+  absoluteDateOfDay,
+  absoluteTime,
+  relativeTime,
+  useApi,
+} from "@civic-social/plugin-sdk/ui";
+import { getMeetingSummary, type PublicMeetingSummary } from "./api";
+import "./MeetingSummary.css";
+
+export default function MeetingSummaryPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const {
+    data: summary,
+    loading,
+    error,
+  } = useApi<PublicMeetingSummary>(id ? `meeting-summary/${id}` : null, () => getMeetingSummary(id!));
+  const [showMinutes, setShowMinutes] = useState(false);
+  const [showRecordingNote, setShowRecordingNote] = useState(false);
+  // A sample's timestamp note: which block's is showing; it goes on its own.
+  const [timeNoteAt, setTimeNoteAt] = useState<number | null>(null);
+  const timeNoteTimer = useRef<number | undefined>(undefined);
+  function showTimeNote(i: number) {
+    setTimeNoteAt(i);
+    window.clearTimeout(timeNoteTimer.current);
+    timeNoteTimer.current = window.setTimeout(() => setTimeNoteAt(null), 4000);
+  }
+  useEffect(() => () => window.clearTimeout(timeNoteTimer.current), []);
+
+  if (loading) {
+    return (
+      <div className="page meeting-summary-page">
+        <p className="meeting-status">Loading summary…</p>
+      </div>
+    );
+  }
+
+  if (error || !summary) {
+    return (
+      <div className="page meeting-summary-page">
+        <p className="meeting-status meeting-status-error">
+          {error?.message ?? "This summary hasn't been published yet."}
+        </p>
+      </div>
+    );
+  }
+
+  const hasVideo = summary.source_video_url !== null;
+  const sample = summary.is_sample === true;
+  // The bold line is the server's attribution label ("AI-generated. Not an
+  // authoritative transcript."). This is only what to add under it — never
+  // a repeat of it (Adam, 2026-09-06: "it says not an authoritative
+  // transcript twice").
+  const disclaimerDetail = sample
+    ? "Sample: written by hand to show what a summary looks like. No real meeting stands behind it; on a real summary each time opens the recording at that moment."
+    : hasVideo
+      ? "Click a timestamp to jump to that moment on YouTube."
+      : "Generated from the minutes document — no recording of this meeting is available.";
+
+  return (
+    <article className="page meeting-summary-page">
+      <div className="process-share-row">
+        <ShareButton
+          title={summary.meeting_title}
+          shareText={`Meeting summary: ${summary.meeting_title}`}
+        />
+      </div>
+
+      <header className="meeting-header">
+        <p className="meeting-eyebrow">
+          Meeting summary
+          {sample && <> <SampleBadge /></>}
+        </p>
+        <h1>
+          {summary.meeting_title}
+          {" — "}
+          <time dateTime={summary.meeting_date}>
+            {absoluteDateOfDay(summary.meeting_date)}
+          </time>
+        </h1>
+        <p className="meeting-meta">
+          Published{" "}
+          <time
+            dateTime={summary.published_at}
+            title={absoluteTime(summary.published_at)}
+          >
+            {relativeTime(summary.published_at)}
+          </time>
+          {summary.revised_at && (
+            <>
+              {" · "}
+              <span className="meeting-revised">
+                Updated{" "}
+                <time
+                  dateTime={summary.revised_at}
+                  title={absoluteTime(summary.revised_at)}
+                >
+                  {relativeTime(summary.revised_at)}
+                </time>{" "}
+                with the official minutes
+              </span>
+            </>
+          )}
+        </p>
+      </header>
+
+      {summary.awaiting_minutes && !sample && (
+        // Readers otherwise wonder why a meeting record has no minutes link.
+        // Jurisdictions approve minutes at the FOLLOWING meeting, so a gap of
+        // several weeks is normal rather than an omission.
+        <div className="meeting-pending-minutes">
+          Official minutes for this meeting have not been published yet — they
+          are usually approved at a later meeting. This summary is based on the
+          meeting recording. It will be updated once the minutes are available.
+        </div>
+      )}
+
+      <div className="meeting-disclaimer">
+        {!sample && <strong>{summary.ai_attribution_label}</strong>}
+        <span>{disclaimerDetail}</span>
+      </div>
+
+      <div className="meeting-provenance">
+        {sample && (
+          // A sample has no PDF and no video (review issue #7, 2026-10-07):
+          // its minutes are text on this page, and "Watch recording" says
+          // what a real hub links to instead of going anywhere.
+          <>
+            {summary.sample_minutes && (
+              <button
+                type="button"
+                className="meeting-chip"
+                aria-expanded={showMinutes}
+                aria-controls="meeting-sample-minutes"
+                onClick={() => setShowMinutes((v) => !v)}
+              >
+                {showMinutes ? "Hide minutes" : "Read the minutes"}
+              </button>
+            )}
+            <button
+              type="button"
+              className="meeting-chip"
+              aria-expanded={showRecordingNote}
+              aria-controls="meeting-sample-recording-note"
+              onClick={() => setShowRecordingNote((v) => !v)}
+            >
+              Watch recording
+            </button>
+          </>
+        )}
+        {summary.source_minutes_url ? (
+          <a
+            href={summary.source_minutes_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="meeting-chip"
+          >
+            View minutes PDF
+          </a>
+        ) : summary.source_agenda_url ? (
+          <a
+            href={summary.source_agenda_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="meeting-chip"
+          >
+            View agenda PDF
+          </a>
+        ) : null}
+        {summary.source_video_url && (
+          <a
+            href={summary.source_video_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="meeting-chip"
+          >
+            Watch recording
+          </a>
+        )}
+        {summary.additional_video_urls.map((url, i) => (
+          <a
+            key={url}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="meeting-chip meeting-chip-secondary"
+          >
+            Recording (segment {i + 2})
+          </a>
+        ))}
+      </div>
+
+      {sample && showRecordingNote && (
+        <p id="meeting-sample-recording-note" className="meeting-sample-note" role="note">
+          In a real hub this links to the meeting video, and each time below
+          opens the video at that moment.
+        </p>
+      )}
+      {sample && showMinutes && summary.sample_minutes && (
+        <section id="meeting-sample-minutes" className="meeting-sample-minutes" aria-label="Minutes">
+          <h2>Minutes</h2>
+          {summary.sample_minutes.split(/\n\s*\n/).map((para, i) => (
+            <p key={i}>{para}</p>
+          ))}
+        </section>
+      )}
+
+      {/* Sections collapse by default so the page opens as a scannable agenda
+          of the whole meeting rather than a wall of prose. A four-hour meeting
+          runs to a dozen-plus blocks; most readers want to find the one item
+          they care about, not read all of it. Native <details> is used rather
+          than hand-rolled state so keyboard and screen-reader behaviour, and
+          the browser's own find-in-page expansion, come for free. */}
+      <p className="meeting-blocks-help">
+        Select a section to read its summary.
+        {hasVideo
+          ? " Select a timestamp to open the recording at that moment."
+          : ""}
+      </p>
+
+      <section className="meeting-blocks">
+        {summary.blocks.map((block, i) => (
+          <details key={i} className="meeting-block">
+            <summary className="meeting-block-header">
+              <span className="meeting-block-heading">
+                {block.start_time_seconds !== null && summary.source_video_url ? (
+                  <a
+                    href={youTubeAtTime(
+                      summary.source_video_url,
+                      block.start_time_seconds,
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="meeting-block-timestamp"
+                    // Without this the browser both follows the link and
+                    // toggles the section, so jumping to the video would
+                    // silently expand a block the reader never asked for.
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {formatSeconds(block.start_time_seconds)}
+                  </a>
+                ) : sample && block.start_time_seconds !== null ? (
+                  // A sample has the times a real summary would, and nothing
+                  // to open: a tap says what a real one does (Adam,
+                  // 2026-10-08), without toggling the section.
+                  <span className="meeting-block-timestamp-wrap">
+                    <button
+                      type="button"
+                      className="meeting-block-timestamp meeting-block-timestamp--sample"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showTimeNote(i);
+                      }}
+                    >
+                      {formatSeconds(block.start_time_seconds)}
+                    </button>
+                    {timeNoteAt === i && (
+                      <span
+                        className="meeting-time-note"
+                        role="status"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setTimeNoteAt(null);
+                        }}
+                      >
+                        In a real hub this opens the meeting video at{" "}
+                        {formatSeconds(block.start_time_seconds)}.
+                      </span>
+                    )}
+                  </span>
+                ) : null}
+                <h2 className="meeting-block-title">{block.topic_title}</h2>
+              </span>
+              {/* Grouped so the pair can move as a unit: beside the title on a
+                  wide screen, onto its own row beneath it on a narrow one,
+                  where competing for the same line starves the title. */}
+              <span className="meeting-block-meta">
+                {/* Votes and motions are what most residents come for, so they
+                    stay findable without opening every section. */}
+                {block.action_taken && (
+                  <span className="meeting-block-flag">Action taken</span>
+                )}
+                <span className="meeting-block-caret" aria-hidden="true" />
+              </span>
+            </summary>
+            <div className="meeting-block-body">
+              <p className="meeting-block-summary">{block.topic_summary}</p>
+              {block.action_taken && (
+                <p className="meeting-block-action">
+                  <strong>Action taken:</strong> {block.action_taken}
+                </p>
+              )}
+            </div>
+          </details>
+        ))}
+      </section>
+
+      {summary.admin_notes.trim().length > 0 && (
+        <section className="meeting-notes">
+          <h2>Notes from the Civic Hub</h2>
+          <p>{summary.admin_notes}</p>
+        </section>
+      )}
+
+      {/* Admin-only: archive a stale/incorrect summary (soft-remove,
+          restorable from the admin Archived view). Renders nothing for
+          non-admins. */}
+      {id && (
+        <AdminArchiveButton
+          processId={id}
+          itemLabel="meeting summary"
+          onArchived={() => navigate("/")}
+        />
+      )}
+
+      {/* Read-only. A process may link TO this post, and the counter-link
+          renders here so a reader can follow it back — but content posts
+          never originate links of their own. */}
+      <RelatedProcesses processId={id!} readOnly />
+    </article>
+  );
+}
+
+function youTubeAtTime(watchUrl: string, seconds: number): string {
+  // Preserve the v= param and append t=<n>s (YouTube accepts both ?t=NNs
+  // and fragment #t=NNs; ?t=NNs is consistent across watch and livestream
+  // URLs).
+  try {
+    const u = new URL(watchUrl);
+    u.searchParams.set("t", `${Math.max(0, Math.floor(seconds))}s`);
+    return u.toString();
+  } catch {
+    return watchUrl;
+  }
+}
+
+function formatSeconds(total: number): string {
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (h > 0) return `${h}:${pad(m)}:${pad(s)}`;
+  return `${pad(m)}:${pad(s)}`;
+}
+

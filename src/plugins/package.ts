@@ -32,11 +32,13 @@ import type { aiComplete, aiConfigured, aiDefaultModel } from "../adapters/ai.js
 import type { admitAiCall } from "../services/aiBudget.js";
 import type { sendEmail as sendMessage } from "../utils/email.js";
 import type { sendEmail as deliverEmail } from "../services/mailer.js";
-import type { notifyCronOutcome } from "../services/cronAlerts.js";
 import type { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../utils/http.js";
 import type { GrantableAdapter } from "../shared/pluginGrant.js";
 import type { HubQueryBuilder } from "../db/forHub.js";
 import type { DraftKind } from "../processes/draftKinds.js";
+import type { Process } from "../models/process.js";
+import type { BriefContent } from "../processes/contracts/briefContent.js";
+import type { PluginSamples } from "./samples.js";
 
 /** A router a package mounts, at `path` on the hub (or under /admin, behind the admin check). */
 export interface PluginMount {
@@ -60,6 +62,54 @@ export interface PluginServer {
   adminRoutes?: readonly PluginMount[];
   /** A runner for each job its manifest declares, by job id. */
   jobs?: Readonly<Record<string, JobRunner>>;
+  /**
+   * Comments on something of its own that is not a process (kernel step 3):
+   * a proposal takes comments before it becomes a vote. The kernel's comment
+   * routes ask `exists(id)` for an id that is no process, and file the
+   * comment under `phase`.
+   */
+  inputTargets?: { phase: "proposal"; exists(id: string): Promise<boolean> };
+  /**
+   * What is wrong with a value of one of its own settings (`plugin.<id>.*`),
+   * or null, checked on save after the kernel's check of the field's kind
+   * (kernel step 3).
+   */
+  checkSetting?(key: string, value: string): string | null;
+  /** The development reset (debug routes only, never production): empty its own records. */
+  dev?: { reset?(): Promise<void> };
+  /**
+   * Its sample content (kernel step 3; src/plugins/samples.ts): it seeds the
+   * samples of its type a hub's space type brings, and may bring default
+   * samples of its own for a space type that brings none. Without it, the space
+   * type seeds its type's samples itself.
+   */
+  samples?: PluginSamples;
+  /**
+   * What it does when the kernel says something happened (kernel step 3): the
+   * kernel calls it in-process, for the hub in scope, only while the package
+   * is mounted and its plugin is on there. A listener's failure is logged and
+   * never stops the kernel's own work or another listener.
+   */
+  on?: {
+    /** A process of any type entered a closed status (closed, finalized…), once, after its write committed. */
+    processClosed?: (closed: ClosedProcess) => Promise<void>;
+  };
+}
+
+/** A process that just closed, as the kernel hands it to a listener (PluginServer.on.processClosed). */
+export interface ClosedProcess {
+  /** The process as stored after the close and its after-commit work. */
+  process: Process;
+  /** Who closed it: an account, or "system:<part>". */
+  actor: string;
+  /**
+   * What it came to (the process.result contract,
+   * src/processes/contracts/briefContent.ts), asked of its own type once and
+   * only when a listener asks: its handler's result, with the kernel's
+   * closed-early line and its district and demographic tables. Null when its
+   * type says nothing.
+   */
+  result(): Promise<BriefContent | null>;
 }
 
 /** The database a package's store reaches: the hub in scope, its granted tables only. */
@@ -87,8 +137,6 @@ export interface PluginAdapters {
     deliver: typeof deliverEmail;
     /** The hub's admins' addresses, for a notice to them (a list the hub keeps; ADR-011). */
     adminAddresses: () => string[];
-    /** A scheduled job's outcome, mailed to the hub's admins when it needs them (src/services/cronAlerts.ts). */
-    notifyJobOutcome: typeof notifyCronOutcome;
   };
   /** Public web pages, through the hub's fetchers (SSRF-guarded, every redirect checked; src/utils/http.ts). */
   web: { fetchHtml: typeof fetchHtml; fetchJson: typeof fetchJson; fetchPdf: typeof fetchPdf; fetchXml: typeof fetchXml };

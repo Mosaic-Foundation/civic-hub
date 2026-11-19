@@ -1,11 +1,14 @@
 // civic.announcement: a post from an official or admin on the feed
 // (manifest: ./manifest.ts).
 
+import { lazy } from "react";
 import { Link } from "react-router-dom";
-import { AdminAnnouncements, AnnouncementPage, PostAnnouncement } from "../../ui/src/lazyPages";
-import { getAnnouncement } from "../../ui/src/services/api";
-import { relativeTime } from "../../ui/src/utils/dates";
-import type { FeedKindUi, ProcessUi } from "../../ui/src/processes/types";
+import { relativeTime, type FeedKindUi, type ProcessUi } from "@civic-social/plugin-sdk/ui";
+import { getAnnouncement } from "./ui/api";
+
+// Its pages are its own (./ui/), built from the SDK's UI entry, and load when first opened.
+const AnnouncementPage = lazy(() => import("./ui/Announcement"));
+const PostAnnouncement = lazy(() => import("./ui/PostAnnouncement"));
 
 const announcementKind: FeedKindUi = {
   card: ({ id, data, getTitle, descSummary }) => {
@@ -35,7 +38,6 @@ const announcementKind: FeedKindUi = {
         imageAlt: a.image_alt ?? null,
         editCount: a.edit_count ?? 0,
         lastEditedAt: a.last_edited_at ?? null,
-        urgent: a.urgent === true,
       };
     }),
   engagement: (meta) => {
@@ -49,12 +51,12 @@ const announcementKind: FeedKindUi = {
 
 const announcementUi: ProcessUi = {
   type: "civic.announcement",
+  // Its own filter pill above the feed (the kernel names none).
+  feedFilter: { surface: "announcement", label: () => "Announcements", pillClass: "announcement" },
   routes: [
     { path: "/announcement/new", element: <PostAnnouncement /> },
     { path: "/announcement/:id/edit", element: <PostAnnouncement /> },
     { path: "/announcement/:id", element: <AnnouncementPage /> },
-    // Admin → Announcements: pinned and urgent, pin and unpin (2026-11-15).
-    { path: "/admin/announcements", element: <AdminAnnouncements />, admin: true },
   ],
   feed: {
     announcement: announcementKind,

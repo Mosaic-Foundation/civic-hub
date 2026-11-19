@@ -41,3 +41,7 @@ export { namesFor, namesShown, disclosurePolicyOf } from "../../src/services/dis
 export { typeStatusOf } from "../../src/processes/registry.js";
 export { DECLARED_FEED_KINDS, classifyActivity } from "../../src/shared/feedActivity.js";
 export { THEME_TYPE_KEYS, declaredTypeStylesheet } from "../../src/shared/theme.js";
+// Kernel step 2: a descriptor's roles by either name (member/resident, accountable/official),
+// and its member creation (creation.member, or creation.resident before step 2).
+export { namesRole } from "../../src/shared/spaceProfile.js";
+export { memberCreation } from "../../src/processes/descriptorTypes.js";

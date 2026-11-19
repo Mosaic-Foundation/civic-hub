@@ -15,6 +15,9 @@
 // place. `identity.jurisdiction_type` and the governing body belong to place
 // hubs only. Shared by the server, the console and the hub UI. Pure.
 
+import { pluralNoun, resolveTerm } from "./spaceProfile.js";
+import { currentSpaceType } from "./spaceTypes.js";
+
 export type HubKind = "place" | "community" | "issue" | "organization" | "other";
 
 export const HUB_KINDS: ReadonlyArray<{ id: HubKind; label: string; hint: string }> = [
@@ -41,24 +44,18 @@ export function hubKindOf(value: string | null | undefined): HubKind {
 }
 
 /**
- * What the people taking part are called: residents of a place hub, members
- * of an organization, participants anywhere else — a campaign has no
- * residents and no members (Adam, 2026-10-06). A hub may name them itself
+ * What the people taking part are called: the kernel's "member" term
+ * (src/shared/spaceProfile.ts) as the space type's profile names it for this
+ * kind of hub: residents of a place hub, members of an organization,
+ * participants anywhere else. A hub may name them itself
  * (`copy.resident_noun`, wired in 2026-10-07: "neighbor", "student"); pass it
  * as `custom`, singular, and the plural is formed from it.
  */
 export function participantNoun(kind: HubKind, count: number, custom?: string | null): string {
-  const own = custom?.trim().toLowerCase();
-  const one = own || (kind === "place" ? "resident" : kind === "organization" || kind === "community" ? "member" : "participant");
-  return count === 1 ? one : pluralNoun(one);
+  return resolveTerm("member", currentSpaceType().profile, { kind, own: custom }, count);
 }
 
-/** "resident" → "residents", "family" → "families", "class" → "classes". */
-export function pluralNoun(one: string): string {
-  if (/[^aeiou]y$/i.test(one)) return `${one.slice(0, -1)}ies`;
-  if (/(s|x|z|ch|sh)$/i.test(one)) return `${one}es`;
-  return `${one}s`;
-}
+export { pluralNoun };
 
 /**
  * The byline of someone whose name is not shown — a signed-out viewer's

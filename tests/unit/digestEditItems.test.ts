@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildEditItems } from "../../src/modules/civic.digest/service.js";
-import type { DigestEvent } from "../../src/modules/civic.digest/models.js";
+import { buildEditItems } from "../../features/digest/service.js";
+import type { DigestEvent } from "../../features/digest/models.js";
 
 type E = DigestEvent & { actor?: string };
 const edit = (id: string, ts: string, actor: string, fields = ["description"]): E => ({

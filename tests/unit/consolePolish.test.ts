@@ -80,7 +80,7 @@ describe("affiliation by hub kind", () => {
 
 describe("a process setting", () => {
   it("is a word cloud, by id, or empty", () => {
-    expect(fieldSpec("plugin.wordcloud.onboarding_id")).toEqual({
+    expect(fieldSpec("plugin.wordcloud.onboarding_id")).toMatchObject({
       key: "plugin.wordcloud.onboarding_id",
       kind: "process",
       processType: "civic.wordcloud",

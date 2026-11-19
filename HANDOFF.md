@@ -25,6 +25,241 @@ agreement, and he approves live in the console.
   walk-through). Local: unit 2,808; API 3,913 passed, 4 failed (the known `sampleContent`/`leakHarness` row-cap
   failures on the bloated local stack); Playwright `leavingDemo` 13/13 on the preview build.
 
+## Kernel branch: E2E caught up; the resident digest, the drafting assistant, Pinning, Feedback, the admin digest, Search and Members are feature packages — 2026-11-19
+
+- **E2E (0c96ca3):** dev's E2E run had failed or run out its 30 minutes since Nov 17. Most of the time went on specs
+  that minted a resident's session through `tests/fixtures/adminSession` and so had not been asked About you: each
+  waited 30 seconds (twice, with the retry) behind the card. `tests/e2e/sessions.ts` mints sessions with About you
+  asked and every spec takes `mintSession` from it; the sign-up-from-a-vote test skips the card where it comes up over
+  the onboarding word cloud. Activity has eleven kinds (News); Word clouds' and Briefs' versions are read from their
+  package.json. GitHub's run passes in 13 minutes. The fix reaches dev only when the branch merges.
+- **Unsubscribe links are the kernel's:** `src/services/unsubscribe.ts` (was `civic.digest/unsubscribe.ts`); notices
+  sign theirs the same way. `unsubscribeLinkFor(userId, purpose)` and `unsubscribeLinksAvailable()` hold the secret.
+- **The resident digest is a feature package:** `features/digest/` (manifest with the `digest` job, `job.ts`,
+  `service.ts`, `filter.ts`, `models.ts`), in `config/features.ts` and `config/featureManifests.ts`. It reads the hub
+  through SDK v0 (`listSubscribedUsers`, `markDigestSent`, `getEventsSince`, `getHiddenProcessIds`, `sendEmail`,
+  `unsubscribeLinkFor`, `processRegistry()` loaded on first use, and what was there). A closed vote's count comes
+  through `DigestAssemblyInput.result_line`, which the job fills from each type's handler. The email is unchanged.
+  The digest job now comes after the feature jobs in the job list (`vercel.json`'s crons follow; same schedule).
+- **`isSubstantiveEdit`/`substanceOf`** moved to `src/shared/substantiveEdit.ts` (pure); `processEdits.ts`
+  re-exports them.
+- **The module table (docs/KERNEL.md):** the admin digest stays in the kernel (it reports the kernel's own queues and
+  job health); the assistant splits (the Code of Conduct check is kernel moderation; the drafting chat becomes a
+  feature, next); `civic.receipts` stays in the kernel (decided Nov 17).
+- **The feed's filters name no plugin.** `ActivitySurface` is a string: a type's card rule names its surface, and
+  `FEED_SURFACES` (`src/shared/feedActivity.ts`) lists what the manifests name, then the kernel's `activity`; the feed
+  route accepts those alone. A card built from its payload is `{ surface, color, fromPayload }`: Announcements'
+  `feed.ts` (the author's role pill, and a pre-split synced post as News) and News Sync's `feed.ts`. A UI module's
+  `feedFilter` adds its own pill (Announcements, News, Meeting summaries); `CardText.pill` lets a kind word its pill
+  (News Sync: the hub's pill label as set now), and News Sync's card words its From line. News Sync's settings panel
+  moved into its `ui.tsx`. `src/shared/newsSource.ts` is gone (labels in `packages/civic.news_sync/models.ts`).
+  `SpaceView.placeName` is new. Nothing on screen changes. Catalog entries regenerated, same versions: News Sync 0.2.0
+  `20261119013922`, Announcements 0.4.0 `20261119013934`, Meeting summaries 0.3.0 `20261119013944`.
+- **The colour and kind vocabulary is the space type's palette.** `spaces/civic/palette.ts` holds the Civic Hub's
+  colour families (theme label, default hue, which base colour it follows, its email pill), card kinds (digest
+  section and order, whether the feed batches its metadata, the "Results"/"Update" note, the response's context
+  line) and digest sections. `config/spacePalette.ts` names it; `src/shared/spacePalette.ts` is its one reader
+  (lint). `feedActivity.ts`, `theme.ts`, `manifest.ts`, the digest feature and the feed card read it; `ActivityKind`,
+  `ActivityColor` and `ThemeTypeKey` are plain strings, and `BUILTIN_THEME_TYPE_KEYS` is gone.
+  `tests/unit/spacePalette.test.ts` pins the old orders and values. No package changed, so no catalog entries.
+- **The kernel rule changed (Adam, Nov 19): "if it can be a plugin, it is one."** `docs/KERNEL.md` §1, rules 5 and
+  6, and the module table now say so: the kernel is identity, security and interoperability (federation:
+  ActivityPub now, AT Protocol later) plus the shared services plugins need; the kernel offers services, plugins offer
+  features; no space must have admins; a space type lists each plugin as required, on by default or off by default.
+  Pinning, Feedback, the admin digest, Search and Members are done (below); the kernel has no features of its own now.
+- **A space type lists its plugins (6570db3).** `SpaceType.plugins` `{ required, on, off }`; `spacePluginRule(id)` and
+  `pluginRequired(id)` in `src/shared/spaceTypes.ts`. A required plugin is on whatever its switch says; the settings
+  save and Remove refuse to turn it off, and the Plugins page shows "A {space type} needs this plugin, so it is always
+  on." in place of its switch. The Civic Hub lists none yet, so nothing changes on screen.
+- **Pinning is a feature plugin** (`features/pinning`: manifest, `rules.ts`, `store.ts`, `service.ts`, `routes.ts`,
+  `types.ts`, `ui.tsx`, `ui/`). It owns `process_pins` (exported, keyed by hub and item) and reads items through the
+  kernel's new items service (SDK `items`, `src/services/kernelItems.ts`). Routes: `GET /pins` (the card, the urgent
+  line, `can_pin`), `GET|POST|DELETE /pins/:id`, `GET /admin/pins`; the old `/admin/processes/:id/pin|unpin` are gone.
+  New: a pin can be **urgent** (listed first, the red line across the top of every page) and **Settings → Plugins →
+  Pinning → Who can pin** (`plugin.pinning.who`: admins, the default, or every member; whoever may pin may mark
+  urgent). The UI draws through three new generic slots on a feature's UI module (`ui/src/features.ts`):
+  `itemAction` (the row at the foot of every item's page; drawn for any signed-in reader, each control decides),
+  `asideCards` (right-column cards, each with an `order`; the card's id is `pinned`) and `pageTop`; and
+  `adminTab.group: "community"` keeps Admin → Pinned in the rail's Community group. `GET /api/aside` now serves only
+  the member count. Migration `20261119200000_pinning_urgent.sql` adds `urgent`, pins every announcement urgent right
+  now as an urgent pin until the same date, and renames the saved right-column card `announcements` to `pinned`.
+- **Feedback is a feature plugin** (`features/feedback`: manifest, `models.ts`, `store.ts`, `service.ts`,
+  `routes.ts`, `ui.tsx`, `ui/`), with its off switch (Settings → Plugins → Feedback). It owns `feedback_submissions`.
+  Routes: `POST /feedback`, `POST /feedback/screenshot` (was `/upload/feedback-screenshot`), `GET /admin/feedback`,
+  `POST /admin/feedback/:id/forward`. The kernel keeps the **provider's inbox** (`src/services/providerInbox.ts`, SDK
+  `providerInbox`: the copy of a Bug or Idea that goes to Civic.Social; `contactProvider` behind the kernel's "Contact
+  Civic.Social", which works with Feedback off) and **feature queues** (`FeatureServer.queues`: a feature names its
+  queue, the kernel counts what is new per admin under that name in `users.queues_seen_at` and writes its admin digest
+  line where Feedback's stood). Migration `20261119210000_feedback_seen_by_name.sql` copies `feedback_seen_at` there.
+  UI: two new slots, `spaceLink` (the top-bar button, the sidebar, drawer and footer links, the welcome strip and beta
+  welcome pointers, public in beta, a form page for `lastPage`) and `adminTab.queue` (the tab's count). Small visible
+  changes: the admin's new-feedback email reads "New feedback on {hub name}: {category}" (was "New Civic Hub feedback
+  — {category}"); Contact Civic.Social's foot link reads "Back" and goes to the page the admin came from (was "Back to
+  Feedback"). Left in the kernel for now, as with Pinning: `KEYS.PLUGIN_FEEDBACK_*`, the help and settings-search
+  entries, the admin log's "feedback.forward" wording, the Feedback.css form styles (shared with Contact Civic.Social),
+  and the console's status mirror onto `feedback_submissions` (hosting layer, `src/db/platformFeedback.ts`).
+- **The admin digest is a feature plugin** (`features/admin_digest`: manifest, `store.ts` for its own
+  `admin_digest_marks`, `digest.ts` for rendering and the run, `job.ts`). Same job id, path and schedule
+  (`/admin-digest/run`, 13:30 UTC); its cron entry moved to the end of `vercel.json` with the other features'. The
+  counting stays in the kernel as `src/modules/civic.admin_waiting/` (SDK `adminWindow(since, until)`), since the
+  queues are the kernel's and every plugin's. `JOB_NAMES` moved with it. Nothing changes on screen or in the email.
+- **Search is a feature plugin** (`features/search`: `GET /search`, the Search page and the top bar's box). The index
+  and one query over it stay the kernel's (`src/services/kernelSearch.ts`, SDK `search.query`), since a link's
+  typeahead reads the same index. New UI slot `navTool` (the top bar, and the top of the menu drawer). Nothing changes
+  on screen. Still in the kernel's search module: the type keys the page's chips use (`vote`, `announcement`, ...), a
+  list that names civic types, to be read from the manifests later.
+- **Members is a feature plugin** (`features/members`: `GET /members/summary`, `GET /members`, `GET /admin/hub/members`,
+  same paths). The kernel keeps membership (`src/services/members.ts`, SDK `membership`), the person's own "hide me"
+  switch (`PATCH /auth/me`), and "Share this hub" (`POST /members/invites`, mounted ahead of the feature routes so the
+  Members switch never closes it). New: `FeatureManifest.section` (a navigation section; `navSections.ts` reads the
+  manifests), `FeatureManifest.newSpaceSettings` (a new space's `min_count` of 10), `FeatureServer.hubConfig`
+  (GET /hub-config's `members.page_shown` is now `features.members.page_shown`), and UI slots `section`, `homeBlock`,
+  `aboutLine`, `accountPanel`, `peopleSection`. Home's row is the kernel's `HomeShareRow` (the plugin's count, then
+  Share this hub). `GET /api/aside` is gone (its one fact was the count; the About card's line reads the plugin's
+  summary). `KERNEL_FEATURES` is gone: every hub feature is a package. Nothing changes on screen.
+- **Each plugin carries its own colours** (manifest `colors`: key, label, light, dark, email; `PackageColor`). The nine
+  first-party packages carry the values the Civic Hub's palette has. A family the space type's palette lists is the
+  palette's (its CSS, theme entry and email pill); the packages' own apply only to keys it does not list
+  (`declaredTypeStylesheet`, now with dark tokens, the theme's keys and defaults, the digest's pills). The emitted
+  stylesheet, theme keys, defaults and labels were compared before and after: identical. Events keeps its colour on its
+  card kind, and its dark tokens in the kernel's `dark.css`, until its next release. Catalog entries regenerated at the
+  same versions: Votes `20261119071803`, Proposals `20261119071827`, Projects `20261119071844`, Briefs
+  `20261119071919`, Announcements `20261119071933`, Meeting summaries `20261119071945`, News Sync `20261119071957`,
+  Conversations `20261119072032`, Word clouds `20261119072046` (the earlier files are deleted; the samples move below
+  regenerated eight of them again).
+- **Each plugin seeds its own samples** (`packages/<pkg>/samples.ts`: Votes, Briefs, Proposals, Projects,
+  Announcements, Meeting summaries, Conversations; Word clouds already did). The Civic Hub's words moved out of the
+  kernel into its space type (`src/services/sampleTemplates.ts` → `spaces/civic/sampleTemplates.ts`; its types are each
+  package's sample shape plus which hubs it fits). `spaces/civic/samples.ts` and `sampleRules.ts` are gone (the vote's
+  endorsement floor is in Votes). The kernel keeps the sample people (`src/services/samplePeople.ts`) and the names
+  (`fillSample` in `sampleNames.ts`). New: `SampleKit.process(key)`, `SampleKit.ballots(processId, choices)` (sample
+  ballots, kernel-kept, demo-hub tags), `PluginSamples.title`, `.refresh` (`live`, `reason(template, row, window)`) and
+  `.repair`; `SpaceServer.samples.all`, `kinds`, `previews` (`seed` optional); `results.finalize(id, actor, emit?)` and
+  `finalizeAfterBrief(process, actor, emit?)` so a sample's vote is finalized at its planned time. The refresh
+  (`sampleRefresh.ts`) and the "what changed" titles (`sampleCatalog.ts`) ask each plugin; the kernel names no type.
+  One change outside production: under fake adapters the sample conversation's Polis address is the fake server's (the
+  start action's own address), not polis.civic.social. Catalog entries regenerated at the same versions: Votes
+  `20261119073340`, Proposals `20261119073403`, Projects `20261119073419`, Conversations `20261119073446`, Word clouds
+  `20261119073501`, Briefs `20261119073513`, Announcements `20261119073527`, Meeting summaries `20261119073539` (News
+  Sync stays `20261119071957`).
+- **Announcements has no urgent label any more**, and `PluginServer.pinnedCard` is gone (with Announcements'
+  `board.ts` and `pinnedCard.ts`, its form's Prominence box, the page's Urgent chip and "Urgent until", the feed card's
+  Urgent chip and `FeedProcessMeta.urgent`). News Sync's pinned-item label hook is gone too. Visible: a pinned News
+  item shows its type's word ("News") on the card rather than the space's pill label; the feed card no longer shows an
+  Urgent chip; the Pinned card no longer fills with the newest announcements when nothing is pinned (it is hidden);
+  the right column editor calls the card "Pinned" (was "Announcements"). Catalog entries regenerated at the same
+  versions: Announcements 0.4.0 `20261119055657`, News Sync 0.2.0 `20261119055711`.
+- **Step 4: the space type is the deployment's setting.** One line in `config/plugins.json`, `"space": "spaces/civic"`
+  (or `null`), picks it. `npm run plugins:sync` writes `config/space.ts`, `config/spaceType.ts` (new),
+  `config/spacePalette.ts` and `config/spacePalette.css` from it (they say "Do not edit"; CI's `--check` holds them).
+  The Civic Hub's record moved from `src/shared/spaceTypes.ts` to `spaces/civic/type.ts`, and its profile from
+  `src/shared/profiles/civic.ts` to `spaces/civic/profile.ts`. `src/shared/spaceTypes.ts` alone reads
+  `config/spaceType.ts` (lint) and keeps `NEUTRAL_SPACE_TYPE` for a deployment with none; the five places that read
+  `CIVIC_HUB` now call `currentSpaceType()`. Tried with `"space": null`: server and UI typecheck (only the Civic
+  palette's own tests then fail, as they should). Nothing on screen or in mail changes; no package changed.
+- **Step 4: plugin events in the Install confirmation's words.** A process manifest's `eventWords` words each of its
+  own event types ("a proposal is submitted"; checked against its descriptor's `emits`). `grantInPlainWords` takes
+  them as `says` (the console's catalog and the hub's Install confirmation pass the package's), and
+  `src/shared/pluginGrantWords.ts` keeps words only for the shared `civic.process.*` types. Proposals and Projects
+  carry theirs; the confirmation reads the same. Catalog entries regenerated at the same versions: Proposals 0.3.0
+  `20261119044944`, Projects 0.3.0 `20261119044958`.
+- **Step 4: the hub features' entries.** A feature package's place in the Plugins section (name, one line, settings,
+  panel search words, `defaultOn`) is its manifest's `pluginSection` (`FeatureManifest.pluginSection`): Writing
+  assistant, Email digest, Activity and Fediverse carry theirs. `src/shared/hubFeatures.ts` lists only the kernel's own
+  features (Pinning, Search, Feedback, Admin digest, Members), each with its `words`, and adds the packages' from
+  `FEATURE_MANIFESTS`, sorted by order (unchanged). `settingsSearch.ts` keeps only Events' panel words. Feature
+  packages are not in the catalog, so no catalog entries. Nothing on screen changes.
+- **Step 4: plugin settings' words live with the plugins.** A manifest's `pluginSection` now carries each setting's
+  "?" note (`fields[].help`, written into `helpRegistry.json` by `npm run plugins:sync`, unchanged there), its panel's
+  search words (`words`), its settings' search labels (`search`, which existed) and its "needs setup" rule (`setup`;
+  `src/shared/pluginSetup.ts` builds `PLUGIN_SETUP` from the manifests). The nine first-party packages carry theirs,
+  and their entries left `settingsSearch.ts`. Nothing on screen changes. Events (released on dev) keeps its panel
+  words in the kernel's list until its next release. Catalog entries regenerated at the same versions: Votes
+  `20261119043725`, Proposals and Projects (regenerated again, below), Conversations `20261119043823`, Word clouds
+  `20261119043835`, Briefs `20261119043846`, Announcements `20261119043858`, Meeting summaries `20261119043908`, News
+  Sync `20261119043918`.
+- **Step 4 begun: the palette's colours are the space type's stylesheet**, `spaces/civic/palette.css` (light and dark
+  `--type-<key>-*` and the older `--pill-<kind>-*`), loaded through `config/spacePalette.css` right after `theme.css`
+  (`hubStyles.ts`; its test checks the place). The built CSS declares exactly the same tokens with the same values.
+  The kernel keeps `--type-generic-*`, `--pill-vote-*`/`--pill-results-*` (the general control accent) and the Events
+  plugin's dark `--type-event-*`. Left: kernel words naming civic plugins in `settingsSearch.ts`, `pluginSetup.ts`
+  and `pluginGrantWords.ts`, then the hub type as a setting.
+- **Dev merged in (0eda79f, About you not during sign-up).** On this branch the hold names no package: AuthModal works
+  out the first stop (`afterSignUpStop`) before `login()` and hands it to `holdAboutYouForSignup(stop)`; nothing asks on
+  that path (kept in sessionStorage for a reload), and the first action anywhere else after reaching it ends the hold.
+  Word clouds needed no change, so no new catalog entry. `signupWording.spec.ts` now checks the card never shows.
+- **The drafting assistant is a feature package:** `features/assistant/` (`routes.ts` for the draft chat's
+  `message` and `suggest`, `service.ts`, `systemPrompt.ts`), mounted at `/assistant` behind the plugin switch. The
+  kernel keeps the Code of Conduct check (`src/services/codeOfConductAi.ts`: `getHubConfig`, `checkTextAgainstCoC`,
+  `buildCocCheckPrompt`, `CHECK_UNAVAILABLE_RESULT`), the response tool and parsing both sides use
+  (`src/services/assistantResponse.ts`), the types (`src/models/assistant.ts`) and `GET /assistant/:type/config`.
+  `src/modules/civic.assistant/` is gone. The feature reads the hub through SDK v0 (AI calls, admission and limits,
+  hub documents, `processRegistry()`, `toDraftState`). No plugin's files changed, so no new catalog versions.
+
+## Kernel branch: pinning phase 2 — 2026-11-18
+
+Adam's plan (Nov 18): pinning is a hub core feature, admins only, plugins write no pin code; Urgent stays an
+Announcements feature, listed first on the Pinned card.
+
+- **Pins in the hub's own table:** `process_pins` (migration `20261118230000`; hub_id, process_id, pinned_by,
+  pinned_at, pinned_until; cascades with its item; exported with the hub). The migration copies every pin items
+  carried in their state (`pinned`, `pinned_at`, `pinned_by`, `pinned_until`); those fields stay in the state, unread.
+  `src/stores/pins.ts`, `src/services/pins.ts` (pin, unpin, cap of 10, Admin → Pinned), rules in
+  `src/shared/pinRules.ts` (was `announcementBoard.ts`). The pin routes answer `{ id, pinned, pinned_until }`.
+- **The Pinned card** (`src/services/aside.ts`): first the rows plugins offer through `PluginServer.pinnedCard.first()`
+  (urgent first), then the items pinned now, newest first, each naming its type ("Announcement", "Vote"). An item in
+  both shows once, at the top. Empty: a plugin's `fill()` rows, and the card is named after that type
+  ("Announcements"); otherwise "Pinned" (`card_title` in the facts). The urgent top line is the first urgent row.
+  The kernel no longer reads announcements or the feed for the card.
+- **Announcements** (still 0.4.0, unreleased, catalog regenerated): its pin routes (`/admin/announcements`,
+  `/:id/pin`, `/:id/unpin`), the form's Pin checkbox, the page's Pin button, the Admin → Announcements page and its
+  rail entry are gone (decision card to Adam; recommended removing the page). `pinnedCard.ts` offers urgent
+  announcements (`first`) and the newest three (`fill`). The kernel's Pin button now shows on the announcement page
+  too. `useOwnPinControl` is gone from the SDK UI surface.
+- **Review fixes (Civic Hub Dev review, Nov 18):** the cap of 10 counts only what Admin → Pinned lists
+  (`readVisiblePins`: a pin on an archived or removed item, or on a switched-off plugin, holds no place and comes
+  back with its item); Announcements' `pinnedCard` reads only urgent rows and the newest few, through a new
+  `processesOf().list({ where, limit })`; the migration reads a malformed pin date as missing instead of stopping.
+- **News on the Pinned card (Nov 18, from the Civic Hub Dev handoff):** a pinned News item shows the hub's own
+  pill label (Settings → News sync → Pill label), else the pill it was copied in with, on the card and on Admin →
+  Pinned, through a new optional `pinnedCard.label`. News Sync 0.2.0's catalog entry regenerated
+  (`20261118234932`). Test: `newsItems.test.ts`.
+- **Visible changes for Adam's eye:** the card is called "Pinned" whenever something is pinned or urgent (before:
+  "Announcements" unless a non-announcement was pinned), and a pinned announcement's row reads "Announcement ·"
+  like other types. Admins pin an announcement from the page's admin row, not the post form.
+
+---
+
+## Kernel branch: dev merged (News Sync on its own, pinning any item); News Sync whole in its package — 2026-11-18
+
+On `kernel-extraction` (PR #22). dev merged at 7f79be3 (News Sync split, pinning phase 1). Then, as Adam asked:
+
+- **News Sync 0.2.0 is all in `packages/civic.news_sync/`, on SDK v1.** The job (`job.ts`, from
+  `src/jobs/newsSync.ts`), the feed reading (`sync/`: config, connectors, discovery, paraphrase, from
+  `src/modules/civic.news_sync/`), the connector ids (`sync/connectors/options.ts`, from `src/shared/connectorOptions.ts`)
+  and the News page (`ui/NewsItem.tsx`, its own `NewsItem.css`, from `ui/src/pages/`). The job's spec moved from the
+  kernel's `HOST_JOBS` to the manifest's `jobs` (same id, path, schedule, deprecated path); it reads through
+  `processesOf("civic.news")` (its dedupe reads its own items, live and archived, since the relabel made every
+  synced post a News item; `processRows.syncedShareUrls` is gone), `settingsOf("news_sync")`, the `ai` and `web`
+  adapters it now declares, and `hubContext().placeName` (new: "Floyd County", or null). `kernel-surface --count`:
+  0 for every package. `PACKAGE_REACH_NOT_YET` is gone: no engine file imports a package. 0.2.0, not 0.1.0, because
+  dev's 0.1.0 catalog entry ships with dev; conformance `MOVED_HUB_PAGES` gains `civic.news@0.2.0` (page moved as it was).
+- **Announcements 0.4.0 drops the sync leftovers:** `source` / `AnnouncementSource`, the empty-body allowance for
+  synced posts, the external action URL, `synced` on Admin → Announcements' rows, and the News Sync list client.
+  Dev's page edits carried over: `useOwnPinControl()` (now on the SDK UI surface), and the old `/announcement/:id`
+  link to a relabelled post now asks the kernel the process's type and goes to `/process/:id` (which opens the News
+  page) without naming News Sync. Catalog entry regenerated (`20261118211140`, replaces `20261117024504`).
+- **Kernel pages off Announcements' stylesheet:** Admin → Pinned had `import "./AdminAnnouncements.css"`, which now
+  lives in the package; it has its own `AdminPinned.css` (same rules, `admin-pinned-*`).
+- **Merge fixes:** `hubStyles.ts` had About-you and results-breakdown imported twice (both sides added them); kept
+  dev's place. `cronHubIsolation`: the mock process service gained the archived list, and the meeting-summary full
+  pass now expects mail only for Athens (Floyd's run used to fail on the missing mock and mail too). Cron order in
+  `vercel.json` and the parity fixture: news_sync now comes from the plugin list, before meeting_summary.
+- **Docs:** KERNEL.md (News Sync its own plugin, pinning hub core), SURFACE.md (the reach list gone, the News feed
+  card and the Pinned card's urgent rows as couplings still in the kernel, `placeName`, `useOwnPinControl`).
+- **Left for pinning phase 2** (see Adam's plan above): the Pinned card's urgent rows and the urgent top line still
+  read announcements in the kernel (`src/services/aside.ts`, `src/shared/announcementBoard.ts`).
+
 ## Pinning, phase 1: Admin → Pinned, the Pinning switch — 2026-11-18
 
 On dev, unpushed, no migration. Adam (2026-11-18): pinning is the hub's, for every plugin's items, admins only;
@@ -83,6 +318,137 @@ version): kernel-extraction's Announcements 0.4.0 can drop its dead `source` han
 - **Also:** `sampleBallotTags.ts` lint fix (b318d53, the same as kernel-extraction's).
 - Open: no end date on the detail page's Pin (Admin → Announcements has one for announcements); no admin list of
   pinned non-announcements (the card shows them); Search has no News chip (a search with no chip finds them).
+## Kernel step 3, fifth part: sample content — a plugin's own, and the Civic Hub's out of the kernel — 2026-11-17
+
+On `kernel-extraction`. Adam (Nov 17): "some kind of standard way for plugin creators to speak to the hub to create
+demo data", with the Civic Hub's own set moved out of the kernel (option A).
+
+- **The hook.** `PluginServer.samples` (`src/plugins/samples.ts`, in SDK v0 and v1): `seed(template, kit)` makes one
+  sample of the plugin's type; optional `defaults()` brings its own for a space type that brings none of its type. The
+  `SampleKit`: sample people (`author`), times relative to now (`at`), `fill`, `create` (marked sample, dated), `save`,
+  `comment`, `emitAt`, and `adoptSetting` (one of its own settings, only when unset and its plugin is stored on).
+- **The kernel** (`src/services/sampleSeed.ts`) names no type now: it plans (`planSamples`, pure: the space type's
+  samples, then plugin defaults, `needs` for a sample made from another), upserts the sample people, and hands each
+  sample to its type's plugin when it seeds its own, to the space type otherwise.
+- **The space type layer.** `SpaceServer` (`src/plugins/space.ts`); the hosting layer names it in `config/space.ts`,
+  read only by `src/plugins/spaceType.ts`. The Civic Hub's is `spaces/civic/`: `samplePlan.ts` (which templates fit,
+  each with its type), `samples.ts` (the seeders for votes, outcomes, proposals, conversations, projects,
+  announcements, meeting summaries), `sampleRules.ts`, and `dev/` (the development seed: `seedData.ts`,
+  `seedDataAthens.ts`, `localizeScenario.ts`, `devSeed.ts`). The kernel's `autoSeed.ts` and `/debug/seed` keep the
+  gates and the wipe and call `dev.seedEmptyHub` / `dev.seedAfterReset`.
+- **Word clouds** seeds its own sample (`packages/civic.wordcloud/samples.ts`; its store gains `insertSamples`). Its
+  unreleased 0.3.0 catalog entry regenerated (`20261117222505`); it stays 0.3.0, because a new version must first move
+  its pages onto the kit (`MOVED_HUB_PAGES`).
+- Removing the samples empties any `plugin.*` setting naming a removed sample (was Word clouds' key by name).
+- Lint: `spaces/` is fenced (kernel modules yes, packages' values only by `await import()`, no features, no other
+  space); the engine never imports `spaces/` and reads `config/space.ts` in one file. `PACKAGE_REACH_NOT_YET` is down
+  to `src/jobs/newsSync.ts`.
+- Still civic in the kernel: the templates and sample people (`sampleTemplates.ts`, step 4), the starter word cloud
+  after removal (`starterWordcloud.ts`). Nothing on screen changes; a seeded hub gets the same samples.
+
+---
+
+## Kernel step 3, fourth part: sign-up's stop at the word cloud — 2026-11-17
+
+On `kernel-extraction`. `contributes.afterSignUp`: where a new member lands after signing up. Word clouds gives its
+word cloud (`packages/civic.wordcloud/ui/onboarding.ts`, was the hub's `onboardingTarget`); the kernel asks the
+packages that are on (`afterSignUpStop`) and hands them a checked local path back. `hub.onboarding_wordcloud_id` is
+gone. Word clouds 0.3.0's catalog entry regenerated (`20261117204832`). Nothing on screen changes.
+
+---
+
+## Kernel step 3, third part: what a package adds to the kernel's pages — 2026-11-17
+
+On `kernel-extraction` (PR #22, draft). Dev merged in (through 3377e24). One migration, `20261117200000` (adds
+`users.queues_seen_at` and copies the Briefs and Meeting summaries cursors into it; safe to run again). Catalog entries
+regenerated at the same versions: Briefs 0.4.0 `20261117194523`, Meeting summaries 0.3.0 `20261117194534`, Word
+clouds 0.3.0 `20261117194546`. Nothing on screen changes.
+
+- **`contributes` on a type's UI module** (`ui/src/processes/types.ts`, drawn by `ui/src/components/PackageSlots.tsx`
+  while the package's plugin is on): `processTop` (Briefs' pointer, through `ProcessPageTop`; `BriefPointer` is its
+  older SDK name, so Votes, Proposals, Projects and Conversations need no release), `adminQueue` (Briefs' and Meeting
+  summaries' rail tabs), `welcomeStrip` (Word clouds' teaser, moved into the package).
+- **Admin queues by name.** `PublicationQueue` is any lowercase name a manifest gives (checked at load; not reviews,
+  feedback or edits). The server counts every mounted queue (`adminQueues()`); a package queue's "last opened" lives in
+  `users.queues_seen_at` under its name. The old `briefs_seen_at` and `meeting_summaries_seen_at` columns are unread.
+- **`useSpace().setting(key)`**: a package's page reads its settings. The browser's `hub.setting` falls back to the old
+  build-time variables for the two settings that had them.
+- Briefs now holds `BriefPointer`, `BriefSourcePointer` and the delivery lines; SDK v1 drops `BriefSourcePointer`,
+  `heldBackLine` and `joinNames`.
+- From dev: `sampleBallotTags.ts` reads a process's sample flag through `processRows` (the db-convention lint).
+
+---
+
+## Kernel step 3, second part: the digest's vote line, a package's own settings check, the kernel's /process link — 2026-11-17
+
+On `kernel-extraction` (PR #22, draft). Catalog entries regenerated at the same versions for Votes 0.4.0 and Meeting
+summaries 0.3.0 (Votes now `20261117192502`, Meeting summaries `20261117192512`; the old files are deleted). Nothing
+on screen changes.
+
+- **A type's own closed line (`resultLine`).** The handler hook gives the one line a closed process's event shows in
+  the digest. Votes' line (`packages/civic.vote/resultLine.ts`, moved from its `ui/` folder) is the only copy; the
+  kernel's `voteResultLine` is gone, and the digest asks the event's classified type (`classifiedType`).
+- **A package checks its own settings (`PluginServer.checkSetting`).** The settings save asks the loaded package whose
+  plugin a `plugin.<id>.` key names (`packageSettingProblem`, `src/services/packageContributions.ts`), on or off.
+  Meeting summaries checks its Wix field list; `src/shared/wixFields.ts` is deleted, and the kernel's `wix_fields`
+  kind is a plain one-line text check.
+- **`/process/:id` is the kernel's** (`ui/src/pages/ProcessLink.tsx`). Votes registers its page there and gets the link
+  while Votes is on, read once as before; otherwise the kernel reads the process and sends the link to its type's own
+  page. An old link to a proposal or a brief now works with Votes off (it showed "Page not found"). `ungated` on a
+  route is gone.
+
+---
+
+## Kernel step 3, first part: "process closed", and packages say what they offer — 2026-11-17
+
+On `kernel-extraction` (PR #22, draft). Four catalog entries regenerated at the same versions (Briefs 0.4.0 now
+`20261117172640`, Votes 0.4.0 `20261117172659`, Meeting summaries 0.3.0 `20261117172710`, Proposals 0.3.0
+`20261117172727`; the old files are deleted). Nothing on screen changes.
+
+- **The kernel no longer makes briefs.** `src/processes/spawnBrief.ts` is gone. When a process enters a closed status,
+  `executeAction` calls `announceClosed` (`src/services/processClosed.ts`): every mounted package whose plugin is on
+  and whose server returns `on.processClosed` hears it, with `result()` (the type's process.result plus the kernel's
+  closed-early line and district/demographic tables, made once, only if asked). A listener's failure is logged; the
+  close stands. Briefs listens (`packages/civic.brief/onClosed.ts`) and declares `activities.listen:
+  ["process.closed"]`, which the grant now allows (only that event); the Install confirmation says "Hear when
+  anything on this hub closes…". The loader refuses a package whose grant and listeners disagree. Briefs' update
+  will show that new line to each hub's admin.
+- **`processesOf().idWhere(key, value)`**: Briefs checks for an existing brief by `source_process_id`.
+- **Name checks replaced by what a package offers:** comments on a proposal (`inputTargets`, Proposals), the dev reset
+  (`dev.reset`, Proposals), the vote's comment divider (handler `commentPhase: "vote"`), a flagged meeting summary in
+  the admin digest (handler `flaggedForReview`), and the vote method's words on the review preview (Votes'
+  `describeSubmission`; the kernel's walk shows the stored value). A comment on a proposal now needs Proposals on, as
+  a process's does.
+- `PACKAGE_REACH_NOT_YET` is down to four: the sample and debug seeds, and News Sync (waiting for Adam's
+  Announcements work on dev).
+
+---
+
+## Kernel step 2: neutral roles and terms, the civic profile — 2026-11-17
+
+On `kernel-extraction` (PR #22, draft; Adam merges once at the end). No migrations, no package version changes, nothing
+on screen changes.
+
+- **Roles and words** (`src/shared/spaceProfile.ts`): the kernel's roles `member`, `moderator`, `admin`, `accountable`;
+  its words `member`, `accountable`, `space` (`group` and `outcome` wait until two plugins need them); `resolveTerm`
+  (the space's own word, then the profile's for the space's kind, then the profile's, then the neutral word);
+  `profileProblems` refuses a profile naming a role or term the kernel does not know.
+- **The civic profile** (`src/shared/profiles/civic.ts`): hub/hubs; resident, moderator, admin, official; member is
+  resident on a place hub, member on an organization or community, participant elsewhere (as before). The Civic Hub
+  space type carries it (`profile`) and takes its noun from it. `participantNoun`/`personLabel` now resolve through it,
+  with the same words for every kind of hub (tests/unit/spaceProfile.test.ts).
+- **SDK v1:** `term(t, n)`, `hubContext().term`, `KERNEL_ROLES`, `KERNEL_TERMS`, `namesRole`, `KernelRole`,
+  `KernelTerm`; UI `useSpace().term`. Testing entry: `namesRole`, `memberCreation`.
+- **Descriptors:** `callers` and `publish_at_once` take `member`/`accountable`; `creation.member` replaces
+  `creation.resident`. The old names still read everywhere (canActor, executeAction, the registry, the loader, the
+  conformance suite, catalog scripts). The descriptor check refuses a descriptor that names both or neither. The SDK
+  tour fixture uses the new names; the eight packages keep theirs until their next release (changing a manifest
+  changes its catalog hash).
+- **Caller:** `ActionCaller` is `"member" | "admin" | "system"` (was `"resident"`).
+- Not done: a `requireRole(...)` gate (planned in SURFACE.md; no package needs one yet), a moderator grant (admins
+  moderate).
+
+---
 
 ## Districts follow-ups — 2026-11-17
 
@@ -117,6 +483,159 @@ On dev after 1a3cb4c, unpushed, no migrations (2f8130c, 9549168, 88e5d0e). From 
 - **Tests:** API `aboutYou`, `hubConfig`, `breakdowns` pass locally; `leakHarness`'s two known local failures remain
   (500s on `/admin/hub/sample-content*` and `/admin/hub/mode/readiness`, see the sample-content notes below), its
   route coverage passes with the news-sync plan.
+
+## Kernel step 1: Conversations on the kernel surface, and step 1 complete — 2026-11-17
+
+On `kernel-extraction`. **Three migrations to apply**: the catalog entries for Conversations 0.4.0
+(20261117051754) and Briefs 0.4.0 (20261117050917, regenerated: it replaces 20261117044714), both to approve, and
+20261117051500, which copies each brief's summary onto its conversation (data only, idempotent).
+
+- Every package here now imports SDK version 1 only. Conversations 0.4.0's list, page and drafting page moved into
+  `packages/civic.polis_deliberation/ui/` unchanged, with `deliberation/*`, its drafting form and seed rows; its
+  client is `ui/api.ts`. The development seed's stand-in Polis answers moved in (`mocks.ts`), reading sample
+  templates through version 1's new `samples`; `seedStatements.ts` moved in.
+- **A closed conversation's page reads only the conversation.** When its result is written up (Briefs writes the
+  summary with the AI), the conversation keeps that summary on its own state: a new handler hook, `keepResult`,
+  asked by the kernel (`results.kept`/`results.keep`) when the brief is made and when an admin makes it again
+  (at once while the brief is unpublished, on Publish once it is). With Briefs off, or before a write-up, the page
+  shows the result's own figures and "No written summary." (`narrative: "unwritten"`, the one new line of text).
+  The package no longer `requires` Briefs.
+- Its older `POST /deliberations/:id/regenerate` link is gone (it reached into Briefs; nothing in the pages
+  called it). Regenerate is the brief's. `src/services/briefRegenerate.ts` and its `PACKAGE_REACH_NOT_YET` entry are
+  gone.
+- Also new in version 1: `processesOf().submit` (the one creation path outside a draft), `processesOf().actAsSystem`,
+  `codeOfConduct.check`. Version 0 lost every name only Conversations used.
+- Checked: computed styles and positions match dev on Athens (list, active, closed, finalized, new) at 1100 and 390
+  px, apart from sub-pixel text widths; a Briefs-off close shows the figures; API test for it added.
+
+## Kernel step 1: Briefs on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Briefs 0.4.0 is a migration** (20261117050917 since Conversations moved; it replaced 20261117044714): apply and approve.
+
+- Briefs 0.4.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its brief page, Outcomes and the admin review
+  (with Regenerate) moved into `packages/civic.brief/ui/` unchanged; its client is `ui/api.ts`.
+- What was Briefs' code in the kernel moved in: `regenerate.ts` (was `src/services/briefRegenerate.ts`) and
+  `responsesStore.ts` (was `briefResponses.ts`, now through the host's granted `brief_responses` table). The outcomes
+  index reads its own processes; `publishedBriefRows` left the kernel.
+- Briefs reaches the process a brief is about only through version 1's new **`results`** (`source`, `fresh`,
+  `adopt`, `finalize`): the kernel asks that process's own type (its handler) and names no package. Finalizing on
+  publish (`briefFinalize.ts`) is `results.finalize` now. **`offices`** (`officialOf`, `onRecordNames`,
+  `resultRecipients`), `requireOfficial` and `recordAdminAct` cover officials going on the record, the fallback
+  recipients and the admin log; `links` gained `countTouching` and `wireIris`.
+- Until Conversations moves: `src/services/briefRegenerate.ts` is a small forwarder for its older "make the summary
+  again" link, and `briefIdForSource` stays. The hub's `BriefPointer` stays until step 3.
+- `AdminVoteResults.css` split: the review frame, filters and status chips (Meeting summaries uses them too) are the
+  hub's `AdminPublicationReview.css`; the rest is Briefs' `AdminBriefs.css`. One cascade fix: the source-type tag's
+  size and spacing come from the kit's `.status-badge`, which always won on dev.
+- Checked end to end on the local stack: approve (held-back delivery, source finalized), an official's response
+  (name, office pill), regenerate unpublished and published, the admin log.
+
+## Kernel step 1: Votes on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Votes 0.4.0 is a migration** (20261117041858): apply and approve.
+
+- Votes 0.4.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its list, its page (`/process/:id`), the vote log
+  and receipt check, and its drafting page moved into `packages/civic.vote/ui/` unchanged, with the parts only it uses
+  (the vote panel, results bars, receipt code and file, its drafting form). Its client is `ui/api.ts`.
+- **Secret ballots stay in the kernel** (a change from the step 0 plan; `docs/kernel/SURFACE.md` says why): version
+  1's `ballots` (`cast`, `hasVoted`, `count`, `choices`, `reshuffle`, `log`, `verify`) over
+  `src/modules/civic.receipts/`, unchanged underneath.
+- Its settings are its own (`settings.ts`, through `settingsOf("vote")`); `checkMode.ts` and `voteOptions.ts` moved
+  in; the review preview's check-mode line is the vote handler's now. The kernel's QR code maker (`qrMatrix`) is a
+  `/ui` utility the receipt file uses.
+- The hub's `ProcessSummary`/`ProcessState` types no longer name a vote's shape. No cascade fixes were needed: side by
+  side with dev, the list, a proposed, an open and a finished vote, the log and the drafting page render the same
+  (signed out and as an admin).
+- `tests/api/pluginPackages.test.ts` reads Votes' version from its package.json instead of a fixed number.
+
+## Kernel step 1: Meeting summaries on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Meeting summaries 0.3.0 is a migration** (20261117040237): apply and approve.
+
+- Meeting summaries 0.3.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its public page and admin review
+  queue moved into `packages/civic.meeting_summary/ui/` unchanged, its client into `ui/api.ts`.
+- **Kernel gains:** `settingsOf(pluginId)` (its own settings, its switch, the hub's public settings),
+  `processesOf().archive`, `brokenLinkProblem`, `findBrokenPublications`, `PLATFORM_CONTACT_EMAIL`, `resolveTimeZone`
+  and two adapter types; on the UI side the admin page parts, three date formats, two feed formats and
+  `useSpace().governingBodyName`.
+- `src/services/cronAlerts.ts` became the package's `alerts.ts`; it mails the admins through the mail adapter's
+  `send` and `adminAddresses`, so the adapter's `notifyJobOutcome` is gone. Its connector choices
+  (`connectors/options.ts`) moved in; the Wix column map and its rules are package copies kept identical to the hub's
+  by `tests/unit/meetingSummaryRulesCopy.test.ts` until step 3 (the settings save and the job describer still read
+  the hub's).
+- One cascade fix keeps the look: the page title's margin in `MeetingSummary.css` was always overridden by App.css's
+  `.page h1`, and would win once the package's stylesheet loads later, so it was dropped. Side by side with dev, the
+  public page and the admin list and review render the same.
+
+## Kernel step 1: Projects on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Projects 0.3.0 is a migration** (20261117033649): apply and approve.
+
+- Projects 0.3.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its list, page and drafting form moved into
+  `packages/civic.projects/ui/` unchanged, its client (and its banner upload) into `ui/api.ts`.
+- **Kernel gains:** `links.validate(fromId, proposed)` (a proposed set of related-process links, checked) and the
+  `ProposedLink` type; on the UI side `apiUpload`, `getEditPolicy`, `startProcessEdit`, `reviewDestination`, and
+  `useSpace().participantNoun(n)`.
+- One cascade fix keeps the look: `.status-active` in `Projects.css` was always overridden by App.css's, and would
+  win once the package's stylesheet loads later, so it was dropped. Side by side with dev, the list, a project and
+  the drafting page render the same.
+
+## Kernel step 1: Proposals on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Proposals 0.3.0 is a migration** (20261117032553): apply and approve.
+
+- Proposals 0.3.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its list, page and drafting form moved into
+  `packages/civic.proposals/ui/` unchanged (the drafting form `DraftingForm` too: only Proposals used it), its client
+  into `ui/api.ts`.
+- **Kernel, server (SDK v1 gains):** `processesOf()` gains `actOn`, `page`, `view` and `sampleIds` (another type's id
+  is not found through them). `draftsOf(kind)`: a package's own drafts (`get`, `create`, `update`, `setStatus`) and
+  `assistantStore()`, the store the drafting assistant uses, which replaces the four calls each type wired by hand.
+  `inputs` (`forProcess`, `visibleInPhase`, `countVisibleOutsidePhase`). `hubContext()` gains `place` (the scope a
+  space serves, "local" without one) and `participantNoun(n)`. Also `DAY_MS`, `lines`, `AssistantTypeConfig`.
+- **Kernel, UI (`/ui` gains):** the process page parts (`RichText`, `SourceLinks`, `EditHistory`, `DetailActions`,
+  `CloseEarlyButton`, `ClosedEarlyNote`, `ShareMoment`, `CommunityInputPanel`, `CommentForm`), the list page parts
+  (`ProcessPicker`, `StatusFilter`, `useStatusFilter`, `ProcessListCard`, `cardDate`), and drafting: `DraftPage`
+  with a type's `DraftKindConfig`, and the parts a form is built from (`FieldGuide`, now its own file, and the rest).
+  `BriefPointer` is exported until step 3 makes it a contribution Briefs registers.
+- `actOnProcess` and `readAsPage` accept a list of types; `getSampleProcessIds` takes an optional one.
+
+## Kernel step 1: Announcements on the kernel surface — 2026-11-17
+
+On `kernel-extraction`. **Catalog entry for Announcements 0.4.0 is a migration** (20261117024504): apply and approve.
+
+- Announcements 0.4.0 imports only the SDK (version 1, `/manifest`, `/ui`). Its three pages (the post, the form,
+  Admin → Announcements) and their styles moved into `packages/civic.announcement/ui/`, its client into `ui/api.ts`.
+  Two cascade fixes keep the look: rules App.css always overrode were dropped (`h1` margins), and the shared
+  `.form-counter` rule moved to `PostImagePicker.css` (the picker is the kernel's).
+- Admin → Announcements always asks News Sync's route (it answers empty while News Sync is off), so the page no
+  longer checks a feature by name.
+- Kernel names added: see `docs/kernel/SURFACE.md`, Progress. `requireAuthor` is listed in `src/sdk/index.ts`'s
+  early block (a package's routes take it as they load). Vitest maps the SDK's version 1 to the engine's SDK.
+- `board.ts` in the package and `src/shared/announcementBoard.ts` are two copies until step 3
+  (`announcementBoardCopy.test.ts`).
+
+## Kernel step 1 begins: Word clouds on the kernel surface — 2026-11-17
+
+On `kernel-extraction` (from dev 69e0a13; not merged). Plan: `docs/KERNEL.md`; the inventory:
+`docs/kernel/SURFACE.md` (`npx tsx scripts/kernel-surface.ts`). **The catalog entry for Word clouds 0.3.0 is a
+migration** (20261117030347): apply it and approve it in the console, or Word clouds is not mounted.
+
+- **Word clouds 0.3.0** imports only `@civic-social/plugin-sdk` (version 1), `/manifest` and `/ui`. Its pages moved
+  from `ui/src/pages/` into `packages/civic.wordcloud/ui/` unchanged (styles too), its API client into
+  `ui/api.ts`. It peer-depends on the SDK, so lint holds it to the outside rule.
+- **Kernel, server (SDK v1 gains):** `processesOf(...types)` (`src/services/ownProcesses.ts`): a package reads only
+  the processes of its own types (`get`, `list`; create/saveState/archive join with Announcements). Call it where
+  used, not at module load. `assertPassesWordlist` (the instant-post word list).
+- **Kernel, UI (`@civic-social/plugin-sdk/ui` gains, from `ui/src/host/index.ts`):** `apiRequest`, `ApiError`,
+  `useApi`, `useAction`, `useRequireAuth`, `AuthModal`, `useViewer` (loading, actorId, canParticipate, isAdmin:
+  not the whole sign-in state), `useSpace` (name, theName, place), `ProcessHeader`, `statusDisplay`,
+  `AdminArchiveButton`, `formatDate`, `formatCount`, `safeReturnPath`, the settings fields.
+- **Fences:** lint and `fence.ts` let a package's `ui/` directory import `/ui` and React; a package on version 1 can
+  no longer reach `/first-party` through its peer dependency. `tsconfig*.json` exclude `packages/*/ui/**` from the
+  server build.
+- **Conformance:** `MOVED_HUB_PAGES` skips steps 17 and 22 for `civic.wordcloud@0.3.0` only. Its next release
+  rebuilds the pages on the kit (a visible change: Adam's eye first).
+- **Left in the hub:** the welcome strip's cloud (`WordcloudTeaser`, over HTTP); step 3 makes it a contribution.
 
 ## Districts and demographics — 2026-11-16
 

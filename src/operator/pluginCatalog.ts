@@ -70,10 +70,15 @@ function holdsOf(pkg: string): Record<string, string> {
   return Object.fromEntries((p?.pkg.manifest.tables ?? []).map((t) => [t.name, t.holds]));
 }
 
+/** Its own event types in plain words (its manifest's eventWords). */
+function saysOf(pkg: string): Record<string, string> {
+  return { ...loadedPackages().find((x) => x.pkg.name === pkg)?.pkg.manifest.eventWords };
+}
+
 /** The entry's grant in plain words; a row whose grant cannot be read says so rather than failing the page. */
 function grantWords(row: CatalogRow): { can: string[]; cannot: string[] } {
   try {
-    return grantInPlainWords({ name: row.display_name, caps: row.capabilities, holds: holdsOf(row.package) });
+    return grantInPlainWords({ name: row.display_name, caps: row.capabilities, holds: holdsOf(row.package), says: saysOf(row.package) });
   } catch {
     return { can: ["This entry's grant could not be read. Do not approve it."], cannot: [] };
   }

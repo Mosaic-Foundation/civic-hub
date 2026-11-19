@@ -26,7 +26,7 @@ const descriptor = defineDescriptor({
       // A2: its own-table write happens after the action commits.
       name: "mark",
       description: "Mark the tour; marking it again is refused",
-      callers: ["resident", "admin"],
+      callers: ["member", "admin"],
       from: ["active"],
       to: null,
       emits: [EVENTS.marked],
@@ -37,17 +37,17 @@ const descriptor = defineDescriptor({
       // A3: who joined is shown by the hub's disclosure policy.
       name: "join",
       description: "Join the tour; joining again changes nothing",
-      callers: ["resident", "admin"],
+      callers: ["member", "admin"],
       from: ["active"],
       to: null,
       emits: [EVENTS.joined],
       input_schema: { type: "object", properties: {}, examples: [{}] },
     },
     {
-      // A6: an official may endorse.
+      // A6: an official (the kernel's accountable role) may endorse.
       name: "endorse",
       description: "An official endorses the tour",
-      callers: ["official", "admin"],
+      callers: ["accountable", "admin"],
       from: ["active"],
       to: null,
       emits: [EVENTS.endorsed],
@@ -69,8 +69,8 @@ const descriptor = defineDescriptor({
     },
   ],
   emits: EMITS,
-  // A6: officials publish directly, as admins do.
-  creation: { resident: { drafts: "/sdk-tour/drafts", publish_at_once: ["official"] }, admin: false, system: false },
+  // A6: officials publish directly, as admins do. The kernel's role names (step 2).
+  creation: { member: { drafts: "/sdk-tour/drafts", publish_at_once: ["accountable"] }, admin: false, system: false },
   deadline: { action: "close", source: "state.closes_at" },
   brief: false,
   tables: TABLES,

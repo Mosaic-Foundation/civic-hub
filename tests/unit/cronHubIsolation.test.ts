@@ -88,28 +88,30 @@ vi.mock("../../src/utils/anthropic.js", () => ({
   callClaude: async () => ({ text: "A stub paraphrase.", model: "stub-model" }),
 }));
 
-vi.mock("../../src/services/processService.js", () => ({
-  getAllProcesses: async () => [],
-  getProcess: async () => null,
-  archiveProcess: async () => undefined,
-  saveProcessState: async () => undefined,
-  createProcess: async (input: Record<string, unknown>) => {
-    created.push(input);
-    return {
-      ...input,
-      id: `proc_${created.length}`,
-      hubId: "civic-hub-local",
-      jurisdiction: input.jurisdiction ?? "local",
-      status: "active",
-    };
-  },
-}));
-
-// Which originals News Sync already copied in: none here.
-vi.mock("../../src/services/processRows.js", async (orig) => ({
-  ...(await orig<typeof import("../../src/services/processRows.js")>()),
-  syncedShareUrls: async () => new Set<string>(),
-}));
+// What News Sync already copied in (its own type, live and archived): none here.
+vi.mock("../../src/services/processService.js", async () => {
+  const { defaultJurisdiction } = await import("../../src/config/hub.js");
+  return {
+    getAllProcesses: async () => [],
+    getArchivedProcesses: async () => [],
+    getSampleProcessIds: async () => new Set<string>(),
+    getProcess: async () => null,
+    archiveProcess: async () => undefined,
+    saveProcessState: async () => undefined,
+    createProcess: async (input: Record<string, unknown>) => {
+      const record = {
+        ...input,
+        id: `proc_${created.length + 1}`,
+        hubId: "civic-hub-local",
+        // The kernel's create stamps the hub in scope's place.
+        jurisdiction: input.jurisdiction ?? defaultJurisdiction(),
+        status: "active",
+      };
+      created.push(record);
+      return record;
+    },
+  };
+});
 
 vi.mock("../../src/events/eventEmitter.js", () => ({
   emitEvent: async () => ({}),
@@ -179,7 +181,7 @@ describe("news sync — one pass, each hub its own feed", () => {
     }
     for (const c of floyd) {
       expect(c.jurisdiction).toBe("us-va-floyd");
-      // From the hub's own government, under the default pill (src/shared/newsSource.ts).
+      // From the hub's own government, under the default pill (packages/civic.news_sync/state.ts).
       expect((c.state as { source: { label?: string; pill?: string } }).source).toMatchObject({
         label: "Floyd County Government",
         pill: "News",
@@ -233,7 +235,9 @@ describe("meeting summaries — one pass, each hub its own source and admins", (
     expect(athensFetches.length).toBeGreaterThan(0);
     expect(Object.keys((out.body as { hubs: object }).hubs).sort()).toEqual(["athens", "floyd"]);
 
+    // Athens's run fails (its page is stubbed out) and tells Athens's admins
+    // alone; Floyd's finds nothing new and has nothing to tell.
     const recipients = mail.map((m) => [m.to].flat().join(","));
-    expect(recipients.sort()).toEqual([ATHENS_ADMIN, FLOYD_ADMIN].sort());
+    expect(recipients).toEqual([ATHENS_ADMIN]);
   });
 });

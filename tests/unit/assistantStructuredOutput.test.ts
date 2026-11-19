@@ -9,12 +9,9 @@
 //    mocked tests exercise.
 
 import { describe, it, expect, vi } from "vitest";
-import {
-  callAssistant,
-  buildRespondTool,
-  RESPONSE_TOOL,
-} from "../../src/modules/civic.assistant/service";
-import type { CallClaudeMultiTurnFn } from "../../src/modules/civic.assistant/service";
+import { callAssistant } from "../../features/assistant/service";
+import { buildRespondTool, RESPONSE_TOOL } from "../../src/services/assistantResponse";
+import type { CallClaudeMultiTurnFn } from "../../src/services/codeOfConductAi";
 import { proposalAssistantConfig } from "../../packages/civic.proposals/assistantConfig";
 import { deliberationAssistantConfig } from "../../packages/civic.polis_deliberation/assistantConfig";
 

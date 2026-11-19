@@ -77,7 +77,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "job_runs", columns: ["hub_id", "job_id", "started_at", "finished_at", "status", "summary", "problems", "details"], owner: "core/jobRuns" },
   // The last scheduled run of each job, whatever it did (20261019000000): the console's Dashboard.
   { table: "job_last_run", columns: ["job_id", "started_at", "finished_at", "status", "duration_ms", "hubs_run", "hubs_failed", "error"], owner: "core/jobLastRun" },
-  { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at", "feedback_seen_at", "briefs_seen_at", "meeting_summaries_seen_at"], owner: "civic.auth" },
+  { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at", "feedback_seen_at", "briefs_seen_at", "meeting_summaries_seen_at", "queues_seen_at"], owner: "civic.auth" },
   { table: "sessions", columns: ["token", "assurance"], owner: "civic.auth" },
   { table: "sign_in_codes", columns: ["email", "code_hash", "link_hash", "attempts", "expires_at"], owner: "civic.auth" },
   { table: "rate_limit_hits", columns: ["bucket", "at"], owner: "core/rateLimit" },
@@ -88,7 +88,6 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "users", columns: ["hidden_from_members"], owner: "services/members" },
   { table: "users", columns: ["demo_only"], owner: "civic.auth" },
   { table: "waitlist", columns: ["told_open_at"], owner: "services/waitlistOpen" },
-  { table: "admin_digest_marks", columns: ["hub_id", "covered_until", "updated_at"], owner: "civic.admin_digest" },
   { table: "waitlist", columns: ["invited_by"], owner: "services/hubInvites" },
   { table: "hub_invites", columns: ["hub_id", "email", "invited_by", "outcome", "link_hash", "created_at", "expires_at", "used_at"], owner: "services/hubInvites" },
   // Districts and demographics: a member's own About-you answers (20261116030000).
@@ -97,10 +96,8 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   // Plugin packages (20261025000000, ADR-014).
   { table: "hub_plugins", columns: ["hub_id", "package", "version", "plugin", "capabilities", "installed_at", "installed_by", "removed_at", "removed_by", "winding_down_since", "winding_down_by"], owner: "plugins" },
   { table: "plugin_catalog", columns: ["package", "version", "hash", "display_name", "plugin", "process_type", "capabilities", "conformance", "status", "approved_by", "approved_at"], owner: "plugins" },
-  { table: "feedback_submissions", columns: ["screenshot_url"], owner: "civic.feedback" },
-  // Feedback routing (20261015000000): what the form captures, and the copy's status for the badge.
-  { table: "feedback_submissions", columns: ["page_path", "software_version", "contact_ok", "mosaic_item_id", "mosaic_stream", "mosaic_status", "mosaic_sent_at", "mosaic_sent_by"], owner: "civic.feedback" },
-  { table: "platform_feedback", columns: ["source_hub_id", "source_feedback_id", "stream", "origin", "message", "contact_ok", "contact_email", "status", "github_issue_url", "fixed_notified_at"], owner: "civic.feedback" },
+  // The provider's inbox (20261015000000; the kernel's since step 4, services/providerInbox).
+  { table: "platform_feedback", columns: ["source_hub_id", "source_feedback_id", "stream", "origin", "message", "contact_ok", "contact_email", "status", "github_issue_url", "fixed_notified_at"], owner: "services/providerInbox" },
   { table: "community_inputs", columns: ["is_anonymous", "author_name"], owner: "civic.input" },
   { table: "process_reviews", columns: ["coc_flags"], owner: "civic.review" },
   { table: "review_turns", owner: "civic.review" },
@@ -144,11 +141,9 @@ export interface ExportManifestEntry {
 
 /** The host's own tables (src/db/forHub.ts HOST_TABLES). Each process type's are in its manifest. */
 const HOST_EXPORTS: readonly ExportManifestEntry[] = [
-  { table: "admin_digest_marks", rows: "omit", reason: "where this host's last admin digest stopped; the next host starts its own" },
   { table: "ai_usage", rows: "omit", reason: "an operational record of paid model calls, for this host's daily budget" },
   { table: "community_inputs", rows: "export" },
   { table: "events", rows: "export" },
-  { table: "feedback_submissions", rows: "export" },
   { table: "hub_admin_audit_log", rows: "export" },
   { table: "hub_invites", rows: "export" },
   { table: "hub_plugins", rows: "omit", reason: "which packages this host's catalog let the hub install; a new hub row records every approved package of the host it lands on, and the plugin switches travel in hub_settings (ADR-014)" },

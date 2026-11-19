@@ -12,12 +12,12 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
-import {
-  FEEDBACK_CATEGORIES,
-  SOFTWARE_STREAM,
-  FeedbackValidationError,
-  submitFeedback,
-} from "../../src/modules/civic.feedback/index.js";
+import { FEEDBACK_CATEGORIES, SOFTWARE_STREAM } from "../../features/feedback/models.js";
+import { FeedbackValidationError, submitFeedback } from "../../features/feedback/service.js";
+import type { FeedbackStore } from "../../features/feedback/store.js";
+
+/** Never reached: validation comes first. */
+const NO_STORE = {} as FeedbackStore;
 
 const ROOT = join(import.meta.dirname, "../..");
 
@@ -44,17 +44,17 @@ function constraintCategories(): string[] {
 
 /** The union the UI compiles against. */
 function uiUnionCategories(): string[] {
-  const src = readFileSync(join(ROOT, "ui/src/services/api.ts"), "utf8");
+  const src = readFileSync(join(ROOT, "features/feedback/ui/api.ts"), "utf8");
   const decl = src.match(/export type FeedbackCategory =([\s\S]*?);/);
-  expect(decl, "could not find FeedbackCategory in ui/src/services/api.ts").not.toBeNull();
+  expect(decl, "could not find FeedbackCategory in features/feedback/ui/api.ts").not.toBeNull();
   return [...decl![1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
 }
 
 /** The pills the form actually renders, in order. */
 function formPills(): Array<{ value: string; side: string; label: string }> {
-  const src = readFileSync(join(ROOT, "ui/src/pages/Feedback.tsx"), "utf8");
+  const src = readFileSync(join(ROOT, "features/feedback/ui/Feedback.tsx"), "utf8");
   const decl = src.match(/const CATEGORIES:[\s\S]*?\n\];/);
-  expect(decl, "could not find CATEGORIES in ui/src/pages/Feedback.tsx").not.toBeNull();
+  expect(decl, "could not find CATEGORIES in features/feedback/ui/Feedback.tsx").not.toBeNull();
   // Each pill names its side of the form's first question (feedback routing).
   return [
     ...decl![0].matchAll(/value:\s*"([^"]+)",\s*\n?\s*side:\s*"([^"]+)",\s*\n?\s*label:\s*"([^"]+)"/g),
@@ -91,10 +91,10 @@ describe("server validation derives from FEEDBACK_CATEGORIES", () => {
     // Validation is the first thing submitFeedback does, so this never
     // reaches getDb() — no database required.
     await expect(
-      submitFeedback({ category: "launch-idea" as never, message: "hi" }),
+      submitFeedback(NO_STORE, { category: "launch-idea" as never, message: "hi" }),
     ).rejects.toThrow(FeedbackValidationError);
     await expect(
-      submitFeedback({ category: "launch-idea" as never, message: "hi" }),
+      submitFeedback(NO_STORE, { category: "launch-idea" as never, message: "hi" }),
     ).rejects.toThrow(/topic/);
   });
 });

@@ -14,7 +14,7 @@ import {
   str,
   num,
   type FeedProcessMeta,
-} from "@civic-social/plugin-sdk/first-party";
+} from "@civic-social/plugin-sdk";
 import {
   createAnnouncementState,
   getPublicReadModel,
@@ -22,7 +22,6 @@ import {
   type AnnouncementAuthorRole,
   type AnnouncementLink,
   type AnnouncementProcessState,
-  type AnnouncementSource,
   type CreateAnnouncementInput,
 } from "./api.js";
 import { ANNOUNCEMENT_MANIFEST } from "./manifest.js";
@@ -74,18 +73,6 @@ const announcementProcess: ProcessHandler = {
         typeof input.image_alt === "string" || input.image_alt === null
           ? (input.image_alt as string | null)
           : undefined,
-      // Synced-from-external announcements pass `source` here so the module
-      // records provenance and the event emitter can route the action_url
-      // to the external permalink. Hand-authored announcements omit it.
-      source:
-        input.source && typeof input.source === "object"
-          ? (input.source as AnnouncementSource)
-          : undefined,
-      // The red Urgent label and its end date (checked by the module).
-      urgent:
-        input.urgent === true
-          ? { urgent: true, urgent_until: typeof input.urgent_until === "string" ? input.urgent_until : null }
-          : null,
     };
     return createAnnouncementState(createInput) as unknown as Record<string, unknown>;
   },
@@ -131,7 +118,6 @@ const announcementProcess: ProcessHandler = {
       editCount: num(model.edit_count) ?? 0,
       lastEditedAt: str(model.last_edited_at) ?? null,
       removed: moderation?.removed === true,
-      urgent: model.urgent === true,
     };
   },
 };

@@ -1,0 +1,451 @@
+/* Full width and left-aligned, like every other process page (.detail-page;
+   Submit and Save, 2026-10-12): it was a centered 720px column. */
+.meeting-summary-page {
+  padding: var(--space-6);
+}
+
+
+.meeting-status {
+  color: var(--color-text-subtle);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  text-align: center;
+  padding: var(--space-xl) var(--space-md);
+}
+
+.meeting-status-error {
+  color: var(--color-text);
+}
+
+.meeting-header {
+  margin: 0 0 var(--space-md);
+}
+
+.meeting-eyebrow {
+  margin: 0;
+  color: var(--color-brand);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.meeting-header h1 {
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-tight);
+}
+
+.meeting-meta {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+/* AI-generated disclaimer banner — theme-accent so it can't be mistaken
+   for body copy. */
+.meeting-disclaimer {
+  margin: var(--space-md) 0 var(--space-lg);
+  padding: var(--space-md);
+  background: var(--color-surface-muted);
+  border-left: var(--border-width-strong) solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.meeting-disclaimer strong {
+  color: var(--color-primary);
+}
+
+.meeting-provenance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-xl);
+}
+
+.meeting-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-md);
+  background: var(--card-bg);
+  color: var(--color-primary);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.meeting-chip:hover {
+  border-color: var(--color-border-hover);
+}
+
+.meeting-chip-secondary {
+  color: var(--color-text-muted);
+}
+
+/* Topic block list */
+.meeting-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.meeting-block {
+  padding: var(--space-md);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+}
+
+.meeting-block-timestamp {
+  display: inline-block;
+  padding: 2px var(--space-sm);
+  margin-bottom: var(--space-xs);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.meeting-block-timestamp:hover {
+  background: var(--color-primary-hover);
+}
+
+.meeting-block-title {
+  margin: var(--space-xs) 0 var(--space-sm);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-tight);
+  color: var(--color-text);
+}
+
+.meeting-block-summary {
+  margin: 0 0 var(--space-sm);
+  color: var(--color-text);
+  line-height: var(--line-height-base);
+  white-space: pre-wrap;
+}
+
+.meeting-block-action {
+  margin: var(--space-sm) 0 0;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface-muted);
+  border-left: var(--border-width-strong) solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+  color: var(--color-text);
+}
+
+.meeting-notes {
+  margin: 0 0 var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.meeting-notes h2 {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  margin: 0 0 var(--space-md);
+  color: var(--color-text);
+}
+
+.meeting-notes p {
+  margin: 0;
+  color: var(--color-text);
+  line-height: var(--line-height-base);
+  white-space: pre-wrap;
+}
+
+/* Awaiting-minutes notice.
+   Meeting records routinely go live before their official minutes exist:
+   bodies approve minutes at a following meeting, so a multi-week gap is
+   normal. Without this, the missing link reads as an omission. */
+.meeting-pending-minutes {
+  margin: var(--space-md) 0;
+  padding: var(--space-sm) var(--space-md);
+  border-left: var(--border-width-strong) solid var(--color-accent);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.meeting-revised {
+  color: var(--color-text-muted);
+}
+
+/* --- Collapsible topic blocks -------------------------------------------
+   Collapsed by default: the page opens as a scannable agenda of the whole
+   meeting. A four-hour session runs to a dozen-plus blocks, and most readers
+   are looking for one item rather than reading straight through. */
+
+.meeting-blocks-help {
+  margin: var(--space-md) 0 var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* The container owns the spacing. `.meeting-blocks` is a flex column, so its
+   `gap` is the real lever — a margin on the child stacks on top of it rather
+   than replacing it. Collapsed, these read as a list rather than a stack of
+   cards, so the gap wants to be roughly half what open prose blocks needed:
+   enough to separate, not enough to make a dozen sections feel sparse. */
+.meeting-blocks {
+  gap: var(--space-3);
+}
+
+.meeting-block {
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  margin-bottom: 0;
+  background: var(--card-bg);
+}
+
+.meeting-block-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-2) var(--space-md);
+  cursor: pointer;
+  list-style: none; /* drop the default disclosure triangle */
+}
+.meeting-block-header::-webkit-details-marker {
+  display: none;
+}
+.meeting-block-header:hover {
+  background: var(--color-surface-alt);
+}
+/* Keyboard focus must stay visible — the summary is the control. */
+.meeting-block-header:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.meeting-block-heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex: 1;
+  min-width: 0;
+}
+
+.meeting-block-title {
+  font-size: var(--font-size-base);
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* Sits inside the summary, so it stops propagation in the handler to keep
+   "jump to the video" from also expanding the section.
+
+   Styled as a pill rather than the earlier square chip: it is the one playful,
+   clickable thing on an otherwise formal page, and it should invite a click
+   without shouting. The `margin-bottom` from the pre-collapse rule is zeroed —
+   in a centred flex row it pushed the pill off-axis. */
+.meeting-block-timestamp {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-small-size);
+  font-weight: 650;
+  letter-spacing: var(--letter-spacing-normal);
+  font-variant-numeric: tabular-nums;
+  transition:
+    background 0.15s,
+    transform 0.1s;
+}
+
+.meeting-block-timestamp:hover {
+  transform: translateY(-1px);
+}
+
+.meeting-block-timestamp:active {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meeting-block-timestamp {
+    transition: background 0.15s;
+  }
+  .meeting-block-timestamp:hover,
+  .meeting-block-timestamp:active {
+    transform: none;
+  }
+}
+
+.meeting-block-flag {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--type-vote-bg);
+  color: var(--type-vote-fg);
+  white-space: nowrap;
+}
+
+/* Holds the action flag and the caret together so they reflow as one unit. */
+.meeting-block-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.meeting-block-caret {
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border-left: var(--space-1-5) solid transparent;
+  border-right: var(--space-1-5) solid transparent;
+  border-top: var(--space-1-5) solid var(--color-text-muted);
+  transition: transform 120ms ease;
+}
+.meeting-block[open] .meeting-block-caret {
+  transform: rotate(180deg);
+}
+
+.meeting-block-body {
+  padding: 0 var(--space-md) var(--space-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meeting-block-caret {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  /* On a narrow screen the title, the action flag and the caret cannot share a
+     line without the title losing: it wraps to three or four words per row
+     while the controls sit in whitespace. So the header becomes a column —
+     timestamp and title take the full width, and the controls drop to their
+     own row beneath, right-aligned where a thumb already is.
+
+     The perimeter tightens at the same time; a list of a dozen sections should
+     not feel like a dozen cards. The gap between title and controls stays
+     generous, because that is the one boundary that carries meaning here. */
+  .meeting-block-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+    padding: var(--space-2-5) var(--space-3) var(--space-2);
+  }
+
+  .meeting-block-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1-5);
+    width: 100%;
+  }
+
+  .meeting-block-meta {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* A sample summary's times (Phase 7 sample content): shown as a real one
+   would show them, but there is no recording to open, so not a button. */
+.meeting-block-timestamp--plain,
+.meeting-block-timestamp--plain:hover {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  transform: none;
+  cursor: default;
+}
+
+/* Sample summaries (2026-10-07): the chips are buttons, the recording note
+   and the minutes open in place. */
+button.meeting-chip {
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.meeting-sample-note {
+  margin: var(--space-md) 0;
+  padding: var(--space-sm) var(--space-md);
+  border-left: var(--border-width-strong) solid var(--color-primary);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.meeting-sample-minutes {
+  margin: var(--space-md) 0 var(--space-lg);
+  padding: var(--space-md);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  line-height: 1.6;
+}
+
+.meeting-sample-minutes h2 {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-md);
+}
+
+.meeting-sample-minutes p {
+  margin: 0 0 var(--space-sm);
+}
+
+/* A sample's timestamps (2026-10-08): they look like a real summary's and,
+   tapped, say what a real one opens, in a bubble under the time. */
+button.meeting-block-timestamp--sample {
+  border: none;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+.meeting-block-timestamp-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.meeting-time-note {
+  position: absolute;
+  left: 0;
+  top: calc(100% + var(--space-2));
+  z-index: 5;
+  width: max-content;
+  max-width: min(36ch, calc(100vw - var(--space-12)));
+  padding: var(--space-1-5) var(--space-2-5);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--color-primary-text);
+  background: var(--type-vote-fg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+
+.meeting-time-note::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: var(--space-4);
+  border: var(--space-2) solid transparent;
+  border-top: 0;
+  border-bottom-color: var(--type-vote-fg);
+}

@@ -103,8 +103,10 @@ export interface DeliberationSummary {
   linked_polis_data_uri: string;
   methodology: { prompt_version: string; model_used: string; generated_at: string };
   /**
-   * Why there is no write-up (`summary_text` empty): the AI failed, or this
-   * hub has not allowed briefs to use it. Absent when there is one.
+   * Why there is no write-up (`summary_text` empty): the AI failed, this
+   * hub has not allowed briefs to use it, or nothing has written the result
+   * up (`unwritten`: the conversation's own figures, shown while no package
+   * that writes results up is on). Absent when there is one.
    */
-  narrative?: "failed" | "not_allowed";
+  narrative?: "failed" | "not_allowed" | "unwritten";
 }

@@ -101,3 +101,12 @@
 .post-image-picker-error {
   margin: var(--space-xs) 0 0;
 }
+
+/* The picker's character counter (moved from the announcement form's stylesheet,
+   kernel step 1: the picker is the kernel's, every form that uses it gets it). */
+.form-counter {
+  align-self: flex-end;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-subtle);
+  margin-top: calc(var(--space-xs) * -1);
+}

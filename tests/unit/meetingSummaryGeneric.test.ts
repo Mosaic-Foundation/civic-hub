@@ -4,13 +4,14 @@
 // as the code did before, so an existing hub sees no change.
 
 import { describe, expect, it } from "vitest";
-import { DEFAULT_WIX_FIELDS, parseWixFields } from "../../src/shared/wixFields.js";
+import { DEFAULT_WIX_FIELDS, parseWixFields } from "../../packages/civic.meeting_summary/wixFields.js";
 import { rowsToMeetings } from "../../packages/civic.meeting_summary/connectors/wixCms.js";
 import { canonicalYouTubeUrl } from "../../packages/civic.meeting_summary/identity.js";
 import { daysSetting, RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS, todayIso } from "../../packages/civic.meeting_summary/readiness.js";
 import { normalizeValue } from "../../src/models/hubSettingsWrite.js";
 import { fieldSpec } from "../../src/shared/hubSettingsSections.js";
 import { describeJobRun } from "../../src/jobs/describe.js";
+import { packageSettingProblem } from "../../src/services/packageContributions.js";
 
 const OPTS = { site_origin: "https://www.example.gov", collection: "Meetings", title_filter: "", type_exclude: "" };
 
@@ -31,8 +32,11 @@ describe("plugin.meeting_summary.wix_fields", () => {
     expect(parseWixFields("date=").errors[0]).toMatch(/name a column/);
     expect(parseWixFields("date=a b").errors[0]).toMatch(/takes one column/);
     const spec = fieldSpec("plugin.meeting_summary.wix_fields")!;
-    expect(normalizeValue(spec, "when=date")).toMatchObject({ error: expect.stringMatching(/wix_fields/) });
+    // The kernel checks the kind (one line); the package checks the columns (kernel step 3).
     expect(normalizeValue(spec, " date=meetingDate ")).toBe("date=meetingDate");
+    expect(packageSettingProblem("plugin.meeting_summary.wix_fields", "when=date")).toMatch(/one of date, type/);
+    expect(packageSettingProblem("plugin.meeting_summary.wix_fields", "date=meetingDate")).toBeNull();
+    expect(packageSettingProblem("identity.name", "anything")).toBeNull();
   });
 
   it("reads another site's columns", () => {

@@ -14,7 +14,7 @@ import {
   str,
   num,
   type FeedProcessMeta,
-} from "@civic-social/plugin-sdk/first-party";
+} from "@civic-social/plugin-sdk";
 import {
   createBriefState,
   getPublicReadModel,
@@ -49,7 +49,7 @@ const briefProcess: ProcessHandler = {
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     // Briefs are always created programmatically by the close flow
-    // (spawnBriefFromClosedProcess), which passes a CreateBriefInput shape.
+    // (briefOnClose, ./onClosed.ts), which passes a CreateBriefInput shape.
     const required = ["source_process_id", "source_process_type", "content"] as const;
     for (const key of required) {
       if (!(key in input)) {

@@ -24,7 +24,7 @@ import {
 import { submitAsCreator, reviseAndResubmit, reviewMailbox } from "../modules/civic.review/index.js";
 import { codeOfConductStanding } from "../services/codeOfConduct.js";
 import { runCodeOfConductCheck } from "../services/codeOfConductCheck.js";
-import type { AssistantDraft } from "../modules/civic.assistant/index.js";
+import type { AssistantDraft } from "../models/assistant.js";
 import type { CocFlag } from "../modules/civic.review/models.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { personFallbackName } from "../services/creatorDisplay.js";
@@ -32,6 +32,7 @@ import { HubDbError } from "../db/forHub.js";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import type { DraftKind } from "../processes/draftKinds.js";
+import { memberCreation } from "../processes/descriptorTypes.js";
 
 export interface DraftHandlers {
   create: RequestHandler;
@@ -208,7 +209,7 @@ export function draftController<D extends BaseDraft>(kind: DraftKind<D>): DraftH
           },
           {
             cocPassed: coc.passed,
-            ...(await publishesAtOnce(getActor(res), getManifest(spec.processType)?.descriptor.creation.resident).then((at) => ({
+            ...(await publishesAtOnce(getActor(res), memberCreation(getManifest(spec.processType)?.descriptor.creation)).then((at) => ({
               creatorIsAdmin: at.admin,
               creatorIsOfficialAtOnce: at.official,
             }))),

@@ -29,7 +29,7 @@ vi.mock("../../src/db/hubSettingsStore.js", async (orig) => ({
 }));
 
 const { runWithHub } = await import("../../src/config/hubContext.js");
-const { getHubConfig } = await import("../../src/modules/civic.assistant/service.js");
+const { getHubConfig } = await import("../../src/services/codeOfConductAi.js");
 const { hubDocument } = await import("../../src/services/hubDocuments.js");
 const { ATHENS_HUB, FLOYD_HUB } = await import("../fixtures/hubs/index.js");
 

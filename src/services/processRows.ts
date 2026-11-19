@@ -43,34 +43,8 @@ export async function writeProcessState(processId: string, state: Record<string,
 
 // --- controllers ---
 
-/** One published brief's row, as the public outcomes index reads it. */
-export interface PublishedBriefRow {
-  id: string;
-  title: string | null;
-  state: Record<string, unknown>;
-  is_sample: boolean;
-  added_in_demo: boolean;
-}
-
-/**
- * Every published brief that is still public (not pending review or archived),
- * ordered by id. Paged: a hub can have more than 1,000 of these (PostgREST's cap).
- */
-export async function publishedBriefRows(): Promise<PublishedBriefRow[]> {
-  return readAll((from, to) =>
-    db()
-      .from("processes")
-      .select<PublishedBriefRow>("id, title, state, is_sample, added_in_demo")
-      .eq("type", "civic.brief")
-      .eq("state->>publication_status", "published")
-      .not("status", "in", `(${[...NON_PUBLIC_STATUSES].join(",")})`)
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
-}
-
-/** An item marked pinned (any type) or urgent (announcements), as the right column reads it. */
-export interface BoardRow {
+/** A public item as the kernel's items service reads it (src/services/kernelItems.ts). */
+export interface CardRow {
   id: string;
   type: string;
   title: string;
@@ -81,41 +55,17 @@ export interface BoardRow {
 }
 
 /**
- * Every public item whose state says pinned or urgent (the right column's
- * card; src/shared/announcementBoard.ts). Any type can be pinned (Adam,
- * 2026-11-18); only an announcement is ever marked urgent. End dates, removal
- * and switched-off plugins are the caller's to read. Few rows: pins are
- * capped, urgent labels expire.
+ * These processes, the public ones only (one pinned while public and then
+ * held back or archived drops off the card), read in chunks of 200 ids.
  */
-export async function boardRows(): Promise<BoardRow[]> {
-  return readAll((from, to) =>
+export async function publicCardRows(ids: string[]): Promise<CardRow[]> {
+  return inChunks(ids, (chunk) =>
     db()
       .from("processes")
-      .select<BoardRow>("id, type, title, state, created_at, is_sample, added_in_demo")
-      .or("state->>pinned.eq.true,state->>urgent.eq.true")
-      .not("status", "in", `(${[...NON_PUBLIC_STATUSES].join(",")})`)
-      .order("id", { ascending: true })
-      .range(from, to),
+      .select<CardRow>("id, type, title, state, created_at, is_sample, added_in_demo")
+      .in("id", chunk)
+      .not("status", "in", `(${[...NON_PUBLIC_STATUSES].join(",")})`),
   );
-}
-
-/**
- * Every original's permalink News Sync has copied in, whatever the item's
- * status: an archived one stays archived rather than coming back on the next
- * run. Announcements are read too, for posts synced before News Sync had its
- * own type (2026-11-18).
- */
-export async function syncedShareUrls(): Promise<Set<string>> {
-  const rows = await readAll((from, to) =>
-    db()
-      .from("processes")
-      .select<{ share_url: string | null }>("share_url:state->source->>share_url")
-      .in("type", ["civic.news", "civic.announcement"])
-      .not("state->source->>share_url", "is", null)
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
-  return new Set(rows.flatMap((r) => (r.share_url ? [r.share_url] : [])));
 }
 
 /** The type and title of each of these processes, read in chunks of 200 ids. */
@@ -201,6 +151,22 @@ export async function briefIdForSource(sourceProcessId: string): Promise<string 
     .select<{ id: string }>("id")
     .eq("type", "civic.brief")
     .eq("state->>source_process_id", sourceProcessId)
+    .maybeSingle();
+  return row?.id ?? null;
+}
+
+/**
+ * The id of the first process of these types whose state holds `value` at
+ * `key` (a brief's `source_process_id`), or null. processesOf().idWhere.
+ */
+export async function processIdByState(types: readonly string[], key: string, value: string): Promise<string | null> {
+  if (!/^[a-z_][a-z0-9_]*$/.test(key)) throw new Error(`processIdByState: ${key} is not a state key`);
+  const row = await db()
+    .from("processes")
+    .select<{ id: string }>("id")
+    .in("type", [...types])
+    .eq(`state->>${key}`, value)
+    .limit(1)
     .maybeSingle();
   return row?.id ?? null;
 }

@@ -19,7 +19,6 @@ import namespaceRoutes from "./routes/namespaceRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import audienceRoutes from "./routes/audienceRoutes.js";
 import feedRoutes from "./routes/feedRoutes.js";
-import asideRoutes from "./routes/asideRoutes.js";
 import discoveryRoutes from "./routes/discoveryRoutes.js";
 import debugRoutes from "./routes/debugRoutes.js";
 import inputRoutes from "./routes/inputRoutes.js";
@@ -29,10 +28,8 @@ import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import linkPreviewRoutes from "./routes/linkPreviewRoutes.js";
-import searchRoutes from "./routes/searchRoutes.js";
 import { jobRouter } from "./routes/jobRoutes.js";
 import { JOBS, internalPath } from "./jobs/registry.js";
-import feedbackRoutes from "./routes/feedbackRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import waitlistRoutes from "./routes/waitlistRoutes.js";
@@ -200,6 +197,11 @@ app.use("/process", inputRoutes);
 // runs with the Writing assistant off (src/routes/assistantRoutes.ts).
 app.use("/assistant", assistantRoutes);
 
+// "Share this hub" (POST /members/invites): the space's own. Mounted ahead of
+// the feature routes, so the Members plugin's switch, which gates the rest of
+// /members, never closes it.
+app.use("/members", memberRoutes);
+
 // The plugin packages' routes (ADR-014), in configured order, each behind
 // its plugin's switch and the loader's verdict.
 mountPackageRoutes(app, "routes");
@@ -221,21 +223,8 @@ app.use("/admin", adminRoutes);
 app.use("/upload", uploadRoutes);
 app.use("/link-preview", linkPreviewRoutes);
 
-// Slice 10.5 — public full-text search across all process types.
-// Backed by Postgres FTS via the search_processes RPC (see
-// supabase/migrations/20260427200000_add_search_doc.sql).
-app.use("/search", requirePlugin("search"), searchRoutes);
-
-// Slice 14 — operator-facing product feedback. Anonymous or authed.
-// Persists to feedback_submissions (NOT events) and best-effort emails
-// the operator. See civic-hub/src/modules/civic.feedback.
-app.use("/feedback", requirePlugin("feedback"), feedbackRoutes);
-
 // Beta waitlist — public endpoint for people to request access.
 app.use("/waitlist", waitlistRoutes);
-
-// Members and "Share this hub" (members and invites slice)
-app.use("/members", memberRoutes);
 
 // Scheduled jobs: every /internal/*/run route comes from one list,
 // src/jobs/registry.ts, which vercel.json's "crons" is checked against. Each
@@ -272,9 +261,6 @@ app.use("/ns", namespaceRoutes);
 // working against a local dev server on :3000.
 app.use("/feed", feedRoutes);
 app.use("/api/feed", feedRoutes);
-// The right column's facts (ADR-019), mounted the same two ways.
-app.use("/aside", asideRoutes);
-app.use("/api/aside", asideRoutes);
 
 // Discovery manifest
 app.use("/.well-known", discoveryRoutes);

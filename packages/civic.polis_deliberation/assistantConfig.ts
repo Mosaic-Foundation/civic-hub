@@ -9,7 +9,7 @@
 // stay plain form fields. Everything reaches the form only via Apply on a
 // suggestion card, which marks assistant_helped (the public disclosure).
 
-import { getDraft, appendConversation, saveReviewResult, applyGeneratedDraft, type AssistantTypeConfig } from "@civic-social/plugin-sdk/first-party";
+import { draftsOf, type AssistantTypeConfig } from "@civic-social/plugin-sdk";
 import { deliberationDraftKind } from "./draftKind.js";
 
 const CONVERSATION_BEST_PRACTICES = `# Conversation Best Practices — Civic Hub
@@ -103,17 +103,15 @@ A conversation maps community opinion — it is an instrument, not an argument. 
       example: "I'd use a bike lane on Main Street if it existed",
     },
   ],
-  draftStore: {
-    async get(id) {
-      const draft = await getDraft(deliberationDraftKind.spec, id);
-      return draft ? ({ ...draft, considerations: "" } as never) : undefined;
-    },
-    appendConversation: (id, userMessage, assistantMessage) =>
-      appendConversation(deliberationDraftKind.spec, id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions, checkedHash) =>
-      saveReviewResult(deliberationDraftKind.spec, id, suggestions, checkedHash),
-    applyGeneratedDraft: async (id, draft) => {
-      await applyGeneratedDraft(deliberationDraftKind.spec, id, { ...draft });
-    },
+  // The kernel's store for this kind's drafts, read when the assistant runs.
+  // A conversation draft has no considerations; the assistant reads them empty.
+  get draftStore() {
+    const drafts = draftsOf(deliberationDraftKind);
+    return drafts.assistantStore({
+      async get(id) {
+        const draft = await drafts.get(id);
+        return draft ? ({ ...draft, considerations: "" } as never) : undefined;
+      },
+    });
   },
 };

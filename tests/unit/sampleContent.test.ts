@@ -19,13 +19,9 @@ import {
   sampleUserId,
 } from "../../src/models/sampleContent.js";
 import { isSampleContentRow } from "../../src/operator/hubBundle/format.js";
-import {
-  SAMPLE_AUTHORS,
-  SAMPLE_TEMPLATES,
-  fillSample,
-  templatesFor,
-  type SampleTemplate,
-} from "../../src/services/sampleTemplates.js";
+import { SAMPLE_TEMPLATES, templatesFor, type SampleTemplate } from "../../spaces/civic/sampleTemplates.js";
+import { SAMPLE_AUTHORS } from "../../src/services/samplePeople.js";
+import { fillSample } from "../../src/services/sampleNames.js";
 import { defaultGoverningBody, isJurisdictionType, JURISDICTION_TYPES } from "../../src/shared/jurisdictionType.js";
 
 describe("which rows are sample content", () => {

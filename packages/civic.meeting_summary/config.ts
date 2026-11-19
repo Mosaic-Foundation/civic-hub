@@ -8,7 +8,7 @@
 // Kept apart from the 1,500-line controller so the rule can be tested without
 // a database or a model.
 
-import { getSettingSync, isPluginEnabledSync, KEYS } from "@civic-social/plugin-sdk/first-party";
+import { settingsOf } from "@civic-social/plugin-sdk";
 import {
   CONNECTORS,
   PAGE_CONNECTOR_IDS,
@@ -43,34 +43,35 @@ export type MeetingSummaryResolution =
  * explicitly but missing the source it needs → invalid.
  */
 export function resolveMeetingSummaryConfig(model: string): MeetingSummaryResolution {
-  if (!isPluginEnabledSync("meeting_summary")) {
+  const settings = settingsOf("meeting_summary");
+  if (!settings.enabled()) {
     return { status: "skipped", reason: "meeting summary disabled" };
   }
 
-  const configured = getSettingSync(KEYS.PLUGIN_MEETING_CONNECTOR_ID)?.trim() || DEFAULT_CONNECTOR_ID;
+  const configured = settings.get("connector_id")?.trim() || DEFAULT_CONNECTOR_ID;
   const connectorId = canonicalConnectorId(configured);
   if (connectorId !== DEFAULT_CONNECTOR_ID && !CONNECTORS[connectorId]) {
     return {
       status: "invalid",
       connectorId,
       reason:
-        `Unknown ${KEYS.PLUGIN_MEETING_CONNECTOR_ID} "${configured}". ` +
+        `Unknown plugin.meeting_summary.connector_id "${configured}". ` +
         `Known: ${DEFAULT_CONNECTOR_ID}, ${Object.keys(CONNECTORS).join(", ")}`,
     };
   }
 
   const cfg: MeetingSummaryConfig = {
-    source_url: getSettingSync(KEYS.PLUGIN_MEETING_SOURCE_URL)?.trim() ?? "",
-    channel_id: getSettingSync(KEYS.PLUGIN_MEETING_YOUTUBE_CHANNEL_ID)?.trim() ?? "",
-    title_filter: getSettingSync(KEYS.PLUGIN_MEETING_TITLE_FILTER)?.trim() ?? "",
-    type_exclude: getSettingSync(KEYS.PLUGIN_MEETING_TYPE_EXCLUDE)?.trim() ?? "",
-    collection_name: getSettingSync(KEYS.PLUGIN_MEETING_WIX_COLLECTION)?.trim() ?? "",
-    wix_fields: getSettingSync(KEYS.PLUGIN_MEETING_WIX_FIELDS)?.trim() ?? "",
+    source_url: settings.get("source_url")?.trim() ?? "",
+    channel_id: settings.get("youtube_channel_id")?.trim() ?? "",
+    title_filter: settings.get("title_filter")?.trim() ?? "",
+    type_exclude: settings.get("type_exclude")?.trim() ?? "",
+    collection_name: settings.get("wix_collection")?.trim() ?? "",
+    wix_fields: settings.get("wix_fields")?.trim() ?? "",
     extraction_instructions: resolveEffectiveInstructions(
-      getSettingSync(KEYS.PLUGIN_MEETING_EXTRACTION_INSTRUCTIONS) ?? "",
+      settings.get("extraction_instructions") ?? "",
     ),
     model,
-    governing_body_name: getSettingSync(KEYS.COPY_GOVERNING_BODY_NAME)?.trim() || undefined,
+    governing_body_name: settings.public("copy.governing_body_name")?.trim() || undefined,
   };
 
   if (connectorId === DEFAULT_CONNECTOR_ID) {
@@ -85,8 +86,8 @@ export function resolveMeetingSummaryConfig(model: string): MeetingSummaryResolu
       status: "invalid",
       connectorId,
       reason: PAGE_CONNECTOR_IDS.has(connectorId)
-        ? `${KEYS.PLUGIN_MEETING_SOURCE_URL} must be set for the "${connectorId}" connector.`
-        : `${KEYS.PLUGIN_MEETING_YOUTUBE_CHANNEL_ID} must be set for the "${connectorId}" connector.`,
+        ? `plugin.meeting_summary.source_url must be set for the "${connectorId}" connector.`
+        : `plugin.meeting_summary.youtube_channel_id must be set for the "${connectorId}" connector.`,
     };
   }
   return { status: "ready", connectorId, cfg };

@@ -2,13 +2,7 @@
 // handler via ProcessHandler.getAssistantConfig. See
 // proposalAssistantConfig.ts for the pattern.
 
-import {
-  type AssistantTypeConfig,
-  getDraft,
-  appendConversation,
-  saveReviewResult,
-  applyGeneratedDraft,
-} from "@civic-social/plugin-sdk/first-party";
+import { type AssistantTypeConfig, draftsOf } from "@civic-social/plugin-sdk";
 import { projectDraftKind } from "./draftKind.js";
 
 const PROJECT_BEST_PRACTICES = `# Project Best Practices — Civic Hub
@@ -99,17 +93,15 @@ Projects are action-oriented living pages. Focus on helping the user describe wh
       hint: "Link cost estimates, comparable projects, or official documents you mention.",
     },
   ],
-  draftStore: {
-    async get(id) {
-      const draft = await getDraft(projectDraftKind.spec, id);
-      return draft ? ({ ...draft, considerations: "" } as never) : undefined;
-    },
-    appendConversation: (id, userMessage, assistantMessage) =>
-      appendConversation(projectDraftKind.spec, id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions, checkedHash) =>
-      saveReviewResult(projectDraftKind.spec, id, suggestions, checkedHash),
-    applyGeneratedDraft: async (id, draft) => {
-      await applyGeneratedDraft(projectDraftKind.spec, id, { ...draft });
-    },
+  // The kernel's store for this kind's drafts, read when the assistant runs. A
+  // project has no considerations field; the assistant reads it as empty.
+  get draftStore() {
+    const drafts = draftsOf(projectDraftKind);
+    return drafts.assistantStore({
+      async get(id) {
+        const draft = await drafts.get(id);
+        return draft ? ({ ...draft, considerations: "" } as never) : undefined;
+      },
+    });
   },
 };

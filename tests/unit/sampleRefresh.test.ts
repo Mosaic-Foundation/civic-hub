@@ -5,13 +5,17 @@
 // tests/api/sampleRefresh.test.ts.
 
 import { describe, it, expect } from "vitest";
-import { SAMPLE_TEMPLATES, templatesFor, type SampleTemplate } from "../../src/services/sampleTemplates.js";
-import { REFRESH_WINDOW_DAYS, refreshReason } from "../../src/services/sampleRefresh.js";
-import { SAMPLE_ENDORSEMENT_FLOOR, sampleSupportThreshold } from "../../src/services/sampleSeed.js";
+import { SAMPLE_TEMPLATES, templatesFor, type SampleTemplate } from "../../spaces/civic/sampleTemplates.js";
+import { asSample } from "../../spaces/civic/samplePlan.js";
+import { REFRESH_WINDOW_DAYS, refreshWindow } from "../../src/services/sampleRefresh.js";
+import { SAMPLE_ENDORSEMENT_FLOOR, sampleSupportThreshold, voteSamples } from "../../packages/civic.vote/samples.js";
+import { proposalSamples } from "../../packages/civic.proposals/samples.js";
+import { conversationSamples } from "../../packages/civic.polis_deliberation/samples.js";
+import type { GrantedDb, PluginSamples } from "../../src/sdk/index.js";
 import { refreshesSamples, SAMPLE_REFRESH_MODES } from "../../src/shared/sampleRefresh.js";
 import { describeJobRun } from "../../src/jobs/describe.js";
 import { codeOfConductVerdict } from "../../src/services/codeOfConduct.js";
-import { CHECK_UNAVAILABLE_RESULT } from "../../src/modules/civic.assistant/index.js";
+import { CHECK_UNAVAILABLE_RESULT } from "../../src/services/codeOfConductAi.js";
 import { JURISDICTION_TYPES } from "../../src/shared/jurisdictionType.js";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -88,7 +92,7 @@ describe("which hubs have their samples refreshed (2026-11-05)", () => {
   });
 });
 
-describe("when a live sample is replaced", () => {
+describe("when a live sample is replaced (each plugin's refresh rule)", () => {
   const now = new Date("2026-10-07T12:00:00Z");
   const inDays = (d: number) => new Date(now.getTime() + d * DAY).toISOString();
   const open = templatesFor("county").find((t) => t.kind === "vote" && t.phase === "open")!;
@@ -96,30 +100,45 @@ describe("when a live sample is replaced", () => {
   const proposal = templatesFor("county").find((t) => t.kind === "proposal")!;
   const conversation = templatesFor("county").find((t) => t.kind === "deliberation")!;
   const row = (status: string, state: Record<string, unknown> = {}) => ({ id: "p", status, state });
+  /** A proposal's own table, holding its closes_at. */
+  const proposalsTable = (closesAt: string | null) => () =>
+    ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ closes_at: closesAt }) }) }) }) }) as unknown as GrantedDb;
+  /** What the refresh does with a sample: null unless its plugin calls it live and says why. */
+  async function reason(t: SampleTemplate, r: ReturnType<typeof row>, closesAt: string | null = null): Promise<string | null> {
+    const s = asSample(t);
+    const plugins: Record<string, PluginSamples> = {
+      "civic.vote": voteSamples,
+      "civic.proposal": proposalSamples(proposalsTable(closesAt)),
+      "civic.polis_deliberation": conversationSamples,
+    };
+    const refresh = plugins[s.type]?.refresh;
+    if (!refresh?.live(s)) return null;
+    return refresh.reason(s, r, refreshWindow(now));
+  }
 
-  it("replaces an open vote within the window, or one that has closed", () => {
-    expect(refreshReason(open, row("active", { voting_closes_at: inDays(REFRESH_WINDOW_DAYS + 1) }), null, now)).toBeNull();
-    expect(refreshReason(open, row("active", { voting_closes_at: inDays(REFRESH_WINDOW_DAYS - 1) }), null, now)).toMatch(/window/);
-    expect(refreshReason(open, row("closed", { voting_closes_at: inDays(-1) }), null, now)).toMatch(/no longer open/);
+  it("replaces an open vote within the window, or one that has closed", async () => {
+    expect(await reason(open, row("active", { voting_closes_at: inDays(REFRESH_WINDOW_DAYS + 1) }))).toBeNull();
+    expect(await reason(open, row("active", { voting_closes_at: inDays(REFRESH_WINDOW_DAYS - 1) }))).toMatch(/window/);
+    expect(await reason(open, row("closed", { voting_closes_at: inDays(-1) }))).toMatch(/no longer open/);
   });
 
-  it("replaces the endorsement vote only once it has left that phase", () => {
-    expect(refreshReason(endorsing, row("proposed"), null, now)).toBeNull();
-    expect(refreshReason(endorsing, row("active"), null, now)).toMatch(/endorsements/);
+  it("replaces the endorsement vote only once it has left that phase", async () => {
+    expect(await reason(endorsing, row("proposed"))).toBeNull();
+    expect(await reason(endorsing, row("active"))).toMatch(/endorsements/);
   });
 
-  it("reads a proposal's own closes_at, and a conversation's deadline", () => {
-    expect(refreshReason(proposal, row("active"), inDays(10), now)).toBeNull();
-    expect(refreshReason(proposal, row("active"), inDays(2), now)).toMatch(/window/);
-    expect(refreshReason(conversation, row("active", { deadline: inDays(30) }), null, now)).toBeNull();
-    expect(refreshReason(conversation, row("active", { deadline: inDays(1) }), null, now)).toMatch(/window/);
+  it("reads a proposal's own closes_at, and a conversation's deadline", async () => {
+    expect(await reason(proposal, row("active"), inDays(10))).toBeNull();
+    expect(await reason(proposal, row("active"), inDays(2))).toMatch(/window/);
+    expect(await reason(conversation, row("active", { deadline: inDays(30) }))).toBeNull();
+    expect(await reason(conversation, row("active", { deadline: inDays(1) }))).toMatch(/window/);
   });
 
-  it("never replaces what it is not there to keep live", () => {
+  it("never replaces what it is not there to keep live", async () => {
     for (const t of templatesFor("county")) {
       if (t.kind === "vote" && t.phase !== "closed") continue;
       if (t.kind === "proposal" || t.kind === "deliberation") continue;
-      expect(refreshReason(t, row("closed"), null, now), t.key).toBeNull();
+      expect(await reason(t, row("closed")), t.key).toBeNull();
     }
   });
 });

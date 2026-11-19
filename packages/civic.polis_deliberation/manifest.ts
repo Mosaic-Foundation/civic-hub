@@ -3,8 +3,7 @@
 // are built from it. The host wiring (src/processes/deliberationBoot.ts)
 // pairs it with the portable handler (./handler.ts).
 
-import { defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
-import { DEADLINE_CLOSE_INPUT } from "../../src/shared/deadlineClose.js";
+import { DEADLINE_CLOSE_INPUT, defineDescriptor, defineManifest } from "@civic-social/plugin-sdk/manifest";
 
 /**
  * What a Polis conversation is (src/processes/descriptor.ts). Residents take
@@ -115,6 +114,11 @@ const descriptor = defineDescriptor({
 export const POLIS_DELIBERATION_MANIFEST = defineManifest({
   descriptor,
   color: "conversation",
+  // Its colours' defaults (kernel step 4: each plugin carries its own). The
+  // Civic Hub's palette lists the same keys (a few following its base colours), and wins.
+  colors: [
+    { key: "conversation", label: "Conversations", fg: "#0f5e66", bg: "#ddefef", dark: { fg: "#6fc4c9", bg: "#1b2e30" } },
+  ],
   detailPath: (id) => `/deliberation/${id}`,
   requiredSchema: [
     {
@@ -134,7 +138,22 @@ export const POLIS_DELIBERATION_MANIFEST = defineManifest({
     { name: "deliberation_drafts", rows: "export", key: ["id"], holds: "residents' unfinished conversation drafts" },
   ],
   jobs: [],
-  pluginSection: { order: 40, name: "Conversations", what: "Structured group conversations that map where people agree.", fields: [{ key: "plugin.conversation.polis_url", kind: "url" }] },
+  pluginSection: {
+    order: 40,
+    name: "Conversations",
+    what: "Structured group conversations that map where people agree.",
+    fields: [
+      {
+        key: "plugin.conversation.polis_url", kind: "url",
+        help: { text: "The address of the Polis server this hub's conversations run on. Left empty, the platform's server is used.", page: "/reference/plugins", anchor: "plugin-conversation-polis-url" },
+      },
+    ],
+    words: ["polis", "deliberation", "discussion", "conversations", "dialogue"],
+    help: { text: "Group conversations that show where people agree. They run on a Polis server. Off hides the pages, stops new ones and pauses deadlines.", page: "/reference/plugins", anchor: "plugins-conversation" },
+    search: {
+      "plugin.conversation.polis_url": { label: "Conversation server", words: ["polis", "polis server", "polis url"] },
+    },
+  },
   activities: {},
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
   // Dropped deliberately, with Adam's field-row yes (2026-10-21): the outside

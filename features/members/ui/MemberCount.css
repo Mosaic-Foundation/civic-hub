@@ -1,0 +1,51 @@
+/* "N members" and the avatar stack on Home (members and invites slice), and
+   the count in the right column's About card. */
+
+.member-stack {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.member-stack-avatars {
+  display: inline-flex;
+}
+
+.member-stack-avatars .pattern-avatar {
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--color-bg);
+}
+
+.member-stack-avatars .pattern-avatar + .pattern-avatar {
+  margin-left: calc(-1 * var(--space-2));
+}
+
+.member-stack-count {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+a.member-stack-count {
+  text-decoration: none;
+}
+
+a.member-stack-count:hover,
+a.member-stack-count:focus-visible {
+  text-decoration: underline;
+}
+
+/* An admin's note while the count is below the Members plugin's threshold. */
+.member-stack-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.aside-about-count {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}

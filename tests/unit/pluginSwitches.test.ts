@@ -16,7 +16,8 @@ import { describe, expect, it } from "vitest";
 import { ATHENS_HUB } from "../fixtures/hubs/index.js";
 import { runWithHub } from "../../src/config/hubContext.js";
 import { PLUGIN_SETUP, pluginSetupStatus, pluginShownGiven } from "../../src/shared/pluginSetup.js";
-import { onboardingTarget, searchChipsShown } from "../../ui/src/config/pluginRules.js";
+import { searchChipsShown } from "../../ui/src/config/pluginRules.js";
+import { onboardingStop } from "../../packages/civic.wordcloud/ui/onboarding.js";
 
 const { registeredProcessTypes } = await import("../../src/processes/registry.js");
 const { enabledProcessTypesAmong } = await import("../../src/services/pluginGate.js");
@@ -104,11 +105,10 @@ describe("needs setup (src/shared/pluginSetup.ts)", () => {
 });
 
 describe("UI gating (ui/src/config/pluginRules.ts)", () => {
-  it("a new account goes to the word cloud only when there is one AND Word clouds is on", () => {
-    expect(onboardingTarget("proc_abc", true)).toBe("/wordcloud/proc_abc?onboarding=1");
-    expect(onboardingTarget("proc_abc", false)).toBeNull();
-    expect(onboardingTarget(undefined, true)).toBeNull();
-    expect(onboardingTarget("  ", true)).toBeNull();
+  it("a new account goes to the word cloud only when there is one (Word clouds' stop; the kernel asks it only while Word clouds is on)", () => {
+    expect(onboardingStop("proc_abc")).toBe("/wordcloud/proc_abc?onboarding=1");
+    expect(onboardingStop(undefined)).toBeNull();
+    expect(onboardingStop("  ")).toBeNull();
   });
 
   it("search chips: only types the hub shows", () => {

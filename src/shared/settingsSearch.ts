@@ -16,8 +16,11 @@
 // tests/e2e/settingsSearch.spec.ts opens every entry's link and finds the
 // setting on the page.
 //
-// A plugin package can carry its own entries in its manifest
-// (pluginSection.search); one there wins over this list.
+// A plugin package carries its own entries in its manifest: its settings'
+// labels and words (pluginSection.search) and its panel's words
+// (pluginSection.words); a hub feature's panel words are in its entry
+// (src/shared/hubFeatures.ts or its manifest's pluginSection). One there wins
+// over this list, which keeps the hub's own settings (kernel step 4).
 //
 // The link: /admin/settings/<section>#<anchorForKey(key)>. Every "?" button
 // (HelpButton) carries that anchor, so the page scrolls to the setting's own
@@ -92,26 +95,10 @@ export const SEARCH_WORDS: Readonly<Record<string, SearchWords>> = {
   },
   "settings.plugins": { words: ["features", "modules", "add-ons", "addons", "extensions", "apps", "turn on", "turn off"] },
 
-  // Plugin panels (labels from each plugin).
-  "plugins.vote": { words: ["voting", "ballot", "ballots", "poll", "polls", "advisory vote"] },
-  "plugins.proposal": { words: ["proposals", "ideas", "suggestions", "petition", "petitions", "propose"] },
-  "plugins.project": { words: ["projects", "initiatives", "volunteer"] },
+  // Events' panel (Events is released: its words move to its manifest with
+  // its next version). Every other plugin's and feature's panel words are
+  // with its entry (pluginSection.words, or src/shared/hubFeatures.ts).
   "plugins.events": { words: ["events", "calendar", "meetings", "happenings", "schedule"] },
-  "plugins.conversation": { words: ["polis", "deliberation", "discussion", "conversations", "dialogue"] },
-  "plugins.wordcloud": { words: ["word cloud", "word clouds", "words", "onboarding question"] },
-  "plugins.brief": { words: ["briefs", "report", "results", "officials", "summary of results"] },
-  "plugins.announcement": { words: ["announcements", "news", "notices", "posts", "updates"] },
-  "plugins.meeting_summary": { words: ["meetings", "minutes", "agendas", "council meetings", "ai summaries", "recordings"] },
-  "plugins.pinning": { words: ["pin", "pinned", "sticky", "right column", "featured"] },
-  "plugins.news_sync": { words: ["rss", "news feed", "feed import", "import news", "atom"] },
-  "plugins.assistant": { words: ["ai", "artificial intelligence", "writing help", "llm", "claude", "chatbot"] },
-  "plugins.search": { words: ["search", "find", "full text"] },
-  "plugins.feedback": { words: ["feedback", "contact", "bug reports", "report a problem", "suggestions"] },
-  "plugins.digest": { words: ["digest", "newsletter", "summary email", "weekly email", "daily email"] },
-  "plugins.admin_digest": { words: ["admin email", "daily email", "admin summary", "notifications"] },
-  "plugins.members": { words: ["members", "member count", "faces", "avatars", "directory", "residents list"] },
-  "plugins.fediverse": { words: ["fediverse", "mastodon", "activitypub", "follow", "followers", "social media", "bluesky"] },
-  "plugins.analytics": { words: ["activity", "analytics", "statistics", "stats", "metrics", "numbers", "reporting", "participation counts"] },
 
   // Parts of sections.
   "participation.threshold": {
@@ -212,31 +199,11 @@ export const SEARCH_WORDS: Readonly<Record<string, SearchWords>> = {
   },
 
   // Plugin settings (until each package carries its own pluginSection.search).
-  "plugin.vote.min_duration_days": { label: "Shortest voting window", words: ["minimum vote length", "vote duration", "how long votes run"] },
-  "plugin.vote.max_duration_days": { label: "Longest voting window", words: ["maximum vote length", "vote duration", "how long votes run"] },
-  "plugin.vote.default_duration_days": { label: "Default voting window", words: ["vote length", "vote duration", "how long votes run"] },
-  "plugin.vote.default_check_mode": { label: "Receipt check, for new votes", words: ["receipt", "ballot check", "verify vote", "show choice"] },
-  "plugin.conversation.polis_url": { label: "Conversation server", words: ["polis", "polis server", "polis url"] },
-  "plugin.wordcloud.onboarding_id": { label: "The hub's word cloud", words: ["onboarding question", "banner word cloud", "sign up question"] },
-  "plugin.meeting_summary.connector_id": { label: "Where meetings come from", words: ["source", "connector", "wix", "youtube", "agenda site"] },
-  "plugin.meeting_summary.source_url": { label: "Meetings page", words: ["agenda page", "minutes page", "url", "website"] },
-  "plugin.meeting_summary.youtube_channel_id": { label: "YouTube channel ID", words: ["youtube", "video", "recordings", "channel"] },
-  "plugin.meeting_summary.title_filter": { label: "Only meetings whose title contains", words: ["filter", "include meetings"] },
-  "plugin.meeting_summary.type_exclude": { label: "Skip meetings whose title contains", words: ["exclude", "skip", "ignore meetings"] },
-  "plugin.meeting_summary.cutoff_date": { label: "Ignore meetings before", words: ["start date", "cutoff", "older meetings"] },
-  "plugin.meeting_summary.auto_publish": { label: "Publish summaries without review", words: ["auto publish", "automatic", "skip review", "review summaries"] },
-  "plugin.meeting_summary.extraction_instructions": { label: "Extra instructions for the summarizer", words: ["ai instructions", "prompt", "summarizer", "summariser"] },
-  "plugin.meeting_summary.wix_fields": { label: "Wix collection columns", words: ["wix", "columns", "fields", "mapping"] },
-  "plugin.meeting_summary.record_grace_days": { label: "Wait for a meeting's record", words: ["grace", "wait", "delay", "days"] },
-  "plugin.meeting_summary.source_quiet_days": { label: "Ask for a check after no new meeting for", words: ["quiet", "stale", "no new meetings", "alert"] },
-  "plugin.news_sync.connector": { label: "Kind of feed", words: ["rss", "atom", "news feed type"] },
-  "plugin.news_sync.source_url": { label: "Feed address", words: ["rss url", "feed url", "news url"] },
-  "plugin.news_sync.from_label": { label: "From label", words: ["source name", "from", "news source", "label"] },
-  "plugin.news_sync.pill_label": { label: "Pill label", words: ["news", "pill", "category", "tag", "label", "filter"] },
   "plugin.digest.send_hour": { label: "Send time", words: ["digest time", "email time", "when emails go out", "hour"] },
   "plugin.feedback.contact_email": { label: "Address on the Feedback page", words: ["feedback email", "contact email", "support address"] },
   "plugin.members.min_count": { label: "Show members from", words: ["member threshold", "minimum members", "member count"] },
   "plugin.members.page_before_threshold": { label: "Show the Members page before then", words: ["members page", "early"] },
+  "plugin.pinning.who": { label: "Who can pin", words: ["pin", "who can pin", "members pin", "urgent"] },
   "plugin.fediverse.post_mode": { label: "How often to post", words: ["mastodon posts", "roundup", "daily", "weekly", "fediverse posts"] },
   "plugin.fediverse.hashtags": { label: "Hashtags", words: ["hashtag", "tags", "mastodon tags"] },
   "plugin.fediverse.blocked_servers": { label: "Blocked servers", words: ["block", "blocklist", "instances", "mastodon servers", "defederate"] },
@@ -326,7 +293,8 @@ export function buildSearchIndex(): SearchEntry[] {
     const isPanel = key === `plugins.${place.plugin}`;
     const label = own?.label ?? hub?.label ?? (isSection ? NAV_LABEL[place.section] : isPanel ? plugin?.name : undefined);
     if (!label) continue; // tests/unit/settingsSearch.test.ts makes sure this never happens
-    const words = [...(own?.words ?? hub?.words ?? []), ...(isPanel ? SWITCH_WORDS : [])];
+    const panelWords = isPanel ? plugin?.words : undefined;
+    const words = [...(own?.words ?? panelWords ?? hub?.words ?? []), ...(isPanel ? SWITCH_WORDS : [])];
     const where = isSection
       ? "Hub settings"
       : plugin && !isPanel

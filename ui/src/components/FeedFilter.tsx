@@ -1,13 +1,16 @@
 import type { Hub } from "../config/hub";
 import { useHub } from "../config/hub";
+import { spaceNow } from "../host";
+import { feedFilters } from "../processes";
 import type { FeedFilterKey } from "./feedFilterState";
 import "./FeedFilter.css";
 
 /**
  * Slice 10 — filter pills above the feed.
  *
- * The pill choices: All / Announcements / News / Meeting summaries /
- * Activity. The active pill matches the type discriminator that
+ * The pill choices: All, then each surface a type adds (its UI module's
+ * `feedFilter`: Announcements, News, Meeting summaries on a Civic Hub), then
+ * Activity. The kernel names none of them (kernel step 3, Nov 19). The active pill matches the type discriminator that
  * Feed.tsx::kindFromEvent already uses, so the visible cards always
  * agree with the filter selection.
  *
@@ -26,27 +29,16 @@ export interface FeedFilterChoice {
 // A function, not a constant: the labels read the hub's settings, which
 // arrive after this module loads. A constant built here said "Board" on
 // every hub (2026-10-06).
+// Hidden when the hub switched the type's plugin off, or while it needs
+// setup and has nothing to show (config/plugins.tsx).
 function choices(hub: Hub): FeedFilterChoice[] {
+  const space = spaceNow();
   return [
     { key: "all", label: "All", pillClass: "feed-filter-pill--all" },
-    {
-      key: "announcement",
-      label: "Announcements",
-      pillClass: "feed-filter-pill--announcement",
-    },
-    // Posts News Sync copies in from another site (2026-11-16), under the
-    // hub's own word for them (plugin.news_sync.pill_label, 2026-11-18).
-    { key: "news", label: hub.setting("plugin.news_sync.pill_label")?.trim() || "News", pillClass: "feed-filter-pill--news" },
-    {
-      key: "meeting_summary",
-      label: hub.meetingSummaryLabel(true),
-      pillClass: "feed-filter-pill--meeting",
-    },
-    {
-      key: "activity",
-      label: "Activity",
-      pillClass: "feed-filter-pill--activity",
-    },
+    ...feedFilters()
+      .filter((f) => hub.plugins.shown(f.plugin as never))
+      .map((f) => ({ key: f.surface, label: f.label(space), pillClass: `feed-filter-pill--${f.pillClass}` })),
+    { key: "activity", label: "Activity", pillClass: "feed-filter-pill--activity" },
   ];
 }
 
@@ -55,23 +47,12 @@ interface Props {
   onChange: (next: FeedFilterKey) => void;
 }
 
-// Hidden when the hub switched the plugin off, or while it needs setup and
-// has nothing to show (config/plugins.tsx).
-function visibleChoices(hub: Hub): FeedFilterChoice[] {
-  return choices(hub).filter((choice) => {
-    if (choice.key === "announcement") return hub.plugins.shown("announcement");
-    if (choice.key === "news") return hub.plugins.shown("news_sync");
-    if (choice.key === "meeting_summary") return hub.plugins.shown("meeting_summary");
-    return true;
-  });
-}
-
 export default function FeedFilter({ active, onChange }: Props) {
   const hub = useHub();
   return (
     <nav className="feed-filter" aria-label="Filter feed by post type">
       <ul className="feed-filter-list">
-        {visibleChoices(hub).map((choice) => {
+        {choices(hub).map((choice) => {
           const isActive = choice.key === active;
           const cls = [
             "feed-filter-pill",

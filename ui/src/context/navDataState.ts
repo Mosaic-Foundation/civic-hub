@@ -4,7 +4,8 @@ import { createContext, useContext } from "react";
 import type { EditNotification } from "../services/api";
 
 export interface NavData {
-  memberCount: number | null;
+  /** The number beside a feature's section, by section id ("Members 7,925"); absent shows none. */
+  sectionCounts: Readonly<Record<string, number>>;
   /** New in the review queues; 0 for anyone not an admin. */
   reviews: number;
   /** The first queue with something new, so opening it clears what was counted. */
@@ -16,7 +17,7 @@ export interface NavData {
 }
 
 const EMPTY: NavData = {
-  memberCount: null,
+  sectionCounts: {},
   reviews: 0,
   reviewsTo: "/admin/reviews",
   mySubmissions: 0,

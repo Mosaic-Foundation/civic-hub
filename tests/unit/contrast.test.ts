@@ -28,7 +28,12 @@ function declarations(css: string, select: (selector: string) => boolean): Vars 
 }
 
 const palette = declarations(read("design-system/tokens.css"), (s) => s === ":root");
-const roles = declarations(read("theme.css"), (s) => s === ":root");
+// The space type's palette colours (spaces/civic/palette.css; kernel step 4) join the roles.
+const SPACE_PALETTE_CSS = readFileSync(new URL("../../spaces/civic/palette.css", import.meta.url), "utf8");
+const roles = new Map([
+  ...declarations(read("theme.css"), (s) => s === ":root"),
+  ...declarations(SPACE_PALETTE_CSS, (s) => s === ":root"),
+]);
 
 /** A token set: the palette, the roles, then a look's or mode's overrides, later winning. */
 function tokenSet(...layers: Vars[]): Vars {
@@ -134,7 +139,10 @@ const PAIRS: Array<[string, string, number]> = [
 
 // The hub's look (Daylight, Adam's choice, 2026-10-29) and its dark set
 // (decision 9), each over the same palette.
-const dark = declarations(read("tokens/dark.css"), (s) => s === ':root[data-mode="dark"]');
+const dark = new Map([
+  ...declarations(read("tokens/dark.css"), (s) => s === ':root[data-mode="dark"]'),
+  ...declarations(SPACE_PALETTE_CSS, (s) => s === ':root[data-mode="dark"]'),
+]);
 const SETS: Record<string, Vars> = {
   light: tokenSet(),
   dark: tokenSet(dark),

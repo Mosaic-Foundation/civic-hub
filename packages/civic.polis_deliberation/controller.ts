@@ -2,34 +2,20 @@ import {
   ConflictError,
   NotFoundError,
   ValidationError,
-  AiLimitError,
+  assertPassesWordlist,
+  codeOfConduct,
+  processesOf,
   route,
-  getActor,
   getAuthUser,
-  can,
-  executeAction,
-  getAllProcesses,
-  getProcess,
-  readsAsClosed,
+} from "@civic-social/plugin-sdk";
+import { conversationHandler, getPolisAdapter } from "./boot.js";
+import {
   isSeedConversation,
   getMockClusters,
   getMockNextStatement,
   advanceMockStatement,
   addMockStatement,
-  submitAsCreator,
-  reviewMailbox,
-  checkTextAgainstCoC,
-  getHubConfig,
-  personFallbackName,
-  readAsPage,
-  viewFor,
-  getProcessHandler,
-  briefIdForSource,
-  regenerateBrief,
-  admitCodeOfConductCheck,
-} from "@civic-social/plugin-sdk/first-party";
-import { getPolisAdapter } from "./boot.js";
-import { conversationHost } from "./host.js";
+} from "./mocks.js";
 import {
   findExistingSubmission,
   getVotedStatementIds,
@@ -38,15 +24,18 @@ import {
 } from "./votes.js";
 import type { PolisDeliberationState } from "./types.js";
 import type { VoteDirection } from "./adapter/types.js";
-import { assertPassesWordlist } from "../../src/shared/wordlist/index.js";
+
+const CONVERSATION_TYPE = "civic.polis_deliberation";
+/** The kernel's view of this package's processes (asked for where used: the SDK binds as the hub loads). */
+const ownProcesses = () => processesOf(CONVERSATION_TYPE);
 
 
 async function getConversationId(processId: string): Promise<string> {
-  const process = await getProcess(processId);
+  const process = await ownProcesses().get(processId);
   if (!process) throw new NotFoundError("Conversation not found");
   // Past its deadline it reads as closed until the hourly job closes it, so
   // it takes no more statements or votes in the meantime.
-  if (process.status !== "active" || (await readsAsClosed(process))) {
+  if (process.status !== "active" || (await conversationHandler().readAsClosed?.(process))) {
     throw new ConflictError("Conversation is not active", "conversation_not_active");
   }
   const state = process.state as unknown as PolisDeliberationState;
@@ -209,60 +198,33 @@ export const handleCreateDeliberation = route(async (req, res) => {
     ...(Array.isArray(sources) && sources.length ? { sources } : {}),
   };
 
-  // The always-on automated Code of Conduct check. Conversations have no
-  // drafting flow (and no assistant), so the check runs here at submission
-  // instead of on a draft. Hard findings block; an unavailable checker
-  // fails open to human admin review, same as the draft flows.
-  let cocPassed = false;
-  try {
-    // Counted like the drafts' check (Audit 2): over the hourly count is a
-    // 429; a spent hub budget falls through to "unavailable" below. The check
-    // is the hub's own moderation, so it is counted as the hub's: the
-    // conversation's grant has no AI (plugin session 2).
-    await admitCodeOfConductCheck(user.id);
-    const findings = await checkTextAgainstCoC(
-      [
-        { label: "Topic", text: String(topic) },
-        { label: "Framing", text: String(framing) },
-        ...(Array.isArray(seed_statements) && seed_statements.length
-          ? [{ label: "Seed statements", text: seed_statements.join("\n") }]
-          : []),
-      ],
-      await getHubConfig(),
-    );
-    if (findings.length > 0) {
-      res.status(400).json({
-        error:
-          "This conversation can't be submitted yet — the automated Code of Conduct check flagged: " +
-          findings.map((f) => f.message).join(" "),
-        code: "coc_flagged",
-        coc_findings: findings,
-      });
-      return;
-    }
-    cocPassed = true;
-  } catch (cocErr) {
-    if (cocErr instanceof AiLimitError && !cocErr.budget) {
-      throw cocErr;
-    }
-    console.error(
-      "[deliberation-coc] automated check unavailable, failing open to human review:",
-      cocErr instanceof Error ? cocErr.message : cocErr,
-    );
+  // The always-on automated Code of Conduct check (the kernel's). Conversations
+  // created here have no draft, so the check runs at submission instead of on
+  // a draft. Hard findings block; an unavailable checker fails open to human
+  // admin review, same as the draft flows.
+  const check = await codeOfConduct.check(res, [
+    { label: "Topic", text: String(topic) },
+    { label: "Framing", text: String(framing) },
+    ...(Array.isArray(seed_statements) && seed_statements.length
+      ? [{ label: "Seed statements", text: seed_statements.join("\n") }]
+      : []),
+  ]);
+  if (check.findings.length > 0) {
+    res.status(400).json({
+      error:
+        "This conversation can't be submitted yet — the automated Code of Conduct check flagged: " +
+        check.findings.map((f) => f.message).join(" "),
+      code: "coc_flagged",
+      coc_findings: check.findings,
+    });
+    return;
   }
 
   // One creation path: always submit for review; admins are auto-approved.
-  const result = await submitAsCreator(
-    {
-      process_type: "civic.polis_deliberation",
-      title: title || topic,
-      description: description || framing,
-      creator_id: user.id,
-      creator_name: user.full_name || user.display_name || personFallbackName(),
-      creator_email: reviewMailbox(user.email),
-      state: statePayload,
-    },
-    { cocPassed, creatorIsAdmin: await can(getActor(res), "hub.administer") },
+  const result = await ownProcesses().submit(
+    res,
+    { type: CONVERSATION_TYPE, title: title || topic, description: description || framing, state: statePayload },
+    { cocPassed: check.passed },
   );
 
   res.status(201).json(result);
@@ -270,57 +232,24 @@ export const handleCreateDeliberation = route(async (req, res) => {
 
 // Admin actions answer like every action: { result, view } (never the raw row).
 export const handleStartDeliberation = route(async (req, res) => {
-  const user = getAuthUser(res);
   const processId = req.params.processId as string;
-
-  const result = await executeAction(processId, {
-    type: "start",
-    actor: user.id,
-    payload: {},
-  }, "admin");
-
-  res.json({ result: result.result, view: await viewFor(res, processId) });
+  const result = await ownProcesses().actOn(res, processId, "start");
+  res.json({ result: result.result, view: await ownProcesses().view(res, processId) });
 });
 
 export const closeDeliberation = route(async (req, res) => {
-  const user = getAuthUser(res);
   const processId = req.params.processId as string;
-
   // Before its deadline, the close needs the admin's note (Close early).
   const note = typeof req.body?.note === "string" ? req.body.note : undefined;
-  const result = await executeAction(processId, {
-    type: "close",
-    actor: user.id,
-    payload: note === undefined ? {} : { note },
-  }, "admin");
-
-  res.json({ result: result.result, view: await viewFor(res, processId) });
-});
-
-// The summary is its brief's since plugin session 2: making it again is the
-// brief's Regenerate (replaced while the brief is unpublished, staged once it
-// is published). Kept here so an admin's older link still works.
-export const regenerateSummary = route(async (req, res) => {
-  const user = getAuthUser(res);
-  const processId = req.params.processId as string;
-  const briefId = await briefIdForSource(processId);
-  if (!briefId) throw new ConflictError("This conversation has no brief yet; its summary is made with the brief.", "no_brief");
-  const { staged } = await regenerateBrief(briefId, { id: user.id, email: user.email ?? null });
-
-  res.json({ result: { staged, brief_id: briefId }, view: await viewFor(res, processId) });
+  const result = await ownProcesses().actOn(res, processId, "close", note === undefined ? {} : { note });
+  res.json({ result: result.result, view: await ownProcesses().view(res, processId) });
 });
 
 export const listDeliberations = route(async (_req, res) => {
   // Type-filtered in SQL — this list was fetching every process's full
   // state JSONB to keep five conversations (perf pass, 2026-08-28).
-  const deliberations = await getAllProcesses([
-    "civic.polis_deliberation",
-  ]);
-  const handler = getProcessHandler("civic.polis_deliberation");
-  if (!handler) {
-    res.json([]);
-    return;
-  }
+  const deliberations = await ownProcesses().list();
+  const handler = conversationHandler();
   const summaries = deliberations.map((p) => {
     const summary = handler.getSummary(p);
     return p.isSample ? { ...summary, is_sample: true } : summary;
@@ -331,5 +260,5 @@ export const listDeliberations = route(async (_req, res) => {
 export const getDeliberation = route(async (req, res) => {
   // The shared read path (visibility, bylines, sample badge), with the
   // conversation's own fields from its handler, has_submitted included.
-  res.json(await readAsPage(req, req.params.processId as string, "civic.polis_deliberation", "Conversation not found"));
+  res.json(await ownProcesses().page(req, req.params.processId as string, "Conversation not found"));
 });

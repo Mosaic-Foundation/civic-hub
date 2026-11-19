@@ -248,7 +248,7 @@ export async function breakdownsFor(processId: string): Promise<Breakdown[]> {
 
 /**
  * The tables for a process its caller knows has just closed (the brief's
- * spawn, src/processes/spawnBrief.ts), without reading it back.
+ * spawn, the result of src/services/processClosed.ts), without reading it back.
  */
 export async function breakdownsForClosed(process: Process): Promise<Breakdown[]> {
   const config = currentAboutConfig();

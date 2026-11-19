@@ -20,16 +20,6 @@ export interface HeldBackRecipient {
 
 // --- Structured content types ---
 
-export interface ContentSection {
-  title: string;
-  body: string | string[];
-}
-
-export interface ContentLink {
-  label: string;
-  url: string;
-}
-
 export interface CommunityInputConfig {
   prompt?: string;
   label: string;
@@ -47,29 +37,14 @@ export interface CommunityInputConfig {
 
 export type CommentPhase = "proposal" | "vote" | "comment" | "update";
 
-export interface AfterVoteInfo {
-  body: string;
-  recipients: string[];
-}
-
-export interface ProcessContent {
-  core_question?: string;
-  sections?: ContentSection[];
-  key_tradeoff?: string;
-  links?: ContentLink[];
-  community_input?: CommunityInputConfig;
-  after_vote?: AfterVoteInfo;
-}
-
 // --- Status types ---
 
-export type VoteProcessStatus = "draft" | "proposed" | "threshold_met" | "active" | "closed" | "finalized";
 export type ProposalProcessStatus = "open" | "closed";
 
 // --- Read layer (UI-facing) ---
 
 /** Shared base for all process summaries */
-interface ProcessSummaryBase {
+export interface ProcessSummaryBase {
   id: string;
   type: string;
   title: string;
@@ -95,16 +70,6 @@ interface ProcessSummaryBase {
   is_sample?: boolean;
 }
 
-/** Vote summary (from GET /process list) */
-export interface VoteSummary extends ProcessSummaryBase {
-  type: "civic.vote";
-  status: VoteProcessStatus;
-  total_votes: number;
-  support_count: number;
-  support_threshold: number;
-  closes_at: string | null;
-}
-
 /** Proposal summary (from GET /process list) */
 export interface ProposalSummary extends ProcessSummaryBase {
   type: "civic.proposal";
@@ -113,72 +78,12 @@ export interface ProposalSummary extends ProcessSummaryBase {
   support_threshold: number;
 }
 
-/** Vote-results summary as it appears in the public process list. The
- *  public listProcesses endpoint only returns vote-results records with
- *  publication_status === "published"; pending/approved records are
- *  filtered out server-side.
- *
- *  Renamed from PublishedBriefSummary in Slice 8.5. */
-export interface PublishedVoteResultsSummary {
-  id: string;
-  type: "civic.vote_results";
-  title: string;
-  source_process_id: string;
-  publication_status: "published";
-  participation_count: number;
-  generated_at: string;
-  published_at: string;
-  created_at: string;
+/** Another type's list row: the shared fields, and the type's own (its package types them). */
+export interface OtherProcessSummary extends ProcessSummaryBase {
+  [field: string]: unknown;
 }
 
-export type ProcessSummary = VoteSummary | ProposalSummary | PublishedVoteResultsSummary;
-
-/** Vote detail state */
-export interface VoteState {
-  id: string;
-  /** How a receipt check answers once the vote closes. */
-  check_mode?: "show_choice" | "counted_only";
-  /** Closed before its deadline: the line and the admin's note. */
-  closed_early?: ClosedEarly | null;
-  /** An admin could close it early now, by this action. */
-  early_close?: EarlyCloseOffer | null;
-  type: "civic.vote";
-  method: string; // "yes_no_unsure" | "approval"
-  title: string;
-  description: string;
-  status: VoteProcessStatus;
-  options: string[];
-  tally: Record<string, number> | null;
-  total_votes: number | null;
-  has_voted: boolean | null;
-  // No "your current vote": the hub keeps no link from a voter to a ballot.
-  // The voter's own choice comes from the receipt this browser holds
-  // (services/voteReceipts.ts).
-  has_supported: boolean | null;
-  support_count: number;
-  support_threshold: number;
-  activation_mode: "direct" | "proposal_required";
-  voting_opens_at: string | null;
-  voting_closes_at: string | null;
-  closes_at: string | null;
-  result: { tally: Record<string, number>; total_votes: number; computed_at: string } | null;
-  created_at: string;
-  created_by: string;
-  creator_name: string;
-  creator_is_admin: boolean;
-  /**
-   * The author's public office, when an admin has designated one on their
-   * account. Both null for residents. The TITLE renders as its own pill
-   * next to the name (see Creator); the TYPE only selects its colour.
-   * Independent of creator_is_admin — an account can carry both.
-   */
-  creator_official_type: string | null;
-  creator_official_title: string | null;
-  jurisdiction?: string;
-  content?: ProcessContent;
-  /** Seeded sample content (Phase 7): present and true for planted rows. */
-  is_sample?: boolean;
-}
+export type ProcessSummary = ProposalSummary | OtherProcessSummary;
 
 /** Proposal detail state */
 export interface ProposalState {
@@ -208,7 +113,16 @@ export interface ProposalState {
   is_sample?: boolean;
 }
 
-export type ProcessState = VoteState | ProposalState;
+/** Another type's state as GET /process/:id/state reads it: its read model, typed by its package. */
+export interface OtherProcessState {
+  id: string;
+  type: string;
+  title: string;
+  status: string;
+  [field: string]: unknown;
+}
+
+export type ProcessState = ProposalState | OtherProcessState;
 
 export function listProcesses(types?: string[]): Promise<ProcessSummary[]> {
   if (types && types.length > 0) {
@@ -239,12 +153,6 @@ export interface ActionResult<V = ProcessState> {
   view: V | null;
 }
 
-/** The receipt and change key a voter's browser holds, sent to change a vote. */
-export interface HeldReceiptPayload {
-  receipt_id: string;
-  change_key: string;
-}
-
 /** Close early (an admin, before the deadline): what a page's read model offers. */
 export interface EarlyCloseOffer {
   action: string;
@@ -262,153 +170,6 @@ export interface ClosedEarly {
 /** Close a process early, with the admin's note (required). */
 export function closeEarly<V = ProcessState>(processId: string, action: string, note: string): Promise<ActionResult<V>> {
   return request("POST", `/process/${processId}/action`, { type: action, payload: { note } });
-}
-
-export async function submitVote(
-  processId: string,
-  actor: string,
-  option: string,
-  receipt: HeldReceiptPayload | null = null,
-): Promise<ActionResult> {
-  await askAboutYouFirst();
-  return request("POST", `/process/${processId}/action`, {
-    type: "process.vote",
-    actor,
-    payload: receipt ? { option, receipt } : { option },
-  });
-}
-
-export async function submitApprovalVote(
-  processId: string,
-  actor: string,
-  selections: string[],
-  receipt: HeldReceiptPayload | null = null,
-): Promise<ActionResult> {
-  await askAboutYouFirst();
-  return request("POST", `/process/${processId}/action`, {
-    type: "process.vote",
-    actor,
-    payload: receipt ? { selections, receipt } : { selections },
-  });
-}
-
-export async function supportVote(processId: string, actor: string): Promise<ActionResult> {
-  await askAboutYouFirst();
-  return request("POST", `/process/${processId}/action`, {
-    type: "process.support",
-    actor,
-    payload: {},
-  });
-}
-
-export function unsupportVote(processId: string, actor: string): Promise<ActionResult> {
-  return request("POST", `/process/${processId}/action`, {
-    type: "process.unsupport",
-    actor,
-    payload: {},
-  });
-}
-
-// --- Civic Proposals (separate from civic.vote process) ---
-
-export type CivicProposalStatus =
-  | "submitted"
-  | "endorsed"
-  | "converted"
-  | "archived"
-  // Phase 2 added the canonical terminal "closed" status (deadline-close) to
-  // the backend ProposalStatus and ProposalDetail.tsx renders it; mirror it
-  // here so the `status === "closed"` comparisons type-check.
-  | "closed";
-
-/** Proposal summary (from GET /proposals list) */
-export interface CivicProposalSummary {
-  id: string;
-  title: string;
-  description: string;
-  // Raw id is redacted ("") on public responses; use creator_name.
-  submitted_by: string;
-  creator_name: string;
-  creator_is_admin: boolean;
-  /**
-   * The author's public office, when an admin has designated one on their
-   * account. Both null for residents. The TITLE renders as its own pill
-   * next to the name (see Creator); the TYPE only selects its colour.
-   * Independent of creator_is_admin — an account can carry both.
-   */
-  creator_official_type: string | null;
-  creator_official_title: string | null;
-  status: CivicProposalStatus;
-  support_count: number;
-  support_threshold: number;
-  category: string | null;
-  assistant_helped: boolean;
-  closes_at: string | null;
-  created_at: string;
-  /** Seeded sample content (Phase 7): present and true for planted rows. */
-  is_sample?: boolean;
-}
-
-/** Proposal detail (from GET /proposals/:id) */
-export interface CivicProposalDetail {
-  id: string;
-  /** Closed before its deadline: the line and the admin's note. */
-  closed_early?: ClosedEarly | null;
-  /** An admin could close it early now, by this action. */
-  early_close?: EarlyCloseOffer | null;
-  title: string;
-  description: string;
-  optional_links: string[];
-  submitted_by: string;
-  creator_name: string;
-  creator_is_admin: boolean;
-  /**
-   * The author's public office, when an admin has designated one on their
-   * account. Both null for residents. The TITLE renders as its own pill
-   * next to the name (see Creator); the TYPE only selects its colour.
-   * Independent of creator_is_admin — an account can carry both.
-   */
-  creator_official_type: string | null;
-  creator_official_title: string | null;
-  status: CivicProposalStatus;
-  support_count: number;
-  support_threshold: number;
-  has_supported: boolean | null;
-  category: string | null;
-  assistant_helped: boolean;
-  closes_at: string | null;
-  created_at: string;
-  updated_at: string;
-  /** Seeded sample content (Phase 7): present and true for planted rows. */
-  is_sample?: boolean;
-}
-
-/** List proposals (optional status filter) */
-export function listCivicProposals(status?: CivicProposalStatus): Promise<CivicProposalSummary[]> {
-  const params = status ? `?status=${encodeURIComponent(status)}` : "";
-  return request("GET", `/proposals${params}`);
-}
-
-/** Get proposal detail */
-/** Per-actor fields come from the session token, never from a query param. */
-export function getCivicProposal(id: string): Promise<CivicProposalDetail> {
-  return request("GET", `/proposals/${id}`);
-}
-
-/** Support/endorse a proposal */
-export async function supportCivicProposal(
-  proposalId: string,
-  userId: string
-): Promise<{ support_count: number; status: string; view: CivicProposalDetail | null }> {
-  await askAboutYouFirst();
-  return request("POST", `/proposals/${proposalId}/support`, { user_id: userId });
-}
-
-/** Withdraw support from a proposal — allowed while it is still open. */
-export function unsupportCivicProposal(
-  proposalId: string,
-): Promise<{ support_count: number; status: string; view: CivicProposalDetail | null }> {
-  return request("DELETE", `/proposals/${proposalId}/support`);
 }
 
 // --- Drafting assistant (shared across process types) ---
@@ -474,26 +235,6 @@ export function suggestForDraft<D>(
 }
 
 // --- Proposal Drafts ---
-
-export interface ProposalDraft {
-  id: string;
-  user_id: string;
-  category: DraftCategory | null;
-  title: string;
-  description: string;
-  sources: string;
-  considerations: string;
-  proposal_duration_ms: number;
-  conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
-  last_review_result: DraftSuggestion[] | null;
-  draft_modified_since_review: boolean;
-  steward_approved: boolean | null;
-  assistant_helped: boolean;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  links: ProposedLink[];
-}
 
 export interface AssistantResponse {
   message: string;
@@ -602,160 +343,6 @@ export function listProcessEdits(processId: string): Promise<{ edits: ProcessEdi
 
 // --- Vote Drafts (AI-augmented vote drafting) ---
 
-export interface VoteDraft {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string;
-  sources: string;
-  voting_duration_ms: number;
-  method: string; // "yes_no_unsure" | "approval"
-  custom_options: string[] | null;
-  /** Derived, client-side: custom_options as one-per-line text, so the
-   *  assistant layer (chips, Apply, "has content") treats options like any
-   *  other field. Set by ProposeDraftVote's withOptions(). */
-  options?: string;
-  /** How the receipt check answers after close (null: the hub default at submit). */
-  check_mode: "show_choice" | "counted_only" | null;
-  conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
-  last_review_result: DraftSuggestion[] | null;
-  draft_modified_since_review: boolean;
-  assistant_helped: boolean;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  links: ProposedLink[];
-}
-
-/** The voting windows this hub allows, in days (plugin.vote.*_duration_days). */
-export interface VoteDurationLimits {
-  min_days: number;
-  max_days: number;
-  default_days: number;
-}
-
-export function getVoteDurationLimits(): Promise<VoteDurationLimits> {
-  return request("GET", "/votes/drafts/duration-limits");
-}
-
-// --- Projects (community project pages) ---
-
-export type ProjectStatus = "active" | "archived";
-export type SentimentValue = "support" | "oppose";
-
-export interface ProjectSummary {
-  id: string;
-  title: string;
-  description: string;
-  // Redacted ("") on the public LIST; retained on the DETAIL only for the
-  // owner edit-affordance check. Never render it — use creator_name.
-  user_id: string;
-  creator_name: string;
-  creator_is_admin: boolean;
-  /**
-   * The author's public office, when an admin has designated one on their
-   * account. Both null for residents. The TITLE renders as its own pill
-   * next to the name (see Creator); the TYPE only selects its colour.
-   * Independent of creator_is_admin — an account can carry both.
-   */
-  creator_official_type: string | null;
-  creator_official_title: string | null;
-  status: ProjectStatus;
-  support_count: number;
-  oppose_count: number;
-  assistant_helped: boolean;
-  banner_image_url: string | null;
-  banner_image_alt: string | null;
-  created_at: string;
-  updated_at: string;
-  /** Seeded sample content (Phase 7): present and true for planted rows. */
-  is_sample?: boolean;
-}
-
-export interface ProjectUpdateEntry {
-  id: string;
-  project_id: string;
-  content: string;
-  media_urls: string[];
-  created_at: string;
-}
-
-export interface ProjectComment {
-  id: string;
-  project_id: string;
-  // Raw id is redacted ("") on public responses; use creator_name.
-  user_id: string;
-  creator_name: string;
-  creator_is_admin: boolean;
-  /**
-   * The author's public office, when an admin has designated one on their
-   * account. Both null for residents. The TITLE renders as its own pill
-   * next to the name (see Creator); the TYPE only selects its colour.
-   * Independent of creator_is_admin — an account can carry both.
-   */
-  creator_official_type: string | null;
-  creator_official_title: string | null;
-  content: string;
-  created_at: string;
-}
-
-export interface ProjectDetail extends ProjectSummary {
-  sources: string[];
-  updates: ProjectUpdateEntry[];
-  user_sentiment: SentimentValue | null;
-  comment_count: number;
-  // Server-computed: is the authenticated caller the project owner? Replaces
-  // the client-side user_id compare so the raw id stays off the wire.
-  is_owner?: boolean;
-}
-
-export function listProjects(status?: ProjectStatus): Promise<ProjectSummary[]> {
-  const params = status ? `?status=${encodeURIComponent(status)}` : "";
-  return request("GET", `/projects${params}`);
-}
-
-/** Per-actor fields come from the session token, never from a query param. */
-export function getProjectDetail(id: string): Promise<ProjectDetail> {
-  return request("GET", `/projects/${id}`);
-}
-
-export function completeProject(
-  id: string,
-): Promise<{ ok: boolean; message: string; view: ProjectDetail | null }> {
-  return request("POST", `/projects/${id}/complete`);
-}
-
-export async function setProjectSentiment(
-  id: string,
-  sentiment: SentimentValue | "neutral",
-): Promise<{ support_count: number; oppose_count: number; user_sentiment: SentimentValue | null; view: ProjectDetail | null }> {
-  await askAboutYouFirst();
-  return request("POST", `/projects/${id}/sentiment`, { sentiment });
-}
-
-// Project comments and creator updates go through submitInput / getInputs —
-// the shared comment module, so projects moderate like every other type.
-
-// --- Project Drafts (AI-augmented project drafting) ---
-
-export interface ProjectDraft {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string;
-  sources: string;
-  banner_image_url: string | null;
-  banner_image_alt: string | null;
-  conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
-  last_review_result: DraftSuggestion[] | null;
-  draft_modified_since_review: boolean;
-  assistant_helped: boolean;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  links: ProposedLink[];
-}
-
 // --- Admin: Proposal Review ---
 
 /** List proposals for admin review */
@@ -830,46 +417,6 @@ export async function submitInput(
 }
 
 // --- Vote Log & Receipts ---
-
-export interface VoteLogEntry {
-  receipt_id: string;
-  /** Absent when the vote shows only that ballots were counted. */
-  choice?: string;
-}
-
-export type CheckMode = "show_choice" | "counted_only";
-
-export interface VoteLogResponse {
-  process_id: string;
-  title?: string;
-  status: string;
-  available: boolean;
-  /** How this vote's receipt check answers (once it is available). */
-  check_mode?: CheckMode;
-  message?: string;
-  total_votes?: number;
-  log: VoteLogEntry[];
-}
-
-export interface ReceiptVerifyResponse {
-  found: boolean;
-  receipt_id?: string;
-  /** The vote's title, for "counted in <vote>". */
-  title?: string;
-  check_mode?: CheckMode;
-  /** Only when the vote shows the choice. */
-  choice?: string;
-  message?: string;
-}
-
-export function getVoteLog(processId: string): Promise<VoteLogResponse> {
-  return request("GET", `/votes/${processId}/log`);
-}
-
-/** A POST: the receipt goes in the body, never in a URL a log would keep. */
-export function verifyReceipt(processId: string, receiptId: string): Promise<ReceiptVerifyResponse> {
-  return request("POST", `/votes/${processId}/verify`, { receipt: receiptId });
-}
 
 // --- Civic Events (feed layer) ---
 //
@@ -946,8 +493,11 @@ export async function getFeedMeta(processIds: string[]): Promise<Record<string, 
   return (await request<{ processes: Record<string, FeedProcessFacts> }>("GET", `/feed/meta?${params}`)).processes;
 }
 
-/** The feed's filter pills; mirrors ActivitySurface in src/shared/feedActivity.ts. */
-export type FeedSurface = "announcement" | "news" | "meeting_summary" | "activity";
+/**
+ * One of the feed's filter pills: a surface a type's card rules name, or the
+ * kernel's "activity" (FEED_SURFACES in src/shared/feedActivity.ts).
+ */
+export type FeedSurface = string;
 
 /** Cards per page of the feed. */
 export const FEED_PAGE_SIZE = 25;
@@ -985,78 +535,13 @@ export async function getFeed(options: {
   };
 }
 
-// --- Universal briefs (civic.brief) ---
-// The generic, admin-reviewed results for any closed process. Mirrors the
-// vote-results API but with type-agnostic content (headline / summary /
-// sections) instead of vote-specific position breakdowns.
-
-export type BriefPublicationStatus = "pending" | "approved" | "published";
+// --- A published brief, as the hub's BriefPointer reads it (step 3 makes the
+// pointer Briefs' contribution; Briefs' pages have their own client,
+// packages/civic.brief/ui/api.ts) ---
 
 export interface BriefSection {
   heading: string;
   body: string;
-}
-
-export interface BriefContent {
-  title: string;
-  headline: string;
-  summary: string;
-  sections: BriefSection[];
-  participation_label: string | null;
-  participation_count: number | null;
-  comments: string[];
-  admin_notes: string;
-  image_url?: string | null;
-  image_alt?: string | null;
-  /** The source closed before its deadline: the line and the admin's note. */
-  closed_early?: { line: string; note: string } | null;
-}
-
-export interface BriefSummary {
-  id: string;
-  type: "civic.brief";
-  title: string;
-  source_process_id: string;
-  source_process_type: string;
-  publication_status: BriefPublicationStatus;
-  headline: string;
-  participation_count: number | null;
-  summary_preview: string;
-  generated_at: string;
-  approved_at: string | null;
-  published_at: string | null;
-  created_at: string;
-}
-
-/** One delivery recipient picked during review. The email is where the
- *  brief is sent (admin-only); the label is what the published page's
- *  "Sent to …" receipt shows. `group`, when set, bundles this recipient
- *  under one office name on that receipt (all supervisors → "Board of
- *  Supervisors") while each address is still emailed individually. */
-export interface BriefRecipient {
-  email: string;
-  label: string;
-  group?: string;
-}
-
-export interface BriefDetail extends BriefSummary {
-  content: BriefContent;
-  delivered_to: string[];
-  /** Per-review selection: null = never touched (approval falls back to
-   *  the hub-wide setting), [] = explicitly no delivery. */
-  recipients: BriefRecipient[] | null;
-  delivered_at: string | null;
-  delivered_to_labels: string[];
-  /** Recipients held back on purpose (hub mode, sample content), with why. */
-  held_back?: HeldBackRecipient[];
-  held_back_labels?: string[];
-  created_by: string;
-  /** Regenerate: a new version waiting to be published (published briefs). */
-  pending_revision?: { content: BriefContent; generated_at: string } | null;
-  /** Versions it replaced, oldest first. */
-  history?: Array<{ content: BriefContent; generated_at: string; replaced_at: string }>;
-  /** When a regenerated version last replaced the published one. */
-  revised_at?: string | null;
 }
 
 export interface PublicBrief {
@@ -1117,436 +602,8 @@ export interface PublicBriefResponse {
   created_at: string;
 }
 
-export interface BriefContentPatch {
-  comments?: string[];
-  admin_notes?: string;
-  headline?: string;
-  summary?: string;
-  image_url?: string | null;
-  image_alt?: string | null;
-  /** Per-review delivery selection; [] means "publish with no email". */
-  recipients?: BriefRecipient[];
-}
-
-export function adminListBriefs(
-  status?: BriefPublicationStatus,
-): Promise<BriefSummary[]> {
-  const params = status ? `?status=${encodeURIComponent(status)}` : "";
-  return request("GET", `/admin/briefs${params}`);
-}
-
-export function adminGetBrief(id: string): Promise<BriefDetail> {
-  return request("GET", `/admin/briefs/${id}`);
-}
-
-export function adminPatchBrief(
-  id: string,
-  patch: BriefContentPatch,
-): Promise<BriefDetail> {
-  return request("PATCH", `/admin/briefs/${id}`, patch);
-}
-
-export function adminApproveBrief(
-  id: string,
-): Promise<{ message: string; brief: BriefDetail }> {
-  return request("POST", `/admin/briefs/${id}/approve`);
-}
-
-/** Make a closed process's brief again: replaces an unpublished one, stages a published one's. */
-export function adminRegenerateBrief(id: string): Promise<{ staged: boolean; brief: BriefDetail }> {
-  return request("POST", `/admin/briefs/${id}/regenerate`);
-}
-
-/** The staged version replaces the published brief, in place. Nobody is emailed. */
-export function adminPublishBriefRevision(id: string): Promise<{ brief: BriefDetail }> {
-  return request("POST", `/admin/briefs/${id}/revision/publish`);
-}
-
-/** Drop the staged version. */
-export function adminDiscardBriefRevision(id: string): Promise<{ brief: BriefDetail }> {
-  return request("POST", `/admin/briefs/${id}/revision/discard`);
-}
-
 export function getPublicBrief(id: string): Promise<PublicBrief> {
   return request("GET", `/brief/${id}`);
-}
-
-/** Post a public official response (official-role accounts only; 403
- *  otherwise). Returns the refreshed response list + status. */
-export function postBriefResponse(
-  id: string,
-  body: string,
-): Promise<{
-  message: string;
-  response_id: string;
-  response_status: "awaiting" | "responded";
-  responded_at: string | null;
-  responses: PublicBriefResponse[];
-}> {
-  return request("POST", `/brief/${id}/response`, { body });
-}
-
-// --- Announcements ---
-
-/**
- * Free-form display label for the announcement author ("Admin", "Board
- * member", "Planning Committee", etc.). Server-side admins always get
- * "Admin"; non-admin authors get the label configured in the admin's
- * announcement_authors list. Rendered verbatim on the feed and the
- * public announcement page. Older Slice 4 announcements may carry
- * "board" — renders fine either way.
- */
-export type AnnouncementAuthorRole = string;
-
-export interface AnnouncementLink {
-  label: string;
-  url: string;
-}
-
-/** Full read of one announcement (GET /announcement/:id). */
-export interface Announcement {
-  /** Sample content (Phase 7): shows the Sample badge. */
-  is_sample?: boolean;
-  id: string;
-  type: "civic.announcement";
-  title: string;
-  body: string;
-  links: AnnouncementLink[];
-  image_url: string | null;
-  image_alt: string | null;
-  // Server-computed: true when the authenticated caller is the author. Drives
-  // the edit affordance without exposing the raw author id. Use creator_name /
-  // creator_is_admin for attribution.
-  is_owner?: boolean;
-  /** Resolved display name of the author (full_name ?? display_name ?? "Resident"). */
-  creator_name: string;
-  /** Whether the author is a hub admin. */
-  creator_is_admin: boolean;
-  /**
-   * The author's public office, when an admin has designated one on their
-   * account. Both null for residents. The TITLE renders as its own pill
-   * next to the name (see Creator); the TYPE only selects its colour.
-   * Independent of creator_is_admin — an account can carry both.
-   */
-  creator_official_type: string | null;
-  creator_official_title: string | null;
-  author_role: AnnouncementAuthorRole;
-  /**
-   * Machine-readable office behind author_role. Null for admin-authored
-   * and synced posts. Present so a per-office feed pill colour can be
-   * added later without backfilling old announcements.
-   */
-  official_type?: string | null;
-  author_display_name: string | null;
-  created_at: string;
-  last_edited_at: string | null;
-  edit_count: number;
-  /** Pinned to the right column's card right now (src/shared/announcementBoard.ts). */
-  pinned?: boolean;
-  pinned_until?: string | null;
-  /** The red Urgent label, its end date not passed. */
-  urgent?: boolean;
-  urgent_until?: string | null;
-  /**
-   * Slice 11 — moderation state. Null on never-moderated announcements.
-   * When `removed` is true and the viewer is not an admin, the body /
-   * image / links fields above are blank and the page renders a
-   * tombstone in their place. Admins keep receiving the original
-   * content via the same endpoint with their token attached.
-   */
-  moderation?: AnnouncementModerationView | null;
-}
-
-export interface AnnouncementModerationView {
-  removed: boolean;
-  removed_at: string | null;
-  /** Internal-audit only — admin endpoints include this; public read does not. */
-  removed_by?: string | null;
-  /** Internal-audit only — admin endpoints include this; public read does not. */
-  reason?: string | null;
-  restored_at: string | null;
-}
-
-/** Summary row (GET /announcements). */
-export interface AnnouncementSummary {
-  id: string;
-  type: "civic.announcement";
-  title: string;
-  image_url: string | null;
-  image_alt: string | null;
-  author_role: AnnouncementAuthorRole;
-  /**
-   * Machine-readable office behind author_role. Null for admin-authored
-   * and synced posts. Present so a per-office feed pill colour can be
-   * added later without backfilling old announcements.
-   */
-  official_type?: string | null;
-  author_display_name: string | null;
-  created_at: string;
-  last_edited_at: string | null;
-  edit_count: number;
-}
-
-export interface CreateAnnouncementInput {
-  title: string;
-  body: string;
-  links?: AnnouncementLink[];
-  image_url?: string | null;
-  image_alt?: string | null;
-  /** Any poster may; needs urgent_until (ISO). */
-  urgent?: boolean;
-  urgent_until?: string | null;
-  /** Admins only; pinned_until (ISO) optional. */
-  pinned?: boolean;
-  pinned_until?: string | null;
-}
-
-export interface UpdateAnnouncementInput {
-  title?: string;
-  body?: string;
-  links?: AnnouncementLink[];
-  /**
-   * Set to a string to attach/replace, null to remove, undefined to
-   * leave unchanged. Same semantics for image_alt.
-   */
-  image_url?: string | null;
-  image_alt?: string | null;
-  urgent?: boolean;
-  urgent_until?: string | null;
-  /** Admins only. */
-  pinned?: boolean;
-  pinned_until?: string | null;
-}
-
-export function createAnnouncement(
-  input: CreateAnnouncementInput,
-): Promise<Announcement> {
-  return request("POST", "/announcement", input);
-}
-
-export function updateAnnouncement(
-  id: string,
-  input: UpdateAnnouncementInput,
-): Promise<Announcement> {
-  return request("PATCH", `/announcement/${id}`, input);
-}
-
-export function getAnnouncement(id: string): Promise<Announcement> {
-  return request("GET", `/announcement/${id}`);
-}
-
-/** GET /news/:id: a post News Sync copied in (packages/civic.news_sync). */
-export interface NewsItem {
-  id: string;
-  type: "civic.news";
-  title: string;
-  body: string;
-  /** "From …": who its source is, as copied in. */
-  from: string | null;
-  /** Its pill as copied in ("News"). */
-  pill: string;
-  /** The original, on the source's own site. */
-  share_url: string | null;
-  connector: string | null;
-  created_at: string;
-  is_sample?: boolean;
-}
-
-export function getNewsItem(id: string): Promise<NewsItem> {
-  return request("GET", `/news/${id}`);
-}
-
-export function listAnnouncements(limit?: number): Promise<AnnouncementSummary[]> {
-  const q = typeof limit === "number" ? `?limit=${limit}` : "";
-  return request("GET", `/announcements${q}`);
-}
-
-// --- Meeting summaries (Slice 6) ---
-
-export type MeetingSummaryApprovalStatus = "pending" | "approved" | "published";
-
-/**
- * What a summary was built from. "recording" means the video transcript
- * alone — the shape the youtube-channel connector produces, since a channel
- * feed carries no minutes or agenda PDF.
- */
-export type MeetingSourceType = "minutes" | "agenda" | "recording";
-
-export interface SummaryBlock {
-  topic_title: string;
-  topic_summary: string;
-  start_time_seconds: number | null;
-  action_taken: string | null;
-}
-
-/**
- * Why a summary must not be published without an admin looking first —
- * today, missing video timestamps. Shape: packages/civic.meeting_summary/
- * readiness.ts.
- */
-export interface SummaryQualityFlag {
-  kind: "timestamps_missing" | "transcript_unavailable";
-  message: string;
-  detail: string | null;
-  flagged_at: string;
-}
-
-/** Admin list row. */
-export interface MeetingSummarySummary {
-  id: string;
-  type: "civic.meeting_summary";
-  title: string;
-  meeting_title: string;
-  meeting_date: string;
-  approval_status: MeetingSummaryApprovalStatus;
-  block_count: number;
-  has_video: boolean;
-  source_type: MeetingSourceType;
-  generated_at: string;
-  approved_at: string | null;
-  published_at: string | null;
-  edit_count: number;
-  created_at: string;
-  /** Set when a regenerated summary is waiting for review. */
-  pending_revision?: { generated_at: string; quality_flag?: SummaryQualityFlag | null } | null;
-  /** Set when the summary needs a check before publishing. */
-  quality_flag?: SummaryQualityFlag | null;
-}
-
-/** Admin detail (full read). */
-export interface MeetingSummaryDetail extends MeetingSummarySummary {
-  source_id: string;
-  source_minutes_url: string | null;
-  source_agenda_url: string | null;
-  source_type: MeetingSourceType;
-  source_video_url: string | null;
-  additional_video_urls: string[];
-  blocks: SummaryBlock[];
-  admin_notes: string;
-  last_edited_at: string | null;
-  ai_instructions_used: string;
-  ai_model: string;
-  ai_attribution_label: string;
-  created_by: string;
-  /** A regenerated summary awaiting review, held beside the published one. */
-  pending_revision?: {
-    blocks: SummaryBlock[];
-    source_minutes_url: string | null;
-    source_video_url: string | null;
-    source_type: MeetingSourceType;
-    reason: string;
-    generated_at: string;
-    quality_flag?: SummaryQualityFlag | null;
-  } | null;
-  revised_at?: string | null;
-}
-
-/** Public payload — only returned for published summaries. */
-export interface PublicMeetingSummary {
-  id: string;
-  type: "civic.meeting_summary";
-  title: string;
-  meeting_title: string;
-  meeting_date: string;
-  source_minutes_url: string | null;
-  source_agenda_url: string | null;
-  source_type: MeetingSourceType;
-  source_video_url: string | null;
-  additional_video_urls: string[];
-  blocks: SummaryBlock[];
-  admin_notes: string;
-  /** True while no official minutes have been published for this meeting. */
-  awaiting_minutes?: boolean;
-  /** ISO 8601 — when a revision was last accepted. Null if never revised. */
-  revised_at?: string | null;
-  generated_at: string;
-  published_at: string;
-  ai_model: string;
-  ai_attribution_label: string;
-  /** Sample content (Phase 7): written by hand, no recording behind it. */
-  is_sample?: boolean;
-  /** A sample's minutes, as plain text (2026-10-07); paragraphs split on blank lines. */
-  sample_minutes?: string;
-}
-
-export interface MeetingSummaryPatch {
-  meeting_title?: string;
-  blocks?: SummaryBlock[];
-  admin_notes?: string;
-}
-
-export function adminListMeetingSummaries(
-  status?: MeetingSummaryApprovalStatus,
-): Promise<MeetingSummarySummary[]> {
-  const params = status ? `?status=${encodeURIComponent(status)}` : "";
-  return request("GET", `/admin/meeting-summaries${params}`);
-}
-
-export function adminGetMeetingSummary(
-  id: string,
-): Promise<MeetingSummaryDetail> {
-  return request("GET", `/admin/meeting-summaries/${id}`);
-}
-
-export function adminPatchMeetingSummary(
-  id: string,
-  patch: MeetingSummaryPatch,
-): Promise<MeetingSummaryDetail> {
-  return request("PATCH", `/admin/meeting-summaries/${id}`, patch);
-}
-
-/**
- * A flagged summary (quality_flag set) is refused with 409 unless
- * `confirmFlagged` says the admin has seen the flag and chose to publish.
- */
-export function adminApproveMeetingSummary(
-  id: string,
-  opts?: { confirmFlagged?: boolean },
-): Promise<{ message: string; meeting_summary: MeetingSummaryDetail }> {
-  return request("POST", `/admin/meeting-summaries/${id}/approve`, {
-    confirm_flagged: opts?.confirmFlagged === true,
-  });
-}
-
-export function adminBatchApproveMeetingSummaries(
-  ids: string[],
-  opts?: { backdate?: boolean },
-): Promise<{
-  message: string;
-  published: number;
-  skipped: number;
-  /** Flagged summaries are never batch-approved; each needs its own confirmation. */
-  flagged_skipped?: number;
-  failed: number;
-}> {
-  return request("POST", `/admin/meeting-summaries/batch-approve`, {
-    ids,
-    backdate: opts?.backdate ?? false,
-  });
-}
-
-/** Accept the waiting revision — its content becomes the live summary. */
-export function adminAcceptMeetingSummaryRevision(
-  id: string,
-  opts?: { confirmFlagged?: boolean },
-): Promise<{ message: string; meeting_summary: MeetingSummaryDetail }> {
-  return request("POST", `/admin/meeting-summaries/${id}/revision/accept`, {
-    confirm_flagged: opts?.confirmFlagged === true,
-  });
-}
-
-/** Drop the waiting revision. The published summary continues unchanged. */
-export function adminDiscardMeetingSummaryRevision(
-  id: string,
-): Promise<{ message: string; meeting_summary: MeetingSummaryDetail }> {
-  return request("POST", `/admin/meeting-summaries/${id}/revision/discard`);
-}
-
-export function adminBatchDeleteMeetingSummaries(
-  ids: string[],
-): Promise<{ message: string; deleted: number; archived?: number; skipped: number }> {
-  // Soft-archive (restorable), not hard-delete — see the backend handler.
-  return request("POST", `/admin/meeting-summaries/batch-delete`, { ids });
 }
 
 // --- Admin: archive / restore (generic soft-remove) ---
@@ -1582,44 +639,12 @@ export function adminRestoreProcess(
   return request("POST", `/admin/processes/${id}/restore`);
 }
 
-/** An item's pin as POST /admin/processes/:id/pin and /unpin answer it (src/services/pins.ts). */
-export interface PinState {
-  id: string;
-  pinned: boolean;
-  pinned_until: string | null;
-  urgent: boolean;
-}
+// --- The officials roster and the space's result recipients (Officials settings) ---
 
-/** Pin any item to the right column's card (Adam, 2026-11-18); `until` (ISO) optional. */
-export function adminPinProcess(id: string, until: string | null = null): Promise<PinState> {
-  return request("POST", `/admin/processes/${id}/pin`, { pinned_until: until });
-}
-
-export function adminUnpinProcess(id: string): Promise<PinState> {
-  return request("POST", `/admin/processes/${id}/unpin`);
-}
-
-/** One row of Admin → Pinned (GET /admin/pins). */
-export interface PinnedRow {
-  id: string;
-  type: string;
-  type_label: string;
-  title: string;
-  url: string;
-  pinned: boolean;
-  pinned_at: string | null;
-  pinned_until: string | null;
-  urgent: boolean;
-  urgent_until: string | null;
-}
-
-/** Everything pinned or urgent now, urgent first; the count against the cap. */
-export function adminListPins(): Promise<{ items: PinnedRow[]; pinned_count: number; pinned_max: number }> {
-  return request("GET", "/admin/pins");
-}
-
-export function getMeetingSummary(id: string): Promise<PublicMeetingSummary> {
-  return request("GET", `/meeting-summary/${id}`);
+/** The officials an admin lists, and who a result goes to when a review picks nobody. Admins only. */
+export async function getOfficialsRoster(): Promise<{ officials: Official[]; brief_recipient_emails: string[] }> {
+  const settings = await adminGetSettings();
+  return { officials: settings.officials, brief_recipient_emails: settings.brief_recipient_emails };
 }
 
 // --- Admin: hub settings ---
@@ -2044,10 +1069,6 @@ export function uploadPostImage(file: Blob): Promise<UploadedImage> {
   return upload("/upload/post-image", file);
 }
 
-export function uploadProjectImage(file: Blob): Promise<UploadedImage> {
-  return upload("/upload/project-image", file);
-}
-
 export interface LinkPreviewData {
   url: string;
   canonical_url: string | null;
@@ -2066,52 +1087,6 @@ export interface LinkPreviewData {
  */
 export function getLinkPreview(url: string): Promise<LinkPreviewData> {
   return request("GET", `/link-preview?url=${encodeURIComponent(url)}`);
-}
-
-// --- Slice 10.5: full-text search ---
-
-export type SearchTypeKey =
-  | "vote"
-  | "vote_results"
-  | "announcement"
-  | "meeting_summary";
-
-export type SearchSort = "relevance" | "newest";
-
-export interface SearchHit {
-  process_id: string;
-  type: string;
-  title: string;
-  description: string;
-  created_at: string;
-  status: string;
-  rank: number;
-  href: string;
-}
-
-export interface SearchResultPage {
-  hits: SearchHit[];
-  total: number;
-  query: {
-    q: string;
-    types?: SearchTypeKey[];
-    from?: string;
-    to?: string;
-    sort?: SearchSort;
-    limit?: number;
-    offset?: number;
-  };
-  took_ms: number;
-}
-
-export interface SearchParams {
-  q: string;
-  types?: SearchTypeKey[];
-  from?: string;
-  to?: string;
-  sort?: SearchSort;
-  limit?: number;
-  offset?: number;
 }
 
 // --- Slice 11: admin moderation ---------------------------------------
@@ -2147,65 +1122,6 @@ export function adminRestoreComment(commentId: string): Promise<CommunityInput> 
   return request(
     "POST",
     `/admin/moderation/comments/${commentId}/restore`,
-  );
-}
-
-/** Remove an announcement (renders a tombstone for non-admin viewers). */
-export function adminRemoveAnnouncement(
-  processId: string,
-  reason: string,
-): Promise<Announcement> {
-  return request(
-    "POST",
-    `/admin/moderation/announcements/${processId}/remove`,
-    { reason },
-  );
-}
-
-/** One row of Admin → Announcements. */
-export interface AdminAnnouncementRow {
-  id: string;
-  title: string;
-  author_role: AnnouncementAuthorRole;
-  author_display_name: string | null;
-  created_at: string;
-  pinned_at: string | null;
-  /** Posted by the news sync, not by hand. */
-  synced: boolean;
-  pinned: boolean;
-  pinned_until: string | null;
-  urgent: boolean;
-  urgent_until: string | null;
-}
-
-/** GET /admin/announcements: what is pinned or urgent now, and the newest others. */
-export interface AdminAnnouncements {
-  pinned: AdminAnnouncementRow[];
-  recent: AdminAnnouncementRow[];
-  pinned_count: number;
-  pinned_max: number;
-}
-
-export function adminListAnnouncements(): Promise<AdminAnnouncements> {
-  return request("GET", "/admin/announcements");
-}
-
-/** Pin to the right column's card; `until` (ISO) optional. */
-export function adminPinAnnouncement(processId: string, until: string | null): Promise<Announcement> {
-  return request("POST", `/admin/announcements/${processId}/pin`, { pinned_until: until });
-}
-
-export function adminUnpinAnnouncement(processId: string): Promise<Announcement> {
-  return request("POST", `/admin/announcements/${processId}/unpin`);
-}
-
-/** Restore a previously removed announcement. */
-export function adminRestoreAnnouncement(
-  processId: string,
-): Promise<Announcement> {
-  return request(
-    "POST",
-    `/admin/moderation/announcements/${processId}/restore`,
   );
 }
 
@@ -2259,312 +1175,20 @@ export function adminGetModerationLog(): Promise<ModerationLogResponse> {
   return request("GET", "/admin/moderation/log");
 }
 
-/**
- * Run a full-text search across all post types. Always resolves; an
- * empty `q` short-circuits server-side and returns total: 0 without a
- * DB hit.
- */
-export function search(params: SearchParams): Promise<SearchResultPage> {
-  const sp = new URLSearchParams();
-  if (params.q) sp.set("q", params.q);
-  if (params.types && params.types.length > 0) {
-    for (const t of params.types) sp.append("type", t);
-  }
-  if (params.from) sp.set("from", params.from);
-  if (params.to) sp.set("to", params.to);
-  if (params.sort) sp.set("sort", params.sort);
-  if (typeof params.limit === "number") sp.set("limit", String(params.limit));
-  if (typeof params.offset === "number") sp.set("offset", String(params.offset));
-  return request("GET", `/search?${sp.toString()}`);
-}
 
-// --- Deliberations (Polis integration) ---
-
-export type VoteDirection = "agree" | "disagree" | "pass";
-
-export interface StatementRecord {
-  id: number;
-  text: string;
-  is_seed: boolean;
-  created: string;
-}
-
-export interface OpinionGroup {
-  id: number;
-  size: number;
-  representative_statements: {
-    text: string;
-    direction: "agree" | "disagree";
-    repness: number;
-  }[];
-}
-
-export interface ConsensusStatement {
-  statement_id: number;
-  text: string;
-  agree_rate: number;
-  vote_count: number;
-}
-
-export interface ClusterState {
-  participant_count: number;
-  statement_count: number;
-  math_tick: number;
-  groups: OpinionGroup[];
-  consensus: {
-    agree: ConsensusStatement[];
-    disagree: ConsensusStatement[];
-  };
-}
-
-export interface DeliberationSummary {
-  process_id: string;
-  type: string;
-  title?: string;
-  topic: string;
-  lifecycle: string;
-  /** Absent on older servers — the card omits the date rather than showing
-   *  "Invalid Date". */
-  created_at?: string;
-  /** Participation window end; null until the conversation is started. */
-  deadline?: string | null;
-  participant_count?: number;
-  summary_status: string;
-  /** Seeded sample content (Phase 7): present and true for planted rows. */
-  is_sample?: boolean;
-}
-
-export interface DeliberationReadModel {
-  /** Closed before its deadline: the line and the admin's note. */
-  closed_early?: ClosedEarly | null;
-  /** An admin could close it early now, by this action. */
-  early_close?: EarlyCloseOffer | null;
-  process_id: string;
-  type: string;
-  lifecycle: string;
-  topic: string;
-  framing: string;
-  polis_conversation_id: string | null;
-  deadline: string | null;
-  /** Participation window; the deadline is computed from it at start. */
-  duration_ms?: number | null;
-  assistant_helped?: boolean;
-  /** "Learn more" links shown under the framing. */
-  sources?: string[] | null;
-  participation_threshold: number | null;
-  summary: DeliberationSummaryData | null;
-  summary_status: string;
-  continued_from_response_id: string | null;
-  has_submitted?: boolean;
-  /** Seeded sample content (Phase 7): present and true for planted rows. */
-  is_sample?: boolean;
-}
-
-export interface DeliberationSummaryData {
-  summary_text: string;
-  directed_questions: string[];
-  top_consensus_statements: {
-    statement_text: string;
-    agree_rate: number;
-    vote_count: number;
-  }[];
-  opinion_groups: {
-    group_id: number;
-    size: number;
-    representative_statements: {
-      text: string;
-      agreement_within_group: number;
-    }[];
-  }[];
-  participation_stats: {
-    total_participants: number;
-    total_statements: number;
-    total_votes: number;
-    opinion_groups_formed: number;
-  };
-  linked_polis_data_uri: string;
-  methodology: {
-    prompt_version: string;
-    model_used: string;
-    generated_at: string;
-  };
-  /** Why there is no written summary: the AI failed, or this hub has not allowed briefs to use it. */
-  narrative?: "failed" | "not_allowed";
-}
-
-export function listDeliberations(): Promise<DeliberationSummary[]> {
-  return request("GET", "/deliberations");
-}
-
-/** Per-actor fields come from the session token, never from a query param. */
-export function getDeliberation(processId: string): Promise<DeliberationReadModel> {
-  return request("GET", `/deliberations/${processId}`);
-}
-
-export function getDeliberationClusters(processId: string): Promise<ClusterState> {
-  return request("GET", `/deliberations/${processId}/clusters`);
-}
-
-export async function deliberationVote(
-  processId: string,
-  statementId: number,
-  vote: VoteDirection,
-): Promise<{ ok: boolean }> {
-  await askAboutYouFirst();
-  return request("POST", `/deliberations/${processId}/participate/vote`, {
-    statement_id: statementId,
-    vote,
-  });
-}
-
-export async function deliberationSubmitStatement(
-  processId: string,
-  text: string,
-): Promise<{ statement_id: number }> {
-  await askAboutYouFirst();
-  return request("POST", `/deliberations/${processId}/participate/statement`, {
-    text,
-  });
-}
-
-export function deliberationGetNext(
-  processId: string,
-): Promise<{ statement: StatementRecord | null }> {
-  return request("GET", `/deliberations/${processId}/participate/next`);
-}
-
-export function createDeliberation(input: {
-  topic: string;
-  framing: string;
-  deadline?: string;
-  duration_ms?: number;
-  participation_threshold?: number;
-  seed_statements?: string[];
-}): Promise<CreateProcessResult> {
-  return request("POST", "/deliberations", input);
-}
-
-// --- Deliberation Drafts (conversation drafting with assistant help) ---
-// title = the conversation topic, description = the framing.
-
-export interface DeliberationDraft {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string;
-  sources: string;
-  seed_statements: string;
-  duration_ms: number;
-  participation_threshold: number | null;
-  conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
-  last_review_result: DraftSuggestion[] | null;
-  draft_modified_since_review: boolean;
-  assistant_helped: boolean;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  links: ProposedLink[];
-}
-
-export function startDeliberation(processId: string): Promise<ActionResult<DeliberationReadModel>> {
-  return request("POST", `/deliberations/${processId}/start`);
-}
-
-// --- Slice 14 — feedback ---
-
-// Mirrors FeedbackCategory in src/modules/civic.feedback/models.ts —
-// keep the two in step; the server validates against its own list.
-export type FeedbackCategory =
-  | "idea"
-  | "topic"
-  | "bug"
-  | "moderation"
-  | "general";
-
-export interface SubmitFeedbackInput {
-  category: FeedbackCategory;
-  message: string;
-  name?: string | null;
-  email?: string | null;
-  /**
-   * Honeypot — real users leave this empty. Bots fill every input. The
-   * server returns 200 either way so spam can't probe the difference.
-   */
-  website?: string;
-  /** Signed-in only; the form offers the picker only when signed in. */
-  screenshot_url?: string | null;
-  /** The page the person came from (services/lastPage.ts). */
-  page_path?: string | null;
-  /** "Civic.Social may contact me about this". */
-  contact_ok?: boolean;
-}
-
-export function submitFeedback(
-  input: SubmitFeedbackInput,
-): Promise<{ message: string; submission_id?: string; shared_with_civic_social?: boolean }> {
-  return request("POST", "/feedback", input);
-}
-
-/** A screenshot for a bug report — same validation and bucket as the other
- *  image uploads; signed-in only. */
-export function uploadFeedbackScreenshot(file: Blob): Promise<UploadedImage> {
-  return upload("/upload/feedback-screenshot", file);
-}
-
-/** One row of the admin feedback archive. Admin-only — carries PII. */
-export interface FeedbackSubmission {
-  id: string;
-  created_at: string;
-  category: FeedbackCategory;
-  message: string;
-  name: string | null;
-  email: string | null;
-  user_id: string | null;
-  user_agent: string | null;
-  /** Optional screenshot on a bug report. */
-  screenshot_url: string | null;
-  page_path: string | null;
-  software_version: string | null;
-  contact_ok: boolean;
-  /** Civic.Social's copy and its status, when the item was shared. */
-  mosaic: MosaicCopy | null;
-}
-
-/** Mirrors MosaicCopy in src/modules/civic.feedback/models.ts. */
-export type MosaicStatus = "received" | "planned" | "fixed";
-export type MosaicStream = "bug" | "feature";
-export interface MosaicCopy {
-  stream: MosaicStream;
-  status: MosaicStatus;
-  sent_at: string;
-  sent_by: "sender" | "admin";
-}
-
-/** "Send to Civic.Social": once per item, in the stream the admin picks. */
-export function adminForwardFeedback(id: string, stream: MosaicStream): Promise<{ item: FeedbackSubmission }> {
-  return request("POST", `/admin/feedback/${encodeURIComponent(id)}/forward`, { stream });
-}
+// --- Contact Civic.Social (the kernel's; feedback routing) ---
+// Residents' feedback is the Feedback plugin's (features/feedback/ui/api.ts).
 
 /** An admin's own message to Civic.Social; their address goes with it. */
 export function contactCivicSocial(input: { message: string; page_path?: string | null }): Promise<{ id: string; message: string }> {
   return request("POST", "/admin/contact-civic-social", input);
 }
 
-/**
- * Admin feedback archive, newest first. `category` omitted (or "all")
- * returns every category. Read-only: there is no write counterpart.
- */
-export function adminListFeedback(
-  category?: FeedbackCategory | "all",
-): Promise<{ items: FeedbackSubmission[]; count: number }> {
-  const qs =
-    category && category !== "all"
-      ? `?category=${encodeURIComponent(category)}`
-      : "";
-  return request("GET", `/admin/feedback${qs}`);
-}
-
 // --- Word Cloud ---
+// The welcome strip's cloud (components/WordcloudTeaser.tsx) reads the
+// onboarding word cloud over HTTP. Word clouds' own client is in their package
+// (packages/civic.wordcloud/ui/api.ts). Kernel step 3: the strip becomes a
+// contribution Word clouds registers, and this goes.
 
 export interface WordcloudCloudEntry {
   text: string;
@@ -2578,37 +1202,6 @@ export interface WordcloudPromptCloud {
   total_submissions: number;
 }
 
-export interface WordcloudState {
-  id: string;
-  type: "civic.wordcloud";
-  title: string;
-  description: string;
-  status: string;
-  prompts: Array<{ id: string; text: string; max_length?: number }>;
-  lifecycle_mode: "fixed" | "evergreen";
-  config: {
-    max_submission_length: number;
-    display_threshold: number;
-  };
-  submission_count: number;
-  clouds: WordcloudPromptCloud[];
-  jurisdiction: string;
-  created_at: string;
-  created_by: string;
-  has_submitted: boolean;
-  /** Seeded sample content (Phase 7): present and true for planted rows. */
-  is_sample?: boolean;
-}
-
-/**
- * The actor is resolved from the session token the request wrapper already
- * sends — never from a query param, which let any caller read another
- * resident's per-actor fields by passing their user id.
- */
-export function getWordcloud(id: string): Promise<WordcloudState> {
-  return request("GET", `/wordcloud/${id}`);
-}
-
 export function getWordcloudCloud(
   id: string,
 ): Promise<{
@@ -2618,56 +1211,6 @@ export function getWordcloudCloud(
   clouds: WordcloudPromptCloud[];
 }> {
   return request("GET", `/wordcloud/${id}/cloud`);
-}
-
-export interface WordcloudResponse {
-  id: string;
-  body: string;
-  submitted_at: string;
-  prompt_id: string;
-}
-
-export function getWordcloudResponses(
-  id: string,
-  promptId?: string,
-): Promise<{ responses: WordcloudResponse[] }> {
-  const qs = promptId ? `?prompt_id=${promptId}` : "";
-  return request("GET", `/wordcloud/${id}/responses${qs}`);
-}
-
-export async function createWordcloudProcess(input: {
-  title: string;
-  description: string;
-  promptText: string;
-}): Promise<{ id: string }> {
-  const promptId = `prompt-${Date.now()}`;
-  const process = await request<{ id: string }>("POST", "/process", {
-    definition: { type: "civic.wordcloud" },
-    title: input.title,
-    description: input.description,
-    state: {
-      prompts: [{ id: promptId, text: input.promptText }],
-      lifecycle_mode: "evergreen",
-    },
-  });
-  await request("POST", `/process/${process.id}/action`, {
-    type: "process.activate",
-    payload: {},
-  });
-  return process;
-}
-
-export async function submitWordcloudResponse(
-  processId: string,
-  promptId: string,
-  text: string,
-): Promise<ActionResult> {
-  await askAboutYouFirst();
-  return request("POST", `/process/${processId}/action`, {
-    type: "process.submit",
-    actor: "unused",
-    payload: { prompt_id: promptId, text },
-  });
 }
 
 // --- Process reviews (collaborative admin review) ---
@@ -2780,9 +1323,10 @@ export function adminListEdits(): Promise<{ items: AdminEditRow[]; unseen: numbe
 /** The numbers on the admin tabs and the admin's account-menu dot: what is
  *  NEW in each queue since this admin last opened that tab. Opening a tab
  *  clears its count (adminMarkQueueSeen). */
-export type AdminQueue = "reviews" | "briefs" | "meeting_summaries" | "feedback" | "edits";
+export type AdminQueue = string;
 
-export type AdminQueueCounts = Record<AdminQueue, number> & { total: number };
+/** The kernel's own queues, and one count per package queue (`briefs`, `meeting_summaries`), by its name. */
+export type AdminQueueCounts = { reviews: number; edits: number; total: number } & Partial<Record<string, number>>;
 
 export function adminQueueCounts(): Promise<AdminQueueCounts> {
   return request("GET", "/admin/queue-counts");
@@ -2971,72 +1515,7 @@ export function getLinkCandidates(params: {
   return request("GET", `/process/link-candidates?${qs.toString()}`);
 }
 
-// --- Outcomes index --------------------------------------------------------
-
-export interface OutcomeEntry {
-  id: string;
-  /** Sample content (Phase 7): shows the Sample badge. */
-  is_sample?: boolean;
-  title: string;
-  source_process_id: string;
-  source_process_type: string;
-  headline: string;
-  participation_label: string | null;
-  published_at: string;
-  /** Links on the process this brief summarizes — "does this sit in a thread". */
-  related_count: number;
-}
-
-export interface OutcomesPage {
-  outcomes: OutcomeEntry[];
-  total: number;
-  total_unfiltered: number;
-  filters: { source_types: string[]; years: number[] };
-}
-
-export function getOutcomes(params: {
-  sourceTypes?: string[];
-  year?: number | null;
-  sort?: "newest" | "oldest";
-} = {}): Promise<OutcomesPage> {
-  const qs = new URLSearchParams();
-  for (const t of params.sourceTypes ?? []) qs.append("source_type", t);
-  if (params.year != null) qs.set("year", String(params.year));
-  if (params.sort) qs.set("sort", params.sort);
-  const q = qs.toString();
-  return request("GET", `/brief${q ? `?${q}` : ""}`);
-}
-
-// --- Members and "Share this hub" (members and invites slice, 2026-10-14) ---
-
-export interface MemberSummary {
-  /**
-   * Every member, those who hid themselves included; null below the Members
-   * plugin's threshold, unless the caller is an admin.
-   */
-  count: number | null;
-  /** Avatar seeds of the most recent visible members (empty when the count is withheld). */
-  stack: string[];
-  /** Whether residents see the count now. */
-  shown?: boolean;
-  /** Whether residents get the Members page now. */
-  page?: boolean;
-  /** The threshold, for an admin. */
-  threshold?: number;
-}
-
-export interface Member {
-  avatar: string;
-  name: string;
-  is_admin: boolean;
-}
-
-export interface MembersPage {
-  members: Member[];
-  count: number;
-  next: number | null;
-  you_are_hidden: boolean;
-}
+// --- "Share this hub" (members and invites slice, 2026-10-14) ---
 
 export interface InviteResult {
   outcome: "emailed" | "waitlisted";
@@ -3046,47 +1525,8 @@ export interface InviteResult {
   limit: number;
 }
 
-export function getMemberSummary(): Promise<MemberSummary> {
-  return request("GET", "/members/summary");
-}
-
-export function getMembers(offset = 0): Promise<MembersPage> {
-  return request("GET", `/members?offset=${offset}`);
-}
-
 export function sendInvites(emails: string, message: string): Promise<InviteResult> {
   return request("POST", "/members/invites", { emails, message });
-}
-
-export function adminGetHiddenMembers(): Promise<{ hidden: Array<Member & { joined_at: string }>; count: number }> {
-  return request("GET", "/admin/hub/members");
-}
-
-/** GET /api/aside: the right column's facts (src/services/aside.ts; ADR-019). */
-export interface AsideAnnouncement {
-  process_id: string;
-  title: string;
-  published_at: string;
-  url: string;
-  /** Its type's label ("Vote"), on a pinned item that is not an announcement. */
-  type_label?: string;
-  sample?: true;
-  /** Pinned right now. */
-  pinned?: true;
-  /** Marked urgent right now. */
-  urgent?: true;
-}
-
-export interface AsideFacts {
-  /** Pinned items and urgent announcements when there are any, else the newest few announcements. */
-  announcements: AsideAnnouncement[];
-  /** The newest urgent announcement, for the line across the top of the pages. */
-  urgent: AsideAnnouncement | null;
-  about: { member_count: number | null };
-}
-
-export function getAside(): Promise<AsideFacts> {
-  return request("GET", "/aside");
 }
 
 /** An open process about to close, as GET /api/feed/closing serves it (Events 4): a "closing soon" feed card. */

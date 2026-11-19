@@ -1,0 +1,4 @@
+/* Written by `npm run plugins:sync` from config/plugins.json. Do not edit.
+   The colours of the deployment's space type's palette, loaded right after the
+   kernel's theme.css (ui/src/styles/hubStyles.ts). Empty with no space type. */
+@import "../spaces/civic/palette.css";

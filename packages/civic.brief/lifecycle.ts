@@ -4,7 +4,7 @@
 // review, then approval walks it approved → published as delivery and
 // publication complete.
 
-import { ConflictError } from "@civic-social/plugin-sdk/first-party";
+import { ConflictError } from "@civic-social/plugin-sdk";
 import type { BriefProcessState, BriefPublicationStatus } from "./models.js";
 
 export function canEdit(state: BriefProcessState): boolean {

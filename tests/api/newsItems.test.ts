@@ -122,4 +122,14 @@ describe("a News item", () => {
     expect(ids).toContain(fresh);
     expect(ids).toContain(relabelled);
   });
+
+  it("pinned, the Pinned card names it with its type's word, as any pinned item", async () => {
+    expect((await call("POST", `/pins/${fresh}`, ATHENS, {}, admin)).status).toBe(200);
+    try {
+      const res = await call("GET", "/pins", ATHENS);
+      expect((res.body.items as Array<{ process_id: string; type_label: string }>).find((a) => a.process_id === fresh)?.type_label).toBe("News");
+    } finally {
+      await call("DELETE", `/pins/${fresh}`, ATHENS, undefined, admin);
+    }
+  });
 });

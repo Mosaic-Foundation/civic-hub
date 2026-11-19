@@ -2,7 +2,7 @@
 // scripts/dryRunAdminDigest.ts (--stub) to render the admin digest email
 // without hitting the live DB. The tally shape since 2026-10-15.
 
-import type { AdminDigestPayload } from "../../../src/modules/civic.admin_digest/index.js";
+import type { AdminDigestPayload } from "../../../features/admin_digest/digest.js";
 
 export function buildStubAdminDigestPayload(now: string): AdminDigestPayload {
   const ui = "https://example.civic.social";

@@ -69,6 +69,11 @@ const descriptor = defineDescriptor({
 export const PROJECT_MANIFEST = defineManifest({
   descriptor,
   color: "project",
+  // Its colours' defaults (kernel step 4: each plugin carries its own). The
+  // Civic Hub's palette lists the same keys (a few following its base colours), and wins.
+  colors: [
+    { key: "project", label: "Projects", fg: "#1565c0", bg: "#e3f2fd", dark: { fg: "#7fb6ef", bg: "#1d2a3a" } },
+  ],
   detailPath: (id) => `/project/${id}`,
   requiredSchema: [
     { table: "projects", owner: "civic.projects" },
@@ -85,11 +90,20 @@ export const PROJECT_MANIFEST = defineManifest({
   pluginSection: {
  order: 30,
  name: "Projects",
- what: "Community projects with updates, comments and sentiment.", fields: [] },
+ what: "Community projects with updates, comments and sentiment.", fields: [],
+    words: ["projects", "initiatives", "volunteer"],
+    help: { text: "Community projects with updates, comments and support or opposition. Off hides the Projects pages and stops new projects. Nothing is deleted.", page: "/reference/plugins", anchor: "plugins-project" },
+  },
   activities: {
     "civic.project.created": { type: "Create", object: { kind: "civic", class: "hub:Project", id: "process", name: "title" } },
     "civic.project.updated": { type: "Update", object: { kind: "civic", class: "hub:Project", id: "process" } },
     "civic.project.sentiment_changed": { type: "Update", object: { kind: "civic", class: "hub:ProjectSentiment", id: "process" } },
+  },
+  // Its events in the Install confirmation's words ("when …").
+  eventWords: {
+    "civic.project.created": "a project is added",
+    "civic.project.updated": "a project is updated",
+    "civic.project.sentiment_changed": "someone says how they feel about a project",
   },
   legacyActivities: {
     // Before comments moved to the shared comment module (2026-09-06).

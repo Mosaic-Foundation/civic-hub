@@ -18,11 +18,10 @@ import { useHub } from "../config/hub";
 import {
   deleteAccount as deleteAccountApi,
   getMe,
-  setHiddenFromMembers,
   setHideAiDraftingHelp,
 } from "../services/auth";
 import { getStoredToken } from "../services/tokenStore";
-import HelpButton from "../components/HelpButton";
+import { featureAccountPanels } from "../features";
 import { useScrollToHash } from "../hooks/useAnchor";
 import "./Settings.css";
 
@@ -77,12 +76,6 @@ export default function Settings() {
   const [draftingHelpMessage, setDraftingHelpMessage] = useState<string | null>(null);
   const [draftingHelpError, setDraftingHelpError] = useState<string | null>(null);
 
-  // Members page and avatar stack (members and invites slice): shown by default.
-  const [hiddenFromMembers, setHidden] = useState(false);
-  const [savingHidden, setSavingHidden] = useState(false);
-  const [hiddenMessage, setHiddenMessage] = useState<string | null>(null);
-  const [hiddenError, setHiddenError] = useState<string | null>(null);
-
   // Slice 13.11 — account deletion local state. The user types
   // their own email into the confirm input; submit is gated on an
   // exact match so accidental clicks can't go through.
@@ -106,7 +99,6 @@ export default function Settings() {
         setFrequency(u.digest_frequency_days);
         setNotices(u.notices_email !== false);
         setHideDraftingHelp(u.hide_ai_drafting_help === true);
-        setHidden(u.hidden_from_members === true);
         if (cameFromUnsubscribe) {
           setArrival(u.digest_frequency_days === null ? "unsubscribed" : "other-account");
         }
@@ -171,31 +163,6 @@ export default function Settings() {
       );
     } finally {
       setSavingDraftingHelp(false);
-    }
-  }
-
-  async function onShowOnMembersChange(show: boolean) {
-    const token = getStoredToken();
-    if (!token) return;
-    // At once, so the box doesn't snap back while the save is on its way.
-    setHidden(!show);
-    setSavingHidden(true);
-    setHiddenMessage(null);
-    setHiddenError(null);
-    try {
-      const { user: updated } = await setHiddenFromMembers(token, !show);
-      setHidden(updated.hidden_from_members === true);
-      updateUser(updated);
-      setHiddenMessage(
-        updated.hidden_from_members
-          ? "Saved. You're off the Members page and the home page. You're still counted, and admins can see you."
-          : "Saved. Other members can see your name on the Members page.",
-      );
-    } catch (err) {
-      setHidden(show);
-      setHiddenError(err instanceof Error ? err.message : "Could not save setting");
-    } finally {
-      setSavingHidden(false);
     }
   }
 
@@ -444,32 +411,10 @@ export default function Settings() {
           {draftingHelpError && <p className="form-error">{draftingHelpError}</p>}
         </section>
 
-        {/* Gone with the Members plugin (2026-10-14): no page to be hidden from. */}
-        {hub.plugins.enabled("members") && (
-          <section className="settings-panel" id="members" data-anchor="">
-            <h3 className="settings-panel-heading">
-              Members page
-              <HelpButton k="members.visibility" label="Members page" />
-            </h3>
-            <p className="form-hint">
-              Members of {hub.name} can see each other's names and a pattern
-              picture on the Members page, and the home page shows a few of the
-              pictures. Never your email address. Turn this off to be left out of
-              both; you're still counted as a member.
-            </p>
-            <label className="settings-toggle-row">
-              <input
-                type="checkbox"
-                checked={!hiddenFromMembers}
-                onChange={(e) => onShowOnMembersChange(e.target.checked)}
-                disabled={savingHidden}
-              />
-              <span>Show me on the Members page</span>
-            </label>
-            {hiddenMessage && <p className="settings-message">{hiddenMessage}</p>}
-            {hiddenError && <p className="form-error">{hiddenError}</p>}
-          </section>
-        )}
+        {/* A feature's own section (the Members plugin's "Show me on the Members page"; ui/src/features.ts). */}
+        {featureAccountPanels(hub.plugins.enabled).map(({ feature, Panel }) => (
+          <Panel key={feature} />
+        ))}
 
         <p className="settings-signed-in">
           Signed in as <strong>{user.email}</strong>.

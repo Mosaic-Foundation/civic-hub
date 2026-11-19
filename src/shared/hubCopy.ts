@@ -57,7 +57,7 @@ export function needsArticle(name: string): boolean {
 }
 
 /**
- * Fill a sample text's three placeholders (src/services/sampleTemplates.ts),
+ * Fill a sample text's three placeholders (src/services/sampleNames.ts),
  * giving the place its article (review R19): "should the Town of Example
  * take first?", and "The Town of Example is updating…" at the start of a
  * sentence. Shared so the console's preview reads like the seeded card.

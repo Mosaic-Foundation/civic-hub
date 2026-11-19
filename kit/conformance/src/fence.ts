@@ -45,7 +45,8 @@ export function fenceProblems(dir: string): FenceProblem[] {
   for (const file of sources(dir)) {
     const rel = relative(dir, file).split(sep).join("/");
     const isManifest = rel === "manifest.ts";
-    const isUi = rel === "ui.tsx";
+    // Its UI module and the pages beside it, in ui/ (kernel step 1).
+    const isUi = rel === "ui.tsx" || rel.startsWith("ui/");
     const text = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
     for (const m of text.matchAll(IMPORT)) {
       const spec = m[1] ?? m[2] ?? m[3]!;
@@ -55,7 +56,7 @@ export function fenceProblems(dir: string): FenceProblem[] {
         if (!target.startsWith(resolve(dir) + sep)) why = "it reaches outside the package's own files";
       } else if (isManifest) {
         if (spec !== "@civic-social/plugin-sdk/manifest") why = "a manifest is plain data: it imports only @civic-social/plugin-sdk/manifest";
-      } else if (!(SDK.has(spec) || (isUi && UI.has(spec)) || spec.startsWith("node:") || peers.includes(bareName(spec)))) {
+      } else if (!(SDK.has(spec) || (isUi && UI.has(spec)) || spec.startsWith("node:") || (!spec.startsWith("@civic-social/plugin-sdk/") && peers.includes(bareName(spec))))) {
         why = `the hub is reached only through @civic-social/plugin-sdk; other npm packages must be peerDependencies in package.json`;
       }
       if (why) out.push({ file: rel, spec, why });

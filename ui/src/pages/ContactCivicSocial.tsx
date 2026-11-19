@@ -1,7 +1,7 @@
 // Contact Civic.Social (feedback routing, 2026-10-13): a hub admin writes to
 // Civic.Social, which maintains the software, directly. Apart from
-// residents' feedback: it never shows on the hub's Feedback tab, and it is
-// here whether or not the Feedback plugin is on. The admin's address goes
+// residents' feedback (the Feedback plugin's): it never shows on a hub's
+// Feedback tab, and it is here whether or not that plugin is on. The admin's address goes
 // with it, and the page says so.
 
 import { useState } from "react";
@@ -9,14 +9,12 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/authState";
 import { contactCivicSocial } from "../services/api";
 import { lastPage } from "../services/lastPage";
-import { useHub } from "../config/hub";
 import HelpButton from "../components/HelpButton";
 import "./Feedback.css";
 
 const MESSAGE_MAX_LEN = 4000;
 
 export default function ContactCivicSocial() {
-  const hub = useHub();
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [pagePath] = useState(() => lastPage());
@@ -88,9 +86,10 @@ export default function ContactCivicSocial() {
                 {sending ? "Sending…" : "Send to Civic.Social"}
               </button>
             </form>
-            {hub.plugins.enabled("feedback") && (
+            {/* Back to the page the admin came from (Admin → Feedback, often). */}
+            {pagePath && (
               <p className="feedback-fallback">
-                <Link to="/admin/feedback">Back to Feedback</Link>
+                <Link to={pagePath}>Back</Link>
               </p>
             )}
           </>

@@ -95,6 +95,23 @@ export interface FeatureConsoleSection {
 /** A line a feature adds to the hub's admin digest, or null for none this time. */
 export type FeatureDigestLine = (ctx: { now: Date }) => Promise<string | null>;
 
+/**
+ * A queue a feature adds for admins (kernel step 4; Feedback's): a count on
+ * its admin tab of what is new since that admin last opened it, and a line in
+ * the admin digest. The kernel keeps each admin's "last opened" under its
+ * name (users.queues_seen_at) and counts only while the feature is on.
+ */
+export interface FeatureQueue {
+  /** Its name: lower case, as the admin tab's count and the seen-mark name it. */
+  name: string;
+  /** What one item is called in the admin digest ("feedback message"). */
+  noun: { one: string; many: string };
+  /** Its admin page, a local path ("/admin/feedback"). */
+  path: string;
+  /** How many items arrived after `since` (ISO) and, when given, at or before `until`. */
+  count(since: string, until?: string): Promise<number>;
+}
+
 /** What a feature's `server(host)` returns. */
 export interface FeatureServer {
   /** Its routes on the hub, each behind its switch. */
@@ -118,10 +135,19 @@ export interface FeatureServer {
    * both ways can recognise its posts). Null says nothing.
    */
   discovery?: () => Record<string, unknown> | null;
+  /**
+   * What the space's config (GET /hub/config) carries for the feature, under
+   * `features.<id>`, while it is on: what its UI needs before any page loads
+   * (the Members plugin: whether residents get its page yet). Read for the
+   * space in scope; null says nothing.
+   */
+  hubConfig?: () => Promise<Record<string, unknown> | null>;
   /** A runner for each job its manifest declares, by job id. */
   jobs?: Readonly<Record<string, JobRunner>>;
   consoleSections?: readonly FeatureConsoleSection[];
   digestLines?: readonly FeatureDigestLine[];
+  /** Its admin queues (FeatureQueue). */
+  queues?: readonly FeatureQueue[];
 }
 
 /** What the hub hands a feature. */

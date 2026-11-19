@@ -3,7 +3,8 @@
 // (navigation slice, 2026-10-14). Before, the account menu and the Admin menu
 // each polled for their own.
 //
-//   - memberCount: the Members section's count (public: GET /members/summary);
+//   - sectionCounts: the number beside a feature's section (the Members
+//     plugin's count; ui/src/features.ts);
 //   - reviews / reviewsTo: what is NEW in the admins' review queues, and the
 //     first queue with something new (admin menu slice, 2026-10-13);
 //   - mySubmissions: your own submissions needing attention;
@@ -16,35 +17,41 @@ import { useEffect, useMemo, type ReactNode } from "react";
 import { useApi } from "../hooks/useApi";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./authState";
+import { useHub } from "../config/hub";
+import { adminQueueTabs } from "../components/packageContributions";
+import { featureSectionCounters } from "../features";
 import { NavDataContext, type NavData } from "./navDataState";
 import {
   adminQueueCounts,
   ADMIN_QUEUES_CHANGED,
   getEditNotifications,
-  getMemberSummary,
   getReviewNotificationCount,
   markEditsSeen,
   type AdminQueueCounts,
   type EditNotification,
 } from "../services/api";
 
-/** The queues the review count adds up, in the order the icon opens them. */
-const REVIEW_QUEUES = [
-  { key: "reviews", to: "/admin/reviews" },
-  { key: "briefs", to: "/admin/briefs" },
-  { key: "meeting_summaries", to: "/admin/meeting-summaries" },
-] as const;
 
 const NO_EDITS: EditNotification[] = [];
+const NO_COUNTS: Readonly<Record<string, number>> = {};
 
 export function NavDataProvider({ children }: { children: ReactNode }) {
   const { user, isAdmin } = useAuth();
   const { pathname } = useLocation();
+  const hub = useHub();
 
-  // The member count changes rarely: on sign-in (joining adds one) and load.
-  // A failed read shows no count, like every read here.
-  const { data: members } = useApi("members/summary", () => getMemberSummary(), { rereadOn: user?.id });
-  const memberCount = members?.count ?? null;
+  // A section's count changes rarely (Members: joining adds one), so it is
+  // read on load and sign-in. A failed read shows no count, like every read here.
+  const counters = featureSectionCounters(hub.plugins.enabled);
+  const countersKey = counters.map((c) => c.section).join(",");
+  const { data: sectionCounts } = useApi(
+    countersKey ? `section-counts:${countersKey}` : null,
+    async () => {
+      const read = await Promise.all(counters.map(async (c) => [c.section, await c.read().catch(() => null)] as const));
+      return Object.fromEntries(read.filter((e): e is readonly [string, number] => typeof e[1] === "number"));
+    },
+    { rereadOn: user?.id },
+  );
 
   // Yours: submissions needing attention (cleared by opening My submissions,
   // which stamps reviews_seen_at), and edited projects you support. Read
@@ -93,11 +100,14 @@ export function NavDataProvider({ children }: { children: ReactNode }) {
     };
   }, [isAdmin, reloadCounts]);
 
-  const reviews = counts ? REVIEW_QUEUES.reduce((n, q) => n + counts[q.key], 0) : 0;
-  const reviewsTo = REVIEW_QUEUES.find((q) => (counts?.[q.key] ?? 0) > 0)?.to ?? "/admin/reviews";
+  // The queues the review count adds up, in the order the icon opens them:
+  // the kernel's reviews, then each package's queue (while its plugin is on).
+  const reviewQueues = [{ key: "reviews", to: "/admin/reviews" }, ...adminQueueTabs(hub).map((q) => ({ key: q.queue, to: q.path }))];
+  const reviews = counts ? reviewQueues.reduce((n, q) => n + (counts[q.key] ?? 0), 0) : 0;
+  const reviewsTo = reviewQueues.find((q) => (counts?.[q.key] ?? 0) > 0)?.to ?? "/admin/reviews";
 
   const value: NavData = {
-    memberCount,
+    sectionCounts: sectionCounts ?? NO_COUNTS,
     reviews,
     reviewsTo,
     mySubmissions,

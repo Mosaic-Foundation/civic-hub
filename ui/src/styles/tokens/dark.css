@@ -97,18 +97,6 @@
   --table-row-hover: var(--color-surface-hover);
 
   /* --- Each kind's colour: a light tone for words and bars, a dark tint behind --- */
-  --type-vote-fg: #9db6e0;          --type-vote-bg: #222a38;
-  --type-proposal-fg: #b9a6e0;      --type-proposal-bg: #2a2538;
-  --type-conversation-fg: #6fc4c9;  --type-conversation-bg: #1b2e30;
-  --type-project-fg: #7fb6ef;       --type-project-bg: #1d2a3a;
-  --type-wordcloud-fg: #b6c47a;     --type-wordcloud-bg: #272b1d;
-  --type-announcement-fg: #e6a283;  --type-announcement-bg: #33241d;
-  --type-announcement-author-fg: #c3b4e6; --type-announcement-author-bg: #2a2538;
-  --type-news-fg: #a9bccb;          --type-news-bg: #232b31;
-  --type-meeting-fg: #7cc790;       --type-meeting-bg: #1f2a22;
-  --type-official-response-fg: #e2b765; --type-official-response-bg: #2d2718;
-  --type-brief-fg: #e6a283;         --type-brief-bg: #33241d;
-  --type-brief-rule: #e6a283;       --type-brief-wash: #2a211c;
   --type-generic-fg: #9db6e0;       --type-generic-bg: #222a38;
   --type-event-fg: #e88fb6;         --type-event-bg: #33202a;
 
@@ -116,15 +104,5 @@
   --pill-vote-bg: var(--type-vote-bg);           --pill-vote-fg: var(--type-vote-fg);
   --pill-results-bg: var(--type-vote-bg);        --pill-results-fg: var(--type-vote-fg);
   --pill-vote-results-bg: var(--type-vote-bg);   --pill-vote-results-fg: var(--type-vote-fg);
-  --pill-announcement-bg: var(--type-announcement-bg); --pill-announcement-fg: var(--type-announcement-fg);
-  --pill-announcement-author-bg: var(--type-announcement-author-bg); --pill-announcement-author-fg: var(--type-announcement-author-fg);
-  --pill-meeting-bg: var(--type-meeting-bg);     --pill-meeting-fg: var(--type-meeting-fg);
-  --pill-proposal-bg: var(--type-proposal-bg);   --pill-proposal-fg: var(--type-proposal-fg);
-  --pill-proposal-closed-bg: var(--color-surface-hover); --pill-proposal-closed-fg: var(--color-text-muted);
-  --pill-conversation-bg: var(--type-conversation-bg); --pill-conversation-fg: var(--type-conversation-fg);
-  --pill-conversation-results-bg: var(--type-conversation-bg); --pill-conversation-results-fg: var(--type-conversation-fg);
-  --pill-project-bg: var(--type-project-bg);     --pill-project-fg: var(--type-project-fg);
-  --pill-wordcloud-bg: var(--type-wordcloud-bg); --pill-wordcloud-fg: var(--type-wordcloud-fg);
-  --pill-brief-bg: var(--type-vote-bg);          --pill-brief-fg: var(--type-vote-fg);
-  --pill-brief-response-bg: var(--type-official-response-bg); --pill-brief-response-fg: var(--type-official-response-fg);
+  /* The Civic Hub's other kinds are in its palette (spaces/civic/palette.css). */
 }

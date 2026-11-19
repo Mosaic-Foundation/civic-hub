@@ -26,6 +26,7 @@ import { areOfficialsMigrated } from "../services/hubSettings.js";
 import { lookupOfficialBySubject } from "../services/officials.js";
 import { holds, type Actor, type AccountActor } from "./actor.js";
 import { declaredRuleRefusal, hubRuleRefusal } from "./eligibility.js";
+import { namesRole } from "../shared/spaceProfile.js";
 
 /**
  * The questions a hub asks. Hub-wide ones take no resource; process ones take
@@ -148,15 +149,15 @@ export async function canActor(
 
     case "process.act": {
       // The hub's rule, which every process inherits, then the caller: an
-      // administrator acts as "admin"; anyone else as "resident", held to the
+      // administrator acts as "admin"; anyone else as "member", held to the
       // type's declared requirements and, in executeAction, to the actions
-      // its descriptor opens to residents (callerRefusal below).
+      // its descriptor opens to members (callerMayCall below).
       if (actor.kind !== "account") return refuse(signInRequired());
       const no = hubRuleRefusal(actor);
       if (no) return refuse(no);
       if (holds(actor, "admin")) return { allowed: true, caller: "admin" };
       const stricter = declaredRuleRefusal(actor, resource!.process.definition.type);
-      return stricter ? refuse(stricter) : { allowed: true, caller: "resident" };
+      return stricter ? refuse(stricter) : { allowed: true, caller: "member" };
     }
   }
 }
@@ -196,12 +197,12 @@ export function callerMayCall(
   subject: string,
   official = false,
 ): boolean {
-  if (caller !== "resident") return true;
+  if (caller !== "member") return true;
   if (!declared) return false;
-  if (declared.callers.includes("resident")) return true;
+  if (namesRole(declared.callers, "member")) return true;
   // An action open to officials (engine 2, A6): a resident holding a public
   // office, as subjectIsOfficial answers, before the call.
-  if (official && declared.callers.includes("official")) return true;
+  if (official && namesRole(declared.callers, "accountable")) return true;
   return declared.callers.includes("creator") && subject !== "" && subject === process.createdBy;
 }
 
@@ -227,7 +228,7 @@ export async function publishesAtOnce(
   creation: { publish_at_once?: readonly string[] } | null | undefined,
 ): Promise<{ admin: boolean; official: boolean }> {
   const admin = (await canActor(actor, "hub.administer")).allowed;
-  if (admin || actor.kind !== "account" || !creation?.publish_at_once?.includes("official")) return { admin, official: false };
+  if (admin || actor.kind !== "account" || !namesRole(creation?.publish_at_once, "accountable")) return { admin, official: false };
   return { admin, official: await subjectIsOfficial(actor.subject) };
 }
 

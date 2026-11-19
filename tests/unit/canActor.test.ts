@@ -8,6 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { namesRole } from "../../src/shared/spaceProfile.js";
 
 const mocks = vi.hoisted(() => ({
   granted: { admin: 1, board: 0, announcement_author: 0 } as Record<string, number>,
@@ -136,10 +137,10 @@ describe("canActor — every process type, every declared action", () => {
             if (who === "signed in, not a member") { expect(!d.allowed && d.error.code, label).toBe("residency_required"); continue; }
             if (who === "a member without a name") { expect(!d.allowed && d.error.code, label).toBe("name_required"); continue; }
             expect(d.allowed, label).toBe(true);
-            const caller = d.allowed ? d.caller! : "resident";
-            expect(caller, label).toBe(who === "admin" ? "admin" : "resident");
+            const caller = d.allowed ? d.caller! : "member";
+            expect(caller, label).toBe(who === "admin" ? "admin" : "member");
             const may = callerMayCall(caller, declared, process, actor.kind === "account" ? actor.subject : "");
-            const residentMay = declared.callers.includes("resident") || (mine && declared.callers.includes("creator"));
+            const residentMay = namesRole(declared.callers, "member") || (mine && declared.callers.includes("creator"));
             expect(may, label).toBe(who === "admin" ? true : residentMay);
           }
         }
@@ -148,16 +149,25 @@ describe("canActor — every process type, every declared action", () => {
   }
 
   it("an undeclared action is the hub's or an admin's, never a resident's", () => {
-    expect(callerMayCall("resident", undefined, processOf("civic.vote"), "user_me")).toBe(false);
+    expect(callerMayCall("member", undefined, processOf("civic.vote"), "user_me")).toBe(false);
     expect(callerMayCall("admin", undefined, processOf("civic.vote"), "user_me")).toBe(true);
     expect(callerMayCall("system", undefined, processOf("civic.vote"), "")).toBe(true);
   });
 
+  it("reads a descriptor's roles by either name: resident is member, official is accountable (kernel step 2)", () => {
+    const p = processOf("civic.vote");
+    expect(callerMayCall("member", { callers: ["member"] }, p, "user_me")).toBe(true);
+    expect(callerMayCall("member", { callers: ["resident"] }, p, "user_me")).toBe(true);
+    expect(callerMayCall("member", { callers: ["accountable"] }, p, "user_me", true)).toBe(true);
+    expect(callerMayCall("member", { callers: ["official"] }, p, "user_me", true)).toBe(true);
+    expect(callerMayCall("member", { callers: ["accountable"] }, p, "user_me", false)).toBe(false);
+  });
+
   it("a creator-only action needs the creator, and an empty subject is nobody", () => {
     const declared = { callers: ["creator"] };
-    expect(callerMayCall("resident", declared, processOf("civic.project", "user_me"), "user_me")).toBe(true);
-    expect(callerMayCall("resident", declared, processOf("civic.project", "user_me"), "user_other")).toBe(false);
-    expect(callerMayCall("resident", declared, processOf("civic.project", ""), "")).toBe(false);
+    expect(callerMayCall("member", declared, processOf("civic.project", "user_me"), "user_me")).toBe(true);
+    expect(callerMayCall("member", declared, processOf("civic.project", "user_me"), "user_other")).toBe(false);
+    expect(callerMayCall("member", declared, processOf("civic.project", ""), "")).toBe(false);
   });
 });
 

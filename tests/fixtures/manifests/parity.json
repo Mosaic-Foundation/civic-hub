@@ -66,6 +66,7 @@
     "link_previews",
     "member_about",
     "process_links",
+    "process_pins",
     "process_reviews",
     "processes",
     "project_comments",
@@ -231,6 +232,10 @@
       "rows": "export"
     },
     {
+      "table": "process_pins",
+      "rows": "export"
+    },
+    {
       "table": "process_reviews",
       "rows": "export"
     },
@@ -386,6 +391,10 @@
     ],
     "process_links": [
       "id"
+    ],
+    "process_pins": [
+      "hub_id",
+      "process_id"
     ],
     "process_reviews": [
       "id"
@@ -697,6 +706,14 @@
       "maxLength": 40
     },
     {
+      "key": "plugin.pinning.who",
+      "kind": "choice",
+      "options": [
+        "admins",
+        "members"
+      ]
+    },
+    {
       "key": "plugin.feedback.contact_email",
       "kind": "email"
     },
@@ -740,13 +757,6 @@
   ],
   "JOBS": [
     {
-      "id": "meeting_summary",
-      "plugin": "meeting_summary",
-      "path": "/meeting-summary/run",
-      "schedule": "30 11 * * *",
-      "description": "Meeting discovery and summarization, per hub that configured a source"
-    },
-    {
       "id": "news_sync",
       "plugin": "news_sync",
       "path": "/news-sync/run",
@@ -757,18 +767,11 @@
       ]
     },
     {
-      "id": "digest",
-      "plugin": "digest",
-      "path": "/digest/run",
-      "schedule": "0 * * * *",
-      "description": "Resident email digest, per hub in its own send hour"
-    },
-    {
-      "id": "admin_digest",
-      "plugin": "admin_digest",
-      "path": "/admin-digest/run",
-      "schedule": "30 13 * * *",
-      "description": "Admin review-queue digest, per hub"
+      "id": "meeting_summary",
+      "plugin": "meeting_summary",
+      "path": "/meeting-summary/run",
+      "schedule": "30 11 * * *",
+      "description": "Meeting discovery and summarization, per hub that configured a source"
     },
     {
       "id": "vote_close",
@@ -804,6 +807,20 @@
       "path": "/fediverse/run",
       "schedule": "*/10 * * * *",
       "description": "Fediverse: post what opened and what was decided, deliver posts to followers' servers, retry failures"
+    },
+    {
+      "id": "digest",
+      "plugin": "digest",
+      "path": "/digest/run",
+      "schedule": "0 * * * *",
+      "description": "Resident email digest, per hub in its own send hour"
+    },
+    {
+      "id": "admin_digest",
+      "plugin": "admin_digest",
+      "path": "/admin-digest/run",
+      "schedule": "30 13 * * *",
+      "description": "Admin review-queue digest, per hub"
     }
   ],
   "requirements": [
@@ -814,7 +831,7 @@
         "covered_until",
         "updated_at"
       ],
-      "owner": "civic.admin_digest"
+      "owner": "features/admin_digest"
     },
     {
       "table": "ai_usage",
@@ -1073,6 +1090,15 @@
     {
       "table": "feedback_submissions",
       "columns": [
+        "hub_id",
+        "id",
+        "created_at",
+        "category",
+        "message",
+        "name",
+        "email",
+        "user_id",
+        "user_agent",
         "screenshot_url",
         "page_path",
         "software_version",
@@ -1083,7 +1109,7 @@
         "mosaic_sent_at",
         "mosaic_sent_by"
       ],
-      "owner": "civic.feedback"
+      "owner": "features/feedback"
     },
     {
       "table": "hub_admin_audit_log",
@@ -1239,7 +1265,7 @@
         "github_issue_url",
         "fixed_notified_at"
       ],
-      "owner": "civic.feedback"
+      "owner": "services/providerInbox"
     },
     {
       "table": "plugin_catalog",
@@ -1269,6 +1295,18 @@
         "created_by"
       ],
       "owner": "core/processLinks"
+    },
+    {
+      "table": "process_pins",
+      "columns": [
+        "hub_id",
+        "process_id",
+        "pinned_by",
+        "pinned_at",
+        "pinned_until",
+        "urgent"
+      ],
+      "owner": "features/pinning"
     },
     {
       "table": "process_reviews",
@@ -1372,6 +1410,7 @@
         "feedback_seen_at",
         "briefs_seen_at",
         "meeting_summaries_seen_at",
+        "queues_seen_at",
         "hidden_from_members",
         "demo_only"
       ],

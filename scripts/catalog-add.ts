@@ -43,6 +43,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { hashPackage } from "../src/plugins/hash.js";
 import { notAdditive, ungrantedTables } from "../src/plugins/additive.js";
 import type { PluginPackage } from "../src/plugins/package.js";
+import { memberCreation } from "../src/processes/descriptorTypes.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -210,7 +211,7 @@ async function main(): Promise<void> {
   } catch {
     /* not a checkout */
   }
-  const walked = m.descriptor.creation.resident !== null || m.descriptor.creation.admin;
+  const walked = memberCreation(m.descriptor.creation) !== null || m.descriptor.creation.admin;
   const conformance = { result: "passed", ran_at: new Date().toISOString(), commit, walked };
   const ts = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
   const id = (outside ? dir.split("/").pop()! : dir.slice("packages/".length)).replace(/[^a-z0-9]/g, "_");

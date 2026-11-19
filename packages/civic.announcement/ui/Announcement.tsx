@@ -1,0 +1,382 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  absoluteTime,
+  Creator,
+  LinkPreviewCard,
+  Modal,
+  PostFeaturedImage,
+  RelatedProcesses,
+  relativeTime,
+  SampleBadge,
+  ShareButton,
+  useApi,
+  useViewer,
+} from "@civic-social/plugin-sdk/ui";
+import {
+  adminRemoveAnnouncement,
+  adminRestoreAnnouncement,
+  getAnnouncement,
+  processTypeOf,
+  type Announcement,
+} from "./api";
+import "./Announcement.css";
+
+const URL_RE = /\bhttps?:\/\/\S+/gi;
+
+const REASON_CHIPS = [
+  "Personal attack",
+  "Harassment",
+  "Doxxing",
+  "Spam",
+  "Other",
+] as const;
+
+export default function AnnouncementPage() {
+  const { id } = useParams<{ id: string }>();
+  const { isAdmin } = useViewer();
+  const {
+    data: announcement,
+    loading,
+    error,
+    setData: setAnnouncement,
+  } = useApi<Announcement>(id ? `announcement/${id}` : null, () => getAnnouncement(id!));
+
+  // A process that was an announcement once and is another type now (posts a
+  // feed sync copied in, until 2026-11-18): an old /announcement/ link to it
+  // goes to the kernel's /process/ link, which opens its own type's page.
+  const navigate = useNavigate();
+  const [checkedType, setCheckedType] = useState(false);
+  useEffect(() => {
+    if (!error || !id) return;
+    let live = true;
+    processTypeOf(id)
+      .then((type) => {
+        if (!live) return;
+        if (type && type !== "civic.announcement") navigate(`/process/${id}`, { replace: true });
+        else setCheckedType(true);
+      })
+      .catch(() => live && setCheckedType(true));
+    return () => {
+      live = false;
+    };
+  }, [error, id, navigate]);
+
+  // Slice 11 — admin moderation controls. The remove modal opens when
+  // the admin clicks "Remove announcement" and stays mounted until the
+  // request resolves (or the admin cancels).
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [removeReason, setRemoveReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [moderationError, setModerationError] = useState<string | null>(null);
+
+  if (loading || (error && !checkedType)) {
+    return (
+      <div className="page announcement-page">
+        <p className="announcement-status">Loading announcement…</p>
+      </div>
+    );
+  }
+
+  if (error || !announcement) {
+    return (
+      <div className="page announcement-page">
+        <p className="announcement-status announcement-status-error">
+          {error?.message ?? "Announcement not found."}
+        </p>
+      </div>
+    );
+  }
+
+  // Legacy Slice-4 announcements may have author_role === "board" —
+  // normalize for display. Everything else renders verbatim.
+  const roleLabel =
+    announcement.author_role === "board" ? "Board member" : announcement.author_role;
+  const isAdminLabel = roleLabel === "Admin";
+  const canEdit = isAdmin || !!announcement.is_owner;
+  const wasEdited = announcement.edit_count > 0;
+  const isRemoved = !!announcement.moderation?.removed;
+
+  async function handleRemoveSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!id) return;
+    if (removeReason.trim().length === 0) {
+      setModerationError("Please choose or enter a reason.");
+      return;
+    }
+    setModerationError(null);
+    setSubmitting(true);
+    try {
+      const updated = await adminRemoveAnnouncement(id, removeReason.trim());
+      setAnnouncement(updated);
+      setShowRemoveModal(false);
+      setRemoveReason("");
+    } catch (err) {
+      setModerationError(
+        err instanceof Error ? err.message : "Could not remove announcement",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleRestore() {
+    if (!id) return;
+    setModerationError(null);
+    try {
+      const updated = await adminRestoreAnnouncement(id);
+      setAnnouncement(updated);
+    } catch (err) {
+      setModerationError(
+        err instanceof Error ? err.message : "Could not restore",
+      );
+    }
+  }
+
+  return (
+    <article className="page announcement-page">
+      <div className="process-share-row">
+        <ShareButton
+          title={announcement.title}
+          shareText={announcement.title}
+        />
+      </div>
+
+      <header className="announcement-header">
+        <p className="announcement-eyebrow">
+          {isAdminLabel ? "Announcement" : `${roleLabel} announcement`}
+          {announcement.is_sample && (
+            <>
+              {" "}
+              <SampleBadge />
+            </>
+          )}
+        </p>
+        <h1>{announcement.title}</h1>
+        <p className="announcement-meta">
+          <Creator
+            name={announcement.creator_name}
+            isAdmin={announcement.creator_is_admin}
+            officialType={announcement.creator_official_type}
+            officialTitle={announcement.creator_official_title}
+            prefix="Posted by"
+          />{" "}
+          <time
+            dateTime={announcement.created_at}
+            title={absoluteTime(announcement.created_at)}
+          >
+            {relativeTime(announcement.created_at)}
+          </time>
+          {wasEdited && announcement.last_edited_at && (
+            <>
+              {" · Last edited "}
+              <time
+                dateTime={announcement.last_edited_at}
+                title={absoluteTime(announcement.last_edited_at)}
+              >
+                {relativeTime(announcement.last_edited_at)}
+              </time>
+            </>
+          )}
+          {canEdit && !isRemoved && (
+            <>
+              {" · "}
+              <Link
+                to={`/announcement/${announcement.id}/edit`}
+                className="announcement-edit-link"
+              >
+                Edit
+              </Link>
+            </>
+          )}
+        </p>
+      </header>
+
+      {/* Slice 11 — admin moderation toolbar. Visible only to admins
+          and only on the announcement detail page (not the feed card).
+          Sits under the header so the admin can act without scrolling
+          past the content. */}
+      {isAdmin && (
+        <div className="announcement-admin-toolbar" role="region" aria-label="Moderation">
+          {isRemoved ? (
+            <>
+              <span>
+                <strong>Removed</strong>
+                {announcement.moderation?.reason && (
+                  <> · {announcement.moderation.reason}</>
+                )}
+              </span>
+              <button type="button" onClick={handleRestore}>
+                Restore announcement
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="danger"
+                onClick={() => {
+                  setShowRemoveModal(true);
+                  setRemoveReason("");
+                  setModerationError(null);
+                }}
+              >
+                Remove announcement
+              </button>
+              {/* Archive is distinct from a Code-of-Conduct removal: it hides
+                  the announcement from the site and feed entirely (no
+                  tombstone) for cleanup of stale content, and is restorable
+                  from the admin Archived view. */}
+            </>
+          )}
+          {moderationError && (
+            <span className="form-error">{moderationError}</span>
+          )}
+        </div>
+      )}
+
+      {isRemoved ? (
+        <p className="announcement-tombstone">
+          This announcement was removed by a moderator for violating the{" "}
+          <Link to="/code-of-conduct">Code of Conduct</Link>.
+        </p>
+      ) : (
+        <>
+          {announcement.image_url && (
+            <PostFeaturedImage
+              src={announcement.image_url}
+              alt={announcement.image_alt ?? ""}
+            />
+          )}
+
+          <div className="announcement-body">
+            {announcement.body.split(/\n\n+/).map((para, i) => (
+              <p key={i} className="announcement-paragraph">
+                {para.split(/\n/).map((line, j, arr) => (
+                  <span key={j}>
+                    {line}
+                    {j < arr.length - 1 && <br />}
+                  </span>
+                ))}
+              </p>
+            ))}
+          </div>
+
+          {(() => {
+            // Render preview cards for any unique URL found in the body.
+            const urls = Array.from(
+              new Set(
+                (announcement.body.match(URL_RE) ?? [])
+                  .map((u) => u.replace(/[)\].,;!?]+$/, ""))
+                  .filter((u) => u.length > 0),
+              ),
+            );
+            if (urls.length === 0) return null;
+            return (
+              <section
+                className="announcement-link-previews"
+                aria-label="Linked previews"
+              >
+                {urls.map((u) => (
+                  <LinkPreviewCard key={u} url={u} />
+                ))}
+              </section>
+            );
+          })()}
+
+          {announcement.links.length > 0 && (
+            <section className="announcement-links">
+              <h2>Links</h2>
+              <ul>
+                {announcement.links.map((link, i) => (
+                  <li key={i}>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer">
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
+      )}
+
+      {/* Slice 11 — Remove-announcement modal. The one Modal, with the
+          chip pattern from the comment-hide modal. The
+          reason is internal-audit only and stamps the moderation
+          event's data.moderation.reason. */}
+      {showRemoveModal && (
+        <Modal
+          title="Remove this announcement?"
+          titleClassName="auth-title"
+          className="moderation-modal"
+          onClose={() => setShowRemoveModal(false)}
+          dismissible={!submitting}
+        >
+          <form onSubmit={handleRemoveSubmit}>
+            <p className="auth-description">
+              The announcement will be replaced with a tombstone for
+              everyone. The reason is stored in the moderation audit
+              log and is not shown to the public.
+            </p>
+
+            <div className="moderation-chips" role="list">
+              {REASON_CHIPS.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  role="listitem"
+                  className={`moderation-chip${removeReason === chip ? " is-active" : ""}`}
+                  onClick={() => setRemoveReason(chip)}
+                  disabled={submitting}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+
+            <label className="form-field">
+              <span className="form-label">Reason (required)</span>
+              <textarea
+                className="form-input"
+                value={removeReason}
+                onChange={(e) => setRemoveReason(e.target.value)}
+                maxLength={500}
+                rows={3}
+                disabled={submitting}
+                placeholder="Brief description of the violation"
+              />
+            </label>
+
+            {moderationError && (
+              <p className="form-error">{moderationError}</p>
+            )}
+
+            <div className="moderation-modal-actions">
+              <button
+                type="submit"
+                className="auth-continue-button"
+                disabled={submitting || removeReason.trim().length === 0}
+              >
+                {submitting ? "Removing…" : "Remove announcement"}
+              </button>
+              <button
+                type="button"
+                className="auth-back-link"
+                onClick={() => setShowRemoveModal(false)}
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Read-only. A process may link TO this post, and the counter-link
+          renders here so a reader can follow it back — but content posts
+          never originate links of their own. */}
+      <RelatedProcesses processId={id!} readOnly />
+    </article>
+  );
+}

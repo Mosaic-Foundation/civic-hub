@@ -1,7 +1,8 @@
 /**
  * A conversation's summary after the move (plugin session 2, ADR-015): the
  * conversation records its result from Polis when it closes, its brief writes
- * the summary, and the conversation's page reads it from the brief. What a
+ * the summary, and the conversation keeps it for its own page (kernel step 1,
+ * Conversations 0.4.0: the page reads only the conversation). What a
  * resident sees on the page is what it was: the summary, the figures, the
  * agreement. On the fake Polis, whose summary is made without a model.
  */
@@ -25,13 +26,13 @@ test("a conversation that closes still shows its summary, now written by its bri
 
   await closeAsAdmin(request, admin, processId, "close", "Closed by the summary test.");
 
-  // The brief has it; the conversation keeps only the result.
+  // The brief has it, and the conversation keeps the same summary.
   const [brief] = (await localRest(
     `processes?select=state&type=eq.civic.brief&state->>source_process_id=eq.${processId}`,
   )) as Array<{ state: Record<string, any> }>;
   expect(brief?.state.content.deliberation.summary_text).toBe(`What participants said about ${topic}.`);
   const [conversation] = (await localRest(`processes?select=state&id=eq.${processId}`)) as Array<{ state: Record<string, any> }>;
-  expect(conversation.state.summary).toBeNull();
+  expect(conversation.state.summary).toEqual(brief.state.content.deliberation);
 
   await visitAs(page, admin);
   await page.goto(`/deliberation/${processId}`);

@@ -8,7 +8,7 @@ import {
   codeOfConductHash,
   toDraftState,
 } from "../../src/services/codeOfConduct.js";
-import type { AssistantDraft } from "../../src/modules/civic.assistant/index.js";
+import type { AssistantDraft } from "../../src/models/assistant.js";
 
 function draft(over: Partial<AssistantDraft> = {}): AssistantDraft {
   return {

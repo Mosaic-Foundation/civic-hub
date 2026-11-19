@@ -13,7 +13,7 @@ import {
   authHeaders,
 } from "../fixtures/helpers.js";
 import { DEMO } from "../../kit/conformance/src/driver.js";
-import { liveProposal } from "../fixtures/liveProcess.js";
+import { liveProject, liveProposal } from "../fixtures/liveProcess.js";
 
 describe("Proposal endpoints", () => {
   let residentToken: string;
@@ -47,5 +47,24 @@ describe("Proposal endpoints", () => {
     );
     expect(status).toBe(200);
     expect(body.id).toBe(id);
+  });
+
+  // The kernel's processesOf("civic.proposal") (kernel step 1): the package
+  // reads and acts on its own type only, so another type's id is not found
+  // through its routes, while its own works.
+  it("another type's id is not found through the proposal routes", async () => {
+    const project = await liveProject(DEMO.host, residentToken, `Not a proposal ${Date.now()}`, "A project");
+    expect((await api(`/proposals/${project}`)).status).toBe(404);
+    for (const method of ["POST", "DELETE"]) {
+      const res = await api(`/proposals/${project}/support`, { method, headers: authHeaders(residentToken) });
+      expect(res.status, `${method} support on a project`).toBe(404);
+    }
+    const own = await liveProposal(DEMO.host, residentToken, `Supported ${Date.now()}`, "Its own type");
+    const res = await apiJson<{ support_count: number; view: { id: string } | null }>(`/proposals/${own}/support`, {
+      method: "POST",
+      headers: authHeaders(residentToken),
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.view?.id).toBe(own);
   });
 });

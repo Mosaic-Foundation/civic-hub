@@ -1,21 +1,21 @@
-// The hub's own right-column cards (ADR-019): Coming up, Announcements and
-// About. Each draws nothing when it has nothing to say, so an empty card is
+// The kernel's own right-column cards (ADR-019): Coming up and About (a
+// feature's cards are its own: Pinning's Pinned card). Each draws nothing when it has nothing to say, so an empty card is
 // never a box with a heading and no rows. Kit surfaces and tokens only.
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Button, Card, StatusChip } from "../kit";
+import { Button, Card } from "../kit";
 import { useHub } from "../config/hub";
 import { useAuth } from "../context/authState";
 import { processTypes } from "../config/navigation";
 import { detailPathOf } from "../processes/display";
 import AuthModal from "../components/AuthModal";
-import { localShortDate } from "../utils/dates";
 import { CALENDAR_PLUGIN, type AsideData } from "./useAsideData";
 import { comingUpRows, dateTile, timeOfDay } from "./comingUp";
-import { BOARD_SHOWN } from "../../../src/shared/announcementBoard";
+import { featureAboutLines } from "../features";
 
-function AsideCard({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+/** A right-column card: its heading and its rows (a feature's cards use it too). */
+export function AsideCard({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   const headId = `aside-${id}-title`;
   return (
     <Card className="aside-card" data-aside-card={id} role="region" aria-labelledby={headId}>
@@ -78,83 +78,20 @@ export function ComingUpCard({ data }: { data: AsideData }) {
   );
 }
 
-// Announcements (2026-11-15; src/shared/announcementBoard.ts): the pinned
-// and urgent ones when there are any, urgent first; else the newest few. Past
-// BOARD_SHOWN rows the list scrolls inside the card. Any item can be pinned
-// (2026-11-18): when the board holds one that is not an announcement, the
-// card is "Pinned" and that row names its type ("Vote").
-export function AnnouncementsCard({ data }: { data: AsideData }) {
-  // Memoized so a hub with no announcements doesn't hand the layout effect a new [] every render.
-  const announcements = data.facts?.announcements;
-  const list = useMemo(() => announcements ?? [], [announcements]);
-  const scrolls = list.length > BOARD_SHOWN;
-  const listRef = useRef<HTMLUListElement>(null);
-  // Three rows high, and a sliver of the fourth so the list reads as one to scroll.
-  useLayoutEffect(() => {
-    const ul = listRef.current;
-    if (!ul) return;
-    if (!scrolls) {
-      ul.style.maxHeight = "";
-      return;
-    }
-    const third = ul.children[BOARD_SHOWN - 1] as HTMLElement | undefined;
-    if (third) ul.style.maxHeight = `${third.offsetTop - ul.offsetTop + third.offsetHeight + 20}px`;
-  }, [scrolls, list]);
-  if (list.length === 0) return null;
-  const title = list.some((a) => a.type_label) ? "Pinned" : "Announcements";
-  return (
-    <AsideCard id="announcements" title={title}>
-      <ul
-        ref={listRef}
-        className={`aside-rows aside-rows--plain${scrolls ? " aside-rows--scroll" : ""}`}
-        {...(scrolls ? { tabIndex: 0, "aria-label": title === "Pinned" ? `${list.length} pinned items` : `${list.length} announcements` } : {})}
-      >
-        {list.map((a) => (
-          <li key={a.process_id}>
-            <Link to={a.url} className="aside-row aside-row--plain">
-              <span className="aside-row-text">
-                <span className="aside-row-title">{a.title}</span>
-                <span className="aside-row-meta">
-                  {a.urgent && <StatusChip tone="alert">Urgent</StatusChip>}
-                  {a.type_label && (
-                    <>
-                      <span>{a.type_label}</span>
-                      <span aria-hidden="true">·</span>
-                    </>
-                  )}
-                  {a.pinned && !a.urgent && (
-                    <>
-                      <span>Pinned</span>
-                      <span aria-hidden="true">·</span>
-                    </>
-                  )}
-                  {localShortDate(a.published_at)}
-                </span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </AsideCard>
-  );
-}
-
-export function AboutCard({ data }: { data: AsideData }) {
+export function AboutCard() {
   const hub = useHub();
   const { user, loading } = useAuth();
   const [joining, setJoining] = useState(false);
-  const count = data.facts?.about.member_count ?? null;
   return (
     <AsideCard id="about" title={`About ${hub.isPlace ? hub.jurisdiction : hub.name}`}>
       <p className="aside-about-line">
         {hub.label}
         {hub.location && ` · ${hub.location}`}
       </p>
-      {count !== null && (
-        <p className="aside-about-line aside-about-count">
-          {count.toLocaleString("en-US")} {count === 1 ? "member" : "members"}
-        </p>
-      )}
+      {/* A feature's line (the Members plugin's count; ui/src/features.ts). */}
+      {featureAboutLines(hub.plugins.enabled).map(({ feature, Line }) => (
+        <Line key={feature} />
+      ))}
       <div className="aside-about-actions">
         {!loading && !user && (
           <Button variant="primary" size="sm" onClick={() => setJoining(true)}>

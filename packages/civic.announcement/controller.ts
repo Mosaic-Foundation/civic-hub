@@ -1,52 +1,43 @@
 // Announcement controller — Board / admin posting and editing, plus the
 // public read surface.
 //
-// POST /announcement            — create (requireBoardOrAdmin)
-// PATCH /announcement/:id       — edit (requireBoardOrAdmin + authorship check inside)
+// POST /announcement            — create (requireAuthor)
+// PATCH /announcement/:id       — edit (requireAuthor + authorship check inside)
 // GET /announcement/:id         — public read
 // GET /announcements            — public list
 
 import {
-  ForbiddenError,
   NotFoundError,
   ValidationError,
   route,
   emitEvent,
-  uiBaseUrl,
-  hubDisplayNameSync,
-  createProcess,
-  getAllProcesses,
-  getProcess,
-  saveProcessState,
+  hubContext,
+  processesOf,
   getAuthUser,
+  authorshipOf,
   resolveCallerId,
   resolveCallerIsAdmin,
-  resolveCallerUser,
   enrichCreator,
   PUBLIC_ADMIN_NAME,
-  getUser,
   extractUrls,
-  warmPreviewsInBackground,
-  type Process,
-} from "@civic-social/plugin-sdk/first-party";
+  warmLinkPreviews,
+} from "@civic-social/plugin-sdk";
 import { Request } from "express";
 import {
   emitPublicationEvents,
   getAdminReadModel,
   getPublicReadModel,
   getPublicSummary,
-  pinAnnouncement,
-  setUrgent,
-  unpinAnnouncement,
   updateAnnouncement,
   type AnnouncementAuthorRole,
   type AnnouncementContentPatch,
   type AnnouncementLink,
   type AnnouncementProcessState,
-  type UrgentInput,
 } from "./api.js";
 import { sendAnnouncementReceipt } from "./receipt.js";
-import { isPinnedNow } from "../../src/shared/announcementBoard.js";
+
+/** Announcements' own processes, through the kernel (called where used: ADR-017). */
+const announcements = () => processesOf("civic.announcement");
 
 function getState(record: { state: Record<string, unknown> }): AnnouncementProcessState {
   return record.state as unknown as AnnouncementProcessState;
@@ -78,53 +69,6 @@ function readLinks(body: unknown): AnnouncementLink[] | undefined {
     .map((l) => ({ label: l.label, url: l.url }));
 }
 
-/** The Urgent label as a request body sets it; undefined when the body doesn't say. */
-export function readUrgent(body: unknown): UrgentInput | undefined {
-  const b = (body ?? {}) as { urgent?: unknown; urgent_until?: unknown };
-  if (b.urgent === undefined) return undefined;
-  if (typeof b.urgent !== "boolean") throw new ValidationError("urgent must be true or false.");
-  if (b.urgent_until !== undefined && b.urgent_until !== null && typeof b.urgent_until !== "string") {
-    throw new ValidationError("urgent_until must be a date.");
-  }
-  return { urgent: b.urgent, urgent_until: (b.urgent_until as string | null | undefined) ?? null };
-}
-
-/** Pinned as a request body sets it; undefined when the body doesn't say. */
-export function readPin(body: unknown): { pinned: boolean; until: string | null } | undefined {
-  const b = (body ?? {}) as { pinned?: unknown; pinned_until?: unknown };
-  if (b.pinned === undefined) return undefined;
-  if (typeof b.pinned !== "boolean") throw new ValidationError("pinned must be true or false.");
-  if (b.pinned_until !== undefined && b.pinned_until !== null && typeof b.pinned_until !== "string") {
-    throw new ValidationError("pinned_until must be a date.");
-  }
-  return { pinned: b.pinned, until: (b.pinned_until as string | null | undefined) || null };
-}
-
-/** How many announcements other than `exceptId` are pinned right now (for the cap). */
-export async function countPinnedNow(exceptId: string | null): Promise<number> {
-  const all = await getAllProcesses(["civic.announcement"]);
-  const now = Date.now();
-  return all.filter((p) => {
-    if (p.id === exceptId) return false;
-    const state = getState(p);
-    return !state.moderation?.removed && isPinnedNow(state, now);
-  }).length;
-}
-
-/** Pin or unpin as an admin asked (the caller has checked the role). */
-export async function applyPin(
-  record: Process,
-  adminId: string,
-  pin: { pinned: boolean; until: string | null },
-): Promise<boolean> {
-  const state = getState(record);
-  const ctx = ctxFor(record);
-  const out = pin.pinned
-    ? await pinAnnouncement(state, adminId, pin.until, await countPinnedNow(record.id), ctx)
-    : await unpinAnnouncement(state, adminId, ctx);
-  return out.changed;
-}
-
 export const handleCreateAnnouncement = route(async (req, res) => {
   const user = getAuthUser(res);
   // The middleware resolved the user's display label. For an official
@@ -133,18 +77,12 @@ export const handleCreateAnnouncement = route(async (req, res) => {
   // author_role drives the feed pill and the page eyebrow, which hold
   // one value, and a supervisor's post should read as coming from the
   // Board. The separate Admin badge next to their name is unaffected.
-  const authorLabel = res.locals.authorLabel as AnnouncementAuthorRole | undefined;
-  // The machine-readable half of the same designation. Null when the
-  // poster is a plain admin (no office) — the label carries "Admin".
-  const authorOfficial = res.locals.authorOfficial as
-    | { type: string; title: string }
-    | null
-    | undefined;
-  if (!authorLabel) {
-    throw new Error(
-      "authorLabel missing on res.locals — requireAnnouncementPoster must run before this handler.",
-    );
-  }
+  const author = authorshipOf(res);
+  const authorLabel = author.label as AnnouncementAuthorRole;
+  // The machine-readable half of the same designation: the public role the
+  // poster holds (the kernel's accountable role). Null when the poster is a
+  // plain admin (no office); the label carries "Admin".
+  const authorOfficial = author.accountable;
   const body = (req.body ?? {}) as {
     title?: unknown;
     body?: unknown;
@@ -157,13 +95,6 @@ export const handleCreateAnnouncement = route(async (req, res) => {
   }
 
   const links = readLinks(req.body);
-  // Pinned and urgent (src/shared/announcementBoard.ts): any poster may mark
-  // it urgent; only an admin may pin. Checked before anything is created.
-  const urgent = readUrgent(req.body);
-  const pin = readPin(req.body);
-  if (pin?.pinned && res.locals.effectiveRole !== "admin") {
-    throw new ForbiddenError("Only admins can pin announcements.", "admin_required");
-  }
   const image_url =
     typeof body.image_url === "string" && body.image_url.trim().length > 0
       ? body.image_url.trim()
@@ -177,7 +108,7 @@ export const handleCreateAnnouncement = route(async (req, res) => {
   // handler's initializeState normalizes this flat input into the
   // module's nested AnnouncementProcessState shape (and runs the
   // image alt-text-required validation).
-  const record = await createProcess({
+  const record = await announcements().create({
     definition: { type: "civic.announcement", version: "0.1" },
     title: body.title,
     description: body.body, // descriptor shows the body as description for list consumers
@@ -191,14 +122,12 @@ export const handleCreateAnnouncement = route(async (req, res) => {
       // Prefer the admin-curated name from the author list; fall back to
       // the poster's own account name when the admin left it blank.
       author_display_name:
-        (res.locals.authorName as string | null | undefined) ||
-        (await getUser(user.id))?.display_name ||
+        author.name ||
+        user.display_name ||
         null,
       links: links ?? [],
       image_url,
       image_alt,
-      urgent: urgent?.urgent === true,
-      urgent_until: urgent?.urgent_until ?? null,
     },
   });
 
@@ -219,13 +148,9 @@ export const handleCreateAnnouncement = route(async (req, res) => {
   const events = await import("./events.js");
   await events.emitAnnouncementResultPublished(ctx, user.id, state);
 
-  // Pinned as it was posted (an admin ticked Pin on the form): its own
-  // `updated` event, after the publication.
-  if (pin?.pinned) await applyPin(record, user.id, pin);
-
   // Auto-finalize the process status — announcements are instant-publish.
   record.status = "finalized";
-  await saveProcessState(record);
+  await announcements().saveState(record);
 
   // Fire-and-forget: warm the link-preview cache for any URLs in the
   // body so the public page renders previews on first view. Linked
@@ -237,7 +162,7 @@ export const handleCreateAnnouncement = route(async (req, res) => {
   const allUrls = Array.from(
     new Set([...extractUrls(body.body), ...linkUrls]),
   );
-  if (allUrls.length > 0) warmPreviewsInBackground(allUrls);
+  if (allUrls.length > 0) warmLinkPreviews(allUrls);
 
   // Publication receipt — tell the author and the admins that something
   // just went out under this office's name. Detection, not prevention:
@@ -260,10 +185,10 @@ export const handleCreateAnnouncement = route(async (req, res) => {
         title: body.title,
         authorLabel,
         authorName:
-          (res.locals.authorName as string | null | undefined) ?? null,
+          author.name,
         postedAt: record.createdAt,
-        publicUrl: `${uiBaseUrl()}/announcement/${record.id}`,
-        hubLabel: hubDisplayNameSync(),
+        publicUrl: `${hubContext().baseUrl}/announcement/${record.id}`,
+        hubLabel: hubContext().name,
       },
       // An author without a mailbox gets no receipt (the admins still do).
       user.email,
@@ -279,7 +204,7 @@ export const handleCreateAnnouncement = route(async (req, res) => {
       id: record.id,
       createdAt: record.createdAt,
     }),
-    // Gated by requireBoardOrAdmin — the poster is a signed-in member.
+    // Gated by requireAuthor — the poster is a signed-in member.
     { rawIdField: "author_id", audience: "member" },
   );
   created.is_owner = true; // the poster is, by definition, the author
@@ -288,14 +213,14 @@ export const handleCreateAnnouncement = route(async (req, res) => {
 
 export const handleUpdateAnnouncement = route(async (req, res) => {
   const id = req.params.id as string;
-  const record = await getProcess(id);
-  if (!record || record.definition.type !== "civic.announcement") {
+  const record = await announcements().get(id);
+  if (!record) {
     throw new NotFoundError("Announcement not found");
   }
   const user = getAuthUser(res);
   // effectiveRole is the permission role ("admin" | "author"), distinct
   // from authorLabel which is the free-form display string.
-  const role = res.locals.effectiveRole as "admin" | "author";
+  const role = authorshipOf(res).role;
 
   const body = (req.body ?? {}) as {
     title?: unknown;
@@ -322,14 +247,6 @@ export const handleUpdateAnnouncement = route(async (req, res) => {
     patch.image_alt = body.image_alt as string | null;
   }
 
-  // Pinned and urgent ride on the same save as the edit; each change has its
-  // own `updated` event. Only an admin may pin or unpin.
-  const urgent = readUrgent(req.body);
-  const pin = readPin(req.body);
-  if (pin && role !== "admin") {
-    throw new ForbiddenError("Only admins can pin announcements.", "admin_required");
-  }
-
   const state = getState(record);
   const outcome = await updateAnnouncement(
     state,
@@ -337,9 +254,7 @@ export const handleUpdateAnnouncement = route(async (req, res) => {
     patch,
     ctxFor(record),
   );
-  if (urgent) await setUrgent(state, { id: user.id, role }, urgent, ctxFor(record));
-  if (pin) await applyPin(record, user.id, pin);
-  await saveProcessState(record);
+  await announcements().saveState(record);
 
   // Warm previews for whatever URLs are in the post-edit body. We
   // do this on every edit (not just body edits) because admins
@@ -349,7 +264,7 @@ export const handleUpdateAnnouncement = route(async (req, res) => {
   const allUrls = Array.from(
     new Set([...extractUrls(outcome.state.content.body), ...linkUrls]),
   );
-  if (allUrls.length > 0) warmPreviewsInBackground(allUrls);
+  if (allUrls.length > 0) warmLinkPreviews(allUrls);
 
   const callerId = await resolveCallerId(req);
   const updated = await enrichCreator(
@@ -357,7 +272,7 @@ export const handleUpdateAnnouncement = route(async (req, res) => {
       id: record.id,
       createdAt: record.createdAt,
     }),
-    // Gated by requireBoardOrAdmin — the editor is a signed-in member.
+    // Gated by requireAuthor — the editor is a signed-in member.
     { rawIdField: "author_id", audience: "member" },
   );
   updated.is_owner =
@@ -378,8 +293,8 @@ async function callerIsAdmin(req: Request): Promise<boolean> {
 
 export const handleGetAnnouncement = route(async (req, res) => {
   const id = req.params.id as string;
-  const record = await getProcess(id);
-  if (!record || record.definition.type !== "civic.announcement") {
+  const record = await announcements().get(id);
+  if (!record) {
     throw new NotFoundError("Announcement not found");
   }
   // Admins see the original content (and the moderator's reason)
@@ -399,11 +314,10 @@ export const handleGetAnnouncement = route(async (req, res) => {
   // public as "Admin" (creator-based rule in redactForAudience — role
   // acknowledged, personal name withheld). Officials keep name +
   // office; signed-in members see today's bylines.
-  const caller = await resolveCallerUser(req);
-  const callerId = caller?.id;
+  const callerId = await resolveCallerId(req);
   const enriched = await enrichCreator(model, {
     rawIdField: "author_id",
-    audience: caller ? "member" : "public",
+    audience: callerId ? "member" : "public",
   });
   enriched.is_owner =
     !!callerId && (model as { author_id?: string }).author_id === callerId;
@@ -414,11 +328,10 @@ export const handleGetAnnouncement = route(async (req, res) => {
 export const handleListAnnouncements = route(async (req, res) => {
   const limitRaw = req.query.limit as string | undefined;
   const limit = limitRaw ? Math.max(1, Math.min(200, parseInt(limitRaw, 10))) : undefined;
-  const isPublic = !(await resolveCallerUser(req));
+  const isPublic = !(await resolveCallerId(req));
 
-  const all = await getAllProcesses();
+  const all = await announcements().list();
   const summaries = all
-    .filter((p) => p.definition.type === "civic.announcement")
     // Slice 11 — exclude announcements an admin has removed. Distinct
     // from the comment-tombstone behavior: an announcement in the
     // public list is an affirmative publication; once removed it

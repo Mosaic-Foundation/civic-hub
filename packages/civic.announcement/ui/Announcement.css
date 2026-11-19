@@ -1,0 +1,102 @@
+/* Full width and left-aligned, like every other process page (.detail-page;
+   Submit and Save, 2026-10-12): it was a centered 720px column. */
+.announcement-page {
+  padding: var(--space-6);
+}
+
+
+.announcement-status {
+  color: var(--color-text-subtle);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  text-align: center;
+  padding: var(--space-xl) var(--space-md);
+}
+
+.announcement-status-error {
+  color: var(--color-text);
+}
+
+.announcement-header {
+  margin: 0 0 var(--space-xl);
+}
+
+.announcement-eyebrow {
+  margin: 0;
+  color: var(--color-brand);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+/* Its margin was always App.css's ".page h1" (loaded later); left to it. */
+.announcement-header h1 {
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-tight);
+}
+
+.announcement-meta {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+.announcement-edit-link {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.announcement-edit-link:hover {
+  text-decoration: underline;
+}
+
+.announcement-body {
+  margin: 0 0 var(--space-xl);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: var(--color-text);
+}
+
+.announcement-paragraph {
+  margin: 0 0 var(--space-md);
+  white-space: pre-wrap;
+}
+
+.announcement-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.announcement-links {
+  padding: var(--space-md) var(--space-lg);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-md);
+}
+
+.announcement-links h2 {
+  margin: 0 0 var(--space-sm);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.announcement-links ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.announcement-links li {
+  margin-bottom: var(--space-xs);
+}
+
+.announcement-links a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.announcement-links a:hover {
+  text-decoration: underline;
+}

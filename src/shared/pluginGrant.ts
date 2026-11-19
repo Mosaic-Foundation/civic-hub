@@ -36,6 +36,17 @@ export type IdentityClaim = (typeof IDENTITY_CLAIMS)[number];
 export const UI_SURFACES = ["process-page", "create-page", "feed-card", "nav-section", "settings-panel"] as const;
 export type UiSurface = (typeof UI_SURFACES)[number];
 
+/**
+ * The kernel events a package may listen for (kernel step 3), each with what
+ * hearing it lets the package know, as the Install confirmation says it. A
+ * package lists the ones it listens for in `activities.listen`, and its
+ * server's `on` gives a listener for exactly those.
+ */
+export const KERNEL_EVENTS = {
+  "process.closed": "Hear when anything on this hub closes, with what it came to, so it can write the result up.",
+} as const;
+export type KernelEvent = keyof typeof KERNEL_EVENTS;
+
 export interface PluginCapabilities {
   activities: { emit: readonly string[]; listen: readonly string[] };
   state: { read: readonly ["own-process"]; write: readonly ["own-process"]; tables: readonly string[] };
@@ -63,7 +74,8 @@ export function grantProblem(caps: unknown, own: GrantOwnFacts): string | null {
   const c = caps as Partial<PluginCapabilities>;
   const list = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === "string" && x !== "" && !x.includes("*"));
   if (!c.activities || !list(c.activities.emit) || !list(c.activities.listen)) return "capabilities.activities needs emit and listen lists (no wildcards)";
-  if (c.activities.listen.length > 0) return "capabilities.activities.listen must be empty: the hub delivers no events to plugins yet";
+  const unknownEvent = c.activities.listen.find((e) => !(e in KERNEL_EVENTS));
+  if (unknownEvent) return `capabilities.activities.listen may name only ${Object.keys(KERNEL_EVENTS).join(", ")} (not ${unknownEvent})`;
   if (!c.state || !list(c.state.tables)) return "capabilities.state.tables must list its tables";
   if (JSON.stringify(c.state.read) !== '["own-process"]' || JSON.stringify(c.state.write) !== '["own-process"]') {
     return 'capabilities.state.read and write must be ["own-process"]';
@@ -112,6 +124,8 @@ export interface PlainGrantInput {
   caps: PluginCapabilities;
   /** Each of its tables, in plain words: what it holds ("residents' one-word answers"). */
   holds: Readonly<Record<string, string>>;
+  /** Its own event types in plain words (its manifest's eventWords). */
+  says?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -127,12 +141,13 @@ export function grantInPlainWords(input: PlainGrantInput): { can: string[]; cann
       ? `Keep its own records on this hub: ${kept.join("; ")}. It cannot read or change anything else the hub keeps.`
       : "Store its items with the hub's own records, and nothing else of its own. It cannot read or change anything else the hub keeps.",
   );
-  const events = caps.activities.emit.map(eventPlain);
+  const events = caps.activities.emit.map((e) => eventPlain(e, input.says));
   can.push(
     events.length > 0
       ? `Add entries to the hub's public record about its own items: when ${joinWords(unique(events))}.`
       : "Appear in the hub's public record only through the hub's own entries (created, edited, removed).",
   );
+  for (const e of caps.activities.listen) can.push(KERNEL_EVENTS[e as KernelEvent] ?? `Hear ${e}.`);
   for (const a of caps.adapters) can.push(ADAPTER_PLAIN[a].can);
   can.push("Know who takes part only by a reference number. The hub, not the plugin, decides when a participant's name is shown.");
 

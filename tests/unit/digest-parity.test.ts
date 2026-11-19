@@ -1,13 +1,11 @@
 import { describe, it, expect } from "vitest";
-import {
-  assembleDigestForUser,
-  isDigestRenderable,
-  classifyItemKind,
-} from "../../src/modules/civic.digest/index.js";
+import { assembleDigestForUser } from "../../features/digest/service.js";
+import { getProcessHandler } from "../../src/processes/registry.js";
+import { isDigestRenderable, classifyItemKind } from "../../features/digest/filter.js";
 import type {
   DigestEvent,
   DigestAssemblyInput,
-} from "../../src/modules/civic.digest/index.js";
+} from "../../features/digest/models.js";
 
 function ev(
   event_type: string,
@@ -40,11 +38,20 @@ function assemble(events: DigestEvent[], titles: Record<string, string> = {}) {
     hub: HUB,
     since: "2026-06-01T00:00:00Z",
     process_titles: titles,
+    // As the job passes it: each type's own closed line.
+    result_line: (type, data) => getProcessHandler(type)?.resultLine?.(data),
   };
   return assembleDigestForUser(input);
 }
 
 describe("digest ↔ feed parity (Phase 3)", () => {
+  it("a closed vote's row gives the count the vote itself says (its handler's resultLine, kernel step 3)", () => {
+    const out = assemble([
+      ev("civic.process.result_published", { process: { type: "civic.vote", title: "Park" }, results_at_close: true, result: { tally: { No: 2, Yes: 5 } } }),
+    ]);
+    expect(out?.text).toContain("Final count: Yes 5 · No 2.");
+  });
+
   it("wordcloud started is no longer mislabeled as a vote", () => {
     // Before Phase 3, filter.ts returned 'vote_opened' for every started event.
     expect(

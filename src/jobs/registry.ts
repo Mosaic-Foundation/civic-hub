@@ -79,37 +79,10 @@ export const VERCEL_API_PREFIX = "/api";
 
 /**
  * Jobs the hub runs whatever process types it carries: hub features' (the
- * digests, news sync) and housekeeping. A process type's own jobs are in its
+ * digests) and housekeeping. A process type's own jobs are in its
  * manifest (ADR-009).
  */
 const HOST_JOBS: readonly JobSpec[] = [
-  {
-    id: "news_sync",
-    plugin: "news_sync",
-    path: "/news-sync/run",
-    schedule: "0 12 * * *",
-    description: "News feed to News items, per hub that configured a feed",
-    // Production's vercel.json on `main` schedules the old name until the
-    // multi-tenant cutover deploys this list; removed then, together with its
-    // entry in scripts/place-name-allowlist.txt.
-    deprecatedPaths: ["/floyd-news-sync/run"],
-  },
-  {
-    id: "digest",
-    plugin: "digest",
-    path: "/digest/run",
-    // Hourly: each hub is mailed in its own plugin.digest.send_hour, read in
-    // its identity.timezone. See digestJob (src/jobs/digest.ts).
-    schedule: "0 * * * *",
-    description: "Resident email digest, per hub in its own send hour",
-  },
-  {
-    id: "admin_digest",
-    plugin: "admin_digest",
-    path: "/admin-digest/run",
-    schedule: "30 13 * * *",
-    description: "Admin review-queue digest, per hub",
-  },
   {
     // The id and path stay "vote_close" (the cron entry and the run log keep
     // their history), but since 2026-10-13 it closes every type with a

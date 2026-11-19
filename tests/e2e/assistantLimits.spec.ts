@@ -10,7 +10,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { localRest, mintSession } from "../fixtures/adminSession.js";
+import { localRest, mintSession } from "./sessions";
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 import { E2E_API_BASE as API } from "./hubApi";
 import { updateAiLimits } from "../fixtures/operator.js";

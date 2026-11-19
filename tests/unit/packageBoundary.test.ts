@@ -5,14 +5,10 @@
 // names, and that list only shrinks. Linted as planted files of this repo,
 // through the repo's config.
 
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
-// @ts-expect-error eslint.config.js is plain JavaScript with no declarations.
-import { PACKAGE_REACH_NOT_YET as NOT_YET } from "../../eslint.config.js";
 
-const PACKAGE_REACH_NOT_YET = NOT_YET as Record<string, string>;
 
 const ROOT = resolve(__dirname, "../..");
 const eslint = new ESLint({ cwd: ROOT });
@@ -23,15 +19,16 @@ async function errors(file: string, code: string): Promise<string[]> {
 }
 
 describe("civic/package-boundary", () => {
-  it("lets a package import the SDK by name, shared data, its own files, node: and express", async () => {
+  it("lets a package on SDK version 0 import it by name, shared data, its own files and node:", async () => {
     for (const code of [
       `import { emitEvent } from "@civic-social/plugin-sdk/first-party";`,
       `import { assertPassesWordlist } from "../../src/shared/wordlist/index.js";`,
       `import { x } from "./service.js";`,
       `import { createHash } from "node:crypto";`,
-      `import { Router } from "express";`,
     ]) {
-      expect(await errors("packages/civic.wordcloud/x.ts", code), code).toHaveLength(0);
+      // Every package here is on version 1 since Conversations (kernel step 1);
+      // a package without the SDK as a peer dependency is still held to version 0.
+      expect(await errors("packages/civic.v0_example/x.ts", code), code).toHaveLength(0);
     }
   });
 
@@ -45,28 +42,55 @@ describe("civic/package-boundary", () => {
       `import { listHubs } from "../../src/operator/hubs.js";`,
       `import type { HubDb } from "../../src/db/forHub.js";`,
       `import { createClient } from "@supabase/supabase-js";`,
-      `import x from "../civic.vote/service.js";`,
+      `import x from "../civic.proposals/service.js";`,
     ]) {
-      expect(await errors("packages/civic.wordcloud/x.ts", code), code).toHaveLength(1);
+      expect(await errors("packages/civic.vote/x.ts", code), code).toHaveLength(1);
     }
   });
 
   it("refuses the SDK by path now that it has a name (ADR-017)", async () => {
-    expect(await errors("packages/civic.wordcloud/x.ts", `import { emitEvent } from "../../src/sdk/index.js";`)).toHaveLength(1);
-    expect(await errors("packages/civic.wordcloud/manifest.ts", `import { defineManifest } from "../../src/processes/manifest.js";`)).toHaveLength(1);
+    expect(await errors("packages/civic.vote/x.ts", `import { emitEvent } from "../../src/sdk/index.js";`)).toHaveLength(1);
+    expect(await errors("packages/civic.vote/manifest.ts", `import { defineManifest } from "../../src/processes/manifest.js";`)).toHaveLength(1);
   });
 
   it("keeps a manifest plain: src/shared/ and the manifest contract only", async () => {
-    expect(await errors("packages/civic.wordcloud/manifest.ts", `import { defineManifest } from "@civic-social/plugin-sdk/manifest";`)).toHaveLength(0);
-    expect(await errors("packages/civic.wordcloud/manifest.ts", `import { emitEvent } from "../../src/sdk/index.js";`)).toHaveLength(1);
-    expect(await errors("packages/civic.wordcloud/manifest.ts", `import { Router } from "express";`)).toHaveLength(1);
+    expect(await errors("packages/civic.vote/manifest.ts", `import { defineManifest } from "@civic-social/plugin-sdk/manifest";`)).toHaveLength(0);
+    expect(await errors("packages/civic.vote/manifest.ts", `import { emitEvent } from "../../src/sdk/index.js";`)).toHaveLength(1);
+    expect(await errors("packages/civic.vote/manifest.ts", `import { Router } from "express";`)).toHaveLength(1);
   });
 
-  it("lets a file on the reach list load a package only on first use: types statically, values by await import() (ADR-017)", async () => {
-    const reach = "src/services/sampleSeed.ts";
-    expect(await errors(reach, `import { createProposal } from "../../packages/civic.proposals/service.js";`)).toHaveLength(1);
-    expect(await errors(reach, `import type { ProposalSummary } from "../../packages/civic.proposals/service.js";`)).toHaveLength(0);
-    expect(await errors(reach, `export const f = async () => (await import("../../packages/civic.proposals/service.js")).createProposal;`)).toHaveLength(0);
+  it("holds a package on SDK version 1 to the outside rule: the SDK's entries only, and React in its UI files (kernel step 1)", async () => {
+    const pkg = "packages/civic.wordcloud";
+    for (const code of [
+      `import { emitEvent } from "@civic-social/plugin-sdk";`,
+      `import { x } from "./service.js";`,
+      `import { Router } from "express";`,
+    ]) {
+      expect(await errors(`${pkg}/x.ts`, code), code).toHaveLength(0);
+    }
+    for (const code of [
+      `import { emitEvent } from "@civic-social/plugin-sdk/first-party";`,
+      `import { assertPassesWordlist } from "../../src/shared/wordlist/index.js";`,
+      `import { useApi } from "@civic-social/plugin-sdk/ui";`,
+      `import { useState } from "react";`,
+    ]) {
+      expect(await errors(`${pkg}/x.ts`, code), code).toHaveLength(1);
+    }
+    expect(await errors(`${pkg}/ui/api.ts`, `import { apiRequest } from "@civic-social/plugin-sdk/ui";`)).toHaveLength(0);
+    expect(await errors(`${pkg}/ui/api.ts`, `import { request } from "../../../ui/src/services/http";`)).toHaveLength(1);
+  });
+
+  it("lets a space type use the kernel and load its packages on first use; the engine reaches it only through config/space.ts (kernel step 3)", async () => {
+    const space = "spaces/civic/x.ts";
+    expect(await errors(space, `import { forHub } from "../../src/db/forHub.js";`)).toHaveLength(0);
+    expect(await errors(space, `import type { VoteProcessState } from "../../packages/civic.vote/service.js";`)).toHaveLength(0);
+    expect(await errors(space, `export const f = async () => (await import("../../packages/civic.vote/service.js")).propose;`)).toHaveLength(0);
+    expect(await errors(space, `import { propose } from "../../packages/civic.vote/service.js";`)).toHaveLength(1);
+    expect(await errors(space, `import { rollup } from "../../features/analytics/rollup.js";`)).toHaveLength(1);
+    expect(await errors(space, `import { x } from "../other/x.js";`)).toHaveLength(1);
+    expect(await errors("src/services/somethingNew.ts", `import civic from "../../spaces/civic/index.js";`)).toHaveLength(1);
+    expect(await errors("src/services/somethingNew.ts", `import { SPACE } from "../../config/space.js";`)).toHaveLength(1);
+    expect(await errors("src/plugins/spaceType.ts", `import { SPACE } from "../../config/space.js";`)).toHaveLength(0);
   });
 
   it("refuses engine code importing a package, or reading the configured list, outside the files named", async () => {
@@ -98,14 +122,5 @@ describe("civic/package-boundary", () => {
     expect(await errors("src/services/somethingNew.ts", `import { rollup } from "../../features/analytics/rollup.js";`)).toHaveLength(1);
     expect(await errors("src/services/somethingNew.ts", `import { FEATURE_PACKAGES } from "../../config/features.js";`)).toHaveLength(1);
     expect(await errors("src/plugins/features.ts", `import { FEATURE_PACKAGES } from "../../config/features.js";`)).toHaveLength(0);
-  });
-
-  it("names each engine file still reaching into a package, and every one still does (the list only shrinks)", () => {
-    for (const [file, why] of Object.entries(PACKAGE_REACH_NOT_YET)) {
-      expect(why.length, file).toBeGreaterThan(20);
-      expect(readFileSync(resolve(ROOT, file), "utf8"), `${file} no longer reaches a package: take it off the list`).toMatch(
-        /(from |import\()"(\.\.\/)+packages\//,
-      );
-    }
   });
 });

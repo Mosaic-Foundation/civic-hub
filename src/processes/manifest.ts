@@ -17,12 +17,16 @@ import type { ProcessTypeDescriptor } from "./descriptorTypes.js";
 import type { ProcessStatus } from "../models/process.js";
 import type { SchemaRequirement } from "../db/schemaRequirement.js";
 import type { SettingFieldSpec } from "../shared/hubSettingsSections.js";
+import type { PluginSetupRule } from "../shared/pluginSetup.js";
+import type { HubFeature } from "../shared/hubFeatures.js";
 import type { ThemeTypeKey } from "../shared/theme.js";
 import type { ActivityRecipe, WireObjectRecipe } from "../shared/activityRecipe.js";
 import { AS2_TERMS } from "../shared/as2Terms.js";
-import type { FeedDeclaration } from "../shared/feedActivity.js";
+import type { FeedDeclaration, PackageColor } from "../shared/feedActivity.js";
 import { grantProblem, type PluginCapabilities } from "../shared/pluginGrant.js";
 import { participationProblem, type ParticipationDeclaration } from "../shared/participation.js";
+import { namesRole } from "../shared/spaceProfile.js";
+import { SPACE_KINDS } from "../shared/spacePalette.js";
 
 /**
  * One scheduled job of a type: src/jobs/registry.ts's HubJobSpec, with the
@@ -85,8 +89,13 @@ export interface LegacyTypeDeclaration {
   participation: ParticipationDeclaration;
 }
 
-/** The admin queues a type's unpublished records can wait in (src/services/adminQueues.ts). */
-export type PublicationQueue = "briefs" | "meeting_summaries";
+/**
+ * The admin queue a type's unpublished records wait in, named by its package
+ * ("briefs", "meeting_summaries"): lowercase letters, digits and underscores.
+ * The kernel counts each one for the admin rail (src/services/adminQueues.ts);
+ * the package's UI names its tab (`contributes.adminQueue`).
+ */
+export type PublicationQueue = string;
 
 /**
  * A type whose records an admin publishes before residents see them (a brief,
@@ -133,6 +142,14 @@ export interface PluginSection {
    * here wins over it. Keys must be the section's own fields.
    */
   search?: Readonly<Record<string, { label: string; words?: readonly string[] }>>;
+  /** Other words an admin might type for its panel ("ballot", "poll"). */
+  words?: readonly string[];
+  /**
+   * When it is switched on but cannot do anything yet: what it needs, and the
+   * Settings badge's line (src/shared/pluginSetup.ts). Its keys must be its
+   * own fields.
+   */
+  setup?: PluginSetupRule;
 }
 
 export interface ProcessManifest {
@@ -145,6 +162,13 @@ export interface ProcessManifest {
   descriptor: ProcessTypeDescriptor;
   /** The theme colour family its pills and cards take (src/shared/theme.ts). */
   color: ThemeTypeKey;
+  /**
+   * The colour families it carries, with their default values (kernel step
+   * 4): its own `color` among them, and any other its cards wear. A space
+   * type's palette may set the same key over them, and an admin's theme over
+   * both. A family only a card kind uses may sit on the kind instead (`feed.kinds`).
+   */
+  colors?: readonly PackageColor[];
   /** The canonical public UI path of one of its processes. */
   detailPath(id: string): string;
   /** The tables and columns it needs, checked at startup and by /health. */
@@ -161,6 +185,14 @@ export interface ProcessManifest {
    * (src/events/activitySerializer.ts) and are not repeated here.
    */
   activities: Readonly<Record<string, ActivityRecipe>>;
+  /**
+   * Each of its own event types in plain words, completing "when …" ("a
+   * proposal is submitted"), for the Install confirmation's list of what it
+   * adds to the hub's public record (src/shared/pluginGrant.ts; kernel step
+   * 4). Keys are event types it emits. One without words reads as the event's
+   * last word ("it records "supported"").
+   */
+  eventWords?: Readonly<Record<string, string>>;
   /**
    * Event types it has emitted in the past and no longer does, mapped so a
    * stored event stays serializable forever (the log is append-only).
@@ -315,6 +347,23 @@ export interface FeatureManifest {
   tables: readonly TableDeclaration[];
   requiredSchema: readonly SchemaRequirement[];
   jobs: readonly ManifestJob[];
+  /**
+   * Its part of the Plugins settings section (kernel step 4): its name, its
+   * one line, its settings and its panel's search words, so the kernel's
+   * list of hub features (src/shared/hubFeatures.ts) need not name it.
+   */
+  pluginSection?: Omit<HubFeature, "id">;
+  /**
+   * Its section in the space's navigation (src/shared/navSections.ts), beside
+   * the process types' (the Members page): drawn while its switch is on, in
+   * the space's Section order. Its icon is a key in the UI's icon set.
+   */
+  section?: { id: string; label: string; short: string; path: string; icon: string; order: number };
+  /**
+   * Settings a new space starts with (src/operator/hubs.ts), where its
+   * default for a new space differs from what unset means on an older one.
+   */
+  newSpaceSettings?: Readonly<Record<string, string>>;
 }
 
 /** Declare a feature's manifest, keeping its literal values (its table names join forHub's TableName). */
@@ -322,12 +371,8 @@ export function defineFeatureManifest<const M extends FeatureManifest>(manifest:
   return manifest;
 }
 
-/** The hub's own card kinds (src/shared/feedActivity.ts BuiltinActivityKind). */
-const BUILTIN_KINDS: ReadonlySet<string> = new Set([
-  "vote-open", "vote-closed", "vote-results", "meeting", "announcement", "announcement-author", "news", "wordcloud",
-  "proposal", "proposal-closed", "project-created", "project-updated", "conversation", "conversation-results",
-  "brief", "brief-response",
-]);
+/** The card kinds the space type's palette lists (src/shared/spacePalette.ts) and the kernel's "brief": a package declares none of these. */
+const BUILTIN_KINDS: ReadonlySet<string> = new Set([...SPACE_KINDS.keys(), "brief"]);
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 /** Why a manifest was refused at startup. */
@@ -393,6 +438,14 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       throw new ManifestError(`${where(m)}: descriptor.type must look like "civic.vote"`);
     }
     if (seenTypes.has(d.type)) throw new ManifestError(`${where(m)}: a second manifest declares this type`);
+    // A package's admin queue is a name the kernel counts and the admin rail
+    // links (kernel step 3); the kernel's own three are not a package's.
+    if (m.publication !== undefined) {
+      const q = (m.publication as { queue?: unknown }).queue;
+      if (typeof q !== "string" || !/^[a-z][a-z0-9_]*$/.test(q) || ["reviews", "feedback", "edits"].includes(q)) {
+        throw new ManifestError(`${where(m)}: publication.queue "${String(q)}" must be a lowercase name (letters, digits, _) other than reviews, feedback or edits`);
+      }
+    }
     seenTypes.add(d.type);
     if (typeof d.plugin !== "string" || (d.plugin as string) === "") throw new ManifestError(`${where(m)}: missing "descriptor.plugin"`);
     if (host.featureIds.includes(d.plugin)) {
@@ -425,8 +478,23 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       if (!HEX.test(k.color.fg ?? "") || !HEX.test(k.color.bg ?? "")) throw new ManifestError(`${where(m)}: feed kind "${k.kind}" needs fg and bg as #rrggbb`);
       if (!k.color.label || !k.digest?.section || !k.digest.heading) throw new ManifestError(`${where(m)}: feed kind "${k.kind}" needs a colour label and a digest section and heading`);
     }
+    for (const c of m.colors ?? []) {
+      if (!/^[a-z][a-z0-9-]*$/.test(c.key ?? "")) throw new ManifestError(`${where(m)}: colour "${c.key}" needs a key of lowercase letters, digits and hyphens`);
+      if (!c.label?.trim()) throw new ManifestError(`${where(m)}: colour "${c.key}" needs a label`);
+      for (const pair of [c, c.dark, c.email]) {
+        if (pair && (!HEX.test(pair.fg ?? "") || !HEX.test(pair.bg ?? ""))) throw new ManifestError(`${where(m)}: colour "${c.key}" needs each fg and bg as #rrggbb`);
+      }
+    }
     const ownKinds = new Set((m.feed?.kinds ?? []).map((k) => k.kind));
     for (const rule of m.feed?.cards ?? []) {
+      if (typeof rule.card === "object" && "fromPayload" in rule.card) {
+        if (typeof rule.card.fromPayload !== "function") throw new ManifestError(`${where(m)}: a payload card needs fromPayload as a function`);
+        if (!/^[a-z][a-z0-9_]*$/.test(rule.card.surface ?? "")) throw new ManifestError(`${where(m)}: feed card surface "${rule.card.surface}" must be lowercase letters, digits and underscores`);
+        continue;
+      }
+      if (typeof rule.card === "object" && !/^[a-z][a-z0-9_]*$/.test(rule.card.surface ?? "")) {
+        throw new ManifestError(`${where(m)}: feed card surface "${rule.card.surface}" must be lowercase letters, digits and underscores`);
+      }
       if (typeof rule.card === "object" && !BUILTIN_KINDS.has(rule.card.kind) && !ownKinds.has(rule.card.kind)) {
         throw new ManifestError(`${where(m)}: feed card kind "${rule.card.kind}" is neither the hub's nor declared in feed.kinds`);
       }
@@ -469,6 +537,13 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       if (!d.emits.includes(eventType)) {
         throw new ManifestError(`${where(m)}: maps ${eventType}, which its descriptor does not emit (legacy types go in legacyActivities)`);
       }
+    }
+
+    for (const [eventType, words] of Object.entries(m.eventWords ?? {})) {
+      if (!d.emits.includes(eventType)) {
+        throw new ManifestError(`${where(m)}: eventWords names ${eventType}, which its descriptor does not emit`);
+      }
+      if (!words.trim()) throw new ManifestError(`${where(m)}: eventWords.${eventType} is empty`);
     }
 
     // Host lifecycle types (created, updated, ...) are emitted for every type
@@ -558,6 +633,11 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
           throw new ManifestError(`${where(m)}: setting ${f.key} is not under plugin.${d.plugin}.`);
         }
       }
+      for (const key of m.pluginSection.setup?.keys ?? []) {
+        if (!m.pluginSection.fields.some((f) => f.key === key)) {
+          throw new ManifestError(`${where(m)}: pluginSection.setup reads ${key}, which is not one of its fields`);
+        }
+      }
       for (const [key, entry] of Object.entries(m.pluginSection.search ?? {})) {
         if (!m.pluginSection.fields.some((f) => f.key === key)) {
           throw new ManifestError(`${where(m)}: pluginSection.search names ${key}, which is not one of its fields`);
@@ -623,5 +703,5 @@ export function wireObjectProblem(w: unknown): string | null {
 
 /** The actions a resident may call, from the descriptor's callers (the A3 allowlist). */
 export function residentActions(m: Pick<ProcessManifest, "descriptor">): string[] {
-  return m.descriptor.actions.filter((a) => a.callers.includes("resident")).map((a) => a.name);
+  return m.descriptor.actions.filter((a) => namesRole(a.callers, "member")).map((a) => a.name);
 }

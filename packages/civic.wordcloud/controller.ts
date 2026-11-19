@@ -6,7 +6,7 @@
 //   - GET /wordcloud/:id/cloud — aggregated cloud data per prompt
 //   - GET /wordcloud/:id      — full read model with cloud data
 
-import { NotFoundError, route, getProcess, resolveCallerId } from "@civic-social/plugin-sdk/first-party";
+import { NotFoundError, processesOf, route, resolveCallerId } from "@civic-social/plugin-sdk";
 import {
   buildClouds,
   getSubmissionCount,
@@ -15,6 +15,9 @@ import {
   hasVisibleSubmission,
 } from "./service.js";
 
+
+/** The word cloud with this id, or undefined when there is none (or it is another type's). */
+const getWordcloud = (id: string) => processesOf("civic.wordcloud").get(id);
 
 function getState(process: { state: Record<string, unknown> }): WordcloudProcessState {
   return process.state as unknown as WordcloudProcessState;
@@ -37,8 +40,8 @@ async function hasWordcloudSubmission(processId: string, authorId: string): Prom
 
 export const handleGetWordcloudCloud = route(async (req, res) => {
   const id = req.params.id as string;
-  const process = await getProcess(id);
-  if (!process || process.definition.type !== "civic.wordcloud") {
+  const process = await getWordcloud(id);
+  if (!process) {
     throw new NotFoundError("Word cloud not found");
   }
 
@@ -57,8 +60,8 @@ export const handleGetWordcloudCloud = route(async (req, res) => {
 export const handleGetWordcloudResponses = route(async (req, res) => {
   const id = req.params.id as string;
   const promptId = req.query.prompt_id as string | undefined;
-  const process = await getProcess(id);
-  if (!process || process.definition.type !== "civic.wordcloud") {
+  const process = await getWordcloud(id);
+  if (!process) {
     throw new NotFoundError("Word cloud not found");
   }
 
@@ -69,8 +72,8 @@ export const handleGetWordcloudResponses = route(async (req, res) => {
 
 export const handleGetWordcloud = route(async (req, res) => {
   const id = req.params.id as string;
-  const process = await getProcess(id);
-  if (!process || process.definition.type !== "civic.wordcloud") {
+  const process = await getWordcloud(id);
+  if (!process) {
     throw new NotFoundError("Word cloud not found");
   }
 

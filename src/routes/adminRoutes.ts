@@ -2,7 +2,6 @@
 // Every route requires the authenticated user's email to be listed in
 // the CIVIC_ADMIN_EMAILS env var.
 
-import { requirePlugin } from "../middleware/pluginGate.js";
 import { mountPackageRoutes } from "../plugins/mount.js";
 import { mountFeatureRoutes } from "../plugins/features.js";
 import { Router } from "express";
@@ -31,7 +30,6 @@ import {
   handleHideComment,
   handleRestoreComment,
 } from "../controllers/moderationController.js";
-import { handleListPins, handlePinProcess, handleUnpinProcess } from "../controllers/pinsController.js";
 import { handleGetHubAdminLog } from "../controllers/hubAdminLogController.js";
 import { handleGetSetupCard, handlePostSetupCard } from "../controllers/hubSetupCardController.js";
 import {
@@ -39,11 +37,7 @@ import {
   handleRestoreProcess,
   handleListArchivedProcesses,
 } from "../controllers/adminArchiveController.js";
-import {
-  handleAdminListFeedback,
-  handleContactCivicSocial,
-  handleForwardFeedback,
-} from "../controllers/adminFeedbackController.js";
+import { handleContactCivicSocial } from "../controllers/contactProviderController.js";
 import { requireAdmin } from "../middleware/auth.js";
 import { handleCensusDistricts } from "../controllers/aboutController.js";
 import {
@@ -64,7 +58,6 @@ import {
   handleSetAutoRefresh,
   handleRequestSampleRemovalCode,
 } from "../controllers/hubSampleContentController.js";
-import { handleAdminListMembers } from "../controllers/membersController.js";
 import { handleInstallPlugin, handleListPluginInstalls, handleRemovePlugin, handleUpdatePlugin } from "../controllers/hubPluginsController.js";
 
 const router = Router();
@@ -74,8 +67,6 @@ router.use(requireAdmin);
 // Plugin-specific admin surfaces answer 404 on a hub with the plugin off
 // (src/middleware/pluginGate.ts). The shared queues — reviews, archived,
 // edits, moderation of comments — belong to no one plugin and stay.
-router.use("/feedback", requirePlugin("feedback"));
-
 // The plugin packages' admin routes (ADR-014), each behind its plugin's
 // switch and the loader's verdict, after the admin check above.
 mountPackageRoutes(router, "adminRoutes");
@@ -99,19 +90,9 @@ router.get("/archived", handleListArchivedProcesses);
 router.get("/edits", handleAdminListEdits);
 router.post("/processes/:id/archive", handleArchiveProcess);
 router.post("/processes/:id/restore", handleRestoreProcess);
-// Pin any item to the right column's card, or unpin it, and Admin → Pinned
-// (Adam, 2026-11-18), while the hub's Pinning switch is on.
-router.post("/processes/:id/pin", requirePlugin("pinning"), handlePinProcess);
-router.post("/processes/:id/unpin", requirePlugin("pinning"), handleUnpinProcess);
-router.get("/pins", requirePlugin("pinning"), handleListPins);
 
-// Feedback archive (read-only). Everything residents sent through the
-// feedback form, newest first, optionally filtered to one category.
-// Read-only on purpose — see adminFeedbackController.
-router.get("/feedback", handleAdminListFeedback);
-// "Send to Civic.Social" for one item (feedback routing, 2026-10-13).
-router.post("/feedback/:id/forward", handleForwardFeedback);
-// An admin's own message to Civic.Social. Not behind the Feedback plugin.
+// An admin's own message to Civic.Social. Not behind any plugin (Feedback,
+// residents' messages, is features/feedback).
 router.post("/contact-civic-social", handleContactCivicSocial);
 
 // The numbers on the admin tabs and the account-menu dot: what is new in
@@ -131,7 +112,6 @@ router.post("/hub/mode", handleSetHubMode);
 // src/controllers/hubPeopleController.ts. Same step-up as a mode change:
 // adding an admin makes access permanent, removing them makes it exclusive.
 router.get("/hub/people", handleGetHubPeople);
-router.get("/hub/members", requirePlugin("members"), handleAdminListMembers);
 router.post("/hub/people/request-code", handleRequestStepUpCode);
 router.post("/hub/people", handleSetHubPeople);
 

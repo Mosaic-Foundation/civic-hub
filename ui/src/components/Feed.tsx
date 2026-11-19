@@ -312,9 +312,9 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
     }
   }, [visibleEvents, processMeta]);
 
-  // A News item's "From" line and pill name the hub's News Sync source as set now.
-  const newsFrom = hub.setting("plugin.news_sync.from_label") ?? null;
-  const newsPill = hub.setting("plugin.news_sync.pill_label") ?? null;
+  // A kind may word its card from the hub's settings as they stand now (News
+  // Sync's pill and From line), so the cards are rebuilt when they change.
+  const hubConfig = hub.config;
   const posts: FeedPostView[] = useMemo(() => {
     const getTitle = (id: string) => processMeta[id]?.title;
     const getDescription = (id: string) => processMeta[id]?.description;
@@ -342,7 +342,7 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
       ) {
         continue;
       }
-      const post = eventToPost(ev, getDescription, getTitle, { from: newsFrom, pill: newsPill });
+      const post = eventToPost(ev, getDescription, getTitle);
       if (!post) continue;
       const meta = processMeta[ev.process_id];
       out.push({
@@ -352,7 +352,6 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
         ...(kind === "brief" && meta?.description ? { summary: meta.description } : {}),
         imageUrl: meta?.imageUrl ?? null,
         imageAlt: meta?.imageAlt ?? null,
-        urgent: meta?.urgent === true,
         // An event-derived line from eventToPost (e.g. the official-response
         // context) wins; buildEngagement only knows the fetched meta.
         engagement:
@@ -360,7 +359,9 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
       });
     }
     return out;
-  }, [visibleEvents, processMeta, removedProcessIds, newsFrom, newsPill]);
+    // hubConfig: a kind words its card from the settings as they stand now, read inside.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleEvents, processMeta, removedProcessIds, hubConfig]);
 
   const hasMore = nextCursor !== null;
 

@@ -217,7 +217,7 @@ beforeAll(async () => {
     method: "PATCH",
     body: JSON.stringify({ full_name: `Resident ${MARKER_B}`, digest_frequency_days: 1 }),
   });
-  const { buildUnsubscribeToken } = await import("../../src/modules/civic.digest/unsubscribe.js");
+  const { buildUnsubscribeToken } = await import("../../src/services/unsubscribe.js");
   B.unsubscribeToken = buildUnsubscribeToken(B.resident, DIGEST_SECRET);
   B.noticesToken = buildUnsubscribeToken(B.resident, DIGEST_SECRET, "unsub_notices");
   const [ar] = (await localRest(`users?select=id&hub_id=eq.athens&email=eq.${MARKER_A}@example.test`)) as Array<{ id: string }>;
@@ -463,13 +463,15 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /announcement/:id": {},
   "GET /announcements": {},
   // Admin → Announcements (pinned and urgent, 2026-11-15): the caller's hub's announcements only.
-  "GET /admin/announcements": {},
   // Admin → News Sync: the caller's hub's synced posts and their From label (2026-11-16).
   "GET /link-preview/": { query: [] /* filled in below: ?url=<floyd's cached url> */ },
   "GET /search/": { query: [`?q=${MARKER_B}`, "?q=Vote", "?q=Notice&sort=newest", `?q=${MARKER_A}`] },
   "GET /meeting-summary/:id": {},
   "GET /news/:id": {},
-  "GET /admin/pins": {},
+  "GET /admin/pins/": {},
+  // The Pinning plugin (kernel step 4): titles, dates and a type's word, no one's account.
+  "GET /pins/": {},
+  "GET /pins/:id": {},
   "GET /unsubscribe/digest": { query: [] /* filled in below: none, a bad token, Floyd's resident's token */ },
   "GET /unsubscribe/notices": { query: [] /* filled in below: none, a bad token, Floyd's resident's notices token */ },
   "GET /events/": { query: ["", "?limit=500", "?page=true&limit=200", `?context=${"x"}`] },
@@ -483,9 +485,6 @@ const GET_PLAN: Record<string, Plan> = {
   // The feed's closing-soon cards (Events 4): open processes' titles and close times, the hub's own.
   "GET /feed/closing": {},
   "GET /api/feed/closing": {},
-  // The three-column layout's right column (ADR-019): titles, dates and a count, no one's account.
-  "GET /aside/": {},
-  "GET /api/aside/": {},
   // Activity (ADR-016): counts only. Athens keeps Public numbers off, so the
   // public route answers 404 here; tests/api/analytics walks it on, off and with a key.
   "GET /analytics/": { query: ["", "?period=week", "?period=quarter", "?period=all"] },
@@ -693,7 +692,6 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /deliberations/:processId/participate/statement": { body: { text: X.body } },
   "POST /deliberations/:processId/start": { body: {} },
   "POST /deliberations/:processId/close": { body: { note: "Closed early by a test." } },
-  "POST /deliberations/:processId/regenerate": { body: {} },
   "POST /proposals/:id/support": { body: {} },
   "DELETE /proposals/:id/support": {},
   // A reporting key (ADR-016): Floyd's ids are never one of Athens's keys.
@@ -727,15 +725,13 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /admin/reviews/:reviewId/decline": { body: { reason: X.reason } },
   "POST /admin/processes/:id/archive": { body: { reason: X.reason } },
   "POST /admin/processes/:id/restore": { body: {} },
-  "POST /admin/processes/:id/pin": { body: {} },
-  "POST /admin/processes/:id/unpin": { body: {} },
+  "POST /pins/:id": { body: {} },
+  "DELETE /pins/:id": {},
   "POST /admin/queues/:queue/seen": { skip: ":queue names one of this hub's own queues, not a row; writes only the caller's hub" },
   "POST /admin/moderation/comments/:commentId/hide": { body: { reason: X.reason } },
   "POST /admin/moderation/comments/:commentId/restore": { body: {} },
   "POST /admin/moderation/announcements/:id/remove": { body: { reason: X.reason } },
   "POST /admin/moderation/announcements/:id/restore": { body: {} },
-  "POST /admin/announcements/:id/pin": { body: {} },
-  "POST /admin/announcements/:id/unpin": { body: {} },
   "POST /brief/:id/response": { body: { body: X.body } },
   "PATCH /announcement/:id": { body: { title: X.title, body: X.body } },
 };
@@ -832,7 +828,7 @@ describe("the digest", () => {
     const { getHubBySlug } = await import("../../src/db/hubs.js");
     const { fetchHubSettings } = await import("../../src/db/hubSettingsStore.js");
     const { runWithHub } = await import("../../src/config/hubContext.js");
-    const { digestJob } = await import("../../src/jobs/digest.js");
+    const { digestJob } = await import("../../features/digest/job.js");
 
     const hub = await getHubBySlug("athens");
     expect(hub).toBeTruthy();

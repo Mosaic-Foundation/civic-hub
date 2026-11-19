@@ -12,6 +12,7 @@ import { CivicError, codeForStatus } from "../errors/index.js";
 import { DEFAULT_HUB_BANNER } from "../shared/platform.js";
 import { PLUGIN_NAMES } from "../shared/pluginNames.js";
 import { pluginDefaultOn } from "../shared/hubFeatures.js";
+import { FEATURE_MANIFEST_LIST } from "../shared/featureManifests.js";
 import { getDb } from "../db/client.js";
 import { eventToRow } from "../events/eventStore.js";
 import { buildEvent } from "../events/eventEmitter.js";
@@ -528,9 +529,8 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
     // decision 6, Adam, 2026-10-29; it was the left sidebar from 2026-10-14).
     // A hub that stored either keeps it; unset still reads as top tabs.
     [KEYS.NAV_LAYOUT]: "top_tabs",
-    // The member count, stack and page wait for 10 members on a new hub; a
-    // hub made before the Members plugin reads unset as 0 (Adam, 2026-10-14).
-    [KEYS.PLUGIN_MEMBERS_MIN_COUNT]: "10",
+    // What each hub feature starts a new space with (FeatureManifest.newSpaceSettings).
+    ...Object.assign({}, ...FEATURE_MANIFEST_LIST.map((m) => m.newSpaceSettings ?? {})),
   };
   // A place hub is titled by its place; any other kind by its own name (the default).
   if (jurisdictionName && kind === "place") settings[KEYS.IDENTITY_PAGE_TITLE] = `${jurisdictionName} — Civic Hub`;

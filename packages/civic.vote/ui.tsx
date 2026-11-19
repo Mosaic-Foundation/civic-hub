@@ -1,13 +1,26 @@
 // civic.vote: an advisory vote (manifest: ./manifest.ts).
 // Its pages, its two feed cards and the vote plugin's panel on the Plugins page.
+// Its pages are its own (./ui/), built from the SDK's UI entry alone, and load
+// when first opened.
 
-import { NewVote, Process, VoteLog, Votes } from "../../ui/src/lazyPages";
-import hub from "../../ui/src/config/hub";
-import { voteResultLine } from "../../src/shared/feedActivity";
-import { getProcessState, type VoteState } from "../../ui/src/services/api";
-import { ChoiceField, NumberField, ParticipationValues } from "../../ui/src/pages/settings/pluginFields";
-import { formatCount } from "../../ui/src/processes/feedText";
-import type { FeedKindUi, ProcessMeta, ProcessUi } from "../../ui/src/processes/types";
+import { lazy } from "react";
+import {
+  ChoiceField,
+  NumberField,
+  ParticipationValues,
+  formatCount,
+  participantNoun,
+  type FeedKindUi,
+  type ProcessMeta,
+  type ProcessUi,
+} from "@civic-social/plugin-sdk/ui";
+import { getProcessState, type VoteState } from "./ui/api";
+import { voteResultLine } from "./resultLine";
+
+const Votes = lazy(() => import("./ui/Votes"));
+const Process = lazy(() => import("./ui/Process"));
+const NewVote = lazy(() => import("./ui/NewVote"));
+const VoteLog = lazy(() => import("./ui/VoteLog"));
 
 const voteMeta = (id: string): Promise<ProcessMeta | null> =>
   getProcessState(id).then((state) => {
@@ -29,7 +42,7 @@ const voteOpen: FeedKindUi = {
     if (meta.totalVotes === undefined) return "Open for input";
     const n = meta.totalVotes;
     if (n === 0) return "Open for input — be the first to vote";
-    const noun = `${hub.noun(n)} ${n === 1 ? "has" : "have"}`;
+    const noun = `${participantNoun(n)} ${n === 1 ? "has" : "have"}`;
     return `${formatCount(n)} ${noun} voted so far`;
   },
 };
@@ -49,7 +62,7 @@ const voteClosed: FeedKindUi = {
   engagement: (meta) => {
     const n = meta.totalVotes ?? 0;
     if (n === 0) return null;
-    return `${formatCount(n)} ${hub.noun(n)} voted`;
+    return `${formatCount(n)} ${participantNoun(n)} voted`;
   },
 };
 
@@ -57,9 +70,9 @@ const voteUi: ProcessUi = {
   type: "civic.vote",
   routes: [
     { path: "/votes", element: <Votes /> },
-    // The generic page: it hands every other type to its own page, so it checks
-    // the record's plugin itself (pages/Process.tsx).
-    { path: "/process/:id", element: <Process />, ungated: true },
+    // The vote's page is the kernel's /process/:id link: the kernel hands the
+    // link here while Votes is on, and sends it on itself otherwise.
+    { path: "/process/:id", element: <Process /> },
     { path: "/votes/new", element: <NewVote /> },
     { path: "/votes/:id/log", element: <VoteLog /> },
   ],
