@@ -100,6 +100,11 @@ const descriptor = defineDescriptor({
 export const WORDCLOUD_MANIFEST = defineManifest({
   descriptor,
   color: "wordcloud",
+  // Its colours' defaults (kernel step 4: each plugin carries its own). The
+  // Civic Hub's palette lists the same keys (a few following its base colours), and wins.
+  colors: [
+    { key: "wordcloud", label: "Word clouds", fg: "#5c6b2a", bg: "#edf0dd", dark: { fg: "#b6c47a", bg: "#272b1d" } },
+  ],
   detailPath: (id) => `/wordcloud/${id}`,
   requiredSchema: [
     {

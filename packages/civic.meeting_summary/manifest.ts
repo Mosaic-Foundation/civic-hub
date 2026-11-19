@@ -40,6 +40,11 @@ const descriptor = defineDescriptor({
 export const MEETING_SUMMARY_MANIFEST = defineManifest({
   descriptor,
   color: "meeting",
+  // Its colours' defaults (kernel step 4: each plugin carries its own). The
+  // Civic Hub's palette lists the same keys (a few following its base colours), and wins.
+  colors: [
+    { key: "meeting", label: "Meeting summaries", fg: "#2a7340", bg: "#dceedf", dark: { fg: "#7cc790", bg: "#1f2a22" }, email: { fg: "#0f4a26", bg: "#d9ecd9" } },
+  ],
   detailPath: (id) => `/meeting-summary/${id}`,
   requiredSchema: [],
   tables: [],

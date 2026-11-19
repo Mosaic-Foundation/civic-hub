@@ -394,14 +394,17 @@ const SECTION_ORDER: DigestSection[] = [
 /**
  * Per-PROCESS-TYPE pill hex pairs (2026-08-28): one color per process type
  * across feed, Outcomes, and this email, keyed by the shared classifier's
- * ActivityColor. The space type's palette gives its own (mirroring the UI's
- * --type-<color>-* tokens), a package its declared ones; "generic" is the
- * kernel's. Inlined as literals because email clients don't honor CSS vars.
+ * ActivityColor. A package gives its own colours' (its email pair, else its
+ * light pair); a family the space type's palette lists takes the palette's
+ * instead (mirroring the UI's --type-<color>-* tokens), as on the page;
+ * "generic" is the kernel's. Inlined as literals because email clients don't honor CSS vars.
  */
 const PILL_COLORS: Record<string, { bg: string; fg: string }> = {
+  // The packages' own colours, for families the space type's palette does not list.
+  ...Object.fromEntries(
+    DECLARED_COLORS.filter((c) => !SPACE_PALETTE.colors.some((s) => s.key === c.key)).map((c) => [c.key, c.email ?? { bg: c.bg, fg: c.fg }]),
+  ),
   ...Object.fromEntries(SPACE_PALETTE.colors.flatMap((c) => (c.email ? [[c.key, c.email] as const] : []))),
-  // Declared colours (A5), as their packages give them.
-  ...Object.fromEntries(DECLARED_COLORS.map((c) => [c.key, { bg: c.bg, fg: c.fg }])),
   generic: { bg: "#dce5f2", fg: "#1f3a66" },
 };
 

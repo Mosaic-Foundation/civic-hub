@@ -138,6 +138,11 @@ const descriptor = defineDescriptor({
 export const VOTE_MANIFEST = defineManifest({
   descriptor,
   color: "vote",
+  // Its colours' defaults (kernel step 4: each plugin carries its own). The
+  // Civic Hub's palette lists the same keys (a few following its base colours), and wins.
+  colors: [
+    { key: "vote", label: "Votes", fg: "#15294c", bg: "#dce5f2", dark: { fg: "#9db6e0", bg: "#222a38" }, email: { fg: "#1e3a5f", bg: "#dce5f2" } },
+  ],
   detailPath: (id) => `/process/${id}`,
   // The two-table split below is the anonymous-ballot guarantee, not an
   // accident of normalization: vote_records knows the choice but not the

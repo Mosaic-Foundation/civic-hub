@@ -77,6 +77,11 @@ const descriptor = defineDescriptor({
 export const PROPOSAL_MANIFEST = defineManifest({
   descriptor,
   color: "proposal",
+  // Its colours' defaults (kernel step 4: each plugin carries its own). The
+  // Civic Hub's palette lists the same keys (a few following its base colours), and wins.
+  colors: [
+    { key: "proposal", label: "Proposals", fg: "#5f4b8b", bg: "#eae7f0", dark: { fg: "#b9a6e0", bg: "#2a2538" } },
+  ],
   detailPath: (id) => `/proposal/${id}`,
   requiredSchema: [
     { table: "proposals", owner: "civic.proposals" },

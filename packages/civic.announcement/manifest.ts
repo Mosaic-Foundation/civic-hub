@@ -37,6 +37,12 @@ const descriptor = defineDescriptor({
 export const ANNOUNCEMENT_MANIFEST = defineManifest({
   descriptor,
   color: "announcement",
+  // Its colours' defaults (kernel step 4: each plugin carries its own). The
+  // Civic Hub's palette lists the same keys (a few following its base colours), and wins.
+  colors: [
+    { key: "announcement", label: "Announcements", fg: "#6e3013", bg: "#f4e3db", dark: { fg: "#e6a283", bg: "#33241d" }, email: { fg: "#8c3210", bg: "#fbe5d3" } },
+    { key: "announcement-author", label: "Officials' announcements", fg: "#3a2c5e", bg: "#e4ddf0", dark: { fg: "#c3b4e6", bg: "#2a2538" } },
+  ],
   detailPath: (id) => `/announcement/${id}`,
   requiredSchema: [],
   tables: [],

@@ -96,6 +96,13 @@ Updated after every Claude Code session. Records what was built, what's incomple
   `aboutLine`, `accountPanel`, `peopleSection`. Home's row is the kernel's `HomeShareRow` (the plugin's count, then
   Share this hub). `GET /api/aside` is gone (its one fact was the count; the About card's line reads the plugin's
   summary). `KERNEL_FEATURES` is gone: every hub feature is a package. Nothing changes on screen.
+- **Each plugin carries its own colours** (manifest `colors`: key, label, light, dark, email; `PackageColor`). The nine
+  first-party packages carry the values the Civic Hub's palette has. A family the space type's palette lists is the
+  palette's (its CSS, theme entry and email pill); the packages' own apply only to keys it does not list
+  (`declaredTypeStylesheet`, now with dark tokens, the theme's keys and defaults, the digest's pills). The emitted
+  stylesheet, theme keys, defaults and labels were compared before and after: identical. Events keeps its colour on its
+  card kind, and its dark tokens in the kernel's `dark.css`, until its next release. Catalog entries regenerated at the
+  same versions (below).
 - **Announcements has no urgent label any more**, and `PluginServer.pinnedCard` is gone (with Announcements'
   `board.ts` and `pinnedCard.ts`, its form's Prominence box, the page's Urgent chip and "Urgent until", the feed card's
   Urgent chip and `FeedProcessMeta.urgent`). News Sync's pinned-item label hook is gone too. Visible: a pinned News

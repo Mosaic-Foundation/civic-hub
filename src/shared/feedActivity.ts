@@ -215,6 +215,27 @@ export interface FeedBriefStyle {
 }
 
 /**
+ * A colour family a package carries (engine 2, A5; every package's own
+ * default since kernel step 4, Nov 19: "each plugin carries its own default
+ * colour"). Its light pair, and optionally its dark pair and its email pill.
+ * The space type's palette may list the same key, and then its values win
+ * (src/shared/spacePalette.ts); an admin's theme wins over both.
+ */
+export interface PackageColor {
+  /** Lowercase letters, digits and hyphens: the UI's `--type-<key>-*` tokens. */
+  key: string;
+  /** What Settings → Theme calls it. */
+  label: string;
+  /** The light mode's text colour and wash, #rrggbb. Its fg is the theme's default hue. */
+  fg: string;
+  bg: string;
+  /** The dark mode's (a light tone for words, a dark tint behind). Absent: the kernel's neutral dark. */
+  dark?: { fg: string; bg: string };
+  /** Its pill in the email digest. Absent: the light pair. */
+  email?: { fg: string; bg: string };
+}
+
+/**
  * A card kind a package adds (engine 2, A5): what its pill and card edge are
  * coloured, what the theme calls the colour, and where the email digest puts
  * it. Every surface reads these; no hub list names the kind.
@@ -223,7 +244,7 @@ export interface FeedKindDeclaration {
   /** The kind its `cards` rules name ("event"). Not one of the hub's own. */
   kind: string;
   /** Its colour family: a key of its own, the default text colour and wash, and the theme's label. */
-  color: { key: string; fg: string; bg: string; label: string };
+  color: PackageColor;
   /** The digest's section for it: a key, the heading, and the line under a card's title. */
   digest: { section: string; heading: string; summary?: (data: Record<string, unknown>) => string | null };
 }
@@ -241,10 +262,18 @@ export const DECLARED_FEED_KINDS: ReadonlyMap<string, FeedKindDeclaration & { ty
   MANIFEST_LIST.flatMap((m) => (m.feed?.kinds ?? []).map((k) => [k.kind, { ...k, type: m.descriptor.type }] as const)),
 );
 
-/** Every colour family the configured packages declare (A5), in load order. */
-export const DECLARED_COLORS: ReadonlyArray<FeedKindDeclaration["color"]> = [
-  ...new Map([...DECLARED_FEED_KINDS.values()].map((k) => [k.color.key, k.color] as const)).values(),
-];
+/**
+ * Every colour family the configured packages declare, in load order: each
+ * manifest's own `colors`, then its card kinds' (A5). The first declaration
+ * of a key stands.
+ */
+export const DECLARED_COLORS: readonly PackageColor[] = (() => {
+  const byKey = new Map<string, PackageColor>();
+  for (const m of MANIFEST_LIST) {
+    for (const c of [...(m.colors ?? []), ...(m.feed?.kinds ?? []).map((k) => k.color)]) if (!byKey.has(c.key)) byKey.set(c.key, c);
+  }
+  return [...byKey.values()];
+})();
 
 interface TableRule extends FeedCardRule {
   type: string;

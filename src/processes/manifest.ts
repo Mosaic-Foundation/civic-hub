@@ -22,7 +22,7 @@ import type { HubFeature } from "../shared/hubFeatures.js";
 import type { ThemeTypeKey } from "../shared/theme.js";
 import type { ActivityRecipe, WireObjectRecipe } from "../shared/activityRecipe.js";
 import { AS2_TERMS } from "../shared/as2Terms.js";
-import type { FeedDeclaration } from "../shared/feedActivity.js";
+import type { FeedDeclaration, PackageColor } from "../shared/feedActivity.js";
 import { grantProblem, type PluginCapabilities } from "../shared/pluginGrant.js";
 import { participationProblem, type ParticipationDeclaration } from "../shared/participation.js";
 import { namesRole } from "../shared/spaceProfile.js";
@@ -162,6 +162,13 @@ export interface ProcessManifest {
   descriptor: ProcessTypeDescriptor;
   /** The theme colour family its pills and cards take (src/shared/theme.ts). */
   color: ThemeTypeKey;
+  /**
+   * The colour families it carries, with their default values (kernel step
+   * 4): its own `color` among them, and any other its cards wear. A space
+   * type's palette may set the same key over them, and an admin's theme over
+   * both. A family only a card kind uses may sit on the kind instead (`feed.kinds`).
+   */
+  colors?: readonly PackageColor[];
   /** The canonical public UI path of one of its processes. */
   detailPath(id: string): string;
   /** The tables and columns it needs, checked at startup and by /health. */
@@ -470,6 +477,13 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       if (!/^[a-z][a-z0-9-]*$/.test(k.color?.key ?? "")) throw new ManifestError(`${where(m)}: feed kind "${k.kind}" needs a colour key of lowercase letters, digits and hyphens`);
       if (!HEX.test(k.color.fg ?? "") || !HEX.test(k.color.bg ?? "")) throw new ManifestError(`${where(m)}: feed kind "${k.kind}" needs fg and bg as #rrggbb`);
       if (!k.color.label || !k.digest?.section || !k.digest.heading) throw new ManifestError(`${where(m)}: feed kind "${k.kind}" needs a colour label and a digest section and heading`);
+    }
+    for (const c of m.colors ?? []) {
+      if (!/^[a-z][a-z0-9-]*$/.test(c.key ?? "")) throw new ManifestError(`${where(m)}: colour "${c.key}" needs a key of lowercase letters, digits and hyphens`);
+      if (!c.label?.trim()) throw new ManifestError(`${where(m)}: colour "${c.key}" needs a label`);
+      for (const pair of [c, c.dark, c.email]) {
+        if (pair && (!HEX.test(pair.fg ?? "") || !HEX.test(pair.bg ?? ""))) throw new ManifestError(`${where(m)}: colour "${c.key}" needs each fg and bg as #rrggbb`);
+      }
     }
     const ownKinds = new Set((m.feed?.kinds ?? []).map((k) => k.kind));
     for (const rule of m.feed?.cards ?? []) {

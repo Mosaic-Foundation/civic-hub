@@ -114,6 +114,11 @@ const descriptor = defineDescriptor({
 export const POLIS_DELIBERATION_MANIFEST = defineManifest({
   descriptor,
   color: "conversation",
+  // Its colours' defaults (kernel step 4: each plugin carries its own). The
+  // Civic Hub's palette lists the same keys (a few following its base colours), and wins.
+  colors: [
+    { key: "conversation", label: "Conversations", fg: "#0f5e66", bg: "#ddefef", dark: { fg: "#6fc4c9", bg: "#1b2e30" } },
+  ],
   detailPath: (id) => `/deliberation/${id}`,
   requiredSchema: [
     {

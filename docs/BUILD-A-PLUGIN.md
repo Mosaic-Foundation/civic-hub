@@ -343,7 +343,10 @@ None of these is required; each has a step in the suite where you use it (`docs/
   the action.
 - **Show who took part** as the hub would: `namesFor(req, processId, accounts)` in a route of its own.
 - **Have words for its own statuses** (an event is scheduled, past or cancelled): manifest `statuses`.
-- **Have its own feed card colour and digest section:** manifest `feed.kinds`.
+- **Have its own colour:** manifest `colors` (a key, a label, the light pair, and optionally the dark pair and the email
+  pill), and name its key in `color`. It is your plugin's default: a space type's palette may set the same key, and an
+  admin's theme sets either. A space type that lists your key wins, so a hub looks the same whichever plugins it runs.
+- **Have its own feed card kind and digest section:** manifest `feed.kinds` (its colour may sit on the kind).
 - **Open an action to officials**, or let officials publish without review: the `official` caller,
   `creation.resident.publish_at_once: ["official"]`.
 - **Say that an act is not taking part** (taking back "going"): `participation.withdrawal`.
