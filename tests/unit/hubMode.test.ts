@@ -51,7 +51,19 @@ describe("who may set which mode", () => {
     // The restriction is one-directional: a demo graduating into a real hub
     // is a real decision, and its admin is the right person to make it.
     expect(hubModeChangeRejectionReason("demo", "beta")).toBeNull();
-    expect(hubModeChangeRejectionReason("demo", "live")).toBeNull();
+    expect(hubModeChangeRejectionReason("demo", "live", { liveApproved: true })).toBeNull();
+  });
+
+  it("refuses live until the platform has approved the hub, and says whom to write to (2026-11-19)", () => {
+    // A live hub runs under an agreement with Civic.Social.
+    for (const from of ["demo", "beta"] as const) {
+      expect(hubModeChangeRejectionReason(from, "live")).toContain("adam@civic.social");
+      expect(hubModeChangeRejectionReason(from, "live", { liveApproved: false })).toMatch(/isn't available yet/);
+      expect(hubModeChangeRejectionReason(from, "live", { liveApproved: true })).toBeNull();
+    }
+    // Beta is never held back, and a hub already live is not asked again.
+    expect(hubModeChangeRejectionReason("live", "beta")).toBeNull();
+    expect(hubModeChangeRejectionReason("live", "live")).toBeNull();
   });
 
   it("explains an unknown mode rather than silently refusing", () => {
@@ -104,7 +116,7 @@ describe("what the admin mode control may offer", () => {
     // The restriction runs one way only. A demo hub becoming real is its
     // admin's decision and theirs to make.
     expect(hubModeChangeRejectionReason("demo", "beta")).toBeNull();
-    expect(hubModeChangeRejectionReason("demo", "live")).toBeNull();
+    expect(hubModeChangeRejectionReason("demo", "live", { liveApproved: true })).toBeNull();
   });
 
   it("refuses every route back into demo", () => {

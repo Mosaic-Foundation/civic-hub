@@ -54,7 +54,7 @@ export const HANDED_OVER_NOTE =
 
 /** Said wherever the console shows the mode read-only. */
 export const MODE_OWNER_NOTE =
-  "The hub's admins change its mode in Hub settings → Mode (demo → beta → live). A hub never goes back to demo.";
+  "The hub's admins change its mode in Hub settings → Mode (demo → beta → live). Live needs your approval first (Going live, below). A hub never goes back to demo.";
 
 /** Said wherever the console shows the plugin switches read-only. */
 export const PLUGINS_OWNER_NOTE =

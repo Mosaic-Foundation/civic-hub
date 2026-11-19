@@ -678,6 +678,28 @@
   font-size: var(--text-small-size);
 }
 
+/* Live before the platform has approved the hub (2026-11-19): shown, not choosable. */
+.settings-mode-choice.is-unavailable {
+  cursor: default;
+  background: var(--color-surface-sunken);
+}
+
+.settings-mode-choice.is-unavailable:hover {
+  border-color: var(--color-border);
+}
+
+.settings-mode-choice.is-unavailable .settings-mode-title {
+  color: var(--color-text-muted);
+}
+
+.settings-mode-unavailable {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-bg);
+  color: var(--color-text);
+}
+
 .settings-note {
   margin-top: var(--space-6);
 }

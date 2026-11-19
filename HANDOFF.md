@@ -4,6 +4,27 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Going live needs the platform's approval — 2026-11-19
+
+On dev, unpushed. **One migration** (20261119000000), so release with `./scripts/release.sh dev`. The console
+change (mosaic-console, "Going live" card) needs this hub release first: it calls the new operator method
+`setLiveApproval`. Adam (2026-11-19): people can start their own hubs now; they stay demo or beta until there is an
+agreement, and he approves live in the console.
+
+- **`hubs.live_approved_at`**: set and cleared only by the console (`setHubLiveApproval`, operator method
+  `setLiveApproval`). The migration approves every hub that is live today, so Floyd is unaffected.
+- **Refused in code and in the database.** `hubModeChangeRejectionReason(from, to, { liveApproved })` refuses a move
+  into live without it (`live_not_approved`, the words of `src/shared/goLive.ts`, which name adam@civic.social).
+  The trigger `hubs_live_needs_approval` refuses the same update, and approves a hub INSERTED live (only the console
+  and operator scripts create live hubs; the start page creates demos only).
+- **Hub settings → Mode**: Live stays visible, disabled, with the note and a mailto link, until approved
+  (`hub.live_approved` on `GET /admin/hub/settings`). Once approved, admins go live as before, with the readiness
+  checks and the waitlist email. Taking approval back leaves a live hub live; it only stops it coming back by itself.
+- **Tests**: unit `hubMode`, API `leavingDemo` (refusal, then approval), E2E `leavingDemo` (approves hubs a and b
+  after checking the locked state), smoke (the smoke hub is not approved, so it checks the note instead of the Live
+  walk-through). Local: unit 2,808; API 3,913 passed, 4 failed (the known `sampleContent`/`leakHarness` row-cap
+  failures on the bloated local stack); Playwright `leavingDemo` 13/13 on the preview build.
+
 ## Kernel branch: E2E caught up; the resident digest, the drafting assistant, Pinning, Feedback, the admin digest, Search and Members are feature packages — 2026-11-19
 
 - **E2E (0c96ca3):** dev's E2E run had failed or run out its 30 minutes since Nov 17. Most of the time went on specs

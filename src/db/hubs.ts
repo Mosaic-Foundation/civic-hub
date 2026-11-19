@@ -215,6 +215,36 @@ export async function setHubMode(hubId: string, mode: string): Promise<void> {
 }
 
 /**
+ * When the platform approved this hub for live (migration 20261119000000), or
+ * null. Read on its own rather than with every request's hub row: it matters
+ * only when someone looks at or changes the mode. Null too when it can't be
+ * read (the column not there yet), so a failed read never lets a hub go live;
+ * the trigger on `hubs` refuses the move either way.
+ */
+export async function getHubLiveApprovedAt(hubId: string): Promise<string | null> {
+  const { data, error } = await getDb().from("hubs").select("live_approved_at").eq("id", hubId).maybeSingle();
+  if (error) {
+    console.error(`[hubs] live approval of ${hubId} could not be read: ${error.message}`);
+    return null;
+  }
+  return (data as { live_approved_at: string | null } | null)?.live_approved_at ?? null;
+}
+
+/**
+ * Approve a hub for live, or take the approval back. The platform
+ * operator's alone (src/operator/hubs.ts); a hub's admin form never calls
+ * it. Taking it back does not move a live hub: it only stops the hub coming
+ * back to live by itself once it has left. Returns the new value.
+ */
+export async function setHubLiveApprovedAt(hubId: string, approved: boolean): Promise<string | null> {
+  const value = approved ? new Date().toISOString() : null;
+  const { error } = await getDb().from("hubs").update({ live_approved_at: value }).eq("id", hubId);
+  if (error) throw new Error(error.message);
+  invalidateHubCache();
+  return value;
+}
+
+/**
  * Rename a hub in the registry: the one other registry write a hub's own
  * admin makes, when their new hub name replaces a registry name that still
  * matched the old one (review R11, src/controllers/hubSettingsController.ts).

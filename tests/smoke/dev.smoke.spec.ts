@@ -989,7 +989,17 @@ test("the Mode page on the beta hub shows the readiness list and consequences fo
   const beta = page.locator("label.settings-mode-choice", { hasText: "Beta" });
   await expect(beta.locator(".settings-mode-badge")).toHaveText("Current");
 
-  await page.locator("label.settings-mode-choice", { hasText: "Live" }).locator("input").check();
+  // Going live needs the platform's approval (2026-11-19). The smoke hub is
+  // not approved, so Live is shown, can't be chosen, and says whom to write
+  // to; if it ever is approved, the old walk-through below runs instead.
+  const live = page.locator("label.settings-mode-choice", { hasText: "Live" }).locator("input");
+  if (await live.isDisabled()) {
+    await expect(page.getByTestId("live-unavailable")).toContainText("Going live isn't available yet.");
+    await expect(beta.locator("input")).toBeChecked();
+    await page.close();
+    return;
+  }
+  await live.check();
   await expect(page.getByRole("region", { name: "Before you switch to live" })).toBeVisible();
   await expect(page.getByRole("region", { name: "What happens when you switch" })).toContainText("What happens when you switch to live");
   await expect(page.getByRole("button", { name: "Email me a code" })).toBeVisible();

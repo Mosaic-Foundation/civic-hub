@@ -3,6 +3,8 @@
 // Contract: BUILD-PLAN-multi-tenant.md → "Contracts / 1. hubs table".
 // Created by supabase/migrations/20260922010000_hubs.sql.
 
+import { GO_LIVE_UNAVAILABLE_MESSAGE } from "../shared/goLive.js";
+
 export interface Hub {
   /**
    * The slug, e.g. "floyd". Also the value stamped into every other table's
@@ -129,14 +131,22 @@ export function isAdminSettableHubMode(value: unknown): value is HubMode {
  * may, or the reason they may not, phrased for the person reading the form.
  */
 export function hubModeChangeRejectionReason(
-  _from: HubMode,
+  from: HubMode,
   to: unknown,
+  opts: { liveApproved?: boolean } = {},
 ): string | null {
   if (!isHubMode(to)) {
     return `"${String(to)}" is not a hub mode. Choose one of: ${HUB_MODES.join(", ")}.`;
   }
   if (!isAdminSettableHubMode(to)) {
     return "Demo mode can only be set by the platform operator, not from hub settings.";
+  }
+  // Going live needs the platform's approval (Adam, 2026-11-19): a live hub
+  // runs under an agreement with Civic.Social. The console sets the approval
+  // (hubs.live_approved_at); a trigger refuses the move without it too.
+  // Unknown counts as not approved. A hub already live is not asked again.
+  if (to === "live" && from !== "live" && opts.liveApproved !== true) {
+    return GO_LIVE_UNAVAILABLE_MESSAGE;
   }
   // Moving OUT of demo is allowed: a demo hub graduating to beta or live is a
   // real decision, and its own admin is the right person to make it. Only the

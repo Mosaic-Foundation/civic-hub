@@ -16,6 +16,10 @@
 // The time zone and postal address block; everything else may be accepted
 // as it is, for this switch. "Email me a code" stays off until then. Going
 // back from live to beta shows only what it does: who gets locked out.
+//
+// Going live needs the platform's approval (Adam, 2026-11-19): until the
+// console has approved the hub, Live is shown but can't be chosen, with the
+// words of src/shared/goLive.ts. The server refuses the move as well.
 
 import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
@@ -39,6 +43,7 @@ import { anchorForKey } from "../../../../src/shared/helpRegistry";
 const ALLOWLIST_ANCHORS = ["allowlist", anchorForKey("mode.allowlist")];
 const WAITLIST_ANCHORS = ["waitlist", anchorForKey("mode.waitlist")];
 import { SampleRemovalWarning } from "./sampleWarning";
+import { GO_LIVE_CONTACT_EMAIL, GO_LIVE_UNAVAILABLE_MESSAGE } from "../../../../src/shared/goLive";
 
 const MODES: ReadonlyArray<{ id: "beta" | "live"; title: string; body: string }> = [
   {
@@ -56,6 +61,8 @@ const MODES: ReadonlyArray<{ id: "beta" | "live"; title: string; body: string }>
 export default function ModeSection() {
   const { data, error, reload, setDirty } = useHubSettings();
   const mode = data?.hub.mode ?? "";
+  // A hub already live is not asked again; anything else needs the approval.
+  const liveLocked = !!mode && mode !== "live" && data?.hub.live_approved !== true;
 
   const [pending, setPending] = useState<string>("");
   const [code, setCode] = useState("");
@@ -207,12 +214,15 @@ export default function ModeSection() {
               {MODES.map((m) => (
                 <label
                   key={m.id}
-                  className={`settings-mode-choice${pending === m.id ? " is-selected" : ""}`}
+                  className={`settings-mode-choice${pending === m.id ? " is-selected" : ""}${
+                    m.id === "live" && liveLocked ? " is-unavailable" : ""
+                  }`}
                 >
                   <input
                     type="radio"
                     name="hub-mode"
                     value={m.id}
+                    disabled={m.id === "live" && liveLocked}
                     checked={pending === m.id}
                     onChange={() => {
                       setPending(m.id);
@@ -226,6 +236,12 @@ export default function ModeSection() {
                       {mode === m.id && <span className="settings-mode-badge">Current</span>}
                     </span>
                     <span className="settings-mode-body">{m.body}</span>
+                    {m.id === "live" && liveLocked && (
+                      <span className="settings-mode-body settings-mode-unavailable" data-testid="live-unavailable">
+                        {GO_LIVE_UNAVAILABLE_MESSAGE.replace(`${GO_LIVE_CONTACT_EMAIL}.`, "")}
+                        <a href={`mailto:${GO_LIVE_CONTACT_EMAIL}`}>{GO_LIVE_CONTACT_EMAIL}</a>.
+                      </span>
+                    )}
                   </span>
                 </label>
               ))}

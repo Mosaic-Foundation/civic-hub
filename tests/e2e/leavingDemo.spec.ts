@@ -20,7 +20,7 @@
 import { createHash } from "node:crypto";
 import { test, expect, type Page } from "@playwright/test";
 import { localRest, plantHubCode } from "../fixtures/adminSession.js";
-import { createHub } from "../fixtures/operator.js";
+import { createHub, setLiveApproval } from "../fixtures/operator.js";
 import { call } from "../fixtures/hostCall.js";
 import { run, session, visitAs } from "./actors";
 
@@ -144,6 +144,26 @@ test.describe.configure({ mode: "serial" });
 
 test.describe("Mode page on a fresh demo hub", () => {
   test.use({ viewport: DESKTOP });
+
+  // Going live needs the platform's approval (2026-11-19). The tests after
+  // this one choose Live, so it approves hubs a and b once it has looked.
+  test("Live can't be chosen until the platform approves the hub, and says whom to write to", async ({ page }) => {
+    const slug = slugs.a;
+    await adminPage(page, slug);
+    await openMode(page, slug);
+    await expect(choice(page, "Live")).toBeDisabled();
+    const note = page.getByTestId("live-unavailable");
+    await expect(note).toContainText("Going live isn't available yet.");
+    await expect(note.getByRole("link", { name: "adam@civic.social" })).toHaveAttribute("href", "mailto:adam@civic.social");
+
+    for (const s of [slugs.a, slugs.b]) {
+      const approved = await setLiveApproval(s, true);
+      expect(approved.status, JSON.stringify(approved.body)).toBe(200);
+    }
+    await openMode(page, slug);
+    await expect(choice(page, "Live")).toBeEnabled();
+    await expect(note).toHaveCount(0);
+  });
 
   test("the readiness check blocks while the time zone and postal address are missing, then lets the admin ask for a code", async ({ page }) => {
     const slug = slugs.a;
