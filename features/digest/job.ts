@@ -1,46 +1,44 @@
-// The "digest" job (src/jobs/registry.ts): the resident digest email.
+// The "digest" job (features/digest/manifest.ts): the resident digest email.
 //
 // Runs hourly, once per active hub, inside that hub's scope
 // (src/jobs/runJob.ts). A hub is mailed only in its own send hour
 // (plugin.digest.send_hour, read in identity.timezone; 13:00 UTC when neither
 // is set, the hour the one deployment-wide digest always went out). Iterates
 // that hub's subscribed users, assembles a per-user digest over their "since"
-// window, and sends via utils/email (whose guard suppresses non-admins on a
-// hub that is not live). Updates last_digest_sent_at only on a successful
+// window, and sends through the hub's mailer (whose guard suppresses non-admins
+// on a hub that is not live). Updates last_digest_sent_at only on a successful
 // send. Empty digests are skipped silently: no email, no cursor update.
 // Returns a JobOutcome: 200 with the counts (or a not-the-send-hour skip),
 // 500 with an error and the counts so far if the batch throws or the
-// unsubscribe secret is unset. The unsubscribe and settings handlers are in
-// digestController.ts.
+// unsubscribe secret is unset. The unsubscribe and settings handlers are the
+// kernel's (src/controllers/digestController.ts).
+//
+// A hub feature built as a package (ADR-016): it reads the hub through the SDK.
 
-import { env } from "../config/env.js";
-import { currentHubId } from "../config/hubContext.js";
-import { getEventsSince } from "../events/eventStore.js";
-import { getProcess } from "../services/processService.js";
-import { getProcessHandler, processDetailPath } from "../processes/registry.js";
-import type { CivicEvent } from "../models/event.js";
 import {
+  currentHubId,
+  effectivePostalAddressSync,
   getAllProcesses,
+  getEventsSince,
   getHiddenProcessIds,
-} from "../services/processService.js";
-import {
-  buildEditItems,
-  assembleDigestForUser,
-  buildUnsubscribeUrl,
-  type DigestEvent,
-  type DigestHubContext,
-} from "../modules/civic.digest/index.js";
-import {
+  getProcess,
+  getSettingSync,
+  hourInZone,
+  hubDisplayNameSync,
+  hubTimeZone,
+  KEYS,
   listSubscribedUsers,
   markDigestSent,
-} from "../modules/civic.auth/index.js";
-import { sendEmail } from "../utils/email.js";
-import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
-import { effectivePostalAddressSync, getSettingSync, hubDisplayNameSync } from "../services/hubSettings.js";
-import { KEYS } from "../models/hubSettings.js";
-import { hourInZone } from "../utils/hubTime.js";
-import type { JobRunner } from "./types.js";
-import { hubTimeZone } from "../services/hubTimeZone.js";
+  processRegistry,
+  sendEmail,
+  uiBaseUrl,
+  unsubscribeLinkFor,
+  unsubscribeLinksAvailable,
+  type CivicEvent,
+  type JobRunner,
+} from "../../src/sdk/index.js";
+import { assembleDigestForUser, buildEditItems } from "./service.js";
+import type { DigestEvent, DigestHubContext } from "./models.js";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 // Slack subtracted from the next-due calculation so a daily cron firing at a
@@ -156,8 +154,7 @@ export const digestJob: JobRunner = async (input) => {
   }
 
   const started = Date.now();
-  const secret = env.DIGEST_UNSUBSCRIBE_SECRET;
-  if (!secret || secret.length < 16) {
+  if (!unsubscribeLinksAvailable()) {
     return {
       status: 500,
       body: {
@@ -167,8 +164,8 @@ export const digestJob: JobRunner = async (input) => {
     };
   }
 
-  const apiBase = baseUrl();
   const uiBase = uiBaseUrl();
+  const registry = await processRegistry();
 
   let processed = 0;
   let sent = 0;
@@ -272,12 +269,12 @@ export const digestJob: JobRunner = async (input) => {
         if (hiddenProcessIds.has(id)) continue;
         try {
           const proc = await getProcess(id);
-          const handler = proc ? getProcessHandler(proc.definition.type) : undefined;
+          const handler = proc ? registry.handler(proc.definition.type) : undefined;
           if (!proc || !handler?.listSupporters) continue;
           editSupporters[id] = new Set(await handler.listSupporters(id));
           editProcesses[id] = {
             title: proc.title,
-            href: `${uiBase}${processDetailPath(proc.definition.type, id)}`,
+            href: `${uiBase}${registry.detailPath(proc.definition.type, id)}`,
           };
         } catch (err) {
           console.warn(`[digest] supporter lookup failed for ${id}: ${err instanceof Error ? err.message : err}`);
@@ -329,11 +326,7 @@ export const digestJob: JobRunner = async (input) => {
           hub_name: hubDisplayNameSync(),
           ui_base_url: uiBase,
           postal_address: postalAddress(),
-          unsubscribe_url: buildUnsubscribeUrl({
-            userId: user.id,
-            apiBaseUrl: apiBase,
-            secret,
-          }),
+          unsubscribe_url: unsubscribeLinkFor(user.id) ?? "",
           manage_subscriptions_url: `${uiBase}/settings`,
         };
 
@@ -356,6 +349,7 @@ export const digestJob: JobRunner = async (input) => {
           }),
           process_titles: processTitles,
           process_thumbnails: processThumbnails,
+          result_line: (type, data) => registry.handler(type)?.resultLine?.(data),
         });
 
         if (!digest) {

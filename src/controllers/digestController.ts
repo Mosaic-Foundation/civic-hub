@@ -16,7 +16,7 @@
 //     Authed. "Notices about things I take part in" on or off; the person's
 //     look (decisions 15 and 9).
 //
-// The digest email itself is the "digest" job, src/jobs/digest.ts.
+// The digest email itself is the digest feature's job (features/digest/job.ts).
 
 import { env } from "../config/env.js";
 import { ValidationError } from "../errors/index.js";

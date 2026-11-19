@@ -17,6 +17,8 @@
 // MUST NOT reach for the event store or DB. Pure functions + crypto.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { env } from "../config/env.js";
+import { baseUrl } from "../utils/baseUrl.js";
 
 /** What a link stops: the digest (every link before 2026-10-29) or notices. */
 export type UnsubscribePurpose = "unsub_digest" | "unsub_notices";
@@ -121,4 +123,25 @@ export function buildUnsubscribeUrl(params: {
   const base = params.apiBaseUrl.replace(/\/+$/, "");
   const path = purpose === "unsub_notices" ? "notices" : "digest";
   return `${base}/api/unsubscribe/${path}?token=${encodeURIComponent(token)}`;
+}
+
+/**
+ * A member's one-click link on this hub that stops `purpose`, signed with
+ * DIGEST_UNSUBSCRIBE_SECRET; null when the secret is unset or under 16
+ * characters (a local hub). What the digest feature asks for (SDK v0), so it
+ * never holds the secret.
+ */
+export function unsubscribeLinkFor(userId: string, purpose: UnsubscribePurpose = "unsub_digest"): string | null {
+  const secret = signingSecret();
+  return secret === null ? null : buildUnsubscribeUrl({ userId, apiBaseUrl: baseUrl(), secret, purpose });
+}
+
+/** Whether this deployment can sign unsubscribe links (DIGEST_UNSUBSCRIBE_SECRET, 16 characters or more). */
+export function unsubscribeLinksAvailable(): boolean {
+  return signingSecret() !== null;
+}
+
+function signingSecret(): string | null {
+  const secret = env.DIGEST_UNSUBSCRIBE_SECRET;
+  return secret && secret.length >= 16 ? secret : null;
 }

@@ -257,10 +257,6 @@
       "schedule": "30 11 * * *"
     },
     {
-      "path": "/api/internal/digest/run",
-      "schedule": "0 * * * *"
-    },
-    {
       "path": "/api/internal/admin-digest/run",
       "schedule": "30 13 * * *"
     },
@@ -283,6 +279,10 @@
     {
       "path": "/api/internal/fediverse/run",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/internal/digest/run",
+      "schedule": "0 * * * *"
     }
   ]
 }

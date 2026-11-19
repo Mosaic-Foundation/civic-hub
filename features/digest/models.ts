@@ -1,25 +1,13 @@
-// civic.digest module — type definitions
+// The resident digest's types (features/digest; ADR-016, kernel step 3).
 //
-// A *service module*, not a process-type module. civic.digest isn't a
-// civic process; it's a recurring hub-level capability that reads from
-// the event store, formats a per-user summary, and delivers it by email.
-// Same pluggability guardrail as the process-type modules: this file (and
-// its siblings) MUST NOT import the hub's event store, DB client, or
-// route layer. The host hub injects those via DigestAssemblyInput /
-// the cron controller.
-//
-// GUARDRAIL: civic.digest MUST NOT import from civic.vote,
-// civic.announcement, civic.brief, civic.auth, or any hub infrastructure
-// module (events/, db/, services/, controllers/). Event filtering is
-// performed on the generic CivicEvent shape only.
-//
-// Phase 3 exception: the digest imports the ONE shared, dependency-free
-// feed-worthiness classifier (src/shared/feedActivity.ts) so the email
-// digest and the web feed share a single source of truth. This is pure
-// logic — no DB, network, or process coupling — and is exactly the
-// "pull both sides into a shared module" the old filter.ts header asked for.
+// The digest is a hub feature built as a package (src/plugins/feature.ts): its
+// job (job.ts) reads the hub through the SDK; its assembly and formatting
+// (service.ts, filter.ts) are pure: no event store, database or network, the
+// job hands them what they need (DigestAssemblyInput). It reads the ONE shared
+// feed classifier (src/shared/feedActivity.ts), so the email and the web feed
+// agree on what makes a card and how it is labelled.
 
-import type { ActivityColor, ActivityKind } from "../../shared/feedActivity.js";
+import type { ActivityColor, ActivityKind } from "../../src/shared/feedActivity.js";
 
 /** Minimal view of a CivicEvent the digest needs — mirrors models/event.ts. */
 export interface DigestEvent {
@@ -61,7 +49,7 @@ export interface DigestHubContext {
  * A digest item's kind. Phase 3 — this IS the shared classifier's
  * ActivityKind, so the email digest and the web feed classify and label
  * events identically (no more feed↔digest drift). The digest groups these
- * kinds into sections for the email body (see civic.digest/service.ts).
+ * kinds into sections for the email body (see service.ts).
  */
 export type DigestItemKind = ActivityKind;
 
@@ -141,4 +129,10 @@ export interface DigestAssemblyInput {
    * walking processes once per cron run.
    */
   process_thumbnails?: Record<string, string>;
+  /**
+   * A closed process's count in its type's own words (its handler's
+   * `resultLine`, kernel step 3), or nothing. The job passes the hub's
+   * handlers; without it a closed vote's row says no count.
+   */
+  result_line?: (type: string, data: Record<string, unknown> | undefined) => string | undefined;
 }

@@ -34,7 +34,6 @@ import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { createEdges, getEdgesFor } from "./processLinks.js";
 import { getProcess } from "./processService.js";
 import { updateProcessColumns, updateProcessColumnsAtVersion } from "./processRows.js";
-import { stripMarkdown } from "../shared/markdown.js";
 import { mayEdit } from "../authz/canActor.js";
 import type { Actor } from "../authz/actor.js";
 
@@ -74,19 +73,10 @@ export interface EditDiff extends EditChangeSet {
 /** The submitted fields an edit may touch; `content.*` keys are compared individually. */
 const CONTENT_KEYS_IGNORED = new Set(["assistant_helped"]);
 
-/** Text fields where formatting-only changes are saved but not recorded. */
-const TEXT_FIELDS = new Set(["title", "description"]);
-
-/**
- * What a text edit is "about": the words, not the markup or the spacing.
- * Two texts with the same words (bold added, a line break moved) are the
- * same edit for the history and for supporters (Adam, 2026-09-03: "only
- * track changes that are more than formatting changes"). Punctuation and
- * case still count — a period or a capital is a wording choice.
- */
-export function substanceOf(text: string): string {
-  return stripMarkdown(text).replace(/\s+/g, " ").trim();
-}
+// substanceOf and isSubstantiveEdit live in src/shared/substantiveEdit.ts (pure;
+// the digests read them too).
+export { isSubstantiveEdit, substanceOf } from "../shared/substantiveEdit.js";
+import { isSubstantiveEdit, substanceOf } from "../shared/substantiveEdit.js";
 
 const NOT_EDITABLE: EditPolicy = {
   editable: false,
@@ -326,7 +316,7 @@ export async function applyEdit(
 
   // No immediate email (Adam, 2026-09-03: not "every time any little edit
   // has been made"). Supporters who take the digest get ONE line per edited
-  // project in their next digest — see civic.digest buildEditItems, which
+  // project in their next digest — see the digest feature's buildEditItems (features/digest/service.ts), which
   // reads the same event and the handler's listSupporters.
 
   return changes;
@@ -345,25 +335,6 @@ export function labelForField(field: string): string {
   return FIELD_LABELS[field] ?? field.replace(/_/g, " ");
 }
 
-/**
- * Whether a recorded edit changed any words. Edits recorded before the
- * formatting rule (2026-09-03) can be formatting-only; every reader skips
- * those so they never show as a blank "edit" in history, the badge, the
- * digest, or the admin tab. Non-text fields always count.
- */
-export function isSubstantiveEdit(edit: {
-  changed_fields?: unknown;
-  previous?: Record<string, unknown>;
-  current?: Record<string, unknown>;
-}): boolean {
-  if (!Array.isArray(edit.changed_fields) || edit.changed_fields.length === 0) return false;
-  return (edit.changed_fields as string[]).some((field) => {
-    if (!TEXT_FIELDS.has(field)) return true;
-    const before = edit.previous?.[field];
-    const after = edit.current?.[field];
-    return substanceOf(typeof before === "string" ? before : "") !== substanceOf(typeof after === "string" ? after : "");
-  });
-}
 
 export interface PublicEdit {
   id: string;

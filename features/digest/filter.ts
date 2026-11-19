@@ -1,4 +1,4 @@
-// civic.digest/filter.ts — digest-renderable predicate, delegated to the
+// features/digest/filter.ts — digest-renderable predicate, delegated to the
 // single shared feed-worthiness classifier.
 //
 // Phase 3 (audit §2): this file used to be a SECOND, hand-maintained copy of
@@ -15,7 +15,7 @@ import {
   DECLARED_FEED_KINDS,
   type BuiltinActivityKind,
   type ClassifierEvent,
-} from "../../shared/feedActivity.js";
+} from "../../src/shared/feedActivity.js";
 import type { DigestEvent, DigestItem, DigestItemKind } from "./models.js";
 
 /**

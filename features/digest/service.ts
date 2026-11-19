@@ -1,4 +1,4 @@
-// civic.digest/service.ts — pure assembly + formatting.
+// features/digest/service.ts — pure assembly + formatting.
 //
 // Stateless: no DB, no env, no network. The caller passes the user, the
 // list of already-filtered events, and hub context. The service returns
@@ -21,15 +21,13 @@ import {
   type ActivityKind,
   type BuiltinActivityKind,
   type ClassifierEvent,
-} from "../../shared/feedActivity.js";
+} from "../../src/shared/feedActivity.js";
 import { sortDigestItems } from "./filter.js";
-import { getProcessHandler } from "../../processes/registry.js";
-import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
-import { getSettingSync } from "../../services/hubSettings.js";
-import { KEYS } from "../../models/hubSettings.js";
-import { isSubstantiveEdit } from "../../services/processEdits.js";
-import { defaultGoverningBodyShort } from "../../shared/jurisdictionType.js";
-import { briefPillFor } from "../../shared/hubCopy.js";
+import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
+import { getSettingSync, KEYS } from "../../src/sdk/index.js";
+import { isSubstantiveEdit } from "../../src/shared/substantiveEdit.js";
+import { defaultGoverningBodyShort } from "../../src/shared/jurisdictionType.js";
+import { briefPillFor } from "../../src/shared/hubCopy.js";
 import type {
   DigestAssemblyInput,
   DigestEmail,
@@ -112,7 +110,7 @@ export function assembleDigestForUser(
     const activity = classifyActivity(event as ClassifierEvent);
     if (!activity) continue;
     items.push(
-      eventToItem(event, activity, titles, thumbnails, input.hub.ui_base_url),
+      eventToItem(event, activity, titles, thumbnails, input.hub.ui_base_url, input.result_line),
     );
   }
 
@@ -152,8 +150,9 @@ function eventToItem(
   titles: Record<string, string>,
   thumbnails: Record<string, string>,
   uiBase: string,
+  resultLine: DigestAssemblyInput["result_line"],
 ): DigestItem {
-  const { title, summary } = digestTitleSummary(activity, event, titles);
+  const { title, summary } = digestTitleSummary(activity, event, titles, resultLine);
   return {
     kind: activity.kind,
     color: activity.color,
@@ -189,6 +188,7 @@ function digestTitleSummary(
   activity: Activity,
   event: DigestEvent,
   titles: Record<string, string>,
+  resultLine: DigestAssemblyInput["result_line"],
 ): { title: string; summary: string } {
   const d = event.data as {
     process?: { title?: unknown };
@@ -221,7 +221,7 @@ function digestTitleSummary(
     case "vote-closed": {
       // The vote says its own count (its handler's resultLine, kernel step 3).
       const type = classifiedType(event as ClassifierEvent);
-      const line = (type && getProcessHandler(type)?.resultLine?.(event.data as Record<string, unknown> | undefined)) || "";
+      const line = (type && resultLine?.(type, event.data as Record<string, unknown> | undefined)) || "";
       return {
         title: rawTitle ?? "Vote results",
         summary: line ? `Voting has closed. Final count: ${line}.` : "Voting has closed. No votes were cast.",

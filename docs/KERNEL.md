@@ -89,7 +89,7 @@ Still civic or plugin-shaped inside `src/`, to be sorted in step 3:
 | Module | Goes to |
 | --- | --- |
 | `civic.auth`, `civic.review`, `civic.drafts`, `civic.search`, `civic.process_links`, `civic.feedback`, `civic.input`, `civic.link_preview` | kernel |
-| `civic.digest` | a feature plugin (`features/digest/`, next). Its signed unsubscribe links are the kernel's, since notices sign theirs the same way: `src/services/unsubscribe.ts` (moved, Nov 19) |
+| `civic.digest` | done (Nov 19): a feature plugin, `features/digest/` (its job, assembly and formatting; it reads the hub through the SDK). Its signed unsubscribe links are the kernel's, since notices sign theirs the same way: `src/services/unsubscribe.ts` (moved, Nov 19) |
 | `civic.admin_digest` | kernel (Nov 19, was "feature plugin"): it reports the kernel's own review queues, feedback, waiting list and job health to the hub's admins, which every space type needs, and as a feature it would have to read all of them through the feature host. Plugins and features add lines to it (`digestLines`) |
 | `civic.assistant` | split: the Code of Conduct check stays in the kernel (moderation, `src/services/kernelCodeOfConduct.ts`); the drafting assistant (its chat, prompts and suggestions) becomes a feature plugin |
 | `src/jobs/newsSync.ts`, `src/modules/civic.news_sync/` | done (Nov 18): News Sync is its own plugin (Adam, Nov 18), not part of Announcements, and works with Announcements off. Its job, feed reading and News page live in `packages/civic.news_sync/` (0.2.0, on SDK v1) |

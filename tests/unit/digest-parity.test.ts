@@ -1,13 +1,11 @@
 import { describe, it, expect } from "vitest";
-import {
-  assembleDigestForUser,
-  isDigestRenderable,
-  classifyItemKind,
-} from "../../src/modules/civic.digest/index.js";
+import { assembleDigestForUser } from "../../features/digest/service.js";
+import { getProcessHandler } from "../../src/processes/registry.js";
+import { isDigestRenderable, classifyItemKind } from "../../features/digest/filter.js";
 import type {
   DigestEvent,
   DigestAssemblyInput,
-} from "../../src/modules/civic.digest/index.js";
+} from "../../features/digest/models.js";
 
 function ev(
   event_type: string,
@@ -40,6 +38,8 @@ function assemble(events: DigestEvent[], titles: Record<string, string> = {}) {
     hub: HUB,
     since: "2026-06-01T00:00:00Z",
     process_titles: titles,
+    // As the job passes it: each type's own closed line.
+    result_line: (type, data) => getProcessHandler(type)?.resultLine?.(data),
   };
   return assembleDigestForUser(input);
 }

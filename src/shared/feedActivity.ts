@@ -6,7 +6,7 @@
 //   1. ui/src/components/Feed.tsx        (kindFromEvent — the inclusion gate)
 //   2. ui/src/components/FeedPost.tsx    (eventToPost — the renderer)
 //   3. ui/src/components/FeedFilter.tsx  (buildFilterPredicate — the ?type= filter)
-//   4. src/modules/civic.digest/filter.ts (isDigestRenderable + classifyItemKind)
+//   4. features/digest/filter.ts (isDigestRenderable + classifyItemKind)
 // They could not be diffed mechanically (a flat Set vs a data-shape switch)
 // and had already drifted — generic "Activity" cards, a wordcloud mislabeled
 // as a vote in the digest, proposals/projects/conversations visible in-app but
@@ -14,7 +14,7 @@
 //
 // SHARED ACROSS BOTH RUNTIMES — consumed by:
 //   - the Vite frontend (Feed / FeedPost / FeedFilter), and
-//   - the Node backend (civic.digest filter + service).
+//   - the Node backend (the digest feature's filter + service, features/digest/).
 // It MUST therefore stay framework-agnostic and free of server code: its one
 // import is the process manifests (plain data, src/shared/processManifests.ts;
 // eslint keeps it to that).
@@ -89,7 +89,7 @@ export type ActivityKind = BuiltinActivityKind | (string & {});
  * (they previously kept three drifting palettes keyed by kind).
  *
  * Each key maps to a `--type-<key>-bg/-fg` token pair in the UI's
- * theme.css and a literal hex pair in civic.digest/service.ts
+ * theme.css and a literal hex pair in features/digest/service.ts
  * PILL_COLORS (emails cannot read CSS variables).
  *
  * Two non-process keys on purpose: "announcement-author" preserves the

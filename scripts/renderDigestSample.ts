@@ -1,7 +1,7 @@
 // Dev-only: render a sample daily digest email to ui/public/digest-sample.html
 // so it can be previewed in a browser at mobile width. Not shipped.
 //   node --import tsx scripts/renderDigestSample.ts
-import { formatDigestHtml } from "../src/modules/civic.digest/service.js";
+import { formatDigestHtml } from "../features/digest/service.js";
 import { writeFileSync } from "node:fs";
 import {
   RENDER_DIGEST_SAMPLE_ITEMS,

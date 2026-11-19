@@ -10,8 +10,8 @@ import {
   classifyActivity,
   type ClassifierEvent,
 } from "../src/shared/feedActivity.js";
-import { assembleDigestForUser } from "../src/modules/civic.digest/index.js";
-import type { DigestEvent } from "../src/modules/civic.digest/index.js";
+import { assembleDigestForUser } from "../features/digest/service.js";
+import type { DigestEvent } from "../features/digest/models.js";
 import { writeFileSync } from "node:fs";
 import {
   VERIFY_PHASE3_SYNCED_ANNOUNCEMENT_DATA,

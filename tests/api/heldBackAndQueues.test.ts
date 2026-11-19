@@ -333,7 +333,7 @@ describe("the resident digest with every resident held back (#36)", () => {
     installAdapters({ mail });
     try {
       const within = await inProcess();
-      const { digestJob } = await import("../../src/jobs/digest.js");
+      const { digestJob } = await import("../../features/digest/job.js");
       const { describeJobRun } = await import("../../src/jobs/describe.js");
       const outcome = await within(() => digestJob({ now: new Date(), force: true }));
       expect(outcome.status, JSON.stringify(outcome.body)).toBe(200);

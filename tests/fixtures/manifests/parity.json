@@ -765,13 +765,6 @@
       "description": "Meeting discovery and summarization, per hub that configured a source"
     },
     {
-      "id": "digest",
-      "plugin": "digest",
-      "path": "/digest/run",
-      "schedule": "0 * * * *",
-      "description": "Resident email digest, per hub in its own send hour"
-    },
-    {
       "id": "admin_digest",
       "plugin": "admin_digest",
       "path": "/admin-digest/run",
@@ -812,6 +805,13 @@
       "path": "/fediverse/run",
       "schedule": "*/10 * * * *",
       "description": "Fediverse: post what opened and what was decided, deliver posts to followers' servers, retry failures"
+    },
+    {
+      "id": "digest",
+      "plugin": "digest",
+      "path": "/digest/run",
+      "schedule": "0 * * * *",
+      "description": "Resident email digest, per hub in its own send hour"
     }
   ],
   "requirements": [

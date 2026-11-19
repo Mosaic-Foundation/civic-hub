@@ -246,6 +246,28 @@ export { resolveTimeZone } from "../utils/hubTime.js";
 // --- Types of the adapters' calls (src/adapters/ai.ts) -----------------------------------
 export type { AiSingleTurnInput } from "../adapters/ai.js";
 
+// --- What the resident digest reads and sends (features/digest; kernel step 3) -----------
+// The members who asked for it and when each was last mailed; the hub's events
+// recorded since a time (the job keeps the public ones); which processes are
+// not public; a member's signed link that stops it; the hub's guarded mailer.
+export { listSubscribedUsers, markDigestSent } from "../modules/civic.auth/index.js";
+export { getEventsSince } from "../events/eventStore.js";
+export { getHiddenProcessIds } from "../services/processService.js";
+export { unsubscribeLinkFor, unsubscribeLinksAvailable } from "../services/unsubscribe.js";
+export { sendEmail } from "../utils/email.js";
+export { effectivePostalAddressSync } from "../services/hubSettings.js";
+export { hourInZone } from "../utils/hubTime.js";
+export { hubTimeZone } from "../services/hubTimeZone.js";
+/**
+ * The hub's process types (src/processes/registry.ts), loaded on first use:
+ * the registry loads the packages, which import this SDK. Each type's
+ * handler, and the path of a process's page.
+ */
+export async function processRegistry() {
+  const r = await import("../processes/registry.js");
+  return { handler: r.getProcessHandler, detailPath: r.processDetailPath };
+}
+
 // --- Feature packages (src/plugins/feature.ts; ADR-016) ----------------------------------
 // A hub feature built as a package is, and the one read capability it adds:
 // the event log as counts (EventLogReader), never an event, an actor or a payload.

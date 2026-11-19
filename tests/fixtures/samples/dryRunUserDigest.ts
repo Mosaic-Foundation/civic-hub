@@ -4,7 +4,7 @@
 import type {
   DigestEvent,
   DigestHubContext,
-} from "../../../src/modules/civic.digest/index.js";
+} from "../../../features/digest/models.js";
 
 export const DRY_RUN_USER_DIGEST_HUB: DigestHubContext = {
   hub_name: "Floyd Civic Hub",

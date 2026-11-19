@@ -828,7 +828,7 @@ describe("the digest", () => {
     const { getHubBySlug } = await import("../../src/db/hubs.js");
     const { fetchHubSettings } = await import("../../src/db/hubSettingsStore.js");
     const { runWithHub } = await import("../../src/config/hubContext.js");
-    const { digestJob } = await import("../../src/jobs/digest.js");
+    const { digestJob } = await import("../../features/digest/job.js");
 
     const hub = await getHubBySlug("athens");
     expect(hub).toBeTruthy();

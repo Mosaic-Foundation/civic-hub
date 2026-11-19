@@ -4,6 +4,28 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Kernel branch: E2E caught up; the resident digest is a feature package — 2026-11-19
+
+- **E2E (0c96ca3):** dev's E2E run had failed or run out its 30 minutes since Nov 17. Most of the time went on specs
+  that minted a resident's session through `tests/fixtures/adminSession` and so had not been asked About you: each
+  waited 30 seconds (twice, with the retry) behind the card. `tests/e2e/sessions.ts` mints sessions with About you
+  asked and every spec takes `mintSession` from it; the sign-up-from-a-vote test skips the card where it comes up over
+  the onboarding word cloud. Activity has eleven kinds (News); Word clouds' and Briefs' versions are read from their
+  package.json. GitHub's run passes in 13 minutes. The fix reaches dev only when the branch merges.
+- **Unsubscribe links are the kernel's:** `src/services/unsubscribe.ts` (was `civic.digest/unsubscribe.ts`); notices
+  sign theirs the same way. `unsubscribeLinkFor(userId, purpose)` and `unsubscribeLinksAvailable()` hold the secret.
+- **The resident digest is a feature package:** `features/digest/` (manifest with the `digest` job, `job.ts`,
+  `service.ts`, `filter.ts`, `models.ts`), in `config/features.ts` and `config/featureManifests.ts`. It reads the hub
+  through SDK v0 (`listSubscribedUsers`, `markDigestSent`, `getEventsSince`, `getHiddenProcessIds`, `sendEmail`,
+  `unsubscribeLinkFor`, `processRegistry()` loaded on first use, and what was there). A closed vote's count comes
+  through `DigestAssemblyInput.result_line`, which the job fills from each type's handler. The email is unchanged.
+  The digest job now comes after the feature jobs in the job list (`vercel.json`'s crons follow; same schedule).
+- **`isSubstantiveEdit`/`substanceOf`** moved to `src/shared/substantiveEdit.ts` (pure); `processEdits.ts`
+  re-exports them.
+- **The module table (docs/KERNEL.md):** the admin digest stays in the kernel (it reports the kernel's own queues and
+  job health); the assistant splits (the Code of Conduct check is kernel moderation; the drafting chat becomes a
+  feature, next); `civic.receipts` stays in the kernel (decided Nov 17).
+
 ## Kernel branch: pinning phase 2 — 2026-11-18
 
 Adam's plan (Nov 18): pinning is a hub core feature, admins only, plugins write no pin code; Urgent stays an
