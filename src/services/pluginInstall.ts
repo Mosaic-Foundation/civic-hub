@@ -33,6 +33,7 @@
 // A hub only ever sees plugins whose packages are approved in the catalog and
 // mounted on this deployment.
 
+import { currentSpaceType, pluginRequired } from "../shared/spaceTypes.js";
 import { ConflictError, NotFoundError, ValidationError } from "../errors/index.js";
 import { currentHubId } from "../config/hubContext.js";
 import { applyPluginChange, readHubPlugins, type HubPluginRow, type PluginChange } from "../db/hubPlugins.js";
@@ -292,6 +293,8 @@ export async function removePlugin(
   actor: { id: string; audit: string },
 ): Promise<PluginInstallView> {
   if (mode !== "stop" && mode !== "wind_down") throw new ValidationError('Send { "mode": "stop" } or { "mode": "wind_down" }.');
+  // A plugin the space type requires stays (kernel rule 6).
+  if (pluginRequired(plugin)) throw new ValidationError(`A ${currentSpaceType().displayName} needs this plugin, so it cannot be removed.`);
   const current = await one(plugin);
   if (current.state === "removed" || current.state === "unavailable") return current;
   // With deadlines and nothing open, there is nothing to wait for: it stops now.

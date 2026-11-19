@@ -128,7 +128,9 @@ A space type is the layer above the kernel that makes it a Civic Hub (or another
 `SpaceServer` (`src/plugins/space.ts`): its curated sample content (`samples.plan()`, `samples.seed(template, kit)`)
 and its development seed (`dev.seedEmptyHub`, `dev.seedAfterReset`). A space type's folder holds `index.ts` (that
 server side), `type.ts` (its record: names, mail senders, profile; `SpaceType` in `src/shared/spaceTypes.ts`),
-`profile.ts`, `palette.ts` and `palette.css`, each with a default export where it is data.
+`profile.ts`, `palette.ts` and `palette.css`, each with a default export where it is data. Its record's `plugins`
+lists each plugin it cares about as `required` (always on; the switch and Remove are refused), `on` or `off` by
+default; the rest keep their own default (`spacePluginRule`, `pluginRequired` in `src/shared/spaceTypes.ts`).
 
 The deployment picks its space type with one line, `"space": "spaces/<dir>"` in `config/plugins.json` (or `null`
 for none; kernel step 4). `npm run plugins:sync` writes `config/space.ts`, `config/spaceType.ts`,

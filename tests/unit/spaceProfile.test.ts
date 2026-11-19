@@ -109,3 +109,23 @@ describe("the space type as the deployment's setting (kernel step 4)", () => {
     expect(none["config/spacePalette.css"]).not.toContain("@import");
   });
 });
+
+describe("a space type's plugins: required, on or off by default (kernel rule 6)", () => {
+  it("reads each listed plugin's rule, and leaves the rest to the plugin", async () => {
+    const { spacePluginRule, pluginRequired } = await import("../../src/shared/spaceTypes.js");
+    const t = { ...CIVIC_HUB, plugins: { required: ["pinning"], on: ["fediverse"], off: ["members"] } };
+    expect(spacePluginRule("pinning", t)).toBe("required");
+    expect(spacePluginRule("fediverse", t)).toBe("on");
+    expect(spacePluginRule("members", t)).toBe("off");
+    expect(spacePluginRule("search", t)).toBeNull();
+    expect(pluginRequired("pinning", t)).toBe(true);
+    expect(pluginRequired("search", t)).toBe(false);
+  });
+
+  it("changes nothing for the Civic Hub today: it lists no plugin, so each keeps its own default", async () => {
+    const { pluginDefaultOn } = await import("../../src/shared/hubFeatures.js");
+    expect(CIVIC_HUB.plugins).toBeUndefined();
+    expect(pluginDefaultOn("fediverse")).toBe(false);
+    expect(pluginDefaultOn("search")).toBe(true);
+  });
+});

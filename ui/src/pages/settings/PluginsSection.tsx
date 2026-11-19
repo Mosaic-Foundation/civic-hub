@@ -46,6 +46,7 @@ import { anchorForKey } from "../../../../src/shared/helpRegistry";
 import { useAnchoredOpen } from "../../hooks/useAnchor";
 import HelpButton from "../../components/HelpButton";
 import { HUB_FEATURES } from "../../../../src/shared/hubFeatures";
+import { currentSpaceType, pluginRequired } from "../../../../src/shared/spaceTypes";
 import { pluginHasDeadlines, processPluginCopy } from "../../processes/display";
 import { processSettingsPanel } from "../../processes";
 import { PluginInstallControls } from "./PluginInstall";
@@ -235,7 +236,10 @@ function PluginCard({
       </div>
       {open && (
         <div id={bodyId} className="plugin-card-body">
-          {install ? (
+          {pluginRequired(id) ? (
+            // The space type requires it (kernel rule 6): no switch, no Remove.
+            <p className="form-hint">A {currentSpaceType().displayName} needs this plugin, so it is always on.</p>
+          ) : install ? (
             <PluginInstallControls install={install} onChanged={onInstallChange} />
           ) : (
             <BooleanField f={f} k={`plugin.${id}.enabled`} label={`${pluginCopy(id, hub).name} on`} />

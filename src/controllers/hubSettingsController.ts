@@ -37,6 +37,7 @@ import { latestJobRuns } from "../services/jobRuns.js";
 import { JOBS, isPlatformJob, type HubJobSpec } from "../jobs/registry.js";
 import { JOB_NAMES } from "../modules/civic.admin_digest/index.js";
 import { validateSettingsWrite } from "../models/hubSettingsWrite.js";
+import { currentSpaceType, pluginRequired } from "../shared/spaceTypes.js";
 import { auditActor, recordHubAdminAudit } from "../services/hubAdminAudit.js";
 import {
   EDITABLE_SETTING_KEYS,
@@ -207,6 +208,13 @@ export const handlePutHubSettings = route(async (req, res) => {
       ...(result.unknownKeys ? { unknown_keys: result.unknownKeys } : {}),
     });
     return;
+  }
+  // A plugin the space type requires cannot be switched off (kernel rule 6).
+  for (const e of result.entries) {
+    const m = /^plugin\.(.+)\.enabled$/.exec(e.key);
+    if (m && e.value === "false" && pluginRequired(m[1]!)) {
+      throw new ValidationError(`${e.key}: a ${currentSpaceType().displayName} needs this plugin, so it stays on.`);
+    }
   }
   // A plugin's own setting is checked by its own package too (its server's
   // checkSetting, kernel step 3): Meeting summaries reads its Wix columns.

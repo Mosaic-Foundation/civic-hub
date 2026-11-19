@@ -10,6 +10,7 @@
 
 import type { SettingFieldSpec } from "./hubSettingsSections.js";
 import { FEATURE_MANIFESTS } from "./featureManifests.js";
+import { spacePluginRule } from "./spaceTypes.js";
 
 export interface HubFeature {
   id: string;
@@ -97,8 +98,14 @@ export type HubFeatureId =
 
 export const HUB_FEATURE_IDS: readonly HubFeatureId[] = HUB_FEATURES.map((f) => f.id);
 
-/** Whether a plugin or feature is on for a hub that never set its switch. */
+/**
+ * Whether a plugin or feature is on for a hub that never set its switch: the
+ * space type's word (required, on or off by default; kernel rule 6), else the
+ * plugin's own default.
+ */
 export function pluginDefaultOn(id: string): boolean {
+  const rule = spacePluginRule(id);
+  if (rule) return rule !== "off";
   const feature = HUB_FEATURES.find((f) => f.id === id);
   return feature?.defaultOn ?? true;
 }

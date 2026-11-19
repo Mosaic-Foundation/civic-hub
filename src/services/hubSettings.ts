@@ -55,6 +55,7 @@ import {
 } from "../models/hubSettings.js";
 import { pluginPackageMounted } from "../plugins/mountedState.js";
 import { pluginDefaultOn } from "../shared/hubFeatures.js";
+import { pluginRequired } from "../shared/spaceTypes.js";
 
 export { KEYS, publicSubset, invalidateHubSettings };
 export type { SettingsMap };
@@ -192,7 +193,7 @@ export async function getPublicSettings(
     const key = `plugin.${id}.enabled`;
     // A plugin whose package this deployment did not mount reads as off,
     // as it does on the server (src/plugins/mountedState.ts).
-    out[key] = pluginPackageMounted(id) && asBoolean(resolve(map, key), pluginDefaultOn(id)) ? "true" : "false";
+    out[key] = pluginPackageMounted(id) && (pluginRequired(id) || asBoolean(resolve(map, key), pluginDefaultOn(id))) ? "true" : "false";
     // Winding down (ADR-014): on, but nothing new of its kind can be started.
     if (asBoolean(resolve(map, `plugin.${id}.winding_down`), false)) out[`plugin.${id}.winding_down`] = "true";
   }
@@ -711,9 +712,10 @@ export function hubDisplayNameSync(): string {
 /**
  * Everything is on unless a hub explicitly switches it off, or its plugin
  * package is not mounted on this deployment (src/plugins/mountedState.ts).
+ * A plugin the space type requires is on whatever its switch says.
  */
 export function isPluginEnabledSync(pluginId: string): boolean {
-  return pluginPackageMounted(pluginId) && asBoolean(getSettingSync(`plugin.${pluginId}.enabled`), pluginDefaultOn(pluginId));
+  return pluginPackageMounted(pluginId) && (pluginRequired(pluginId) || asBoolean(getSettingSync(`plugin.${pluginId}.enabled`), pluginDefaultOn(pluginId)));
 }
 
 /**
@@ -729,7 +731,7 @@ export async function isPluginEnabled(
   hubId: string | null,
   pluginId: string,
 ): Promise<boolean> {
-  return pluginPackageMounted(pluginId) && asBoolean(await getSetting(hubId, `plugin.${pluginId}.enabled`), pluginDefaultOn(pluginId));
+  return pluginPackageMounted(pluginId) && (pluginRequired(pluginId) || asBoolean(await getSetting(hubId, `plugin.${pluginId}.enabled`), pluginDefaultOn(pluginId)));
 }
 
 /**

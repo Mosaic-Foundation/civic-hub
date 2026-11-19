@@ -51,6 +51,26 @@ export interface SpaceType {
   templateSet: string;
   /** What it calls the kernel's roles and words (kernel step 2). Its `space` names the noun above. */
   profile: SpaceProfile;
+  /**
+   * Its plugins (kernel rule 6): each listed plugin is required (on, and a
+   * space's admins cannot switch it off), on by default, or off by default.
+   * A plugin it does not list keeps the plugin's own default. By plugin id.
+   */
+  plugins?: { required?: readonly string[]; on?: readonly string[]; off?: readonly string[] };
+}
+
+/** What the space type says of one plugin, or null when it leaves it to the plugin's own default. */
+export function spacePluginRule(id: string, t: SpaceType = currentSpaceType()): "required" | "on" | "off" | null {
+  const p = t.plugins;
+  if (p?.required?.includes(id)) return "required";
+  if (p?.on?.includes(id)) return "on";
+  if (p?.off?.includes(id)) return "off";
+  return null;
+}
+
+/** Whether the space type requires the plugin: always on, no off switch for a space's admins. */
+export function pluginRequired(id: string, t: SpaceType = currentSpaceType()): boolean {
+  return spacePluginRule(id, t) === "required";
 }
 
 /** The kernel's own record, for a deployment with no space type: neutral words, the deployment's senders. */
