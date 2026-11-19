@@ -29,7 +29,6 @@ import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import linkPreviewRoutes from "./routes/linkPreviewRoutes.js";
-import searchRoutes from "./routes/searchRoutes.js";
 import { jobRouter } from "./routes/jobRoutes.js";
 import { JOBS, internalPath } from "./jobs/registry.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
@@ -219,11 +218,6 @@ app.use("/admin", adminRoutes);
 // the link-preview endpoint is public and lightly rate-limited.
 app.use("/upload", uploadRoutes);
 app.use("/link-preview", linkPreviewRoutes);
-
-// Slice 10.5 — public full-text search across all process types.
-// Backed by Postgres FTS via the search_processes RPC (see
-// supabase/migrations/20260427200000_add_search_doc.sql).
-app.use("/search", requirePlugin("search"), searchRoutes);
 
 // Beta waitlist — public endpoint for people to request access.
 app.use("/waitlist", waitlistRoutes);

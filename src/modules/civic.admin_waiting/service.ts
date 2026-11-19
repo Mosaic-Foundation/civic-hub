@@ -1,42 +1,26 @@
-// civic.admin_digest service — count, render, send (see models.ts).
+// civic.admin_waiting: what is new for a space's admins in a window, and
+// what is waiting beside it (kernel step 4, 2026-11-19; it was the counting
+// half of civic.admin_digest, whose email is now the Admin digest plugin,
+// features/admin_digest). The kernel keeps it because the queues are the
+// kernel's and every plugin's: reviews, the packages' publication queues,
+// the features' queues (FeatureServer.queues), edits, the waitlist and job
+// problems, and the features' own notes (FeatureServer.digestLines). A plugin
+// reads it through the SDK (`adminWaiting.window(since, until)`).
 //
-// THE RULE (leaving-demo slice, 2026-10-15): each email covers only what is
-// new since the last one, across everything an admin reviews, and never
-// repeats an item. Before, the review queues were re-listed every day while
-// they waited, and feedback and job problems used a fixed 24-hour window, so a
-// doubled run repeated them and a missed one lost them.
+// THE RULE (leaving-demo slice, 2026-10-15): a window counts only what is new
+// in it, and an item falls in exactly one window: every category is counted
+// by a time that never changes once written (a review's latest submission
+// turn, a brief's or meeting summary's creation, a feature queue item's, a
+// waitlist signup's, an edit event's, a job run's finish). The caller keeps
+// where its last window ended (the Admin digest's mark).
 //
-// How it holds:
-//   - The window runs from the mark the last digest that went out left
-//     (admin_digest_marks.covered_until) to the moment this run started. The
-//     first run on a hub looks back one day.
-//   - Every category is counted by a time that never changes once written:
-//     a review's latest submission turn (review_turns are append-only), a
-//     brief's or meeting summary's creation, a feedback item's, a waitlist
-//     signup's, an edit event's, a job run's finish. An item falls in exactly
-//     one window.
-//   - The run claims its window before counting, with a compare-and-set on the
-//     mark, so two runs at once (the cron and a manual run) can't both send
-//     it. If nothing could be delivered, the claim is given back.
-//
-// The body is a tally: one line per category, new and waiting, each a link to
-// that queue. Nothing is sent when nothing is new; waiting alone never sends.
-// The old "Open proposals" section is gone (live idea-board items, not an
-// admin queue), and so is "Vote results awaiting approval" (since 2026-10-07).
+// One line per category, new and waiting, each a link to that queue.
 
-import {
-  editEvents,
-  latestSubmissions,
-  moveMark,
-  readMark,
-  releaseMark,
-  waitlistRows,
-} from "./store.js";
+import { editEvents, latestSubmissions, waitlistRows } from "./store.js";
 import { getAllProcesses, getSampleProcessIds } from "../../services/processService.js";
 import { getManifest, getProcessHandler, publicationOf, typesPublishedThrough } from "../../processes/registry.js";
 import { listReviews } from "../civic.review/index.js";
 
-import { sendEmail } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
 import { getSettingSync, hubDisplayNameSync, hubModeSync, isPluginEnabledSync } from "../../services/hubSettings.js";
 import { KEYS, asEmailList } from "../../models/hubSettings.js";
@@ -46,11 +30,8 @@ import { hubTimeZone } from "../../services/hubTimeZone.js";
 import { jobById } from "../../jobs/registry.js";
 import { problemQueue } from "../../jobs/describe.js";
 import { jobPath, type PluginId } from "../../shared/adminAnchors.js";
-import type { AdminDigestPayload, DigestDetail, DigestLine } from "./models.js";
+import type { AdminWindow, DigestDetail, DigestLine } from "./models.js";
 import { featureDigestLines, featureQueues } from "../../plugins/features.js";
-
-/** A hub's first digest looks back this far. */
-const FIRST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /** In (since, until], by instant: the database writes "+00:00", JavaScript "Z". */
 function within(t: string | null | undefined, since: string, until: string): boolean {
@@ -246,7 +227,7 @@ async function jobsLine(since: string, until: string, ui: string): Promise<Diges
   } catch (err) {
     // Not being able to read the log is itself worth an admin's look.
     const message = err instanceof Error ? err.message : String(err);
-    console.warn(`[admin-digest] Job run log unavailable: ${message}`);
+    console.warn(`[admin-waiting] Job run log unavailable: ${message}`);
     const url = `${ui}${jobPath(null)}`;
     return { ...base, new_count: 1, url, details: [{ text: `The hub's job run log could not be read: ${message}`, url }] };
   }
@@ -286,7 +267,7 @@ async function jobsLine(since: string, until: string, ui: string): Promise<Diges
  * the hub switched off is left out: its queue's page is gone. Process reviews,
  * edits, the waitlist and job problems belong to no plugin.
  */
-export async function buildAdminDigest(since: string, until: string): Promise<AdminDigestPayload> {
+export async function adminWindow(since: string, until: string): Promise<AdminWindow> {
   const ui = uiBaseUrl();
   // Sample content (Phase 7) never asks an admin for anything.
   const sampleIds = await getSampleProcessIds();
@@ -302,35 +283,6 @@ export async function buildAdminDigest(since: string, until: string): Promise<Ad
   return { hub_name: hubDisplayNameSync(), since, until, lines, new_total, notes, empty: new_total === 0 && notes.length === 0 };
 }
 
-// --- Rendering ----------------------------------------------------------------
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function noun(line: DigestLine, n: number): string {
-  return n === 1 ? line.noun.one : line.noun.many;
-}
-
-/** "3 new process reviews (8 waiting, 1 flagged by the Code of Conduct check)". Pure. */
-export function digestLineText(line: DigestLine): string {
-  const head = line.new_count > 0 ? `${line.new_count} new ${noun(line, line.new_count)}` : `No new ${line.noun.many}`;
-  const extra: string[] = [];
-  if (line.waiting !== null) extra.push(`${line.waiting} waiting`);
-  if (line.flagged > 0) extra.push(`${line.flagged} flagged by ${line.flagged_by ?? "a check"}`);
-  return extra.length > 0 ? `${head} (${extra.join(", ")})` : head;
-}
-
-/** The lines an email shows: anything new, and any queue with something waiting. */
-export function shownLines(p: AdminDigestPayload): DigestLine[] {
-  return p.lines.filter((l) => l.new_count > 0 || (l.waiting ?? 0) > 0);
-}
-
 /** Each switched-on feature's line for this digest; one that fails is reported and left out. */
 async function featureNotes(now: Date): Promise<string[]> {
   const out: string[] = [];
@@ -340,138 +292,9 @@ async function featureNotes(now: Date): Promise<string[]> {
       const text = await line({ now });
       if (text) out.push(text);
     } catch (err) {
-      console.warn(`[admin-digest] the ${feature} line failed: ${(err as Error).message}`);
+      console.warn(`[admin-waiting] the ${feature} line failed: ${(err as Error).message}`);
     }
   }
   return out;
 }
 
-/** A line's items, each with a link to where it is dealt with. */
-function detailsHtml(l: DigestLine): string {
-  if (!l.details || l.details.length === 0) return "";
-  const items = l.details
-    .map(
-      (d) =>
-        `<li style="margin:6px 0 0;line-height:1.4;">${escapeHtml(d.text)} <a href="${escapeHtml(d.url)}" style="color:#1e3a5f;">Open it</a></li>`,
-    )
-    .join("");
-  return `<ul style="list-style:circle;padding-left:18px;margin:4px 0 0;font-size:14px;color:#374151;">${items}</ul>`;
-}
-
-export function renderAdminDigestEmail(p: AdminDigestPayload): { subject: string; html: string; text: string } {
-  const newParts = p.lines.filter((l) => l.new_count > 0).map((l) => `${l.new_count} ${noun(l, l.new_count)}`);
-  const subject =
-    p.new_total > 0 ? `[${p.hub_name}] ${p.new_total} new for admins: ${newParts.join(", ")}` : `[${p.hub_name}] Last month's activity`;
-  const notes = p.notes ?? [];
-  const lines = shownLines(p);
-  const items = lines
-    .map(
-      (l) =>
-        `<li style="margin:0 0 10px;line-height:1.4;"><a href="${escapeHtml(l.url)}" style="color:#1e3a5f;${
-          l.new_count > 0 ? "font-weight:600;" : ""
-        }">${escapeHtml(digestLineText(l))}</a>${detailsHtml(l)}</li>`,
-    )
-    .join("");
-  const html = `
-    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;">
-      <h1 style="font-size:18px;font-weight:600;margin:0 0 8px;color:#1e3a5f;">${escapeHtml(p.hub_name)}: what's new for admins</h1>
-      <p style="margin:0 0 20px;color:#6b7280;font-size:14px;">Since the last one of these emails. Each line opens its list on the hub.</p>
-      <ul style="list-style:disc;padding-left:20px;margin:0;font-size:15px;">${items}</ul>
-      ${notes.map((n) => `<p style="margin:20px 0 0;font-size:15px;line-height:1.5;">${escapeHtml(n)}</p>`).join("")}
-      <p style="margin:28px 0 0;color:#9ca3af;font-size:12px;">
-        You receive this because you are an admin of ${escapeHtml(p.hub_name)}. It counts only what arrived since the last
-        one, and nothing is sent when nothing is new. Whether it is sent at all is under Hub settings → Plugins.
-      </p>
-    </div>
-  `;
-  const text = [
-    `${p.hub_name}: what's new for admins (since the last one of these emails)`,
-    "",
-    ...lines.flatMap((l) => [
-      `- ${digestLineText(l)}`,
-      `  ${l.url}`,
-      ...(l.details ?? []).flatMap((d) => [`    * ${d.text}`, `      ${d.url}`]),
-    ]),
-    ...notes.flatMap((n) => ["", n]),
-    "",
-    `You receive this because you are an admin of ${p.hub_name}. It counts only what arrived since the last one, and nothing is sent when nothing is new.`,
-  ].join("\n");
-  return { subject, html, text };
-}
-
-// --- Dispatch -----------------------------------------------------------------
-
-export interface AdminDigestRunResult {
-  total: number;
-  sent: number;
-  skipped: number;
-  failed: number;
-  /** Nothing new: no email. */
-  empty: boolean;
-  /** Another run had already covered this window. */
-  already_covered?: boolean;
-  since: string;
-  until: string;
-  /** New and waiting per category, for the run log and tests. */
-  counts: Record<string, { new: number; waiting: number | null; flagged: number }>;
-}
-
-/** Keyless local development "sends" by logging; that counts as delivered for the mark. */
-const KEYLESS = "RESEND_API_KEY is not configured";
-
-export async function runAdminDigest(recipients: string[], now: Date = new Date()): Promise<AdminDigestRunResult> {
-  const until = now.toISOString();
-  const previous = await readMark();
-  const since = previous ?? new Date(now.getTime() - FIRST_WINDOW_MS).toISOString();
-  const base = { total: recipients.length, sent: 0, skipped: 0, failed: 0, since, until, counts: {} };
-
-  if (previous !== null && Date.parse(previous) >= now.getTime()) {
-    return { ...base, skipped: recipients.length, empty: true, already_covered: true };
-  }
-  if (!(await moveMark(previous, until))) {
-    return { ...base, skipped: recipients.length, empty: true, already_covered: true };
-  }
-
-  let payload: AdminDigestPayload;
-  try {
-    payload = await buildAdminDigest(since, until);
-  } catch (err) {
-    await releaseMark(until, previous);
-    throw err;
-  }
-  const counts = Object.fromEntries(
-    payload.lines.map((l) => [l.id, { new: l.new_count, waiting: l.waiting, flagged: l.flagged }]),
-  );
-
-  if (payload.empty) {
-    console.log(`[admin-digest] Nothing new since ${since} — no email (${recipients.length} recipient(s)).`);
-    return { ...base, skipped: recipients.length, empty: true, counts };
-  }
-  if (recipients.length === 0) {
-    console.warn("[admin-digest] No admins to send to; the window stays open for the next run.");
-    await releaseMark(until, previous);
-    return { ...base, empty: false, counts };
-  }
-
-  const { subject, html, text } = renderAdminDigestEmail(payload);
-  let sent = 0;
-  let failed = 0;
-  let delivered = 0;
-  for (const to of recipients) {
-    const result = await sendEmail({ to, subject, html, text });
-    if (result.sent) {
-      sent += 1;
-      delivered += 1;
-      console.log(`[admin-digest] Sent to ${to} (resend id: ${result.id ?? "?"})`);
-    } else if (result.error === KEYLESS) {
-      delivered += 1;
-      console.log(`---- [admin-digest] RESEND_API_KEY unset — logging email ----\nTo: ${to}\nSubject: ${subject}\n\n${text}\n---- end ----`);
-    } else {
-      failed += 1;
-      console.warn(`[admin-digest] Send failed for ${to}: ${result.error ?? result.held_back_reason ?? "unknown"}`);
-    }
-  }
-  // Nobody got it: the next run covers this window again rather than losing it.
-  if (delivered === 0) await releaseMark(until, previous);
-  return { ...base, sent, failed, empty: false, counts };
-}

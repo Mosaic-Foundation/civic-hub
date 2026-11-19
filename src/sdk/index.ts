@@ -240,6 +240,16 @@ export type { MosaicStatus as ProviderStatus, MosaicOrigin as ProviderOrigin } f
 export { handlePostImageUpload as imageUpload } from "../controllers/uploadController.js";
 export { asEmailList } from "../models/hubSettings.js";
 
+// --- What is new for admins in a window (kernel step 4, the Admin digest) ------------------
+// Reviews, the packages' and features' queues, edits, the waitlist and job
+// problems, counted for (since, until], and the features' notes.
+export { adminWindow } from "../modules/civic.admin_waiting/index.js";
+export type { AdminWindow, DigestDetail, DigestLine, DigestLineId } from "../modules/civic.admin_waiting/index.js";
+
+// --- The kernel's search index (kernel step 4, Search) -------------------------------------
+export { search } from "../services/kernelSearch.js";
+export type { SearchQuery, SearchResultPage, SearchHit, SearchSort, SearchTypeKey } from "../modules/civic.search/index.js";
+
 // --- What a package checks and serves for a submission (kernel step 1, Conversations) -----
 export { codeOfConduct } from "../services/kernelCodeOfConduct.js";
 export type { CodeOfConductFinding } from "../services/kernelCodeOfConduct.js";

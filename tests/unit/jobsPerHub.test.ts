@@ -38,10 +38,10 @@ vi.mock("../../src/modules/civic.auth/index.js", async (orig) => ({
   },
 }));
 
-vi.mock("../../src/modules/civic.admin_digest/index.js", async () => {
+vi.mock("../../features/admin_digest/digest.js", async () => {
   const { currentHubId } = await import("../../src/config/hubContext.js");
   return {
-    runAdminDigest: async (recipients: string[]) => {
+    runAdminDigest: async (_marks: unknown, recipients: string[]) => {
       adminDigestRecipients[currentHubId()] = recipients;
       return { total: recipients.length, sent: recipients.length, skipped: 0, failed: 0, empty: false, generated_at: "" };
     },

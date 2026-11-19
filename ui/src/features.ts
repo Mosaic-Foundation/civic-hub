@@ -38,6 +38,12 @@ export interface FeatureUi {
    */
   spaceLink?: SpaceLink;
   /**
+   * A tool in the top bar, between the links and the account (Search's box),
+   * and at the top of the menu drawer (`inDrawer`, full width; call
+   * `onSubmitted` to close the drawer).
+   */
+  navTool?: ComponentType<{ inDrawer?: boolean; onSubmitted?: () => void }>;
+  /**
    * A control in the action row at the foot of every type's page, beside
    * Archive (components/archiveSlot.tsx). Drawn for any signed-in reader; it
    * draws nothing for one it has nothing for.
@@ -87,6 +93,11 @@ export const FEATURE_UI: readonly FeatureUi[] = FEATURE_UI_MODULES;
 /** The space links of the features that are on, in the features' order. */
 export function featureSpaceLinks(enabled: (id: PluginId) => boolean): ReadonlyArray<SpaceLink & { feature: PluginId }> {
   return FEATURE_UI.flatMap((u) => (u.spaceLink && enabled(u.feature) ? [{ feature: u.feature, ...u.spaceLink }] : []));
+}
+
+/** The top-bar tools of the features that are on. */
+export function featureNavTools(enabled: (id: PluginId) => boolean): ReadonlyArray<{ feature: PluginId; Tool: NonNullable<FeatureUi["navTool"]> }> {
+  return FEATURE_UI.flatMap((u) => (u.navTool && enabled(u.feature) ? [{ feature: u.feature, Tool: u.navTool }] : []));
 }
 
 /** Every feature's space link, on or off: the paths a visitor may reach in beta, and the form pages. */

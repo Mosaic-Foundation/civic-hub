@@ -1,0 +1,7 @@
+{
+  "name": "@civic-social/feature-admin-digest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Admin digest: a daily email to a space's admins counting what is new since the last one, from the kernel's counts (kernel step 4). A hub feature built as a plugin package is."
+}

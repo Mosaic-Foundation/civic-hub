@@ -35,7 +35,7 @@ import { KEYS, KEY_ALIASES } from "../models/hubSettings.js";
 import { countLiveProcessesByPlugin, getProcess } from "../services/processService.js";
 import { latestJobRuns } from "../services/jobRuns.js";
 import { JOBS, isPlatformJob, type HubJobSpec } from "../jobs/registry.js";
-import { JOB_NAMES } from "../modules/civic.admin_digest/index.js";
+import { JOB_NAMES } from "../modules/civic.admin_waiting/index.js";
 import { validateSettingsWrite } from "../models/hubSettingsWrite.js";
 import { currentSpaceType, pluginRequired } from "../shared/spaceTypes.js";
 import { auditActor, recordHubAdminAudit } from "../services/hubAdminAudit.js";

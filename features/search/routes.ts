@@ -1,27 +1,15 @@
-// Slice 10.5 — GET /search
+// The Search plugin's route (a kernel route until kernel step 4,
+// 2026-11-19; the index it reads stays the kernel's, SDK `search`).
 //
-// Public, unauthenticated. Empty `q` returns an empty result set
+// GET /search — public, unauthenticated. Empty `q` returns an empty result set
 // without hitting the DB. Filters: type[], from, to. Sort: relevance
 // (default) or newest. Pagination: limit (default 25, max 100) +
 // offset.
 //
-// All actual SQL lives in the search_processes / search_processes_count
-// RPC functions defined in the migration. This controller is a thin
-// orchestration layer.
+// The query runs over the kernel's index; this route only reads the request.
 
-import type { Request } from "express";
-import { route } from "../http/route.js";
-import {
-  executeSearch,
-  type SearchQuery,
-  type SearchSort,
-  type SearchTypeKey,
-} from "../modules/civic.search/index.js";
-import {
-  countSearchRpc,
-  executeSearchRpc,
-} from "../services/searchExecutor.js";
-import { processDetailPath } from "../processes/registry.js";
+import { Router, type Request } from "express";
+import { route, search, type SearchQuery, type SearchSort, type SearchTypeKey } from "../../src/sdk/index.js";
 
 const ALLOWED_TYPES: ReadonlySet<SearchTypeKey> = new Set([
   "vote",
@@ -64,7 +52,7 @@ function readDate(req: Request, key: string): string | undefined {
   return raw.trim();
 }
 
-export const handleSearch = route(async (req, res) => {
+const handleSearch = route(async (req, res) => {
   const q = typeof req.query.q === "string" ? req.query.q : "";
   const query: SearchQuery = {
     q,
@@ -76,11 +64,7 @@ export const handleSearch = route(async (req, res) => {
     offset: readNumber(req, "offset"),
   };
 
-  const page = await executeSearch(query, {
-    execute: executeSearchRpc,
-    count: countSearchRpc,
-    hrefFor: processDetailPath,
-  });
+  const page = await search.query(query);
 
   // Structured per-request log — useful for spotting slow queries
   // or empty-result patterns without sampling the full request log.
@@ -92,3 +76,9 @@ export const handleSearch = route(async (req, res) => {
 
   res.json(page);
 });
+
+export function searchRoutes(): Router {
+  const r = Router();
+  r.get("/", handleSearch);
+  return r;
+}

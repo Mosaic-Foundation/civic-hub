@@ -9,5 +9,7 @@ import digest from "../features/digest/index.js";
 import assistant from "../features/assistant/index.js";
 import pinning from "../features/pinning/index.js";
 import feedback from "../features/feedback/index.js";
+import adminDigest from "../features/admin_digest/index.js";
+import searchFeature from "../features/search/index.js";
 
-export const FEATURE_PACKAGES: readonly FeaturePackage[] = [analytics, fediverse, digest, assistant, pinning, feedback];
+export const FEATURE_PACKAGES: readonly FeaturePackage[] = [analytics, fediverse, digest, assistant, pinning, feedback, adminDigest, searchFeature];

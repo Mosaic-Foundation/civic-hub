@@ -1,4 +1,5 @@
-// civic.admin_digest — models for the email to a hub's admins.
+// civic.admin_waiting — what is new for a space's admins in a window (kernel
+// step 4; the Admin digest plugin, features/admin_digest, emails it).
 //
 // A TALLY OF WHAT IS NEW SINCE THE LAST ONE (leaving-demo slice, 2026-10-15).
 // One line per category, each a count and a link to that queue on the hub:
@@ -7,8 +8,8 @@
 //   2 new meeting summaries (2 waiting)
 //   No new briefs (4 waiting)
 //
-// "New" means it arrived after the moment the last digest that went out
-// covered up to (admin_digest_marks), by a timestamp that never changes once
+// "New" means it arrived in the window (for the Admin digest: after the moment
+// the last digest that went out covered up to), by a timestamp that never changes once
 // written, so no item is ever counted new twice and a missed day loses
 // nothing. New is what sends the email; nothing goes out when nothing is new,
 // and "waiting" is never a reason to send (Adam, 2026-10-15). Waiting is there
@@ -55,7 +56,7 @@ export interface DigestDetail {
   url: string;
 }
 
-export interface AdminDigestPayload {
+export interface AdminWindow {
   hub_name: string;
   /** The window: after `since`, up to and including `until` (ISO 8601). */
   since: string;

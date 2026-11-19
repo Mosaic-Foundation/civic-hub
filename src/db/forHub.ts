@@ -58,7 +58,6 @@ import { FEATURE_MANIFEST_LIST, type FeatureTableName } from "../shared/featureM
  * registry, read by src/db/hubs.ts, and is deliberately unreachable from here.
  */
 export const HOST_TABLES = [
-  "admin_digest_marks",
   "ai_usage",
   "community_inputs",
   "events",

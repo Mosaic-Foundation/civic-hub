@@ -1,0 +1,10 @@
+{
+  "name": "@civic-social/feature-search",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Search: the Search page and the top bar's search box, over the kernel's index (kernel step 4). A hub feature built as a plugin package is.",
+  "peerDependencies": {
+    "express": "^4.22.3"
+  }
+}

@@ -4,7 +4,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
-## Kernel branch: E2E caught up; the resident digest, the drafting assistant, Pinning and Feedback are feature packages — 2026-11-19
+## Kernel branch: E2E caught up; the resident digest, the drafting assistant, Pinning, Feedback, the admin digest and Search are feature packages — 2026-11-19
 
 - **E2E (0c96ca3):** dev's E2E run had failed or run out its 30 minutes since Nov 17. Most of the time went on specs
   that minted a resident's session through `tests/fixtures/adminSession` and so had not been asked About you: each
@@ -45,7 +45,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
   6, and the module table now say so: the kernel is identity, security and interoperability (federation:
   ActivityPub now, AT Protocol later) plus the shared services plugins need; the kernel offers services, plugins offer
   features; no space must have admins; a space type lists each plugin as required, on by default or off by default.
-  Moving out next: the admin digest, the search page, the Members page (Pinning and Feedback are done, below).
+  Moving out next: the Members page (Pinning, Feedback, the admin digest and Search are done, below).
 - **A space type lists its plugins (6570db3).** `SpaceType.plugins` `{ required, on, off }`; `spacePluginRule(id)` and
   `pluginRequired(id)` in `src/shared/spaceTypes.ts`. A required plugin is on whatever its switch says; the settings
   save and Remove refuse to turn it off, and the Plugins page shows "A {space type} needs this plugin, so it is always
@@ -77,6 +77,16 @@ Updated after every Claude Code session. Records what was built, what's incomple
   Feedback"). Left in the kernel for now, as with Pinning: `KEYS.PLUGIN_FEEDBACK_*`, the help and settings-search
   entries, the admin log's "feedback.forward" wording, the Feedback.css form styles (shared with Contact Civic.Social),
   and the console's status mirror onto `feedback_submissions` (hosting layer, `src/db/platformFeedback.ts`).
+- **The admin digest is a feature plugin** (`features/admin_digest`: manifest, `store.ts` for its own
+  `admin_digest_marks`, `digest.ts` for rendering and the run, `job.ts`). Same job id, path and schedule
+  (`/admin-digest/run`, 13:30 UTC); its cron entry moved to the end of `vercel.json` with the other features'. The
+  counting stays in the kernel as `src/modules/civic.admin_waiting/` (SDK `adminWindow(since, until)`), since the
+  queues are the kernel's and every plugin's. `JOB_NAMES` moved with it. Nothing changes on screen or in the email.
+- **Search is a feature plugin** (`features/search`: `GET /search`, the Search page and the top bar's box). The index
+  and one query over it stay the kernel's (`src/services/kernelSearch.ts`, SDK `search.query`), since a link's
+  typeahead reads the same index. New UI slot `navTool` (the top bar, and the top of the menu drawer). Nothing changes
+  on screen. Still in the kernel's search module: the type keys the page's chips use (`vote`, `announcement`, ...), a
+  list that names civic types, to be read from the manifests later.
 - **Announcements has no urgent label any more**, and `PluginServer.pinnedCard` is gone (with Announcements'
   `board.ts` and `pinnedCard.ts`, its form's Prominence box, the page's Urgent chip and "Urgent until", the feed card's
   Urgent chip and `FeedProcessMeta.urgent`). News Sync's pinned-item label hook is gone too. Visible: a pinned News

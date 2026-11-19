@@ -34,22 +34,6 @@ export interface HubFeature {
 
 /** The kernel's own features: built into it, for every space type. */
 const KERNEL_FEATURES = [
-  {
-    id: "search",
-    order: 110,
-    name: "Search",
-    what: "Full-text search across everything on the hub.",
-    fields: [],
-    words: ["search", "find", "full text"],
-  },
-  {
-    id: "admin_digest",
-    order: 140,
-    name: "Admin digest",
-    what: "A daily email to admins counting what is new since the last one, with what is waiting beside it. Not sent when nothing is new.",
-    fields: [],
-    words: ["admin email", "daily email", "admin summary", "notifications"],
-  },
   // The member count, avatar stack and Members page (Adam, 2026-10-14).
   // Share this hub's invites are the hub's own, not this feature's.
   {

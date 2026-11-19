@@ -10,9 +10,9 @@
 
 import { describe, it, expect } from "vitest";
 import { sendsImmediateEmail } from "../../features/feedback/service.js";
-import { digestLineText, renderAdminDigestEmail, shownLines } from "../../src/modules/civic.admin_digest/index.js";
-import type { AdminDigestPayload, DigestLine } from "../../src/modules/civic.admin_digest/index.js";
-import { jobProblemText, problemUrl } from "../../src/modules/civic.admin_digest/service.js";
+import { digestLineText, renderAdminDigestEmail, shownLines } from "../../features/admin_digest/digest.js";
+import type { AdminDigestPayload, DigestLine } from "../../features/admin_digest/digest.js";
+import { jobProblemText, problemUrl } from "../../src/modules/civic.admin_waiting/service.js";
 import { problemQueue } from "../../src/jobs/describe.js";
 import { adminAnchorPath, jobPath } from "../../src/shared/adminAnchors.js";
 

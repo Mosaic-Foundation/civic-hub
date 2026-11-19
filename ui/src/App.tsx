@@ -38,7 +38,6 @@ import {
   Members,
   MySubmissions,
   Privacy,
-  Search as SearchPage,
   Settings,
   SignInLink,
   KitGallery,
@@ -325,7 +324,6 @@ function AppContent() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/members" element={whenPlugin("members", <Members />)} />
                 <Route path="/about" element={<About />} />
-                <Route path="/search" element={whenPlugin("search", <SearchPage />)} />
                 {/* Slice 11 — legal pages. Routes resolve via React Router so
                     cross-document links (Terms → Privacy etc.) don't trigger
                     full-page reloads. */}

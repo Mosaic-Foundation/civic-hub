@@ -7,7 +7,6 @@
 import type { JobOutcome, JobRunInput, JobRunner } from "./types.js";
 import { loadedPackages } from "../plugins/loader.js";
 import { featureJobRunners } from "../plugins/features.js";
-import { adminDigestJob } from "./adminDigest.js";
 import { sweepHubExports } from "../services/hubExportsStore.js";
 import { closeAllExpired } from "../services/processService.js";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
@@ -16,7 +15,6 @@ import { finishWindDowns } from "../services/pluginInstall.js";
 import { reshuffleOpenBallots } from "../modules/civic.receipts/index.js";
 
 const HOST_JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
-  admin_digest: adminDigestJob,
   vote_close: async ({ now }) => {
     // Every type with a deadline whose plugin is on (2026-10-13), not only votes.
     const r = await closeAllExpired();

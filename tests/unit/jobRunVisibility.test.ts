@@ -172,22 +172,26 @@ vi.mock("../../src/plugins/features.js", async (importOriginal) => ({
   featureQueues: () => [],
 }));
 
-// The admin digest's database reads (src/modules/civic.admin_digest/store.ts):
-// nothing in the queues, and its mark in memory.
+// The kernel's reads for the admin window (src/modules/civic.admin_waiting/store.ts):
+// nothing in the queues. The Admin digest plugin's mark (features/admin_digest/store.ts) in memory.
 let digestMark: string | null = null;
-vi.mock("../../src/modules/civic.admin_digest/store.js", () => ({
+vi.mock("../../src/modules/civic.admin_waiting/store.js", () => ({
   latestSubmissions: async () => new Map(),
   editEvents: async () => [],
   waitlistRows: async () => [],
-  readMark: async () => digestMark,
-  moveMark: async (from: string | null, to: string) => {
-    if (digestMark !== from) return false;
-    digestMark = to;
-    return true;
-  },
-  releaseMark: async (_claimed: string, previous: string | null) => {
-    digestMark = previous;
-  },
+}));
+vi.mock("../../features/admin_digest/store.js", () => ({
+  markStore: () => ({
+    readMark: async () => digestMark,
+    moveMark: async (from: string | null, to: string) => {
+      if (digestMark !== from) return false;
+      digestMark = to;
+      return true;
+    },
+    releaseMark: async (_claimed: string, previous: string | null) => {
+      digestMark = previous;
+    },
+  }),
 }));
 
 const { jobById } = await import("../../src/jobs/registry.js");

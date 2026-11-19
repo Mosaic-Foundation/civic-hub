@@ -84,13 +84,6 @@ export const VERCEL_API_PREFIX = "/api";
  */
 const HOST_JOBS: readonly JobSpec[] = [
   {
-    id: "admin_digest",
-    plugin: "admin_digest",
-    path: "/admin-digest/run",
-    schedule: "30 13 * * *",
-    description: "Admin review-queue digest, per hub",
-  },
-  {
     // The id and path stay "vote_close" (the cron entry and the run log keep
     // their history), but since 2026-10-13 it closes every type with a
     // deadline: each type's own plugin switch decides, so the job is no

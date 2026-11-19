@@ -774,13 +774,6 @@
       "description": "Meeting discovery and summarization, per hub that configured a source"
     },
     {
-      "id": "admin_digest",
-      "plugin": "admin_digest",
-      "path": "/admin-digest/run",
-      "schedule": "30 13 * * *",
-      "description": "Admin review-queue digest, per hub"
-    },
-    {
       "id": "vote_close",
       "plugin": null,
       "path": "/vote-close/run",
@@ -821,6 +814,13 @@
       "path": "/digest/run",
       "schedule": "0 * * * *",
       "description": "Resident email digest, per hub in its own send hour"
+    },
+    {
+      "id": "admin_digest",
+      "plugin": "admin_digest",
+      "path": "/admin-digest/run",
+      "schedule": "30 13 * * *",
+      "description": "Admin review-queue digest, per hub"
     }
   ],
   "requirements": [
@@ -831,7 +831,7 @@
         "covered_until",
         "updated_at"
       ],
-      "owner": "civic.admin_digest"
+      "owner": "features/admin_digest"
     },
     {
       "table": "ai_usage",

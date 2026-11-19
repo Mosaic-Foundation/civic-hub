@@ -6,9 +6,8 @@ import { navSections } from "../config/navigation";
 import AuthModal from "./AuthModal";
 import AdminMenu from "./AdminMenu";
 import SharePanel from "./SharePanel";
-import SearchBar from "./SearchBar";
 import { useHub } from "../config/hub";
-import { featureSpaceLinks } from "../features";
+import { featureNavTools, featureSpaceLinks } from "../features";
 import "./Nav.css";
 
 // Top nav stays minimal: wordmark + search + sign-in. All primary
@@ -152,7 +151,8 @@ export default function Nav() {
   const location = useLocation();
 
   const links = drawerLinks(isAdmin, hub.has_welcome);
-  const searchEnabled = hub.plugins.enabled("search");
+  // Features' tools in the top bar and the drawer (Search's box; ui/src/features.ts).
+  const navTools = featureNavTools((id) => hub.plugins.enabled(id));
   // Features' pages for everyone (Feedback's form; ui/src/features.ts).
   const spaceLinks = featureSpaceLinks((id) => hub.plugins.enabled(id));
 
@@ -202,15 +202,14 @@ export default function Nav() {
           </div>
 
           <div className="civic-nav-right">
-            {/* Slice 10.5 — desktop search bar between the primary
-             * links and the avatar / sign-in cluster. Collapsed to an
-             * icon by default; expands on click. Hidden on the mobile
-             * drawer breakpoint via CSS (.civic-nav-search). */}
-            {searchEnabled && (
-              <div className="civic-nav-search">
-                <SearchBar />
+            {/* A feature's tool (Search's box) between the primary links and
+             * the avatar / sign-in cluster. Hidden on the mobile drawer
+             * breakpoint via CSS (.civic-nav-search). */}
+            {navTools.map(({ feature, Tool }) => (
+              <div key={feature} className="civic-nav-search">
+                <Tool />
               </div>
-            )}
+            ))}
 
             {spaceLinks.map(({ feature, path, header }) =>
               header ? (
@@ -361,17 +360,14 @@ export default function Nav() {
             role="dialog"
             aria-label="Site navigation"
           >
-            {/* Slice 10.5 — search lives at the top of the mobile drawer
-             * so a tap on the hamburger surfaces both navigation and
-             * search. Submitting closes the drawer (onSubmitted). */}
-            {searchEnabled && (
-              <div className="civic-nav-drawer-search">
-                <SearchBar
-                  inDrawer
-                  onSubmitted={() => setDrawerOpen(false)}
-                />
+            {/* A feature's tool (Search's box) at the top of the mobile
+             * drawer, so a tap on the hamburger surfaces both navigation
+             * and search. Submitting closes the drawer (onSubmitted). */}
+            {navTools.map(({ feature, Tool }) => (
+              <div key={feature} className="civic-nav-drawer-search">
+                <Tool inDrawer onSubmitted={() => setDrawerOpen(false)} />
               </div>
-            )}
+            ))}
             <ul className="civic-nav-drawer-links" role="list">
               {/* The same links for everyone. Reading is public in beta
                * (the tab strip in FeedVotesTabs never gated them); what

@@ -9,5 +9,7 @@ import { DIGEST_MANIFEST } from "../features/digest/manifest.js";
 import { ASSISTANT_MANIFEST } from "../features/assistant/manifest.js";
 import { PINNING_MANIFEST } from "../features/pinning/manifest.js";
 import { FEEDBACK_MANIFEST } from "../features/feedback/manifest.js";
+import { ADMIN_DIGEST_MANIFEST } from "../features/admin_digest/manifest.js";
+import { SEARCH_MANIFEST } from "../features/search/manifest.js";
 
-export const FEATURE_PACKAGE_MANIFESTS = [ANALYTICS_MANIFEST, FEDIVERSE_MANIFEST, DIGEST_MANIFEST, ASSISTANT_MANIFEST, PINNING_MANIFEST, FEEDBACK_MANIFEST] as const;
+export const FEATURE_PACKAGE_MANIFESTS = [ANALYTICS_MANIFEST, FEDIVERSE_MANIFEST, DIGEST_MANIFEST, ASSISTANT_MANIFEST, PINNING_MANIFEST, FEEDBACK_MANIFEST, ADMIN_DIGEST_MANIFEST, SEARCH_MANIFEST] as const;

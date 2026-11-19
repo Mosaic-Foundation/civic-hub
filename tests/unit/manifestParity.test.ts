@@ -74,6 +74,10 @@
  * requirement lists every column and names features/feedback, and
  * platform_feedback's names services/providerInbox (the kernel's). Only those
  * (diffed before writing).
+ * And (2026-11-19, the Admin digest a plugin, kernel step 4): admin_digest_marks'
+ * requirement names features/admin_digest, and the admin_digest job moves to
+ * the end of JOBS, after the other features' (vercel.json's crons follow).
+ * Only those (diffed before writing).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

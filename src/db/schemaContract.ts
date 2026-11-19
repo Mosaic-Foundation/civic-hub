@@ -88,7 +88,6 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "users", columns: ["hidden_from_members"], owner: "services/members" },
   { table: "users", columns: ["demo_only"], owner: "civic.auth" },
   { table: "waitlist", columns: ["told_open_at"], owner: "services/waitlistOpen" },
-  { table: "admin_digest_marks", columns: ["hub_id", "covered_until", "updated_at"], owner: "civic.admin_digest" },
   { table: "waitlist", columns: ["invited_by"], owner: "services/hubInvites" },
   { table: "hub_invites", columns: ["hub_id", "email", "invited_by", "outcome", "link_hash", "created_at", "expires_at", "used_at"], owner: "services/hubInvites" },
   // Districts and demographics: a member's own About-you answers (20261116030000).
@@ -142,7 +141,6 @@ export interface ExportManifestEntry {
 
 /** The host's own tables (src/db/forHub.ts HOST_TABLES). Each process type's are in its manifest. */
 const HOST_EXPORTS: readonly ExportManifestEntry[] = [
-  { table: "admin_digest_marks", rows: "omit", reason: "where this host's last admin digest stopped; the next host starts its own" },
   { table: "ai_usage", rows: "omit", reason: "an operational record of paid model calls, for this host's daily budget" },
   { table: "community_inputs", rows: "export" },
   { table: "events", rows: "export" },

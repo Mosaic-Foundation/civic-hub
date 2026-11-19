@@ -31,7 +31,6 @@ export function preloadPages(admin: boolean): void {
 
 // A resident's reading
 export const About = page(() => import("./pages/About"));
-export const Search = page(() => import("./pages/Search"));
 export const Members = page(() => import("./pages/Members"));
 export const Privacy = page(() => import("./pages/Privacy"));
 export const Terms = page(() => import("./pages/Terms"));

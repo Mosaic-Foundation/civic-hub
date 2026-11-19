@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useApi } from "../hooks/useApi";
+import { useApi } from "../../../ui/src/hooks/useApi";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   search,
@@ -7,16 +7,16 @@ import {
   type SearchResultPage,
   type SearchSort,
   type SearchTypeKey,
-} from "../services/api";
-import SearchBar from "../components/SearchBar";
-import { relativeTime, absoluteTime } from "../utils/dates";
-import { useHub } from "../config/hub";
-import { searchChipsShown } from "../config/pluginRules";
-import { feedColorSlug, manifestOf, typeName } from "../processes/display";
+} from "./api";
+import SearchBar from "./SearchBar";
+import { relativeTime, absoluteTime } from "../../../ui/src/utils/dates";
+import { useHub } from "../../../ui/src/config/hub";
+import { searchChipsShown } from "../../../ui/src/config/pluginRules";
+import { feedColorSlug, manifestOf, typeName } from "../../../ui/src/processes/display";
 // FeedFilter.css carries the .feed-filter-pill--<kind> rules we
 // reuse for the post-type filter row on this page. Imported here
 // since Search doesn't render <FeedFilter> directly.
-import "../components/FeedFilter.css";
+import "../../../ui/src/components/FeedFilter.css";
 import "./Search.css";
 
 /**

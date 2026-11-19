@@ -1,18 +1,18 @@
-// civic.admin_digest's store (src/modules/civic.admin_digest/store.ts): the
-// digest's reads of review turns, events and the waitlist, and its
-// mark (`admin_digest_marks`), on the hub in scope (ADR-012).
+// civic.admin_waiting's store (src/modules/civic.admin_waiting/store.ts): its
+// reads of review turns, events and the waitlist, on the hub in scope
+// (ADR-012). The Admin digest's mark is the plugin's (features/admin_digest).
 
-import { forHub, HubDbError, type HubDb } from "../db/forHub.js";
+import { forHub, type HubDb } from "../db/forHub.js";
 import { inChunks } from "../db/inChunks.js";
 import { readAll } from "../db/readAll.js";
 import { currentHubId } from "../config/hubContext.js";
-import type { AdminDigestStore } from "../modules/civic.admin_digest/store.js";
+import type { AdminWaitingStore } from "../modules/civic.admin_waiting/store.js";
 
 function db(): HubDb {
   return forHub(currentHubId());
 }
 
-export const adminDigestStoreImpl: AdminDigestStore = {
+export const adminWaitingStoreImpl: AdminWaitingStore = {
   async latestSubmissions(reviewIds) {
     // Chunked by id, and each chunk paged: a chunk's reviews can have more than
     // 1,000 turns between them (PostgREST's cap).
@@ -59,39 +59,5 @@ export const adminDigestStoreImpl: AdminDigestStore = {
         .order("email", { ascending: true })
         .range(from, to),
     );
-  },
-
-  async readMark() {
-    const row = await db().from("admin_digest_marks").select<{ covered_until: string }>("covered_until").maybeSingle();
-    return row?.covered_until ?? null;
-  },
-
-  async moveMark(from, to) {
-    if (from === null) {
-      try {
-        await db().from("admin_digest_marks").insert({ covered_until: to, updated_at: new Date().toISOString() });
-        return true;
-      } catch (err) {
-        if (err instanceof HubDbError && err.code === "23505") return false;
-        throw err;
-      }
-    }
-    const moved = await db()
-      .from("admin_digest_marks")
-      .update({ covered_until: to, updated_at: new Date().toISOString() })
-      .eq("covered_until", from)
-      .select<{ covered_until: string }>("covered_until");
-    return moved.length > 0;
-  },
-
-  async releaseMark(claimed, previous) {
-    if (previous === null) {
-      await db().from("admin_digest_marks").delete().eq("covered_until", claimed);
-    } else {
-      await db()
-        .from("admin_digest_marks")
-        .update({ covered_until: previous, updated_at: new Date().toISOString() })
-        .eq("covered_until", claimed);
-    }
   },
 };
