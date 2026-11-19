@@ -5,7 +5,8 @@
 // and operator mail keeps the member sender until CIVIC_OPERATOR_MAIL_FROM is set.
 
 import { afterEach, describe, expect, it } from "vitest";
-import { CIVIC_HUB, currentSpaceType, spaceTypeView } from "../../src/shared/spaceTypes.js";
+import { currentSpaceType, spaceTypeView } from "../../src/shared/spaceTypes.js";
+import { CIVIC_HUB } from "../../spaces/civic/type.js";
 import { PLATFORM_CONTACT_EMAIL } from "../../src/shared/platform.js";
 import { ENV_FALLBACKS, KEYS } from "../../src/models/hubSettings.js";
 import { currentSender, operatorSender } from "../../src/services/emailSender.js";

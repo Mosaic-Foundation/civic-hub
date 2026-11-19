@@ -378,6 +378,7 @@ const SPACES_DIR = "spaces/";
 const SPACE_READERS = { "src/plugins/spaceType.ts": "config/space.ts" };
 // The space type's palette (plain data the UI reads too) has one reader as well.
 const PALETTE_READERS = { "src/shared/spacePalette.ts": "config/spacePalette.ts" };
+const SPACE_TYPE_READERS = { "src/shared/spaceTypes.ts": "config/spaceType.ts" };
 
 const PACKAGES_DIR = "packages/";
 // A feature package (ADR-016): a hub feature built as a plugin package is,
@@ -539,6 +540,9 @@ const packageBoundaryRule = {
       }
       if (inEngine && target === "config/space.ts" && SPACE_READERS[rel] !== target) {
         context.report({ node, message: `"${spec}": only src/plugins/spaceType.ts reads the hub's space type (config/space.ts).` });
+      }
+      if (target === "config/spaceType.ts" && SPACE_TYPE_READERS[rel] !== target) {
+        context.report({ node, message: `"${spec}": only src/shared/spaceTypes.ts reads the space type's record (config/spaceType.ts).` });
       }
       if (target === "config/spacePalette.ts" && PALETTE_READERS[rel] !== target) {
         context.report({ node, message: `"${spec}": only src/shared/spacePalette.ts reads the space type's palette (config/spacePalette.ts).` });

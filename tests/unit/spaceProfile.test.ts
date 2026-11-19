@@ -13,8 +13,9 @@ import {
   resolveTerm,
   type SpaceProfile,
 } from "../../src/shared/spaceProfile.js";
-import { CIVIC_PROFILE } from "../../src/shared/profiles/civic.js";
-import { CIVIC_HUB, currentSpaceType } from "../../src/shared/spaceTypes.js";
+import { CIVIC_PROFILE } from "../../spaces/civic/profile.js";
+import { CIVIC_HUB } from "../../spaces/civic/type.js";
+import { NEUTRAL_SPACE_TYPE, currentSpaceType } from "../../src/shared/spaceTypes.js";
 import { HUB_KINDS, participantNoun, personLabel } from "../../src/shared/hubKind.js";
 import { memberCreation } from "../../src/processes/descriptorTypes.js";
 import { PROCESS_MANIFESTS } from "../../src/shared/processManifests.js";
@@ -57,6 +58,15 @@ describe("the civic profile", () => {
     expect(CIVIC_PROFILE.roles).toEqual({ member: "resident", moderator: "moderator", admin: "admin", accountable: "official" });
   });
 
+  it("is the deployment's pick in config/plugins.json, and the kernel's neutral record is a valid profile (kernel step 4)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const list = JSON.parse(readFileSync(new URL("../../config/plugins.json", import.meta.url), "utf8")) as { space: string };
+    expect(list.space).toBe("spaces/civic");
+    expect(currentSpaceType()).toBe(CIVIC_HUB);
+    expect(profileProblems(NEUTRAL_SPACE_TYPE.profile)).toEqual([]);
+    expect(NEUTRAL_SPACE_TYPE.profile.roles).toEqual({ member: "member", moderator: "moderator", admin: "admin", accountable: "accountable" });
+  });
+
   it("says what the hub said before it existed, for every kind of hub", () => {
     for (const { id } of HUB_KINDS) {
       const before = id === "place" ? "resident" : id === "organization" || id === "community" ? "member" : "participant";
@@ -82,5 +92,20 @@ describe("a descriptor's member creation", () => {
       const c = m.descriptor.creation;
       expect([c.member, c.resident].filter((x) => x !== undefined).length, m.descriptor.type).toBe(1);
     }
+  });
+});
+
+describe("the space type as the deployment's setting (kernel step 4)", () => {
+  it("writes the files naming the picked space type, or null for none", async () => {
+    const { spaceFiles } = await import("../../scripts/plugins-sync.js");
+    const civic = spaceFiles("spaces/civic");
+    expect(Object.keys(civic).sort()).toEqual(["config/space.ts", "config/spacePalette.css", "config/spacePalette.ts", "config/spaceType.ts"]);
+    expect(civic["config/spaceType.ts"]).toContain('import type_ from "../spaces/civic/type.js"');
+    expect(civic["config/spacePalette.css"]).toContain('@import "../spaces/civic/palette.css"');
+    const none = spaceFiles(null);
+    expect(none["config/space.ts"]).toContain("export const SPACE: SpaceServer | null = null;");
+    expect(none["config/spaceType.ts"]).toContain("export const SPACE_TYPE: SpaceType | null = null;");
+    expect(none["config/spacePalette.ts"]).toContain("export const PALETTE: SpacePalette | null = null;");
+    expect(none["config/spacePalette.css"]).not.toContain("@import");
   });
 });

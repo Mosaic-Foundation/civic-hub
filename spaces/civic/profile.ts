@@ -7,9 +7,10 @@
 // Every word here is what the hub already said before the profile existed,
 // so nothing on screen changes.
 //
-// Shared by the server and the UI. Pure data.
+// Shared by the server and the UI. Pure data. Part of the Civic Hub space
+// type (./type.ts), which the deployment picks in config/plugins.json.
 
-import type { SpaceProfile } from "../spaceProfile.js";
+import type { SpaceProfile } from "../../src/shared/spaceProfile.js";
 
 export const CIVIC_PROFILE: SpaceProfile = {
   id: "civic",

@@ -41,6 +41,14 @@ Updated after every Claude Code session. Records what was built, what's incomple
   (lint). `feedActivity.ts`, `theme.ts`, `manifest.ts`, the digest feature and the feed card read it; `ActivityKind`,
   `ActivityColor` and `ThemeTypeKey` are plain strings, and `BUILTIN_THEME_TYPE_KEYS` is gone.
   `tests/unit/spacePalette.test.ts` pins the old orders and values. No package changed, so no catalog entries.
+- **Step 4: the space type is the deployment's setting.** One line in `config/plugins.json`, `"space": "spaces/civic"`
+  (or `null`), picks it. `npm run plugins:sync` writes `config/space.ts`, `config/spaceType.ts` (new),
+  `config/spacePalette.ts` and `config/spacePalette.css` from it (they say "Do not edit"; CI's `--check` holds them).
+  The Civic Hub's record moved from `src/shared/spaceTypes.ts` to `spaces/civic/type.ts`, and its profile from
+  `src/shared/profiles/civic.ts` to `spaces/civic/profile.ts`. `src/shared/spaceTypes.ts` alone reads
+  `config/spaceType.ts` (lint) and keeps `NEUTRAL_SPACE_TYPE` for a deployment with none; the five places that read
+  `CIVIC_HUB` now call `currentSpaceType()`. Tried with `"space": null`: server and UI typecheck (only the Civic
+  palette's own tests then fail, as they should). Nothing on screen or in mail changes; no package changed.
 - **Step 4: plugin events in the Install confirmation's words.** A process manifest's `eventWords` words each of its
   own event types ("a proposal is submitted"; checked against its descriptor's `emits`). `grantInPlainWords` takes
   them as `says` (the console's catalog and the hub's Install confirmation pass the package's), and

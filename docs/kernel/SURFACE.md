@@ -126,10 +126,18 @@ directory: they alone import `@civic-social/plugin-sdk/ui` and React (lint and `
 
 A space type is the layer above the kernel that makes it a Civic Hub (or another kind of space). Its server side is a
 `SpaceServer` (`src/plugins/space.ts`): its curated sample content (`samples.plan()`, `samples.seed(template, kit)`)
-and its development seed (`dev.seedEmptyHub`, `dev.seedAfterReset`). The hosting layer names the deployment's in
-`config/space.ts`; the kernel reads that file in one place (`src/plugins/spaceType.ts`) and never imports `spaces/`
-(eslint `civic/package-boundary`). The Civic Hub's is `spaces/civic/`. A space type may use the kernel's modules and
-the packages it curates, a package's values only by `await import()`.
+and its development seed (`dev.seedEmptyHub`, `dev.seedAfterReset`). A space type's folder holds `index.ts` (that
+server side), `type.ts` (its record: names, mail senders, profile; `SpaceType` in `src/shared/spaceTypes.ts`),
+`profile.ts`, `palette.ts` and `palette.css`, each with a default export where it is data.
+
+The deployment picks its space type with one line, `"space": "spaces/<dir>"` in `config/plugins.json` (or `null`
+for none; kernel step 4). `npm run plugins:sync` writes `config/space.ts`, `config/spaceType.ts`,
+`config/spacePalette.ts` and `config/spacePalette.css` from it, and CI's `--check` keeps them current. The kernel
+reads each in one place (`src/plugins/spaceType.ts`, `src/shared/spaceTypes.ts`, `src/shared/spacePalette.ts`,
+`ui/src/styles/hubStyles.ts`) and never imports `spaces/` (eslint `civic/package-boundary`). With no space type,
+hubs start empty, the record is the kernel's neutral one (`NEUTRAL_SPACE_TYPE`) and there is no palette. The Civic
+Hub's is `spaces/civic/`. A space type may use the kernel's modules and the packages it curates, a package's values
+only by `await import()`.
 
 ## The UI side
 

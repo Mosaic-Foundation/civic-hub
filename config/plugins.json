@@ -1,4 +1,5 @@
 {
+  "space": "spaces/civic",
   "packages": [
     "packages/civic.vote",
     "packages/civic.proposals",

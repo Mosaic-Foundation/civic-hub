@@ -1,5 +1,4 @@
-/* The colours of the hub's space type's palette (config/spacePalette.ts names
-   its families): the hosting layer chooses them with the space type, and the
-   UI loads this file right after the kernel's theme.css (ui/src/styles/hubStyles.ts).
-   A deployment with no space type leaves this file empty. */
+/* Written by `npm run plugins:sync` from config/plugins.json. Do not edit.
+   The colours of the deployment's space type's palette, loaded right after the
+   kernel's theme.css (ui/src/styles/hubStyles.ts). Empty with no space type. */
 @import "../spaces/civic/palette.css";

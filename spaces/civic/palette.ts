@@ -64,3 +64,5 @@ export const civicPalette: SpacePalette = {
   ],
   fallbackSection: "announcements",
 };
+
+export default civicPalette;
