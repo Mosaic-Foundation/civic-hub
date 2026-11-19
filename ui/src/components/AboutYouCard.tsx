@@ -17,7 +17,8 @@ import {
  * Mounted once in App. The first time a signed-in member takes part in
  * anything, api.ts waits on askAboutYouFirst(), which opens this card; the
  * action goes on when it closes, whatever they answered. Showing it records
- * that they were asked, so it never shows again.
+ * that they were asked, so it never shows again. Never during sign-up: a new
+ * account is first asked after the onboarding word cloud (services/aboutYou.ts).
  */
 export default function AboutYouCard() {
   const [open, setOpen] = useState(false);

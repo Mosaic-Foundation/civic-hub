@@ -4,6 +4,7 @@ import { useAuth } from "../context/authState";
 import { officialFrom } from "./authOfficial";
 import { useHub } from "../config/hub";
 import { onboardingTarget } from "../config/pluginRules";
+import { holdAboutYouForSignup } from "../services/aboutYou";
 import { NEXT_STEPS_PATH } from "../pages/settings/nextSteps";
 import {
   requestCode,
@@ -283,6 +284,15 @@ export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
       // the gate-passed user. If the user had closed the modal before
       // reaching this point, no login() ever happened.
       if (pendingAuth) {
+        // A new account is not asked About you while it signs up: not on the
+        // action waiting on this sign-in, nor over the onboarding word cloud
+        // (services/aboutYou.ts). Held before login() so the waiting action
+        // sees it.
+        const signupOnboarding =
+          needsResidency && pendingAuth.role !== "admin"
+            ? onboardingTarget(hub.onboarding_wordcloud_id, hub.plugins.enabled("wordcloud"), null) !== null
+            : false;
+        if (needsResidency) holdAboutYouForSignup(signupOnboarding);
         login(
           tokenToUse,
           nextUser,

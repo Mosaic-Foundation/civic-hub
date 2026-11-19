@@ -9,6 +9,12 @@
  * is shown, then lets the action go on, whatever they answered. The server
  * records that they were asked, so the card never shows again, on any device.
  * It never blocks an action: any failure here just lets the action through.
+ *
+ * NOT DURING SIGN-UP (2026-11-18, Adam: the card opened on top of the
+ * onboarding word cloud). A new account is not asked while it is still
+ * signing up: the action that made it sign up, and everything on the
+ * onboarding word cloud, go through without the card. It is first asked the
+ * next time it takes part after that (holdAboutYouForSignup below).
  */
 
 import { request } from "./http";
@@ -81,12 +87,46 @@ export function noteAboutAsked(): void {
 }
 
 /**
+ * Why the card is held back after a sign-up: "action" for the one action
+ * that made them sign up, "onboarding" until they leave the onboarding word
+ * cloud. Only this page load: a reload or a later visit asks as usual.
+ */
+let signupHold: "action" | "onboarding" | null = null;
+
+/**
+ * A new account just signed up (AuthModal). Call before login(), so the
+ * action waiting on the sign-in is held too. `onboarding`: they are being
+ * sent to the onboarding word cloud.
+ */
+export function holdAboutYouForSignup(onboarding: boolean): void {
+  signupHold = onboarding ? "onboarding" : "action";
+}
+
+/** The new member left the onboarding word cloud (WordCloud unmounts). */
+export function releaseAboutYouOnboardingHold(): void {
+  if (signupHold === "onboarding") signupHold = null;
+}
+
+/** The onboarding word cloud is on screen (also after a reload of it). */
+function onOnboardingPage(): boolean {
+  if (typeof window === "undefined") return false;
+  const { pathname, search } = window.location;
+  return pathname.startsWith("/wordcloud/") && new URLSearchParams(search).get("onboarding") === "1";
+}
+
+/**
  * Wait for the one-time card if this member has not been asked yet; resolve
  * at once otherwise. Never rejects.
  */
 export function askAboutYouFirst(): Promise<void> {
   const token = getStoredToken();
   if (!token || askedFor === token || !prompt) return Promise.resolve();
+  // Still signing up: not now, and not recorded as asked.
+  if (signupHold) {
+    if (signupHold === "action") signupHold = null;
+    return Promise.resolve();
+  }
+  if (onOnboardingPage()) return Promise.resolve();
   if (!asksAnything(currentAboutConfig())) return Promise.resolve();
   if (!pending) {
     pending = (async () => {

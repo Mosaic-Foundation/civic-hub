@@ -17,6 +17,7 @@ import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useAction } from "../hooks/useAction";
 import { useHub } from "../config/hub";
 import { safeReturnPath } from "../config/pluginRules";
+import { releaseAboutYouOnboardingHold } from "../services/aboutYou";
 import { theName } from "../../../src/shared/hubCopy";
 import ProcessHeader from "../components/ProcessHeader";
 import { statusDisplay } from "../components/statusDisplay";
@@ -503,6 +504,9 @@ export default function WordCloud() {
   // The page that asked the new account to sign in (review R24), else home.
   const returnPath = isOnboarding ? safeReturnPath(searchParams.get("return")) : null;
   const exitTo = returnPath ?? "/";
+  // A new member's About-you card waits until they leave the onboarding
+  // cloud, however they leave it (services/aboutYou.ts).
+  useEffect(() => (isOnboarding ? releaseAboutYouOnboardingHold : undefined), [isOnboarding]);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Not read until the session is known. A sign-in or out reads it again with

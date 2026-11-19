@@ -114,6 +114,9 @@ ballot tags), so release with `./scripts/release.sh dev`. Design: Adam, 2026-11-
   is awaited by the api.ts calls that take part (vote, support, comment, draft submit, project sentiment, word cloud,
   conversation vote and statement). Showing it POSTs `/user/about/asked`; Skip lets the action go on. Events'
   "going" is in the Events package (its own fetch), so it does not trigger the card.
+  Never during sign-up (2026-11-18): `holdAboutYouForSignup()` (AuthModal, before `login()`) holds it for the
+  action that made a new account sign up and, when they are sent to the onboarding word cloud, until the cloud
+  page unmounts; it never shows on `/wordcloud/…?onboarding=1`. Test: `ui/src/services/aboutYou.test.ts`.
 - **Find it by address**: `POST /user/about/district-lookup` → the new `geocoder` adapter (`src/hosting/censusGeocoder.ts`,
   US Census geocoder, `layers=all`, County Subdivisions; fake in `src/adapters/fakes/geocoder.ts`), loose match to
   the list (`matchDistrict`). The address is not stored, logged or put in an error; 10 lookups an hour per member.
