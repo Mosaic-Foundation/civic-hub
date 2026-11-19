@@ -100,8 +100,20 @@ export type { HeldReceipt } from "../modules/civic.receipts/index.js";
 // The same, as a package casts and reads them (kernel step 1): process first.
 export { ballots } from "../services/kernelBallots.js";
 
-// --- Drafts and the drafting assistant (src/modules/civic.drafts/, civic.assistant/) ----
-export type { AssistantTypeConfig, DraftField } from "../modules/civic.assistant/index.js";
+// --- Drafts and the drafting assistant (src/modules/civic.drafts/, src/models/assistant.ts) ----
+export type {
+  AssistantDraft,
+  AssistantResponse,
+  AssistantTypeConfig,
+  CallAssistantInput,
+  Category,
+  DraftField,
+  DraftProposal,
+  DraftState,
+  HubConfig,
+  Phase,
+  Suggestion,
+} from "../models/assistant.js";
 export {
   getDraft,
   appendConversation,
@@ -267,6 +279,20 @@ export async function processRegistry() {
   const r = await import("../processes/registry.js");
   return { handler: r.getProcessHandler, detailPath: r.processDetailPath };
 }
+
+// --- What the Writing assistant reads and asks (features/assistant; kernel step 3) -------
+// The model, through the hub's AI gate; the reply tool and reading it back; the
+// hub's identity and Code of Conduct as the model reads them; the hub's AI
+// allowance; the hub's documents; a draft as the assistant sees it.
+export { aiConverse, aiDefaultModel } from "../adapters/ai.js";
+export type { AiConversationInput, AiMessage, AiResult } from "../adapters/ai.js";
+export { buildRespondTool, RESPONSE_TOOL, toAssistantResponse } from "../services/assistantResponse.js";
+export { codeOfConductText, getHubConfig } from "../services/codeOfConductAi.js";
+export type { CallClaudeMultiTurnFn } from "../services/codeOfConductAi.js";
+export { admitAiCall, currentAiLimits } from "../services/aiBudget.js";
+export { hubDocument } from "../services/hubDocuments.js";
+export { toDraftState } from "../services/codeOfConduct.js";
+export { currentHub } from "../config/hubContext.js";
 
 // --- Feature packages (src/plugins/feature.ts; ADR-016) ----------------------------------
 // A hub feature built as a package is, and the one read capability it adds:

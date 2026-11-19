@@ -7,7 +7,7 @@
 //   any field containing [coc-down] → the check is unavailable (it throws)
 //   anything else                  → passes
 
-import type { DraftField, Suggestion } from "../modules/civic.assistant/models.js";
+import type { DraftField, Suggestion } from "../models/assistant.js";
 import type { CheckedField } from "../services/codeOfConduct.js";
 
 export const FAKE_COC_FLAG = "[coc-flag]";

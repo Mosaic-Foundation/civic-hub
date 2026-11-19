@@ -1,6 +1,6 @@
 // The drafting assistant is registry-driven: a process type opts in by
 // declaring getAssistantConfig on its handler, and the generic
-// civic.assistant module builds its prompts entirely from that config.
+// assistant feature builds its prompts entirely from that config.
 // These tests pin the seam: which types declare configs, that the config
 // carries everything the shared route needs, and that the prompt builder
 // contains no per-type branches (the config strings ARE the type).
@@ -9,12 +9,13 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { getProcessHandler, getRegisteredTypes } from "../../src/processes/registry.js";
-import { buildSystemPrompt, buildCocCheckPrompt } from "../../src/modules/civic.assistant/systemPrompt.js";
+import { buildSystemPrompt } from "../../features/assistant/systemPrompt.js";
+import { buildCocCheckPrompt } from "../../src/services/codeOfConductAi.js";
 import type {
   AssistantTypeConfig,
   DraftState,
   HubConfig,
-} from "../../src/modules/civic.assistant/models.js";
+} from "../../src/models/assistant.js";
 
 // The shared template, as a hub with no override of its own would be handed
 // it. The assistant embeds whatever Code of Conduct the hub publishes.

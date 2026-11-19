@@ -30,7 +30,7 @@ describe("civic/hosting-boundary", () => {
 
   it("refuses a vendor's package in the engine", async () => {
     expect(await errors("src/services/x.ts", `import { YoutubeTranscript } from "youtube-transcript";`)).toHaveLength(1);
-    expect(await errors("src/modules/civic.assistant/x.ts", `import Anthropic from "@anthropic-ai/sdk";`)).toHaveLength(1);
+    expect(await errors("src/modules/civic.drafts/x.ts", `import Anthropic from "@anthropic-ai/sdk";`)).toHaveLength(1);
   });
 
   it("allows the hosting layer, the operator API, the composition roots, scripts and tests", async () => {

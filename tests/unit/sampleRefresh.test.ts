@@ -11,7 +11,7 @@ import { SAMPLE_ENDORSEMENT_FLOOR, sampleSupportThreshold } from "../../spaces/c
 import { refreshesSamples, SAMPLE_REFRESH_MODES } from "../../src/shared/sampleRefresh.js";
 import { describeJobRun } from "../../src/jobs/describe.js";
 import { codeOfConductVerdict } from "../../src/services/codeOfConduct.js";
-import { CHECK_UNAVAILABLE_RESULT } from "../../src/modules/civic.assistant/index.js";
+import { CHECK_UNAVAILABLE_RESULT } from "../../src/services/codeOfConductAi.js";
 import { JURISDICTION_TYPES } from "../../src/shared/jurisdictionType.js";
 
 const DAY = 24 * 60 * 60 * 1000;

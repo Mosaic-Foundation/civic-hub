@@ -11,7 +11,7 @@
 
 import { NotFoundError } from "../../errors/index.js";
 import { generateId } from "../../utils/id.js";
-import type { Suggestion } from "../civic.assistant/models.js";
+import type { Suggestion } from "../../models/assistant.js";
 import { draftsStore } from "./store.js";
 import {
   BASE_CHECKED_FIELDS,

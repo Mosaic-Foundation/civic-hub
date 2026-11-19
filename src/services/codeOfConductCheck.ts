@@ -10,13 +10,9 @@
 
 import { AiLimitError, admitAiCall } from "./aiBudget.js";
 import { checkDraftStore, codeOfConductFieldsFor, codeOfConductHash } from "./codeOfConduct.js";
-import { checkTextAgainstCoC } from "../modules/civic.assistant/service.js";
-import {
-  getHubConfig,
-  CHECK_UNAVAILABLE_RESULT,
-  type AssistantDraft,
-} from "../modules/civic.assistant/index.js";
-import type { Suggestion } from "../modules/civic.assistant/models.js";
+import { checkTextAgainstCoC } from "./codeOfConductAi.js";
+import { getHubConfig, CHECK_UNAVAILABLE_RESULT } from "./codeOfConductAi.js";
+import type { AssistantDraft, Suggestion } from "../models/assistant.js";
 
 export interface CodeOfConductRun {
   /** What it found: hard blocks, or none. Empty when it was unavailable. */

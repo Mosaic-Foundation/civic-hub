@@ -1,8 +1,9 @@
 // The drafting-help contract: what a process type declares to opt into the
 // assistant (ProcessHandler.getAssistantConfig), and the draft shapes both
 // sides share. Here, in the process contract, so the handler interface
-// (src/processes/types.ts) depends on no plugin; src/modules/civic.assistant
-// implements it and re-exports these types (Architecture 2, 2026-10-21).
+// (src/processes/types.ts) depends on no plugin; the assistant feature (features/assistant)
+// implements it through SDK v0, and src/models/assistant.ts re-exports
+// these types (Architecture 2, 2026-10-21; feature split 2026-11-19).
 
 export type Category = "issue" | "idea" | "project" | "concern";
 

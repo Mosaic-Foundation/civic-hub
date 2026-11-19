@@ -1,5 +1,5 @@
 import type { RelationType } from "../civic.process_links/models.js";
-import type { Suggestion } from "../civic.assistant/models.js";
+import type { Suggestion } from "../../models/assistant.js";
 import type { TableName } from "../../db/forHub.js";
 
 /** A related process the author picked while composing. Carried on the draft

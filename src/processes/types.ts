@@ -245,7 +245,7 @@ export interface ProcessHandler {
    * assistant affordance only for types that declare it. A handler without
    * this simply gets a plain form: no assistant affordance, no assistant
    * routes. This is the single seam — no per-type assistant logic may live
-   * outside the handler and the generic civic.assistant module.
+   * outside the handler and the generic assistant feature.
    */
   getAssistantConfig?(): AssistantTypeConfig;
 

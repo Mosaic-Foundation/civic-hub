@@ -4,7 +4,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
-## Kernel branch: E2E caught up; the resident digest is a feature package — 2026-11-19
+## Kernel branch: E2E caught up; the resident digest and the drafting assistant are feature packages — 2026-11-19
 
 - **E2E (0c96ca3):** dev's E2E run had failed or run out its 30 minutes since Nov 17. Most of the time went on specs
   that minted a resident's session through `tests/fixtures/adminSession` and so had not been asked About you: each
@@ -25,6 +25,13 @@ Updated after every Claude Code session. Records what was built, what's incomple
 - **The module table (docs/KERNEL.md):** the admin digest stays in the kernel (it reports the kernel's own queues and
   job health); the assistant splits (the Code of Conduct check is kernel moderation; the drafting chat becomes a
   feature, next); `civic.receipts` stays in the kernel (decided Nov 17).
+- **The drafting assistant is a feature package:** `features/assistant/` (`routes.ts` for the draft chat's
+  `message` and `suggest`, `service.ts`, `systemPrompt.ts`), mounted at `/assistant` behind the plugin switch. The
+  kernel keeps the Code of Conduct check (`src/services/codeOfConductAi.ts`: `getHubConfig`, `checkTextAgainstCoC`,
+  `buildCocCheckPrompt`, `CHECK_UNAVAILABLE_RESULT`), the response tool and parsing both sides use
+  (`src/services/assistantResponse.ts`), the types (`src/models/assistant.ts`) and `GET /assistant/:type/config`.
+  `src/modules/civic.assistant/` is gone. The feature reads the hub through SDK v0 (AI calls, admission and limits,
+  hub documents, `processRegistry()`, `toDraftState`). No plugin's files changed, so no new catalog versions.
 
 ## Kernel branch: pinning phase 2 — 2026-11-18
 

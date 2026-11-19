@@ -24,7 +24,7 @@ import {
 import { submitAsCreator, reviseAndResubmit, reviewMailbox } from "../modules/civic.review/index.js";
 import { codeOfConductStanding } from "../services/codeOfConduct.js";
 import { runCodeOfConductCheck } from "../services/codeOfConductCheck.js";
-import type { AssistantDraft } from "../modules/civic.assistant/index.js";
+import type { AssistantDraft } from "../models/assistant.js";
 import type { CocFlag } from "../modules/civic.review/models.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { personFallbackName } from "../services/creatorDisplay.js";

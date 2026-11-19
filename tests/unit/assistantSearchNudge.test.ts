@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { callAssistant, promisesToFollowUp } from "../../src/modules/civic.assistant/service";
-import type { CallClaudeMultiTurnFn } from "../../src/modules/civic.assistant/service";
+import { callAssistant, promisesToFollowUp } from "../../features/assistant/service";
+import type { CallClaudeMultiTurnFn } from "../../src/services/codeOfConductAi";
 import { proposalAssistantConfig } from "../../packages/civic.proposals/assistantConfig";
 
 const baseInput = {

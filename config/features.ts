@@ -6,5 +6,6 @@ import type { FeaturePackage } from "../src/plugins/feature.js";
 import analytics from "../features/analytics/index.js";
 import fediverse from "../features/fediverse/index.js";
 import digest from "../features/digest/index.js";
+import assistant from "../features/assistant/index.js";
 
-export const FEATURE_PACKAGES: readonly FeaturePackage[] = [analytics, fediverse, digest];
+export const FEATURE_PACKAGES: readonly FeaturePackage[] = [analytics, fediverse, digest, assistant];

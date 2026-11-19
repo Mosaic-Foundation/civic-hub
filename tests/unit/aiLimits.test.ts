@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { aiLimitDefaults, aiLimitOverridesProblem, effectiveAiLimits, parseAiLimitOverrides } from "../../src/shared/aiLimits.js";
-import { recentTurns } from "../../src/modules/civic.assistant/service.js";
+import { recentTurns } from "../../features/assistant/service.js";
 
 describe("AI limits", () => {
   it("gives a demo hub a smaller budget and no web search", () => {

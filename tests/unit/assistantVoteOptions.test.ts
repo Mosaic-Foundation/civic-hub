@@ -12,9 +12,9 @@ import {
   voteAssistantConfig,
   VOTE_METHOD_EXTRA_FIELDS,
 } from "../../packages/civic.vote/assistantConfig";
-import { buildRespondTool } from "../../src/modules/civic.assistant/service";
-import { buildSystemPrompt } from "../../src/modules/civic.assistant/systemPrompt";
-import type { DraftState, HubConfig } from "../../src/modules/civic.assistant/models";
+import { buildRespondTool } from "../../src/services/assistantResponse";
+import { buildSystemPrompt } from "../../features/assistant/systemPrompt";
+import type { DraftState, HubConfig } from "../../src/models/assistant";
 
 const HUB: HubConfig = { hub_name: "Test Hub", community_description: "residents of Testville", code_of_conduct: "" };
 const base: DraftState = { title: "Which rules?", description: "", sources: "", considerations: "" };

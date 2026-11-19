@@ -1,0 +1,10 @@
+{
+  "name": "@civic-social/feature-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Writing assistant: an AI chat beside a draft, with suggestion cards the person applies (ADR-016). A hub feature built as a plugin package is.",
+  "peerDependencies": {
+    "express": "^4.22.3"
+  }
+}

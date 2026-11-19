@@ -7,8 +7,8 @@
 import type { Response } from "express";
 import { getAuthUser } from "../middleware/auth.js";
 import { AiLimitError, admitCodeOfConductCheck } from "./aiBudget.js";
-import { checkTextAgainstCoC, getHubConfig } from "../modules/civic.assistant/index.js";
-import type { Suggestion } from "../modules/civic.assistant/models.js";
+import { checkTextAgainstCoC, getHubConfig } from "./codeOfConductAi.js";
+import type { Suggestion } from "../models/assistant.js";
 
 /** One thing the check found: a hard block, with the message the person sees. */
 export type CodeOfConductFinding = Suggestion;

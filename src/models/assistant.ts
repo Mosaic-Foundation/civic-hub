@@ -1,4 +1,5 @@
-// civic.assistant module — type definitions.
+// The drafting assistant's types (the kernel's: drafts, the Code of Conduct
+// check and the assistant feature read them; kernel step 3).
 //
 // The assistant is generic: it knows how to hold a drafting conversation,
 // review a draft against the Code of Conduct, and generate starting drafts —
@@ -10,12 +11,12 @@
 import type {
   Category, DraftField, DraftState, Suggestion, DraftProposal,
   AssistantFieldGuidance, AssistantDraft, AssistantDraftStore, AssistantTypeConfig,
-} from "../../processes/contracts/draftingHelp.js";
+} from "../processes/contracts/draftingHelp.js";
 
 export type {
   Category, DraftField, DraftState, Suggestion, DraftProposal,
   AssistantFieldGuidance, AssistantDraft, AssistantDraftStore, AssistantTypeConfig,
-} from "../../processes/contracts/draftingHelp.js";
+} from "../processes/contracts/draftingHelp.js";
 
 export type Phase = "brainstorm" | "review" | "free_form";
 
