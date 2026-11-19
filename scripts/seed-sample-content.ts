@@ -6,7 +6,7 @@
  *
  * The same seed as the console's "Start with sample content" checkbox
  * (src/services/sampleSeed.ts): up to eleven place-neutral processes from
- * src/services/sampleTemplates.ts, filled with the hub's name, jurisdiction
+ * the space type's templates (spaces/civic/sampleTemplates.ts), filled with the hub's name, jurisdiction
  * and governing body, marked `is_sample`, written through the real code
  * paths. Templates that do not fit the hub's kind or jurisdiction type are
  * skipped and listed; plugin switches are not consulted (2026-09-27). On a

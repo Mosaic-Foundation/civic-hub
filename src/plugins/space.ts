@@ -10,12 +10,21 @@ import type { SampleKit, SampleTemplate } from "./samples.js";
 export interface SpaceServer {
   /** What it is called: "Civic Hub". */
   readonly name: string;
-  /** Its curated sample content for a new hub. */
+  /**
+   * Its curated sample content for a new hub: the words, in its vocabulary.
+   * Each plugin seeds its own type (PluginServer.samples).
+   */
   samples?: {
     /** The samples that fit the hub in scope (its kind, its jurisdiction type), in seeding order. */
     plan(): readonly SampleTemplate[];
-    /** Seed one of them whose type's plugin does not seed it itself (PluginServer.samples). */
-    seed(template: SampleTemplate, kit: SampleKit): Promise<void>;
+    /** Every sample it has, whichever hubs it fits (a sample's title, its template by key). */
+    all(): readonly SampleTemplate[];
+    /** Seed one whose type's plugin does not seed its own. Left out: such a sample is skipped. */
+    seed?(template: SampleTemplate, kit: SampleKit): Promise<void>;
+    /** The console's create form: the hub kinds it has samples for. */
+    kinds?(): string[];
+    /** The console's create form: one sample card's first line per "<kind>:<type>", placeholders left in. */
+    previews?(): Record<string, { pill: string; title: string } | null>;
   };
   /**
    * The development seed (CIVIC_ALLOW_SEED only, never production; the kernel

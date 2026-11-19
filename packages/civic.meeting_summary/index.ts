@@ -9,6 +9,7 @@ import adminRoutes from "./adminRoutes.js";
 import { meetingSummaryJob } from "./job.js";
 import { meetingSummaryHost } from "./host.js";
 import { parseWixFields } from "./wixFields.js";
+import { meetingSummarySamples } from "./samples.js";
 
 const meetingSummaryPackage: PluginPackage = {
   name: "@civic-social/plugin-meeting-summary",
@@ -24,6 +25,7 @@ const meetingSummaryPackage: PluginPackage = {
       jobs: { meeting_summary: meetingSummaryJob },
       // Its own setting's check on save (kernel step 3): the Wix columns read as a map.
       checkSetting: (key, value) => (key === "plugin.meeting_summary.wix_fields" ? parseWixFields(value).errors[0] ?? null : null),
+      samples: meetingSummarySamples,
     };
   },
 };

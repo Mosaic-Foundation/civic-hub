@@ -13,6 +13,7 @@ import { bootDeliberation } from "./boot.js";
 import routes from "./routes.js";
 import { deliberationDraftKind } from "./draftKind.js";
 import { conversationHost } from "./host.js";
+import { conversationSamples } from "./samples.js";
 
 const conversationPackage: PluginPackage = {
   name: "@civic-social/plugin-conversation",
@@ -25,6 +26,7 @@ const conversationPackage: PluginPackage = {
       handler: bootDeliberation(host),
       drafts: { kind: deliberationDraftKind },
       routes: [{ path: "/deliberations", router: routes }],
+      samples: conversationSamples,
     };
   },
 };

@@ -418,14 +418,14 @@ const voteProcess: ProcessHandler = {
   // module so tallying/receipts behave as before. Ballots come from the
   // anonymized receipts table (ballot secrecy: the vote state carries no
   // individual ballots). Mutates the process; briefFinalize saves it.
-  async finalizeAfterBrief(process: Process, actor: string): Promise<void> {
+  async finalizeAfterBrief(process: Process, actor: string, emit = emitEvent): Promise<void> {
     const vState = getState(process);
     const method = getVotingMethod(vState.method ?? DEFAULT_METHOD);
     const ballots = (await ballotBox.choices(process.id)).map((c) => method.parseReceipt(c));
     await finalizeVote(vState, actor, ballots, {
       process_id: process.id,
       jurisdiction: process.jurisdiction,
-      emit: emitEvent,
+      emit,
     });
     process.status = getState(process).status;
   },

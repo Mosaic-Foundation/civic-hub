@@ -7,6 +7,7 @@
 //   - producing a summary for list views
 
 import { Process, ProcessAction, CreateProcessInput } from "../models/process.js";
+import type { CivicEvent, CreateEventInput } from "../models/event.js";
 import type { SubmissionField, SubmissionSource } from "../shared/submissionPreview.js";
 import type { BriefContent } from "./contracts/briefContent.js";
 import type { SchemaRequirement } from "../db/schemaContract.js";
@@ -446,7 +447,7 @@ export interface ProcessHandler {
    * changes the process (status, state); briefFinalize saves it.
    * Architecture 2: replaces briefFinalize's switch on the type.
    */
-  finalizeAfterBrief?(process: Process, actor: string): Promise<void>;
+  finalizeAfterBrief?(process: Process, actor: string, emit?: (input: CreateEventInput) => Promise<CivicEvent>): Promise<void>;
 
   /**
    * Optional: the fields a feed card shows for one of its processes, read

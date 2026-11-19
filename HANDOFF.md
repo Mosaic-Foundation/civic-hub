@@ -104,7 +104,23 @@ Updated after every Claude Code session. Records what was built, what's incomple
   card kind, and its dark tokens in the kernel's `dark.css`, until its next release. Catalog entries regenerated at the
   same versions: Votes `20261119071803`, Proposals `20261119071827`, Projects `20261119071844`, Briefs
   `20261119071919`, Announcements `20261119071933`, Meeting summaries `20261119071945`, News Sync `20261119071957`,
-  Conversations `20261119072032`, Word clouds `20261119072046` (the earlier files are deleted).
+  Conversations `20261119072032`, Word clouds `20261119072046` (the earlier files are deleted; the samples move below
+  regenerated eight of them again).
+- **Each plugin seeds its own samples** (`packages/<pkg>/samples.ts`: Votes, Briefs, Proposals, Projects,
+  Announcements, Meeting summaries, Conversations; Word clouds already did). The Civic Hub's words moved out of the
+  kernel into its space type (`src/services/sampleTemplates.ts` → `spaces/civic/sampleTemplates.ts`; its types are each
+  package's sample shape plus which hubs it fits). `spaces/civic/samples.ts` and `sampleRules.ts` are gone (the vote's
+  endorsement floor is in Votes). The kernel keeps the sample people (`src/services/samplePeople.ts`) and the names
+  (`fillSample` in `sampleNames.ts`). New: `SampleKit.process(key)`, `SampleKit.ballots(processId, choices)` (sample
+  ballots, kernel-kept, demo-hub tags), `PluginSamples.title`, `.refresh` (`live`, `reason(template, row, window)`) and
+  `.repair`; `SpaceServer.samples.all`, `kinds`, `previews` (`seed` optional); `results.finalize(id, actor, emit?)` and
+  `finalizeAfterBrief(process, actor, emit?)` so a sample's vote is finalized at its planned time. The refresh
+  (`sampleRefresh.ts`) and the "what changed" titles (`sampleCatalog.ts`) ask each plugin; the kernel names no type.
+  One change outside production: under fake adapters the sample conversation's Polis address is the fake server's (the
+  start action's own address), not polis.civic.social. Catalog entries regenerated at the same versions: Votes
+  `20261119073340`, Proposals `20261119073403`, Projects `20261119073419`, Conversations `20261119073446`, Word clouds
+  `20261119073501`, Briefs `20261119073513`, Announcements `20261119073527`, Meeting summaries `20261119073539` (News
+  Sync stays `20261119071957`).
 - **Announcements has no urgent label any more**, and `PluginServer.pinnedCard` is gone (with Announcements'
   `board.ts` and `pinnedCard.ts`, its form's Prominence box, the page's Urgent chip and "Urgent until", the feed card's
   Urgent chip and `FeedProcessMeta.urgent`). News Sync's pinned-item label hook is gone too. Visible: a pinned News

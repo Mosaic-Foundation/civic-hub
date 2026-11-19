@@ -1,5 +1,5 @@
 // Word clouds' sample content (PluginServer.samples, kernel step 3): the
-// first plugin to seed its own samples. The hub's space type brings the
+// first plugin to seed its own samples (every type does since step 4). The hub's space type brings the
 // template (the Civic Hub's: a title, a prompt, and each word with how many
 // sample answers give it); this seeds it through the type's own paths.
 
@@ -8,7 +8,7 @@ import { activateWordcloud, type WordcloudProcessState } from "./service.js";
 import { wordcloudStore } from "./store.js";
 
 /** What a word cloud sample says. */
-interface WordcloudSample {
+export interface WordcloudSample {
   title: string;
   description: string;
   prompt: string;

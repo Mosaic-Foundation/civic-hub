@@ -9,6 +9,7 @@ import legacyRoutes from "./legacyRoutes.js";
 import adminRoutes from "./adminRoutes.js";
 import { briefHost } from "./host.js";
 import { briefOnClose } from "./onClosed.js";
+import { briefSamples } from "./samples.js";
 
 const briefPackage: PluginPackage = {
   name: "@civic-social/plugin-brief",
@@ -27,6 +28,7 @@ const briefPackage: PluginPackage = {
       adminRoutes: [{ path: "/briefs", router: adminRoutes }],
       // The kernel's "process closed" event (kernel step 3): make the pending brief.
       on: { processClosed: async (closed) => void (await briefOnClose(closed)) },
+      samples: briefSamples,
     };
   },
 };

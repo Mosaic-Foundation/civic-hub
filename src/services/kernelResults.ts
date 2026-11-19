@@ -10,6 +10,7 @@
 // Step 3 turns the reading into the kernel's process.closed event, which
 // carries the result (docs/kernel/SURFACE.md, "Event: couplings that go").
 
+import type { CivicEvent, CreateEventInput } from "../models/event.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { getProcessHandler, processDetailPath } from "../processes/registry.js";
 import { getProcess, isTerminalStatus, saveProcessState } from "./processService.js";
@@ -153,14 +154,15 @@ export const results = {
    * Its result is public: the process is finalized. Its type decides how when
    * its handler has finalizeAfterBrief (a vote tallies its ballots); otherwise
    * it simply becomes finalized. Best effort and idempotent: a missing process
-   * is skipped, a finalized one left as it is.
+   * is skipped, a finalized one left as it is. `emit` stamps its events (a
+   * sample's, at their planned time); the hub's emitter when left out.
    */
-  async finalize(id: string, actor: string): Promise<void> {
+  async finalize(id: string, actor: string, emit?: (input: CreateEventInput) => Promise<CivicEvent>): Promise<void> {
     const src = await getProcess(id);
     if (!src || src.status === "finalized") return;
     const handler = getProcessHandler(src.definition.type);
     if (handler?.finalizeAfterBrief) {
-      await handler.finalizeAfterBrief(src, actor);
+      await handler.finalizeAfterBrief(src, actor, emit);
       await saveProcessState(src);
       return;
     }

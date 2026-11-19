@@ -15,7 +15,22 @@ import { currentHub } from "../config/hubContext.js";
 import { KEYS } from "../models/hubSettings.js";
 import { hubKindOf } from "../shared/hubKind.js";
 import { getSettingSync, hubDisplayNameSync } from "./hubSettings.js";
-import type { SampleNames } from "./sampleTemplates.js";
+import { fillSampleText } from "../shared/hubCopy.js";
+
+/** The three names a sample text may use. */
+export interface SampleNames {
+  HUB_NAME: string;
+  JURISDICTION: string;
+  GOVERNING_BODY: string;
+}
+
+/**
+ * Fill the three placeholders. Nothing else is ever substituted. The place
+ * takes its article where English wants one (fillSampleText, review R19).
+ */
+export function fillSample(text: string, names: SampleNames): string {
+  return fillSampleText(text, names);
+}
 
 export function sampleNames(): SampleNames {
   const hubName = hubDisplayNameSync();

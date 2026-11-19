@@ -1,13 +1,14 @@
 // Which of the Civic Hub's curated samples a hub starts with (Phase 7,
 // BUILD-PLAN-multi-tenant.md "Sample content for new hubs"): the templates in
-// src/services/sampleTemplates.ts that fit the hub's kind (identity.hub_kind)
-// and its jurisdiction type, each with the process type it seeds as.
+// ./sampleTemplates.ts that fit the hub's kind (identity.hub_kind) and its
+// jurisdiction type, each with the process type it seeds as. The plugin that
+// provides the type seeds it (kernel step 4).
 
 import { KEYS } from "../../src/models/hubSettings.js";
 import { getSettingSync } from "../../src/services/hubSettings.js";
 import { isJurisdictionType } from "../../src/shared/jurisdictionType.js";
 import { hubKindOf } from "../../src/shared/hubKind.js";
-import { templatesFor, type SampleTemplate as CivicTemplate } from "../../src/services/sampleTemplates.js";
+import { SAMPLE_TEMPLATES, templatesFor, type SampleTemplate as CivicTemplate } from "./sampleTemplates.js";
 import type { SampleTemplate } from "../../src/plugins/samples.js";
 
 /** The process type each kind of civic sample is. */
@@ -32,4 +33,9 @@ export function civicSamplePlan(): SampleTemplate[] {
   const typeRaw = getSettingSync(KEYS.IDENTITY_JURISDICTION_TYPE);
   const kind = hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND));
   return templatesFor(isJurisdictionType(typeRaw) ? typeRaw : null, kind).map(asSample);
+}
+
+/** Every Civic Hub sample, whichever hubs it fits. */
+export function civicSamples(): SampleTemplate[] {
+  return SAMPLE_TEMPLATES.map(asSample);
 }

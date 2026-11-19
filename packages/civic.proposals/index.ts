@@ -10,6 +10,7 @@ import { proposalDraftKind } from "./draftKind.js";
 import { proposalsStore } from "./store.js";
 import { createProposalsStore } from "./storeImpl.js";
 import { clearProposals, proposalExists } from "./service.js";
+import { proposalSamples } from "./samples.js";
 
 const proposalPackage: PluginPackage = {
   name: "@civic-social/plugin-proposal",
@@ -26,6 +27,7 @@ const proposalPackage: PluginPackage = {
       // A proposal takes comments before it becomes a vote (kernel step 3).
       inputTargets: { phase: "proposal", exists: (id) => proposalExists(id) },
       dev: { reset: () => clearProposals() },
+      samples: proposalSamples(host.db),
     };
   },
 };

@@ -8,6 +8,7 @@ import routes from "./routes.js";
 import { projectDraftKind } from "./draftKind.js";
 import { projectsStore } from "./store.js";
 import { createProjectsStore } from "./storeImpl.js";
+import { projectSamples } from "./samples.js";
 
 const projectPackage: PluginPackage = {
   name: "@civic-social/plugin-project",
@@ -20,6 +21,7 @@ const projectPackage: PluginPackage = {
       handler,
       drafts: { kind: projectDraftKind },
       routes: [{ path: "/projects", router: routes }],
+      samples: projectSamples(host.db),
     };
   },
 };

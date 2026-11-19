@@ -21,6 +21,7 @@
 //   whose plugin is off stays hidden, like any process of that type, until the
 //   plugin is turned on; removal takes all of it either way.
 
+import { randomUUID } from "node:crypto";
 import { forHub, type HubDb, type TableName } from "../db/forHub.js";
 import { currentHub, currentHubId, currentHubSettings, withHubScope } from "../config/hubContext.js";
 import { PLUGIN_IDS } from "../models/hubSettings.js";
@@ -28,11 +29,12 @@ import type { CreateEventInput } from "../models/event.js";
 import type { ProcessContent } from "../models/process.js";
 import { sampleProcessId, sampleUserId } from "../models/sampleContent.js";
 import { emitEvent } from "../events/eventEmitter.js";
-import { createProcess, saveProcessState } from "./processService.js";
+import { createProcess, getProcess, saveProcessState } from "./processService.js";
 import { getSettingSync, isPluginEnabled, setSetting } from "./hubSettings.js";
-import { sampleNames } from "./sampleNames.js";
 import { processExistsOnHub, processVersionOnHub, stampProcessCreatedAt } from "./processRows.js";
-import { SAMPLE_AUTHORS, fillSample, type SampleNames } from "./sampleTemplates.js";
+import { fillSample, sampleNames, type SampleNames } from "./sampleNames.js";
+import { SAMPLE_AUTHORS } from "./samplePeople.js";
+import { sampleBallotTagsForThisHub } from "./sampleBallotTags.js";
 import { submitInput } from "../modules/civic.input/index.js";
 import type { LoadedPackage } from "../plugins/loader.js";
 import { spaceType } from "../plugins/spaceType.js";
@@ -136,7 +138,7 @@ async function seedInScope(opts: { dryRun?: boolean; now?: Date; only?: readonly
     fromSpace: space?.samples?.plan() ?? [],
     defaults,
     only: opts.only,
-    canSeed: (t) => !!pluginSeeder(t.type) || !!space?.samples,
+    canSeed: (t) => !!pluginSeeder(t.type) || !!space?.samples?.seed,
   });
   const report: SampleSeedReport = {
     hub: hubId,
@@ -161,7 +163,7 @@ async function seedInScope(opts: { dryRun?: boolean; now?: Date; only?: readonly
     }
     const own = pluginSeeder(t.type);
     if (own) await own.seed(t, run.kit(t, own.plugin));
-    else await space!.samples!.seed(t, run.kit(t, null));
+    else await space!.samples!.seed!(t, run.kit(t, null));
     report.created.push(t.key);
   }
   return report;
@@ -236,6 +238,7 @@ class SeedRun {
       fill: (text) => this.fill(text),
       at: (days, minutes) => this.at(days, minutes),
       id: (key) => sampleProcessId(hubId, key),
+      process: async (key) => (await getProcess(sampleProcessId(hubId, key))) ?? null,
       author: (key) => this.author(key),
       emitAt: (iso) => this.emitAt(iso),
       create: async (input) => {
@@ -282,6 +285,17 @@ class SeedRun {
         if (!(await isPluginEnabled(hubId, plugin as never))) return false;
         await setSetting(hubId, key as never, value, "sample-seed");
         return true;
+      },
+      ballots: async (processId, choices) => {
+        if (!processId.startsWith(sampleProcessId(hubId, ""))) {
+          throw new Error(`sample ballots go on a sample process, not ${processId}`);
+        }
+        // No time on a ballot, sample or not (vote_records_no_time, 2026-10-10).
+        // District and age tags on a demo hub only (sampleBallotTags.ts).
+        const tags = sampleBallotTagsForThisHub(choices.length);
+        const rows = choices.map((choice, i) => ({ receipt_id: randomUUID(), process_id: processId, choice, ...tags[i]! }));
+        if (rows.length) await this.db.from("vote_records").insert(rows);
+        return rows.length;
       },
     };
   }

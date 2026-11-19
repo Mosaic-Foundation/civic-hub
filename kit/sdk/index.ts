@@ -52,6 +52,8 @@ export type {
   PluginSampleTemplate,
   SampleKit,
   SampleTemplate,
+  SampleRow,
+  SampleRefreshWindow,
 } from "../../src/sdk/index.js";
 
 // --- The one emission path: every event a package writes goes through it ------------------

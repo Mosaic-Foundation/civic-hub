@@ -30,7 +30,7 @@ import { processDetailPath } from "../processes/registry.js";
 import { currentHub } from "../config/hubContext.js";
 import { refreshesSamples } from "../shared/sampleRefresh.js";
 import { autoRefreshSetting, refreshSamplesAsAdmin, samplesTakenOut, setAutoRefresh } from "../services/sampleRefresh.js";
-import { sampleTemplateTitles } from "../services/sampleTemplates.js";
+import { sampleTitles } from "../services/sampleCatalog.js";
 import { sampleNames } from "../services/sampleNames.js";
 
 /**
@@ -89,7 +89,7 @@ export const handleRefreshSamples = route(async (_req, res) => {
   const refresh = await refreshSamplesAsAdmin(auditActor(user));
   // Titles beside the template keys, filled with this hub's names, so the
   // card says what changed by name (as the console does).
-  res.json({ refresh, titles: sampleTemplateTitles(sampleNames()), summary: await summaryWithItems() });
+  res.json({ refresh, titles: await sampleTitles(sampleNames()), summary: await summaryWithItems() });
 });
 
 export const handleSetAutoRefresh = route(async (req, res) => {

@@ -1,4 +1,5 @@
-// The sample content a new hub starts with (Phase 7) — templates, not data.
+// The Civic Hub's sample content (Phase 7; kernel step 4: the space type's
+// words, in its vocabulary; each plugin seeds its own type) — templates, not data.
 //
 // Contract: BUILD-PLAN-multi-tenant.md → "Phase 7 — Sample content for new
 // hubs". Adapted from the Floyd use cases (scripts/seedBetaSlate.ts, retired
@@ -18,9 +19,17 @@
 // - `fits`: the jurisdiction types (identity.jurisdiction_type) a template
 //   reads right in (place hubs). The seed skips the rest.
 
-import { JURISDICTION_TYPES, type JurisdictionType } from "../shared/jurisdictionType.js";
-import { HUB_KINDS, type HubKind } from "../shared/hubKind.js";
-import { fillSampleText } from "../shared/hubCopy.js";
+import { JURISDICTION_TYPES, type JurisdictionType } from "../../src/shared/jurisdictionType.js";
+import { HUB_KINDS, type HubKind } from "../../src/shared/hubKind.js";
+import type { SampleAuthorKey } from "../../src/services/samplePeople.js";
+import type { VoteSample } from "../../packages/civic.vote/samples.js";
+import type { BriefSample } from "../../packages/civic.brief/samples.js";
+import type { ProposalSample } from "../../packages/civic.proposals/samples.js";
+import type { ConversationSample } from "../../packages/civic.polis_deliberation/samples.js";
+import type { ProjectSample } from "../../packages/civic.projects/samples.js";
+import type { AnnouncementSample } from "../../packages/civic.announcement/samples.js";
+import type { MeetingSummarySample } from "../../packages/civic.meeting_summary/samples.js";
+import type { WordcloudSample } from "../../packages/civic.wordcloud/samples.js";
 
 /** Every type a general-purpose local government can be. */
 const LOCAL_GOVERNMENT: readonly JurisdictionType[] = ["county", "city", "town", "village", "borough", "other"];
@@ -33,35 +42,14 @@ const ORGANIZATION: readonly HubKind[] = ["organization", "other"];
 const ISSUE: readonly HubKind[] = ["issue"];
 const COMMUNITY: readonly HubKind[] = ["community"];
 
-// --- Synthetic authors --------------------------------------------------------
-
-export interface SampleAuthor {
-  /** n in user_sample_<hub>_00n. */
-  n: number;
-  /** Filled like the copy: may use the three placeholders. */
-  full_name: string;
-}
-
-export const SAMPLE_AUTHORS = {
-  JORDAN: { n: 1, full_name: "Jordan P." },
-  ALEX: { n: 2, full_name: "Alex R." },
-  CASEY: { n: 3, full_name: "Casey M." },
-  SAM: { n: 4, full_name: "Sam T." },
-  // Not a real office: a sample announcement must not appear to speak for
-  // the local government, even out of context (Adam, 2026-09-26).
-  TEAM: { n: 5, full_name: "{HUB_NAME} team" },
-} as const satisfies Record<string, SampleAuthor>;
-
-type Author = keyof typeof SAMPLE_AUTHORS;
-
-export interface SampleComment {
-  by: Author;
-  body: string;
-  /** Days relative to seeding. */
-  at: number;
-}
+// The sample people are the kernel's (src/services/samplePeople.ts).
+type Author = SampleAuthorKey;
 
 // --- Templates ----------------------------------------------------------------
+//
+// What each sample is made of is its plugin's to say (packages/<pkg>/samples.ts,
+// which seeds it); this file says what the Civic Hub's say, and which hubs
+// each fits.
 
 interface Base {
   /** Stable key; the process id is proc_sample_<hub>_<key>. */
@@ -72,7 +60,7 @@ interface Base {
    * local governments, school districts, organizations (and "other"), issue
    * campaigns. Each set has the five a demo hub must always show (an open
    * vote, a vote gathering endorsements, an open proposal, a conversation, a
-   * closed vote with its outcome), kept current by sampleRefresh.ts.
+   * closed vote with its outcome), kept current by the sample refresh.
    */
   kinds: readonly HubKind[];
   /** Place hubs: the jurisdiction types it reads right in. */
@@ -82,119 +70,14 @@ interface Base {
   at: number;
 }
 
-export interface SampleVote extends Base {
-  kind: "vote";
-  title: string;
-  description: string;
-  /**
-   * The voting method. `yes_no_unsure` is the single-choice method (one
-   * option per voter, any option list); `approval` lets a voter pick several.
-   */
-  method: "yes_no_unsure" | "approval";
-  /** Option labels, in order. */
-  options: readonly string[];
-  /** open: ballots cast so far; closed: final; proposed: none yet. */
-  phase: "proposed" | "open" | "closed";
-  opens_at?: number;
-  closes_at?: number;
-  /** Anonymous ballots per option, same order as `options`. */
-  ballots?: readonly number[];
-  /** Endorsements while proposed (the threshold: sampleSupportThreshold, spaces/civic/sampleRules.ts). */
-  endorsed_by?: readonly Author[];
-}
-
-export interface SampleOutcome extends Base {
-  kind: "outcome";
-  /** The closed vote this reports. */
-  source: string;
-  published_at: number;
-  headline: string;
-  summary: string;
-  sections: ReadonlyArray<{ heading: string; body: string }>;
-  participation_label: string;
-  participation_count: number;
-  /** The public "Sent to" label. Delivery is never attempted. */
-  sent_to: string;
-}
-
-export interface SampleProposal extends Base {
-  kind: "proposal";
-  title: string;
-  description: string;
-  closes_at: number;
-  endorsed_by: readonly Author[];
-  comments: readonly SampleComment[];
-}
-
-export interface SampleDeliberation extends Base {
-  kind: "deliberation";
-  topic: string;
-  framing: string;
-  closes_at: number;
-  /** Shown through the seed- mock layer; nothing is sent to Polis. */
-  statements: readonly string[];
-  /**
-   * The participation picture the mock layer serves (Adam, 2026-09-26:
-   * about twenty participants, two groups, broad agreement on registration
-   * and on counting first). Statement references are indexes into
-   * `statements`.
-   */
-  picture: {
-    participants: number;
-    groups: ReadonlyArray<{ size: number; agree: readonly number[]; disagree: readonly number[] }>;
-    consensus: ReadonlyArray<{ statement: number; agree_rate: number; votes: number }>;
-  };
-}
-
-export interface SampleProject extends Base {
-  kind: "project";
-  title: string;
-  description: string;
-  supported_by: readonly Author[];
-  updates: ReadonlyArray<{ body: string; at: number }>;
-  comments: readonly SampleComment[];
-}
-
-export interface SampleAnnouncement extends Base {
-  kind: "announcement";
-  title: string;
-  body: string;
-}
-
-/**
- * A published meeting summary (added 2026-10-06, Adam). Written by hand, not
- * by the summarizer: no recording, no minutes, no AI call. Each section has a
- * time into the (absent) meeting so the page shows how a real summary reads;
- * the page says it is a sample with no recording behind it.
- */
-export interface SampleMeetingSummary extends Base {
-  kind: "meeting_summary";
-  /** The meeting's title; may use the three placeholders. */
-  meeting_title: string;
-  /** Days relative to seeding. */
-  meeting_at: number;
-  published_at: number;
-  blocks: ReadonlyArray<{ title: string; summary: string; at_minute: number; action: string | null }>;
-  /**
-   * The meeting's minutes as plain text, shown on the page in place of a
-   * minutes PDF (review issue #7, 2026-10-07). Paragraphs split on blank lines.
-   */
-  minutes: string;
-}
-
-/**
- * A word cloud with anonymous sample answers (added 2026-10-06, Adam). The
- * answers are rows, not events, like the sample ballots. When the hub has no
- * word cloud chosen (plugin.wordcloud.onboarding_id), this one is chosen.
- */
-export interface SampleWordcloud extends Base {
-  kind: "wordcloud";
-  title: string;
-  description: string;
-  prompt: string;
-  /** Each word and how many sample answers give it. */
-  answers: ReadonlyArray<readonly [word: string, count: number]>;
-}
+export type SampleVote = Base & VoteSample & { kind: "vote"; endorsed_by?: readonly Author[] };
+export type SampleOutcome = Base & BriefSample & { kind: "outcome" };
+export type SampleProposal = Base & ProposalSample & { kind: "proposal"; endorsed_by: readonly Author[] };
+export type SampleDeliberation = Base & ConversationSample & { kind: "deliberation" };
+export type SampleProject = Base & ProjectSample & { kind: "project"; supported_by: readonly Author[] };
+export type SampleAnnouncement = Base & AnnouncementSample & { kind: "announcement" };
+export type SampleMeetingSummary = Base & MeetingSummarySample & { kind: "meeting_summary" };
+export type SampleWordcloud = Base & WordcloudSample & { kind: "wordcloud" };
 
 export type SampleTemplate =
   | SampleVote
@@ -1675,20 +1558,6 @@ export function templatesFor(type: JurisdictionType | null | undefined, kind: Hu
   return fitting.filter((x) => x.kind !== "outcome" || keys.has(x.source));
 }
 
-export interface SampleNames {
-  HUB_NAME: string;
-  JURISDICTION: string;
-  GOVERNING_BODY: string;
-}
-
-/**
- * Fill the three placeholders. Nothing else is ever substituted. The place
- * takes its article where English wants one (fillSampleText, review R19).
- */
-export function fillSample(text: string, names: SampleNames): string {
-  return fillSampleText(text, names);
-}
-
 /** The hub kinds that have at least one sample template (the create form's checkbox). */
 export function kindsWithSamples(): HubKind[] {
   return HUB_KINDS.map((k) => k.id).filter((k) => SAMPLE_TEMPLATES.some((t) => t.kinds.includes(k)));
@@ -1725,25 +1594,4 @@ export function samplePreviews(): Record<string, { pill: string; title: string }
     out["place:"] = samplePreview(null, k);
   }
   return out;
-}
-
-/** What a template is called on the page: its title, the meeting's, the topic or the outcome's headline. */
-export function sampleTemplateTitle(t: SampleTemplate, names: SampleNames): string {
-  const raw =
-    t.kind === "meeting_summary"
-      ? t.meeting_title
-      : t.kind === "deliberation"
-        ? t.topic
-        : t.kind === "outcome"
-          ? t.headline
-          : t.title;
-  return fillSample(raw, names);
-}
-
-/**
- * Every template's title, filled with one hub's names, by key: the console's
- * "Refresh samples" result names what it added by title, not by id.
- */
-export function sampleTemplateTitles(names: SampleNames): Record<string, string> {
-  return Object.fromEntries(SAMPLE_TEMPLATES.map((t) => [t.key, sampleTemplateTitle(t, names)]));
 }

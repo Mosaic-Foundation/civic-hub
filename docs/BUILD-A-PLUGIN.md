@@ -491,11 +491,17 @@ return {
   none of your type. A key is unique on the hub; the sample's process id is made from it.
 - The kit gives you the hub's sample people (`kit.author("JORDAN")`; `by` on a template), times relative to now
   (`kit.at(days, minutes)`, `at` on a template), `kit.fill(text)` for `{HUB_NAME}`, `{JURISDICTION}` and
-  `{GOVERNING_BODY}`, `create`, `save`, `comment`, and `adoptSetting(key, value)` to set one of your own settings when the
-  hub has none (Word clouds makes its sample the hub's word cloud this way).
+  `{GOVERNING_BODY}`, `create`, `save`, `comment`, `process(key)` (the sample this one is made from), `ballots(processId,
+  choices)` for anonymous sample ballots (the kernel keeps every ballot), and `adoptSetting(key, value)` to set one of your
+  own settings when the hub has none (Word clouds makes its sample the hub's word cloud this way).
+- Optional: `title(template)` names a sample in the admin's lists when its name is not `title` (Briefs: the headline);
+  `refresh` keeps a demo hub current (`live(template)` for a sample there to show something live, `reason(template, row,
+  window)` for why it must be replaced now, `window.near(deadline)` for "within a few days"); `repair(template, state,
+  fill)` gives an older sample a field added since.
 - Everything a sample creates is marked as sample: its events never reach the public log or a digest, and the admin's
   Remove sample content takes all of it. Send nothing outside the hub from a seed.
-- Word clouds is the working example: `packages/civic.wordcloud/samples.ts`.
+- Every first-party type seeds its own: `packages/<pkg>/samples.ts` (Word clouds is the shortest; Votes shows ballots
+  and `refresh`). The words are the space type's (the Civic Hub's: `spaces/civic/sampleTemplates.ts`).
 
 ## 7. Run the suite
 

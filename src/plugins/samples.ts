@@ -54,6 +54,8 @@ export interface SampleKit {
   at(days: number, minutes?: number): string;
   /** The process id of the sample with this key on this hub. */
   id(key: string): string;
+  /** The sample process with this key on this hub (the one this sample is made from), or null. */
+  process(key: string): Promise<Process | null>;
   /**
    * One of the hub's sample people (JORDAN, PRIYA, TEAM, ...; the kernel keeps
    * them and removes them with the samples). Unknown keys throw.
@@ -88,12 +90,58 @@ export interface SampleKit {
    * sample process (src/services/sampleContent.ts).
    */
   adoptSetting(key: string, value: string): Promise<boolean>;
+  /**
+   * Cast anonymous sample ballots on a sample process (the kernel keeps every
+   * ballot): each choice as the type serializes it, with no voter and no time.
+   * On a demo hub they carry the district and age spread, so a closed sample
+   * shows its breakdowns. Returns how many were cast.
+   */
+  ballots(processId: string, choices: readonly string[]): Promise<number>;
 }
 
-/** What a plugin offers for sample content (PluginServer.samples). */
+/** The sample refresh's window (REFRESH_WINDOW_DAYS, a few days). */
+export interface SampleRefreshWindow {
+  readonly now: Date;
+  /** A deadline within the window, or none at all: the sample must be replaced. */
+  near(iso: unknown): boolean;
+}
+
+/** A sample process as the sample refresh reads it. */
+export interface SampleRow {
+  readonly id: string;
+  readonly status: string;
+  readonly state: Record<string, unknown> | null;
+}
+
+/**
+ * What a plugin offers for sample content (PluginServer.samples). The plugin
+ * seeds its own type; the words come from the hub's space type, in its
+ * vocabulary, or from the plugin's own defaults when the space type brings
+ * none of its type.
+ */
 export interface PluginSamples {
   /** Its own samples, seeded on a hub whose space type brings none of its type. */
   defaults?(): readonly PluginSampleTemplate[];
   /** Seed one sample of its type, from the space type's template or one of its defaults. */
   seed(template: SampleTemplate, kit: SampleKit): Promise<void>;
+  /**
+   * What a sample is called on a page (the admin's and the console's "what
+   * changed" lists), unfilled. Left out: the template's `title`.
+   */
+  title?(template: SampleTemplate): string;
+  /**
+   * Keeping a demo hub current (src/services/sampleRefresh.ts): a sample of
+   * its type that is there to show something live (an open vote, an open
+   * proposal), and why one must be replaced now, or null. A sample it does
+   * not call live is left alone.
+   */
+  refresh?: {
+    live(template: SampleTemplate): boolean;
+    reason(template: SampleTemplate, row: SampleRow, window: SampleRefreshWindow): Promise<string | null>;
+  };
+  /**
+   * The console's "Refresh samples": the state an older sample of its type
+   * should have now (a field added since it was seeded), or null to leave it.
+   */
+  repair?(template: SampleTemplate, state: Record<string, unknown>, fill: (text: string) => string): Record<string, unknown> | null;
 }

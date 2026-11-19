@@ -50,8 +50,6 @@ import { tagUntaggedSampleBallots } from "./sampleBallotTags.js";
 import { ValidationError } from "../errors/index.js";
 import { KEYS } from "../models/hubSettings.js";
 import { sampleProcessId } from "../models/sampleContent.js";
-import { hubKindOf } from "../shared/hubKind.js";
-import { isJurisdictionType } from "../shared/jurisdictionType.js";
 import { getSetting, getSettingSync, setSetting } from "./hubSettings.js";
 import { recordHubAdminAudit } from "./hubAdminAudit.js";
 import { describeJobRun } from "../jobs/describe.js";
@@ -66,12 +64,21 @@ import {
   sampleProcessState,
 } from "./processRows.js";
 import { seedSampleContent } from "./sampleSeed.js";
-import { fillSample, templatesFor, type SampleTemplate } from "./sampleTemplates.js";
+import { fillSample } from "./sampleNames.js";
+import { hubSamples, pluginSamplesFor } from "./sampleCatalog.js";
+import { isTerminalStatus } from "./processService.js";
+import type { PluginSamples, SampleRefreshWindow, SampleTemplate } from "../plugins/samples.js";
 
 /** Replace a live sample when its deadline is this close (Adam: "a few days"). */
 export const REFRESH_WINDOW_DAYS = 3;
 
 const DAY = 24 * 60 * 60 * 1000;
+
+/** The window a plugin's refresh reason reads: a deadline within it (or none) is near. Pure. */
+export function refreshWindow(now: Date): SampleRefreshWindow {
+  const soon = now.getTime() + REFRESH_WINDOW_DAYS * DAY;
+  return { now, near: (iso) => typeof iso !== "string" || new Date(iso).getTime() <= soon };
+}
 
 export interface SampleRefreshReport {
   /** Set when nothing was looked at, and why. */
@@ -86,59 +93,17 @@ export interface SampleRefreshReport {
   ballots_tagged?: string[];
 }
 
-interface LiveRow {
-  id: string;
-  status: string;
-  state: Record<string, unknown> | null;
-}
-
-/** The live samples a hub must keep showing: what each is there to show. */
-function liveTemplates(templates: SampleTemplate[]): SampleTemplate[] {
-  return templates.filter(
-    (t) =>
-      (t.kind === "vote" && (t.phase === "open" || t.phase === "proposed")) ||
-      t.kind === "proposal" ||
-      t.kind === "deliberation",
-  );
-}
-
 /**
- * Why this sample must be replaced now, or null. Pure: the row as stored, the
- * proposal's own closes_at (proposals keep it in their table), and now.
+ * The samples a hub must keep showing, each with what its plugin says about
+ * it: what each is there to show is the plugin's to say (PluginSamples.refresh).
  */
-export function refreshReason(
-  t: SampleTemplate,
-  row: LiveRow,
-  proposalClosesAt: string | null,
-  now: Date,
-): string | null {
-  const soon = now.getTime() + REFRESH_WINDOW_DAYS * DAY;
-  const near = (iso: unknown): boolean => typeof iso !== "string" || new Date(iso).getTime() <= soon;
-  const st = row.state ?? {};
-  switch (t.kind) {
-    case "vote":
-      // The closed vote and its outcome are left alone.
-      if (t.phase === "closed") return null;
-      if (t.phase === "proposed") {
-        return row.status === "proposed" ? null : `no longer gathering endorsements (${row.status})`;
-      }
-      if (row.status !== "active") return `no longer open (${row.status})`;
-      return near(st.voting_closes_at) ? "closes within the refresh window" : null;
-    case "proposal":
-      if (row.status !== "active") return `no longer open (${row.status})`;
-      return near(proposalClosesAt) ? "closes within the refresh window" : null;
-    case "deliberation":
-      if (row.status !== "active") return `no longer active (${row.status})`;
-      return near(st.deadline) ? "ends within the refresh window" : null;
-    default:
-      return null;
+async function liveSamples(templates: readonly SampleTemplate[]): Promise<Array<{ t: SampleTemplate; refresh: NonNullable<PluginSamples["refresh"]> }>> {
+  const out: Array<{ t: SampleTemplate; refresh: NonNullable<PluginSamples["refresh"]> }> = [];
+  for (const t of templates) {
+    const refresh = (await pluginSamplesFor(t.type))?.refresh;
+    if (refresh?.live(t)) out.push({ t, refresh });
   }
-}
-
-function hubTemplates(): SampleTemplate[] {
-  const typeRaw = getSettingSync(KEYS.IDENTITY_JURISDICTION_TYPE);
-  const kind = hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND));
-  return templatesFor(isJurisdictionType(typeRaw) ? typeRaw : null, kind);
+  return out;
 }
 
 /**
@@ -167,14 +132,13 @@ export async function refreshSamples(
     return report;
   }
   const hubId = currentHubId();
-  const db = forHub(hubId);
   const now = opts.now ?? new Date();
-  const templates = hubTemplates();
+  const templates = await hubSamples();
   // Read once, and only when a live sample is missing.
   let restorable: ((key: string) => boolean) | null = null;
   const restored: string[] = [];
 
-  for (const t of liveTemplates(templates)) {
+  for (const { t, refresh } of await liveSamples(templates)) {
     const id = sampleProcessId(hubId, t.key);
     const row = await sampleProcessLiveRow(id);
     if (!row) {
@@ -187,12 +151,7 @@ export async function refreshSamples(
     }
     // A real process or a visitor's own under this id: never touched.
     if (!row.is_sample || row.added_in_demo) continue;
-    let closesAt: string | null = null;
-    if (t.kind === "proposal") {
-      const p = await db.from("proposals").select<{ closes_at: string | null }>("closes_at").eq("id", id).maybeSingle();
-      closesAt = p?.closes_at ?? null;
-    }
-    const reason = refreshReason(t, row, closesAt, now);
+    const reason = await refresh.reason(t, row, refreshWindow(now));
     if (!reason) continue;
     // What it spawned goes with it (a brief or results of a vote that closed).
     const spawned = await sampleProcessIdsMadeFrom(id);
@@ -206,15 +165,13 @@ export async function refreshSamples(
     const only = skip.size ? templates.map((t) => t.key).filter((k) => !skip.has(k)) : undefined;
     const seeded = await seedSampleContent({ now, only });
     report.added = [...restored, ...seeded.created.filter((k) => !restored.includes(k))];
-    report.minutes_added = await addMissingMinutes(templates);
+    report.minutes_added = await repairSamples(templates);
   } else {
     report.added = restored;
   }
   // A demo hub's closed sample vote seeded before ballots carried tags gets them
   // (2026-11-17). Closed only: an open sample can hold a visitor's own ballot.
-  const tagged = await tagUntaggedSampleBallots(
-    templates.filter((t) => t.kind === "vote" && t.phase === "closed").map((t) => t.key),
-  );
+  const tagged = await tagUntaggedSampleBallots(await closedSampleKeys(templates));
   if (tagged.length) report.ballots_tagged = tagged;
   return report;
 }
@@ -232,21 +189,38 @@ async function missingSamplesRestorable(hubId: string): Promise<(key: string) =>
   return (key) => !keys.has(key);
 }
 
-/** Sample meeting summaries seeded before they had minutes get them. */
-async function addMissingMinutes(templates: SampleTemplate[]): Promise<string[]> {
+/**
+ * Older samples given what their plugin says they should have now (a sample
+ * meeting summary seeded before 2026-10-07 gets its minutes): PluginSamples.repair.
+ */
+async function repairSamples(templates: readonly SampleTemplate[]): Promise<string[]> {
   const hubId = currentHubId();
-  const db = forHub(hubId);
   const names = sampleNames();
-  const added: string[] = [];
+  const fill = (text: string) => fillSample(text, names);
+  const repaired: string[] = [];
   for (const t of templates) {
-    if (t.kind !== "meeting_summary") continue;
+    const repair = (await pluginSamplesFor(t.type))?.repair;
+    if (!repair) continue;
     const id = sampleProcessId(hubId, t.key);
     const row = await sampleProcessState(id);
-    if (!row || typeof row.state?.sample_minutes === "string") continue;
-    await replaceProcessState(id, { ...(row.state ?? {}), sample_minutes: fillSample(t.minutes, names) });
-    added.push(t.key);
+    if (!row) continue;
+    const next = repair(t, row.state ?? {}, fill);
+    if (!next) continue;
+    await replaceProcessState(id, next);
+    repaired.push(t.key);
   }
-  return added;
+  return repaired;
+}
+
+/** The keys of the hub's samples whose process has closed: none can hold a visitor's own ballot. */
+async function closedSampleKeys(templates: readonly SampleTemplate[]): Promise<string[]> {
+  const hubId = currentHubId();
+  const keys: string[] = [];
+  for (const t of templates) {
+    const row = await sampleProcessLiveRow(sampleProcessId(hubId, t.key));
+    if (row?.is_sample && !row.added_in_demo && isTerminalStatus(row.status)) keys.push(t.key);
+  }
+  return keys;
 }
 
 /**

@@ -8,19 +8,9 @@
 // 1: a sample conversation's template comes from the kernel's `samples`.
 
 import { hubContext, samples } from "@civic-social/plugin-sdk";
+import { conversationSample, SAMPLE_CONVERSATION_PREFIX } from "./samples.js";
 
 /** A sample conversation's template, as the kernel's sample content writes it. */
-interface SampleDeliberation {
-  key: string;
-  kind: "deliberation";
-  statements: readonly string[];
-  picture: {
-    participants: number;
-    groups: ReadonlyArray<{ size: number; agree: readonly number[]; disagree: readonly number[] }>;
-    consensus: ReadonlyArray<{ statement: number; agree_rate: number; votes: number }>;
-  };
-}
-
 interface MockStatement {
   id: number;
   text: string;
@@ -663,20 +653,18 @@ const MOCK_CONVERSATIONS: Record<string, MockConversation> = {
 
 // ---------- Sample content conversations (Phase 7) ----------
 //
-// A hub's sample conversation (src/services/sampleSeed.ts) is served from its
+// A hub's sample conversation (./samples.ts) is served from its
 // template: `seed-sample-<template key>`, the statements filled with the
 // hub's own names, the participation picture the template records. Built once
 // per hub and kept, like the fixed ones above, so statements added during a
 // visit stay for the life of the server.
 
-const SAMPLE_PREFIX = "seed-sample-";
 const sampleConversations = new Map<string, MockConversation>();
 
 function sampleConversation(conversationId: string): MockConversation | null {
-  if (!conversationId.startsWith(SAMPLE_PREFIX)) return null;
-  const found = samples.template(conversationId.slice(SAMPLE_PREFIX.length));
-  if (!found || found.kind !== "deliberation") return null;
-  const t = found as unknown as SampleDeliberation;
+  if (!conversationId.startsWith(SAMPLE_CONVERSATION_PREFIX)) return null;
+  const t = conversationSample(conversationId.slice(SAMPLE_CONVERSATION_PREFIX.length));
+  if (!t) return null;
   // One per hub: its address tells the hubs one server serves apart.
   const cacheKey = `${hubContext().baseUrl}:${conversationId}`;
   const cached = sampleConversations.get(cacheKey);

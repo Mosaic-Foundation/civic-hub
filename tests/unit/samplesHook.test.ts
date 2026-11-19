@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { planSamples } from "../../src/services/sampleSeed.js";
 import { asSample, CIVIC_SAMPLE_TYPE } from "../../spaces/civic/samplePlan.js";
-import { SAMPLE_TEMPLATES } from "../../src/services/sampleTemplates.js";
+import { SAMPLE_TEMPLATES } from "../../spaces/civic/sampleTemplates.js";
 import { sampleAnswerTimes } from "../../packages/civic.wordcloud/samples.js";
+import { briefSamples } from "../../packages/civic.brief/samples.js";
+import { conversationSamples } from "../../packages/civic.polis_deliberation/samples.js";
+import { meetingSummarySamples } from "../../packages/civic.meeting_summary/samples.js";
+import { voteSamples } from "../../packages/civic.vote/samples.js";
 import type { SampleTemplate } from "../../src/plugins/samples.js";
 
 const t = (key: string, type: string, extra: Partial<SampleTemplate> = {}): SampleTemplate => ({ key, type, ...extra });
@@ -56,5 +60,31 @@ describe("Word clouds' sample answers", () => {
     const times = sampleAnswerTimes(4, 0, 5000).map((s) => Date.parse(s));
     expect(times.every((x) => x > 0 && x < 5000)).toBe(true);
     expect(new Set(times).size).toBe(4);
+  });
+});
+
+describe("what each plugin says about its own samples (kernel step 4)", () => {
+  const first = (kind: string) => asSample(SAMPLE_TEMPLATES.find((t) => t.kind === kind)!);
+
+  it("names a sample by its own field: a brief by its headline, a conversation by its topic, a meeting by its title", () => {
+    expect(briefSamples.title!(first("outcome"))).toBe((first("outcome") as unknown as { headline: string }).headline);
+    expect(conversationSamples.title!(first("deliberation"))).toBe((first("deliberation") as unknown as { topic: string }).topic);
+    expect(meetingSummarySamples.title!(first("meeting_summary"))).toBe(
+      (first("meeting_summary") as unknown as { meeting_title: string }).meeting_title,
+    );
+  });
+
+  it("gives an older sample meeting summary its minutes, once", () => {
+    const t = first("meeting_summary");
+    const fill = (s: string) => s.toUpperCase();
+    const repaired = meetingSummarySamples.repair!(t, { blocks: [] }, fill);
+    expect(repaired?.sample_minutes).toBe(fill((t as unknown as { minutes: string }).minutes));
+    expect(meetingSummarySamples.repair!(t, { sample_minutes: "x" }, fill)).toBeNull();
+  });
+
+  it("keeps live only what is there to show something live", () => {
+    expect(voteSamples.refresh!.live(asSample(SAMPLE_TEMPLATES.find((t) => t.kind === "vote" && t.phase === "closed")!))).toBe(false);
+    expect(voteSamples.refresh!.live(asSample(SAMPLE_TEMPLATES.find((t) => t.kind === "vote" && t.phase === "open")!))).toBe(true);
+    expect(conversationSamples.refresh!.live(first("deliberation"))).toBe(true);
   });
 });

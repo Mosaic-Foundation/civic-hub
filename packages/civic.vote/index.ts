@@ -7,6 +7,7 @@ import handler from "./handler.js";
 import routes from "./routes.js";
 import { voteDraftKind } from "./draftKind.js";
 import { voteDurationLimits } from "./settings.js";
+import { voteSamples } from "./samples.js";
 
 const votePackage: PluginPackage = {
   name: "@civic-social/plugin-vote",
@@ -27,6 +28,7 @@ const votePackage: PluginPackage = {
         },
       },
       routes: [{ path: "/votes", router: routes }],
+      samples: voteSamples,
     };
   },
 };

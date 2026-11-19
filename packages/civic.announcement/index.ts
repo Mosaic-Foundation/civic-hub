@@ -7,6 +7,7 @@ import handler from "./handler.js";
 import routes, { listRouter } from "./routes.js";
 import adminRoutes from "./adminRoutes.js";
 import { announcementHost } from "./host.js";
+import { announcementSamples } from "./samples.js";
 
 const announcementPackage: PluginPackage = {
   name: "@civic-social/plugin-announcement",
@@ -25,6 +26,7 @@ const announcementPackage: PluginPackage = {
       adminRoutes: [
         { path: "/moderation/announcements", router: adminRoutes },
       ],
+      samples: announcementSamples,
     };
   },
 };
