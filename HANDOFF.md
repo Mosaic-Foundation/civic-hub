@@ -102,7 +102,9 @@ Updated after every Claude Code session. Records what was built, what's incomple
   (`declaredTypeStylesheet`, now with dark tokens, the theme's keys and defaults, the digest's pills). The emitted
   stylesheet, theme keys, defaults and labels were compared before and after: identical. Events keeps its colour on its
   card kind, and its dark tokens in the kernel's `dark.css`, until its next release. Catalog entries regenerated at the
-  same versions (below).
+  same versions: Votes `20261119071803`, Proposals `20261119071827`, Projects `20261119071844`, Briefs
+  `20261119071919`, Announcements `20261119071933`, Meeting summaries `20261119071945`, News Sync `20261119071957`,
+  Conversations `20261119072032`, Word clouds `20261119072046` (the earlier files are deleted).
 - **Announcements has no urgent label any more**, and `PluginServer.pinnedCard` is gone (with Announcements'
   `board.ts` and `pinnedCard.ts`, its form's Prominence box, the page's Urgent chip and "Urgent until", the feed card's
   Urgent chip and `FeedProcessMeta.urgent`). News Sync's pinned-item label hook is gone too. Visible: a pinned News
