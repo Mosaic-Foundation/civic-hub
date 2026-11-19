@@ -41,8 +41,12 @@ Updated after every Claude Code session. Records what was built, what's incomple
   (lint). `feedActivity.ts`, `theme.ts`, `manifest.ts`, the digest feature and the feed card read it; `ActivityKind`,
   `ActivityColor` and `ThemeTypeKey` are plain strings, and `BUILTIN_THEME_TYPE_KEYS` is gone.
   `tests/unit/spacePalette.test.ts` pins the old orders and values. No package changed, so no catalog entries.
-  Left for step 4: the default `--type-<key>-*` tokens in `ui/src/styles/theme.css` and `dark.css`, and kernel words
-  naming civic plugins in `settingsSearch.ts`, `pluginSetup.ts` and `pluginGrantWords.ts`.
+- **Step 4 begun: the palette's colours are the space type's stylesheet**, `spaces/civic/palette.css` (light and dark
+  `--type-<key>-*` and the older `--pill-<kind>-*`), loaded through `config/spacePalette.css` right after `theme.css`
+  (`hubStyles.ts`; its test checks the place). The built CSS declares exactly the same tokens with the same values.
+  The kernel keeps `--type-generic-*`, `--pill-vote-*`/`--pill-results-*` (the general control accent) and the Events
+  plugin's dark `--type-event-*`. Left: kernel words naming civic plugins in `settingsSearch.ts`, `pluginSetup.ts`
+  and `pluginGrantWords.ts`, then the hub type as a setting.
 - **Dev merged in (0eda79f, About you not during sign-up).** On this branch the hold names no package: AuthModal works
   out the first stop (`afterSignUpStop`) before `login()` and hands it to `holdAboutYouForSignup(stop)`; nothing asks on
   that path (kept in sessionStorage for a reload), and the first action anywhere else after reaching it ends the hold.

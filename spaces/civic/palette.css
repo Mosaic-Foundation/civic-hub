@@ -1,0 +1,110 @@
+/*
+ * The Civic Hub palette's colours (kernel step 4, Nov 19): each of its colour
+ * families' --type-<key>-* tokens and the older --pill-<kind>-* names, light
+ * and dark. Moved out of the kernel's theme.css and tokens/dark.css with every
+ * value unchanged; the families themselves are listed in palette.ts. The UI
+ * loads this file through config/spacePalette.css, right after theme.css.
+ * Mirrored as literal hexes in palette.ts's email pills; change BOTH together.
+ */
+
+:root,
+.theme-scope {
+  --pill-announcement-bg: var(--ds-color-accent-100);  --pill-announcement-fg: var(--ds-color-accent-800);
+  --pill-announcement-author-bg: #e4ddf0;              --pill-announcement-author-fg: #3a2c5e;
+  --pill-meeting-bg: var(--ds-color-success-100);      --pill-meeting-fg: var(--ds-color-success-700);
+
+  /* Process-type palette. These values previously lived as bare hexes inside
+     Feed.css; they are tokens now because the Outcomes index colors its rows
+     by the SAME process types, and two files carrying the same hexes is a
+     drift waiting to happen. Feed.css and Outcomes.css both point here.
+     The -fg value doubles as the row's left-border accent, so it must stay
+     dark enough to read as a deliberate edge rather than a smudge. */
+  --pill-proposal-bg: #ede7f6;                        --pill-proposal-fg: #5e35b1;
+  --pill-proposal-closed-bg: #ece9f1;                 --pill-proposal-closed-fg: #5b517a;
+  --pill-conversation-bg: #e8eaf6;                    --pill-conversation-fg: #3949ab;
+  --pill-conversation-results-bg: #e6e9f3;            --pill-conversation-results-fg: #3f4a86;
+  --pill-project-bg: #e3f2fd;                         --pill-project-fg: #1565c0;
+  --pill-wordcloud-bg: #e0f2f1;                       --pill-wordcloud-fg: #00695c;
+  --pill-brief-bg: var(--ds-color-primary-100);
+  --pill-brief-fg: var(--ds-color-primary-700);
+  /* Official response to a brief — a warm gold, distinct from every
+     process-type hue so "the government spoke" reads at a glance.
+     Mirrored as literals in civic.digest/service.ts PILL_COLORS. */
+  --pill-brief-response-bg: #fdf1e0;
+  --pill-brief-response-fg: #8a5a13;
+
+  /* --- THE per-process-type palette (2026-08-28) ---------------------------
+     One color per process type, worn EVERYWHERE that type appears: its feed
+     cards at every lifecycle moment, its Outcomes row and pill, its filter
+     pill. Keyed by the shared classifier's ActivityColor (feedActivity.ts),
+     which collapses event kinds onto these keys — so "New proposal",
+     "Proposal results", and the proposal's Outcomes row are all the same
+     purple. Mirrored as literal hexes in civic.digest/service.ts PILL_COLORS
+     (emails cannot read CSS variables); change BOTH together.
+
+     The legacy --pill-<kind>-* tokens above stay DEFINED — App.css and
+     friends use --pill-vote-* as a general control accent (~25 sites), and
+     FeedFilter's surface pills read three of them — but no process-type
+     surface should point at them anymore. New surfaces use --type-*. */
+  --type-vote-bg: var(--ds-color-primary-100);   --type-vote-fg: var(--ds-color-primary-800);
+  /* Dusty plum, not Material violet — the vivid #5e35b1 fought the
+     earthy palette (Adam, 2026-08-28). */
+  --type-proposal-bg: #eae7f0;                   --type-proposal-fg: #5f4b8b;
+  /* Conversation left indigo for a landscape teal (2026-08-28, Adam) —
+     it was one of three near-identical blues; deliberation now reads as
+     its own hue, kin to the design system's civic-teal. */
+  --type-conversation-bg: #ddefef;               --type-conversation-fg: #0f5e66;
+  --type-project-bg: #e3f2fd;                    --type-project-fg: #1565c0;
+  /* Wordcloud ceded its teal to conversations and took an earthy moss —
+     distinct from meeting-green (yellower) and rarely on screen anyway. */
+  --type-wordcloud-bg: #edf0dd;                  --type-wordcloud-fg: #5c6b2a;
+  --type-announcement-bg: var(--ds-color-accent-100);
+  --type-announcement-fg: var(--ds-color-accent-800);
+  --type-announcement-author-bg: #e4ddf0;        --type-announcement-author-fg: #3a2c5e;
+  /* News: posts News Sync copies in from another site (2026-11-16). A quiet
+     slate, so they sit back from the hub's own announcements. Mirrored in
+     civic.digest/service.ts PILL_COLORS. */
+  --type-news-bg: #e3e8ec;                       --type-news-fg: #34495a;
+  --type-meeting-bg: var(--ds-color-success-100);
+  --type-meeting-fg: var(--ds-color-success-700);
+  --type-official-response-bg: #fdf1e0;          --type-official-response-fg: #8a5a13;
+  /* A package's own colour family (the Events plugin's rose) is declared in
+     its manifest and added at boot (declaredTypeStylesheet; engine 2, A5). */
+  /* Outcomes (briefs, vote results) wear the hub's terracotta — the one
+     accent the detail pages had been leaving on the table (Adam,
+     2026-09-03: "a little boring… add some of that terracotta"). */
+  --type-brief-bg: var(--ds-color-accent-100);
+  --type-brief-fg: var(--ds-color-accent-800);
+  --type-brief-rule: var(--ds-color-accent-600);
+  --type-brief-wash: var(--ds-color-accent-50);
+}
+
+:root[data-mode="dark"],
+[data-mode="dark"] .theme-scope {
+  /* --- Each kind's colour: a light tone for words and bars, a dark tint behind --- */
+  --type-vote-fg: #9db6e0;          --type-vote-bg: #222a38;
+  --type-proposal-fg: #b9a6e0;      --type-proposal-bg: #2a2538;
+  --type-conversation-fg: #6fc4c9;  --type-conversation-bg: #1b2e30;
+  --type-project-fg: #7fb6ef;       --type-project-bg: #1d2a3a;
+  --type-wordcloud-fg: #b6c47a;     --type-wordcloud-bg: #272b1d;
+  --type-announcement-fg: #e6a283;  --type-announcement-bg: #33241d;
+  --type-announcement-author-fg: #c3b4e6; --type-announcement-author-bg: #2a2538;
+  --type-news-fg: #a9bccb;          --type-news-bg: #232b31;
+  --type-meeting-fg: #7cc790;       --type-meeting-bg: #1f2a22;
+  --type-official-response-fg: #e2b765; --type-official-response-bg: #2d2718;
+  --type-brief-fg: #e6a283;         --type-brief-bg: #33241d;
+  --type-brief-rule: #e6a283;       --type-brief-wash: #2a211c;
+
+  /* The older pill names a few surfaces still read. */
+  --pill-announcement-bg: var(--type-announcement-bg); --pill-announcement-fg: var(--type-announcement-fg);
+  --pill-announcement-author-bg: var(--type-announcement-author-bg); --pill-announcement-author-fg: var(--type-announcement-author-fg);
+  --pill-meeting-bg: var(--type-meeting-bg);     --pill-meeting-fg: var(--type-meeting-fg);
+  --pill-proposal-bg: var(--type-proposal-bg);   --pill-proposal-fg: var(--type-proposal-fg);
+  --pill-proposal-closed-bg: var(--color-surface-hover); --pill-proposal-closed-fg: var(--color-text-muted);
+  --pill-conversation-bg: var(--type-conversation-bg); --pill-conversation-fg: var(--type-conversation-fg);
+  --pill-conversation-results-bg: var(--type-conversation-bg); --pill-conversation-results-fg: var(--type-conversation-fg);
+  --pill-project-bg: var(--type-project-bg);     --pill-project-fg: var(--type-project-fg);
+  --pill-wordcloud-bg: var(--type-wordcloud-bg); --pill-wordcloud-fg: var(--type-wordcloud-fg);
+  --pill-brief-bg: var(--type-vote-bg);          --pill-brief-fg: var(--type-vote-fg);
+  --pill-brief-response-bg: var(--type-official-response-bg); --pill-brief-response-fg: var(--type-official-response-fg);
+}

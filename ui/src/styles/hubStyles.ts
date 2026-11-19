@@ -15,6 +15,8 @@
 // otherwise), where its rules should rank: later wins.
 
 import "./theme.css";
+// The space type's palette colours (config/spacePalette.css; kernel step 4).
+import "../../../config/spacePalette.css";
 import "../index.css";
 import "../components/Modal.css";
 import "../components/IntroPopup.css";

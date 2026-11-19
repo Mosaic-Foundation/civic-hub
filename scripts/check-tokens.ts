@@ -32,6 +32,8 @@ export const TOKEN_DEFINITION_FILES: readonly string[] = [
   "ui/src/styles/theme.css",
   "ui/src/styles/design-system/tokens.css",
   "ui/src/styles/tokens/",
+  // A space type's palette colours (kernel step 4).
+  "spaces/civic/palette.css",
 ];
 
 /** What is scanned: the hub's UI, the features' UI folders, and every package. */
