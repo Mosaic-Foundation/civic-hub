@@ -102,6 +102,16 @@ describe("process manifests", () => {
     expect(grantInPlainWords({ name: "Briefs", caps, holds: {} }).can.join(" ")).toContain("Hear when anything on this hub closes");
   });
 
+  it("words a plugin's own events on the Install confirmation from its eventWords, and checks them (kernel step 4)", async () => {
+    const { grantInPlainWords } = await import("../../src/shared/pluginGrant.js");
+    const base = manifest();
+    const said = grantInPlainWords({ name: "Sample", caps: base.capabilities, holds: {}, says: { "civic.sample.taken": "someone takes a sample" } });
+    expect(said.can.join(" ")).toContain("when someone takes a sample");
+    expect(grantInPlainWords({ name: "Sample", caps: base.capabilities, holds: {} }).can.join(" ")).toContain('it records "taken"');
+    expect(refused([{ ...base, eventWords: { "civic.sample.other": "x" } }])).toThrow("eventWords names civic.sample.other");
+    expect(refused([{ ...base, eventWords: { "civic.sample.taken": " " } }])).toThrow("eventWords.civic.sample.taken is empty");
+  });
+
   it("refuses a grant that differs from what the manifest declares, or reaches past the rules", () => {
     const base = manifest();
     const caps = base.capabilities;

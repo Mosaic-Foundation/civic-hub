@@ -41,6 +41,12 @@ Updated after every Claude Code session. Records what was built, what's incomple
   (lint). `feedActivity.ts`, `theme.ts`, `manifest.ts`, the digest feature and the feed card read it; `ActivityKind`,
   `ActivityColor` and `ThemeTypeKey` are plain strings, and `BUILTIN_THEME_TYPE_KEYS` is gone.
   `tests/unit/spacePalette.test.ts` pins the old orders and values. No package changed, so no catalog entries.
+- **Step 4: plugin events in the Install confirmation's words.** A process manifest's `eventWords` words each of its
+  own event types ("a proposal is submitted"; checked against its descriptor's `emits`). `grantInPlainWords` takes
+  them as `says` (the console's catalog and the hub's Install confirmation pass the package's), and
+  `src/shared/pluginGrantWords.ts` keeps words only for the shared `civic.process.*` types. Proposals and Projects
+  carry theirs; the confirmation reads the same. Catalog entries regenerated at the same versions: Proposals 0.3.0
+  `20261119044944`, Projects 0.3.0 `20261119044958`.
 - **Step 4: the hub features' entries.** A feature package's place in the Plugins section (name, one line, settings,
   panel search words, `defaultOn`) is its manifest's `pluginSection` (`FeatureManifest.pluginSection`): Writing
   assistant, Email digest, Activity and Fediverse carry theirs. `src/shared/hubFeatures.ts` lists only the kernel's own
@@ -53,7 +59,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
   `src/shared/pluginSetup.ts` builds `PLUGIN_SETUP` from the manifests). The nine first-party packages carry theirs,
   and their entries left `settingsSearch.ts`. Nothing on screen changes. Events (released on dev) keeps its panel
   words in the kernel's list until its next release. Catalog entries regenerated at the same versions: Votes
-  `20261119043725`, Proposals `20261119043744`, Projects `20261119043758`, Conversations `20261119043823`, Word clouds
+  `20261119043725`, Proposals and Projects (regenerated again, below), Conversations `20261119043823`, Word clouds
   `20261119043835`, Briefs `20261119043846`, Announcements `20261119043858`, Meeting summaries `20261119043908`, News
   Sync `20261119043918`.
 - **Step 4 begun: the palette's colours are the space type's stylesheet**, `spaces/civic/palette.css` (light and dark

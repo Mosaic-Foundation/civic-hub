@@ -103,6 +103,13 @@ export const PROPOSAL_MANIFEST = defineManifest({
     "civic.proposal.support_withdrawn": { type: "Undo", object: { kind: "civic", class: "civic:Proposal", id: "process" } },
     "civic.proposal.closed": { type: "civic:End", object: { kind: "process", terminalState: "closed" } },
   },
+  // Its events in the Install confirmation's words ("when …").
+  eventWords: {
+    "civic.proposal.submitted": "a proposal is submitted",
+    "civic.proposal.supported": "someone supports a proposal",
+    "civic.proposal.support_withdrawn": "someone withdraws their support",
+    "civic.proposal.closed": "a proposal closes",
+  },
   legacyActivities: {
     // Its emitter exists (./events.ts) but nothing calls it;
     // mapped so the type stays serializable if the path is ever wired up.

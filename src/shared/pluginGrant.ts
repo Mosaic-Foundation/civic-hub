@@ -124,6 +124,8 @@ export interface PlainGrantInput {
   caps: PluginCapabilities;
   /** Each of its tables, in plain words: what it holds ("residents' one-word answers"). */
   holds: Readonly<Record<string, string>>;
+  /** Its own event types in plain words (its manifest's eventWords). */
+  says?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -139,7 +141,7 @@ export function grantInPlainWords(input: PlainGrantInput): { can: string[]; cann
       ? `Keep its own records on this hub: ${kept.join("; ")}. It cannot read or change anything else the hub keeps.`
       : "Store its items with the hub's own records, and nothing else of its own. It cannot read or change anything else the hub keeps.",
   );
-  const events = caps.activities.emit.map(eventPlain);
+  const events = caps.activities.emit.map((e) => eventPlain(e, input.says));
   can.push(
     events.length > 0
       ? `Add entries to the hub's public record about its own items: when ${joinWords(unique(events))}.`

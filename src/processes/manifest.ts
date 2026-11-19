@@ -179,6 +179,14 @@ export interface ProcessManifest {
    */
   activities: Readonly<Record<string, ActivityRecipe>>;
   /**
+   * Each of its own event types in plain words, completing "when …" ("a
+   * proposal is submitted"), for the Install confirmation's list of what it
+   * adds to the hub's public record (src/shared/pluginGrant.ts; kernel step
+   * 4). Keys are event types it emits. One without words reads as the event's
+   * last word ("it records "supported"").
+   */
+  eventWords?: Readonly<Record<string, string>>;
+  /**
    * Event types it has emitted in the past and no longer does, mapped so a
    * stored event stays serializable forever (the log is append-only).
    */
@@ -504,6 +512,13 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       if (!d.emits.includes(eventType)) {
         throw new ManifestError(`${where(m)}: maps ${eventType}, which its descriptor does not emit (legacy types go in legacyActivities)`);
       }
+    }
+
+    for (const [eventType, words] of Object.entries(m.eventWords ?? {})) {
+      if (!d.emits.includes(eventType)) {
+        throw new ManifestError(`${where(m)}: eventWords names ${eventType}, which its descriptor does not emit`);
+      }
+      if (!words.trim()) throw new ManifestError(`${where(m)}: eventWords.${eventType} is empty`);
     }
 
     // Host lifecycle types (created, updated, ...) are emitted for every type

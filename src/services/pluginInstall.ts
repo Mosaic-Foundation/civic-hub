@@ -140,9 +140,10 @@ function view(
     const v = verdicts.find((x) => x.package === p.pkg.name);
     const holds = Object.fromEntries(p.pkg.manifest.tables.map((t) => [t.name, t.holds]));
     const record = mine.find((r) => r.package === p.pkg.name);
-    const deployed = { name: p.pkg.displayName, caps: p.pkg.manifest.capabilities, holds };
+    const says = p.pkg.manifest.eventWords;
+    const deployed = { name: p.pkg.displayName, caps: p.pkg.manifest.capabilities, holds, says };
     // What the hub approved, while it has the plugin; otherwise what Install would record.
-    const approved = installed && record ? { name: p.pkg.displayName, caps: record.capabilities, holds } : deployed;
+    const approved = installed && record ? { name: p.pkg.displayName, caps: record.capabilities, holds, says } : deployed;
     const behind = installed && record && Boolean(v?.mounted) && compareVersions(record.version, p.pkg.version) < 0;
     return {
       package: p.pkg.name,

@@ -94,6 +94,12 @@ export const PROJECT_MANIFEST = defineManifest({
     "civic.project.updated": { type: "Update", object: { kind: "civic", class: "hub:Project", id: "process" } },
     "civic.project.sentiment_changed": { type: "Update", object: { kind: "civic", class: "hub:ProjectSentiment", id: "process" } },
   },
+  // Its events in the Install confirmation's words ("when …").
+  eventWords: {
+    "civic.project.created": "a project is added",
+    "civic.project.updated": "a project is updated",
+    "civic.project.sentiment_changed": "someone says how they feel about a project",
+  },
   legacyActivities: {
     // Before comments moved to the shared comment module (2026-09-06).
     "civic.project.comment_added": { type: "Create", object: { kind: "note" } },
