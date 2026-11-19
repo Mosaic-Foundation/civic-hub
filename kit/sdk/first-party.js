@@ -91,6 +91,7 @@ export const links = e.links;
 export const listSubscribedUsers = e.listSubscribedUsers;
 export const listVisibleInPhase = e.listVisibleInPhase;
 export const markDigestSent = e.markDigestSent;
+export const membership = e.membership;
 export const namesFor = e.namesFor;
 export const namesRole = e.namesRole;
 export const normalizePagePath = e.normalizePagePath;

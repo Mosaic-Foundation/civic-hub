@@ -18,19 +18,16 @@
 // 2026-10-14); on a beta or live hub they never do, even before the samples
 // are removed.
 //
-// The Members plugin (2026-10-14, Adam) decides what residents see:
-// memberVisibility(). Off, none of the above (its routes answer 404). On,
-// below `plugin.members.min_count` members, residents see no count, no stack
-// and no Members page, unless `page_before_threshold` shows the page anyway.
-// Admins always see all of it. The number itself is withheld by the server,
-// not just hidden by the page.
+// What residents see of these is the Members plugin's (features/members,
+// kernel step 4, 2026-11-19): its threshold, its page and its count. The
+// kernel keeps membership itself, offered to plugins as `membership` (SDK),
+// and the person's own switch, which only the person and admins use.
 
 import { forHub } from "../db/forHub.js";
 import { readAll } from "../db/readAll.js";
 import { currentHubId } from "../config/hubContext.js";
 import { sha256Hex } from "../utils/hash.js";
-import { getSettingSync, isDemoHubSync } from "./hubSettings.js";
-import { KEYS, asBoolean, asNumber } from "../models/hubSettings.js";
+import { isDemoHubSync } from "./hubSettings.js";
 import { rowToDisplay } from "./creatorDisplay.js";
 import { subjectsHolding } from "../authz/actor.js";
 
@@ -79,28 +76,8 @@ function members<Q extends { eq(column: string, value: unknown): Q }>(q: Q): Q {
   return isDemoHubSync() ? joined : joined.eq("is_sample", false).eq("demo_only", false);
 }
 
-/** What residents may see of the hub's members now (the Members plugin's rule). */
-export interface MemberVisibility {
-  /** Every member, hidden ones included. */
-  count: number;
-  /** `plugin.members.min_count`; 0 when unset. */
-  threshold: number;
-  /** The count and the avatar stack. */
-  countShown: boolean;
-  /** The Members page and its section in the navigation. */
-  pageShown: boolean;
-}
-
-/** The count, and what the threshold and the override show (residents; admins see everything). */
-export async function memberVisibility(knownCount?: number): Promise<MemberVisibility> {
-  const count = knownCount ?? (await memberCount());
-  const threshold = Math.max(0, asNumber(getSettingSync(KEYS.PLUGIN_MEMBERS_MIN_COUNT), 0));
-  const countShown = count >= threshold;
-  const pageShown = countShown || asBoolean(getSettingSync(KEYS.PLUGIN_MEMBERS_PAGE_BEFORE_THRESHOLD), false);
-  return { count, threshold, countShown, pageShown };
-}
-
-async function memberCount(): Promise<number> {
+/** Every member of the space in scope, hidden ones included. */
+export async function memberCount(): Promise<number> {
   return members(forHub(currentHubId()).from("users").count());
 }
 
@@ -177,3 +154,15 @@ export async function listMembersForAdmin(): Promise<{ hidden: AdminMember[]; co
 export async function setHiddenFromMembers(userId: string, hidden: boolean): Promise<void> {
   await forHub(currentHubId()).from("users").update({ hidden_from_members: hidden }).eq("id", userId);
 }
+
+/**
+ * Membership, as the kernel offers it to plugins (SDK `membership`): who has
+ * joined the space in scope, never an address. What residents may see of it
+ * is the plugin's to decide.
+ */
+export const membership = {
+  count: memberCount,
+  summary: memberSummary,
+  list: listMembers,
+  hiddenForAdmin: listMembersForAdmin,
+} as const;

@@ -19,7 +19,6 @@ import namespaceRoutes from "./routes/namespaceRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import audienceRoutes from "./routes/audienceRoutes.js";
 import feedRoutes from "./routes/feedRoutes.js";
-import asideRoutes from "./routes/asideRoutes.js";
 import discoveryRoutes from "./routes/discoveryRoutes.js";
 import debugRoutes from "./routes/debugRoutes.js";
 import inputRoutes from "./routes/inputRoutes.js";
@@ -198,6 +197,11 @@ app.use("/process", inputRoutes);
 // runs with the Writing assistant off (src/routes/assistantRoutes.ts).
 app.use("/assistant", assistantRoutes);
 
+// "Share this hub" (POST /members/invites): the space's own. Mounted ahead of
+// the feature routes, so the Members plugin's switch, which gates the rest of
+// /members, never closes it.
+app.use("/members", memberRoutes);
+
 // The plugin packages' routes (ADR-014), in configured order, each behind
 // its plugin's switch and the loader's verdict.
 mountPackageRoutes(app, "routes");
@@ -221,9 +225,6 @@ app.use("/link-preview", linkPreviewRoutes);
 
 // Beta waitlist — public endpoint for people to request access.
 app.use("/waitlist", waitlistRoutes);
-
-// Members and "Share this hub" (members and invites slice)
-app.use("/members", memberRoutes);
 
 // Scheduled jobs: every /internal/*/run route comes from one list,
 // src/jobs/registry.ts, which vercel.json's "crons" is checked against. Each
@@ -260,9 +261,6 @@ app.use("/ns", namespaceRoutes);
 // working against a local dev server on :3000.
 app.use("/feed", feedRoutes);
 app.use("/api/feed", feedRoutes);
-// The right column's facts (ADR-019), mounted the same two ways.
-app.use("/aside", asideRoutes);
-app.use("/api/aside", asideRoutes);
 
 // Discovery manifest
 app.use("/.well-known", discoveryRoutes);

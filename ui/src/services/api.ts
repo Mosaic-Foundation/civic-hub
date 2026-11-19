@@ -1513,36 +1513,7 @@ export function getLinkCandidates(params: {
   return request("GET", `/process/link-candidates?${qs.toString()}`);
 }
 
-// --- Members and "Share this hub" (members and invites slice, 2026-10-14) ---
-
-export interface MemberSummary {
-  /**
-   * Every member, those who hid themselves included; null below the Members
-   * plugin's threshold, unless the caller is an admin.
-   */
-  count: number | null;
-  /** Avatar seeds of the most recent visible members (empty when the count is withheld). */
-  stack: string[];
-  /** Whether residents see the count now. */
-  shown?: boolean;
-  /** Whether residents get the Members page now. */
-  page?: boolean;
-  /** The threshold, for an admin. */
-  threshold?: number;
-}
-
-export interface Member {
-  avatar: string;
-  name: string;
-  is_admin: boolean;
-}
-
-export interface MembersPage {
-  members: Member[];
-  count: number;
-  next: number | null;
-  you_are_hidden: boolean;
-}
+// --- "Share this hub" (members and invites slice, 2026-10-14) ---
 
 export interface InviteResult {
   outcome: "emailed" | "waitlisted";
@@ -1552,29 +1523,8 @@ export interface InviteResult {
   limit: number;
 }
 
-export function getMemberSummary(): Promise<MemberSummary> {
-  return request("GET", "/members/summary");
-}
-
-export function getMembers(offset = 0): Promise<MembersPage> {
-  return request("GET", `/members?offset=${offset}`);
-}
-
 export function sendInvites(emails: string, message: string): Promise<InviteResult> {
   return request("POST", "/members/invites", { emails, message });
-}
-
-export function adminGetHiddenMembers(): Promise<{ hidden: Array<Member & { joined_at: string }>; count: number }> {
-  return request("GET", "/admin/hub/members");
-}
-
-/** GET /api/aside: the right column's facts (src/services/aside.ts; ADR-019). */
-export interface AsideFacts {
-  about: { member_count: number | null };
-}
-
-export function getAside(): Promise<AsideFacts> {
-  return request("GET", "/aside");
 }
 
 /** An open process about to close, as GET /api/feed/closing serves it (Events 4): a "closing soon" feed card. */

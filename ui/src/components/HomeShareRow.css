@@ -1,4 +1,5 @@
-/* "N members" and the avatar stack on the home page (members and invites slice). */
+/* The row under Home's tagline: a feature's block (the Members plugin's count
+   and faces) and "Share this hub" (members and invites slice). */
 
 .member-stack-row {
   display: flex;
@@ -9,40 +10,9 @@
   margin: 0 var(--space-md) var(--space-md);
 }
 
-.member-stack {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-  min-width: 0;
-}
-
-.member-stack-avatars {
-  display: inline-flex;
-}
-
-.member-stack-avatars .pattern-avatar {
-  border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--color-bg);
-}
-
-.member-stack-avatars .pattern-avatar + .pattern-avatar {
-  margin-left: calc(-1 * var(--space-2));
-}
-
-.member-stack-count {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text);
-  white-space: nowrap;
-}
-
-a.member-stack-count {
-  text-decoration: none;
-}
-
-a.member-stack-count:hover,
-a.member-stack-count:focus-visible {
-  text-decoration: underline;
+/* Drawn with nothing in it (a visitor, while no feature has a block): no gap. */
+.member-stack-row:empty {
+  display: none;
 }
 
 .member-share-btn {
@@ -76,12 +46,4 @@ a.member-stack-count:focus-visible {
   .home-hero-main .member-stack-row {
     margin-bottom: 0;
   }
-}
-
-/* An admin's note while the count is below the Members plugin's threshold. */
-.member-stack-note {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
 }

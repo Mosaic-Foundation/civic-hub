@@ -191,6 +191,19 @@ export function featureDiscovery(): Record<string, Record<string, unknown>> {
   return out;
 }
 
+/** What each switched-on feature adds to the space's config, by feature id (FeatureServer.hubConfig). */
+export async function featureHubConfig(): Promise<Record<string, Record<string, unknown>>> {
+  const said = await Promise.all(
+    load().map(async (f) => {
+      const id = f.pkg.manifest.feature;
+      if (!f.server.hubConfig || !isPluginEnabledSync(id)) return null;
+      const value = await f.server.hubConfig();
+      return value ? ([id, value] as const) : null;
+    }),
+  );
+  return Object.fromEntries(said.filter((e) => e !== null));
+}
+
 /** Every feature's job runners, by job id. */
 export function featureJobRunners(): Readonly<Record<string, JobRunner>> {
   return Object.fromEntries(load().flatMap((f) => Object.entries(f.server.jobs ?? {})));

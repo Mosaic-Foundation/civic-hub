@@ -1,0 +1,10 @@
+{
+  "name": "@civic-social/feature-members",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Members: the member count and faces on the home page and the Members page, over the kernel's membership (kernel step 4). A hub feature built as a plugin package is.",
+  "peerDependencies": {
+    "express": "^4.22.3"
+  }
+}

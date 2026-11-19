@@ -236,11 +236,7 @@ export const KEYS = {
   // 2026-11-18): "County news", "Government announcement". Empty is "News".
   // Replaces plugin.news_sync.show_as: a News item is never an announcement.
   PLUGIN_NEWS_SYNC_PILL_LABEL: "plugin.news_sync.pill_label",
-  // The Members plugin (Adam, 2026-10-14). Below `min_count` members,
-  // residents see no count, no avatar stack and no Members page; admins always
-  // see the count. Unset is 0 (shown, as before the plugin); new hubs are
-  // created with 10 (src/operator/hubs.ts). `page_before_threshold` "true"
-  // shows the page (and its section) anyway; the count still waits.
+  // The Members plugin's threshold (features/members/rules.ts, which reads them).
   PLUGIN_MEMBERS_MIN_COUNT: "plugin.members.min_count",
   PLUGIN_MEMBERS_PAGE_BEFORE_THRESHOLD: "plugin.members.page_before_threshold",
   // Activity (ADR-016): whether /analytics and the About page's numbers are public. Off by default.

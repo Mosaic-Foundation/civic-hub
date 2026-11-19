@@ -7,5 +7,6 @@ import fediverseUi from "../features/fediverse/ui";
 import pinningUi from "../features/pinning/ui";
 import feedbackUi from "../features/feedback/ui";
 import searchUi from "../features/search/ui";
+import membersUi from "../features/members/ui";
 
-export const FEATURE_UI_MODULES: readonly FeatureUi[] = [analyticsUi, fediverseUi, pinningUi, feedbackUi, searchUi];
+export const FEATURE_UI_MODULES: readonly FeatureUi[] = [analyticsUi, fediverseUi, pinningUi, feedbackUi, searchUi, membersUi];

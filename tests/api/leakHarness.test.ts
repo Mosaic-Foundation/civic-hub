@@ -485,9 +485,6 @@ const GET_PLAN: Record<string, Plan> = {
   // The feed's closing-soon cards (Events 4): open processes' titles and close times, the hub's own.
   "GET /feed/closing": {},
   "GET /api/feed/closing": {},
-  // The three-column layout's right column (ADR-019): titles, dates and a count, no one's account.
-  "GET /aside/": {},
-  "GET /api/aside/": {},
   // Activity (ADR-016): counts only. Athens keeps Public numbers off, so the
   // public route answers 404 here; tests/api/analytics walks it on, off and with a key.
   "GET /analytics/": { query: ["", "?period=week", "?period=quarter", "?period=all"] },

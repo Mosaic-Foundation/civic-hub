@@ -24,12 +24,12 @@ import { route } from "../http/route.js";
 import type { Request } from "express";
 import { pluginSetupFor } from "../services/pluginSetup.js";
 import type { PluginSetupStatus } from "../shared/pluginSetup.js";
-import { getPublicSettings, hubModeFor, isPluginEnabledSync } from "../services/hubSettings.js";
+import { getPublicSettings, hubModeFor } from "../services/hubSettings.js";
 import { hubDocumentsWithNotes } from "../services/hubDocuments.js";
 import type { Hub, HubMode } from "../models/hub.js";
 import { hubContentFlags } from "../services/sampleContent.js";
 import { processTypeDisplays, type ProcessTypeDisplay } from "../processes/registry.js";
-import { memberVisibility } from "../services/members.js";
+import { featureHubConfig } from "../plugins/features.js";
 import { effectiveHubTimeZone, type HubTimeZone } from "../shared/hubTimeZone.js";
 import { KEYS } from "../models/hubSettings.js";
 import { ensureCensusDistrictsBriefly } from "../services/districtLookup.js";
@@ -75,11 +75,12 @@ export interface HubConfigResponse {
    */
   process_types: ProcessTypeDisplay[];
   /**
-   * The Members plugin (2026-10-14): whether residents get the Members page
-   * and its section yet (the threshold, or the hub showing it anyway). Absent
-   * while the plugin is off. Admins see the page either way.
+   * What each switched-on hub feature says its UI needs before any page loads
+   * (FeatureServer.hubConfig), by feature id: the Members plugin's
+   * `{ page_shown }`, whether residents get its page and section yet. A
+   * feature that is off, or says nothing, is absent.
    */
-  members?: { page_shown: boolean };
+  features: Record<string, Record<string, unknown>>;
   /**
    * The hub's clock (Events 3, 2026-11-08): its time zone setting, else its
    * place's zone, else UTC, and which (src/shared/hubTimeZone.ts). What the
@@ -118,11 +119,7 @@ export const handleGetHubConfig = route(async (req, res) => {
   // on its first page view (districts and demographics, 2026-11-17).
   await ensureCensusDistrictsBriefly(hub.id);
   const settings = await getPublicSettings(hub.id);
-  const [pluginSetup, content, members] = await Promise.all([
-    pluginSetupFor(hub.id),
-    hubContentFlags(hub.id),
-    isPluginEnabledSync("members") ? memberVisibility() : Promise.resolve(null),
-  ]);
+  const [pluginSetup, content, features] = await Promise.all([pluginSetupFor(hub.id), hubContentFlags(hub.id), featureHubConfig()]);
 
   // `private`, not `public`: this response differs per hostname, and a shared
   // cache that keyed it wrongly would serve one hub's identity on another's
@@ -136,7 +133,7 @@ export const handleGetHubConfig = route(async (req, res) => {
     plugin_setup: pluginSetup,
     content,
     process_types: processTypeDisplays(),
-    ...(members ? { members: { page_shown: members.pageShown } } : {}),
+    features,
     time_zone: effectiveHubTimeZone(settings[KEYS.IDENTITY_TIMEZONE], hub.jurisdiction_code),
     address_suggestions: adapters().addressSuggest.configured(),
   };

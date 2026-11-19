@@ -103,7 +103,7 @@ export function useNavGroups({ onShare }: { onShare: () => void }): NavGroups {
     to: s.path,
     current: s.id === currentSection,
     // Read as "Members 7,925": the word already says what the number counts.
-    ...(s.id === "members" && data.memberCount ? { count: data.memberCount } : {}),
+    ...(data.sectionCounts[s.id] ? { count: data.sectionCounts[s.id] } : {}),
   }));
 
   const hubLinks: NavItem[] = [];

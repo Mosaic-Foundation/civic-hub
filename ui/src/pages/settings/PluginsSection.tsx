@@ -32,7 +32,6 @@ import SectionForm from "./SectionForm";
 import {
   BooleanField,
   HourField,
-  NumberField,
   type FormApi,
 } from "./pluginFields";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
@@ -54,8 +53,6 @@ import {
   adminGetPluginLiveCounts,
   adminListPluginInstalls,
   type PluginInstall,
-  type MemberSummary,
-  getMemberSummary,
   type JobRunRecord,
   type JobRunsEntry,
 } from "../../services/api";
@@ -425,42 +422,8 @@ const FEATURE_PANELS: Partial<Record<PluginId, (f: FormApi) => React.ReactNode>>
       }
     />
   ),
-  members: (f) => (
-    <>
-      <MemberCountLine saved={f.data.values["plugin.members.min_count"] ?? ""} />
-      <NumberField
-        f={f}
-        k="plugin.members.min_count"
-        label="Show members from"
-        unit="members"
-        placeholder="0"
-        hint="Until the hub has this many members, residents see no member count, no faces and no Members page. Admins always see them. Empty or 0 shows them from the first member."
-      />
-      <BooleanField
-        f={f}
-        k="plugin.members.page_before_threshold"
-        label="Show the Members page before then"
-        hint="The page and its place in the menus appear for members now; the count on the home page still waits."
-      />
-    </>
-  ),
 };
 
 function settingsPanel(f: FormApi, id: PluginId): React.ReactNode | null {
   return processSettingsPanel(id, f) ?? FEATURE_PANELS[id]?.(f) ?? featureSettingsPanel(id, f) ?? null;
-}
-
-/**
- * How many members the hub has now, which only admins see before the
- * threshold. Read again when a save changes the threshold (`saved`).
- */
-function MemberCountLine({ saved }: { saved: string }) {
-  const { data: summary } = useApi<MemberSummary>("members/summary", () => getMemberSummary(), { rereadOn: saved });
-  if (!summary || summary.count === null) return null;
-  return (
-    <p className="form-hint" data-testid="members-now">
-      This hub has {summary.count.toLocaleString()} {summary.count === 1 ? "member" : "members"}
-      {summary.shown === false ? "; residents don't see the count yet." : "; residents see the count."}
-    </p>
-  );
 }

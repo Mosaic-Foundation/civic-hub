@@ -12,6 +12,7 @@ import { detailPathOf } from "../processes/display";
 import AuthModal from "../components/AuthModal";
 import { CALENDAR_PLUGIN, type AsideData } from "./useAsideData";
 import { comingUpRows, dateTile, timeOfDay } from "./comingUp";
+import { featureAboutLines } from "../features";
 
 /** A right-column card: its heading and its rows (a feature's cards use it too). */
 export function AsideCard({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -77,22 +78,20 @@ export function ComingUpCard({ data }: { data: AsideData }) {
   );
 }
 
-export function AboutCard({ data }: { data: AsideData }) {
+export function AboutCard() {
   const hub = useHub();
   const { user, loading } = useAuth();
   const [joining, setJoining] = useState(false);
-  const count = data.facts?.about.member_count ?? null;
   return (
     <AsideCard id="about" title={`About ${hub.isPlace ? hub.jurisdiction : hub.name}`}>
       <p className="aside-about-line">
         {hub.label}
         {hub.location && ` · ${hub.location}`}
       </p>
-      {count !== null && (
-        <p className="aside-about-line aside-about-count">
-          {count.toLocaleString("en-US")} {count === 1 ? "member" : "members"}
-        </p>
-      )}
+      {/* A feature's line (the Members plugin's count; ui/src/features.ts). */}
+      {featureAboutLines(hub.plugins.enabled).map(({ feature, Line }) => (
+        <Line key={feature} />
+      ))}
       <div className="aside-about-actions">
         {!loading && !user && (
           <Button variant="primary" size="sm" onClick={() => setJoining(true)}>

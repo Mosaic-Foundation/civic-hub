@@ -2,7 +2,6 @@
 // Every route requires the authenticated user's email to be listed in
 // the CIVIC_ADMIN_EMAILS env var.
 
-import { requirePlugin } from "../middleware/pluginGate.js";
 import { mountPackageRoutes } from "../plugins/mount.js";
 import { mountFeatureRoutes } from "../plugins/features.js";
 import { Router } from "express";
@@ -59,7 +58,6 @@ import {
   handleSetAutoRefresh,
   handleRequestSampleRemovalCode,
 } from "../controllers/hubSampleContentController.js";
-import { handleAdminListMembers } from "../controllers/membersController.js";
 import { handleInstallPlugin, handleListPluginInstalls, handleRemovePlugin, handleUpdatePlugin } from "../controllers/hubPluginsController.js";
 
 const router = Router();
@@ -114,7 +112,6 @@ router.post("/hub/mode", handleSetHubMode);
 // src/controllers/hubPeopleController.ts. Same step-up as a mode change:
 // adding an admin makes access permanent, removing them makes it exclusive.
 router.get("/hub/people", handleGetHubPeople);
-router.get("/hub/members", requirePlugin("members"), handleAdminListMembers);
 router.post("/hub/people/request-code", handleRequestStepUpCode);
 router.post("/hub/people", handleSetHubPeople);
 

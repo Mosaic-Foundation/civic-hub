@@ -35,7 +35,6 @@ import {
   AdminSettings,
   CodeOfConduct,
   ContactCivicSocial,
-  Members,
   MySubmissions,
   Privacy,
   Settings,
@@ -322,7 +321,6 @@ function AppContent() {
                 <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
                 <Route path="/admin/settings/:section" element={<AdminGuard><AdminSettings /></AdminGuard>} />
                 <Route path="/settings" element={<Settings />} />
-                <Route path="/members" element={whenPlugin("members", <Members />)} />
                 <Route path="/about" element={<About />} />
                 {/* Slice 11 — legal pages. Routes resolve via React Router so
                     cross-document links (Terms → Privacy etc.) don't trigger

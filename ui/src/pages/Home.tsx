@@ -3,7 +3,7 @@ import HubInfo from "../components/HubInfo";
 import WelcomeBanner from "../components/WelcomeBanner";
 import AdminSetupCard from "../components/AdminSetupCard";
 import { useAuth } from "../context/authState";
-import MemberStack from "../components/MemberStack";
+import HomeShareRow from "../components/HomeShareRow";
 import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
@@ -25,11 +25,11 @@ export default function Home() {
   return (
     <div className="page page-home">
       <div className="home-hero-row">
-        {/* The member count and Share this hub sit under the tagline, above
+        {/* The member count (the Members plugin's) and Share this hub sit under the tagline, above
             Raise something on a phone (Adam, 2026-10-14). */}
         <div className="home-hero-main">
           <HubInfo />
-          <MemberStack />
+          <HomeShareRow />
         </div>
         <button
             type="button"

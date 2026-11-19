@@ -9,6 +9,7 @@
 
 import { getLoadedHubConfig, setting } from "./hubConfig";
 import { pluginEnabled, type PluginId } from "./plugins";
+import { featureSectionShown } from "../features";
 import {
   barSections,
   orderedSections,
@@ -45,19 +46,14 @@ export function navLayout(): NavLayout {
 }
 
 /**
- * Whether the Members page is there for this reader: the Members plugin on,
- * and either past its threshold (or shown anyway) or the reader an admin.
+ * Every section this hub has now, Feed first, in the hub's order. A plugin's
+ * section is drawn while its switch is on and, for a feature's, while the
+ * feature says this reader gets it (`admin` sees Members before its threshold).
  */
-export function membersPageShown(admin: boolean): boolean {
-  if (!pluginEnabled("members")) return false;
-  return admin || getLoadedHubConfig()?.members?.page_shown !== false;
-}
-
-/** Every section this hub has now, Feed first, in the hub's order. `admin` sees Members before its threshold. */
 export function navSections(opts: { order?: readonly string[]; admin?: boolean } = {}): NavSection[] {
   return orderedSections({
     types: processTypes(),
-    enabled: (plugin) => (plugin === "members" ? membersPageShown(opts.admin ?? false) : pluginEnabled(plugin as PluginId)),
+    enabled: (plugin) => pluginEnabled(plugin as PluginId) && featureSectionShown(plugin, opts.admin ?? false),
     order: opts.order ?? parseSectionOrder(setting("nav.section_order")),
   });
 }

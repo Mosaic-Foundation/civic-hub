@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/authState";
-import AuthModal from "../components/AuthModal";
-import PatternAvatar from "../components/PatternAvatar";
-import SharePanel from "../components/SharePanel";
-import { getMembers, type Member } from "../services/api";
-import { membersPageShown } from "../config/navigation";
+import { useAuth } from "../../../ui/src/context/authState";
+import AuthModal from "../../../ui/src/components/AuthModal";
+import PatternAvatar from "../../../ui/src/components/PatternAvatar";
+import SharePanel from "../../../ui/src/components/SharePanel";
+import { getMembers, type Member } from "./api";
+import { membersPageShown } from "./visibility";
 import "./Members.css";
 
 /**

@@ -24,6 +24,10 @@
  * Kernel step 4, Feedback a plugin (2026-11-19): POST /upload/feedback-screenshot
  * left the list. The Feedback plugin mounts the same upload on its own path,
  * POST /feedback/screenshot (in ADDED).
+ *
+ * Kernel step 4, Members a plugin (2026-11-19): GET /members/summary,
+ * GET /members/ and GET /admin/hub/members keep their paths, mounted now by
+ * the Members plugin; POST /members/invites stays the kernel's.
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync } from "node:fs";
@@ -52,9 +56,9 @@ const ADDED: Record<string, string> = {
   "POST /client-errors": "a browser's error report (src/http/clientErrors.ts), before hub resolution",
   // The console split (2026-11-10): the operator API, 404 unless CIVIC_OPERATOR_TOKEN is set.
   "POST /operator/rpc/:method": "the console's calls to the hub deployment (src/operator/api.ts)",
-  // The layout session (2026-11-07; ADR-019): the three-column layout's right column.
-  "GET /aside": "the right column's facts: the member count (deadlines moved to the feed, Events 4; pins to the Pinning plugin)",
-  "GET /api/aside": "the same, at the URL the UI reads locally (Vercel strips /api)",
+  // The layout session (2026-11-07; ADR-019) added GET /aside and GET /api/aside,
+  // the right column's facts. Kernel step 4 (2026-11-19) removed them: their
+  // last fact, the member count, is the Members plugin's (GET /members/summary).
   // Events 4 (2026-11-09): what is about to close, for the feed's closing-soon cards.
   "GET /feed/closing": "open processes closing within 48 hours: titles, close times and links",
   "GET /api/feed/closing": "the same, at the URL the UI reads locally (Vercel strips /api)",

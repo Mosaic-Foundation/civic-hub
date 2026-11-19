@@ -51,7 +51,7 @@ describe("the Members plugin", () => {
     expect(summary.body.count).toBeGreaterThan(0);
     expect(summary.body.shown).toBe(true);
     expect((await call("GET", "/members", ATHENS, undefined, resident)).status).toBe(200);
-    expect((await call("GET", "/hub-config", ATHENS)).body.members).toEqual({ page_shown: true });
+    expect((await call("GET", "/hub-config", ATHENS)).body.features.members).toEqual({ page_shown: true });
   });
 
   it("below it, the server withholds the number and the stack, and the page is not there for residents", async () => {
@@ -62,7 +62,7 @@ describe("the Members plugin", () => {
     const asResident = await call("GET", "/members/summary", ATHENS, undefined, resident);
     expect(asResident.body.count).toBeNull();
     expect((await call("GET", "/members", ATHENS, undefined, resident)).status).toBe(404);
-    expect((await call("GET", "/hub-config", ATHENS)).body.members).toEqual({ page_shown: false });
+    expect((await call("GET", "/hub-config", ATHENS)).body.features.members).toEqual({ page_shown: false });
   });
 
   it("an admin still sees the count, the threshold and the page", async () => {
@@ -76,7 +76,7 @@ describe("the Members plugin", () => {
     await set({ "plugin.members.page_before_threshold": "true" });
     expect((await call("GET", "/members", ATHENS, undefined, resident)).status).toBe(200);
     expect((await call("GET", "/members/summary", ATHENS)).body).toMatchObject({ count: null, page: true });
-    expect((await call("GET", "/hub-config", ATHENS)).body.members).toEqual({ page_shown: true });
+    expect((await call("GET", "/hub-config", ATHENS)).body.features.members).toEqual({ page_shown: true });
   });
 
   it("switched off, its routes answer 404 and the config drops it; invites stay the hub's", async () => {
@@ -84,7 +84,7 @@ describe("the Members plugin", () => {
     expect((await call("GET", "/members/summary", ATHENS)).status).toBe(404);
     expect((await call("GET", "/members", ATHENS, undefined, resident)).status).toBe(404);
     expect((await call("GET", "/admin/hub/members", ATHENS, undefined, admin)).status).toBe(404);
-    expect((await call("GET", "/hub-config", ATHENS)).body.members).toBeUndefined();
+    expect((await call("GET", "/hub-config", ATHENS)).body.features.members).toBeUndefined();
     // Invites are not the plugin's: a bad request is refused on its merits, not as missing.
     const invite = await call("POST", "/members/invites", ATHENS, { emails: "not an address" }, resident);
     expect(invite.status).toBe(400);

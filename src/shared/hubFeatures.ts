@@ -4,8 +4,7 @@
 // plugin, and the same settings keys as before the split. Process plugins
 // come from the process manifests (src/shared/processManifests.ts); a feature
 // package's entry from its manifest's pluginSection (src/shared/
-// featureManifests.ts; kernel step 4). The kernel's own features, the ones
-// built into it, are listed here.
+// featureManifests.ts; kernel step 4).
 // Shared with the UI: imports nothing from the server.
 
 import type { SettingFieldSpec } from "./hubSettingsSections.js";
@@ -32,33 +31,15 @@ export interface HubFeature {
   defaultOn?: boolean;
 }
 
-/** The kernel's own features: built into it, for every space type. */
-const KERNEL_FEATURES = [
-  // The member count, avatar stack and Members page (Adam, 2026-10-14).
-  // Share this hub's invites are the hub's own, not this feature's.
-  {
-    id: "members",
-    order: 150,
-    name: "Members",
-    what: "The member count and faces on the home page, and the Members page. Share this hub stays either way.",
-    fields: [
-      { key: "plugin.members.min_count", kind: "number", min: 0, max: 100000 },
-      { key: "plugin.members.page_before_threshold", kind: "boolean" },
-    ],
-    words: ["members", "member count", "faces", "avatars", "directory", "residents list"],
-  },
-] as const satisfies readonly HubFeature[];
+// The kernel has no features of its own (kernel step 4, 2026-11-19: Members,
+// its last, became a plugin). Every hub feature is a feature package's.
 
-/** Every hub feature, the kernel's and each feature package's, in Plugins-section order. */
-export const HUB_FEATURES: readonly (HubFeature & { id: HubFeatureId })[] = [
-  ...KERNEL_FEATURES,
-  ...FEATURE_MANIFESTS.flatMap((m) => (m.pluginSection ? [{ id: m.feature as HubFeatureId, ...m.pluginSection }] : [])),
-].sort((a, b) => a.order - b.order);
+/** Every hub feature, each feature package's, in Plugins-section order. */
+export const HUB_FEATURES: readonly (HubFeature & { id: HubFeatureId })[] = FEATURE_MANIFESTS.flatMap((m) =>
+  m.pluginSection ? [{ id: m.feature as HubFeatureId, ...m.pluginSection }] : [],
+).sort((a, b) => a.order - b.order);
 
-export type HubFeatureId =
-  | (typeof KERNEL_FEATURES)[number]["id"]
-  | Extract<(typeof FEATURE_MANIFESTS)[number], { pluginSection: object }>["feature"];
-
+export type HubFeatureId = Extract<(typeof FEATURE_MANIFESTS)[number], { pluginSection: object }>["feature"];
 export const HUB_FEATURE_IDS: readonly HubFeatureId[] = HUB_FEATURES.map((f) => f.id);
 
 /**

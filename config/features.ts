@@ -11,5 +11,6 @@ import pinning from "../features/pinning/index.js";
 import feedback from "../features/feedback/index.js";
 import adminDigest from "../features/admin_digest/index.js";
 import searchFeature from "../features/search/index.js";
+import members from "../features/members/index.js";
 
-export const FEATURE_PACKAGES: readonly FeaturePackage[] = [analytics, fediverse, digest, assistant, pinning, feedback, adminDigest, searchFeature];
+export const FEATURE_PACKAGES: readonly FeaturePackage[] = [analytics, fediverse, digest, assistant, pinning, feedback, adminDigest, searchFeature, members];

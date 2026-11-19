@@ -4,7 +4,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
-## Kernel branch: E2E caught up; the resident digest, the drafting assistant, Pinning, Feedback, the admin digest and Search are feature packages — 2026-11-19
+## Kernel branch: E2E caught up; the resident digest, the drafting assistant, Pinning, Feedback, the admin digest, Search and Members are feature packages — 2026-11-19
 
 - **E2E (0c96ca3):** dev's E2E run had failed or run out its 30 minutes since Nov 17. Most of the time went on specs
   that minted a resident's session through `tests/fixtures/adminSession` and so had not been asked About you: each
@@ -45,7 +45,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
   6, and the module table now say so: the kernel is identity, security and interoperability (federation:
   ActivityPub now, AT Protocol later) plus the shared services plugins need; the kernel offers services, plugins offer
   features; no space must have admins; a space type lists each plugin as required, on by default or off by default.
-  Moving out next: the Members page (Pinning, Feedback, the admin digest and Search are done, below).
+  Pinning, Feedback, the admin digest, Search and Members are done (below); the kernel has no features of its own now.
 - **A space type lists its plugins (6570db3).** `SpaceType.plugins` `{ required, on, off }`; `spacePluginRule(id)` and
   `pluginRequired(id)` in `src/shared/spaceTypes.ts`. A required plugin is on whatever its switch says; the settings
   save and Remove refuse to turn it off, and the Plugins page shows "A {space type} needs this plugin, so it is always
@@ -87,6 +87,15 @@ Updated after every Claude Code session. Records what was built, what's incomple
   typeahead reads the same index. New UI slot `navTool` (the top bar, and the top of the menu drawer). Nothing changes
   on screen. Still in the kernel's search module: the type keys the page's chips use (`vote`, `announcement`, ...), a
   list that names civic types, to be read from the manifests later.
+- **Members is a feature plugin** (`features/members`: `GET /members/summary`, `GET /members`, `GET /admin/hub/members`,
+  same paths). The kernel keeps membership (`src/services/members.ts`, SDK `membership`), the person's own "hide me"
+  switch (`PATCH /auth/me`), and "Share this hub" (`POST /members/invites`, mounted ahead of the feature routes so the
+  Members switch never closes it). New: `FeatureManifest.section` (a navigation section; `navSections.ts` reads the
+  manifests), `FeatureManifest.newSpaceSettings` (a new space's `min_count` of 10), `FeatureServer.hubConfig`
+  (GET /hub-config's `members.page_shown` is now `features.members.page_shown`), and UI slots `section`, `homeBlock`,
+  `aboutLine`, `accountPanel`, `peopleSection`. Home's row is the kernel's `HomeShareRow` (the plugin's count, then
+  Share this hub). `GET /api/aside` is gone (its one fact was the count; the About card's line reads the plugin's
+  summary). `KERNEL_FEATURES` is gone: every hub feature is a package. Nothing changes on screen.
 - **Announcements has no urgent label any more**, and `PluginServer.pinnedCard` is gone (with Announcements'
   `board.ts` and `pinnedCard.ts`, its form's Prominence box, the page's Urgent chip and "Urgent until", the feed card's
   Urgent chip and `FeedProcessMeta.urgent`). News Sync's pinned-item label hook is gone too. Visible: a pinned News

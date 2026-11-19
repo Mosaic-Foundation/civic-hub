@@ -346,6 +346,17 @@ export interface FeatureManifest {
    * list of hub features (src/shared/hubFeatures.ts) need not name it.
    */
   pluginSection?: Omit<HubFeature, "id">;
+  /**
+   * Its section in the space's navigation (src/shared/navSections.ts), beside
+   * the process types' (the Members page): drawn while its switch is on, in
+   * the space's Section order. Its icon is a key in the UI's icon set.
+   */
+  section?: { id: string; label: string; short: string; path: string; icon: string; order: number };
+  /**
+   * Settings a new space starts with (src/operator/hubs.ts), where its
+   * default for a new space differs from what unset means on an older one.
+   */
+  newSpaceSettings?: Readonly<Record<string, string>>;
 }
 
 /** Declare a feature's manifest, keeping its literal values (its table names join forHub's TableName). */

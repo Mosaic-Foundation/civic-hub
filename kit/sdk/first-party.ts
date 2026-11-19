@@ -98,6 +98,7 @@ export {
   listSubscribedUsers,
   listVisibleInPhase,
   markDigestSent,
+  membership,
   namesFor,
   namesRole,
   normalizePagePath,

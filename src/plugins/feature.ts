@@ -135,6 +135,13 @@ export interface FeatureServer {
    * both ways can recognise its posts). Null says nothing.
    */
   discovery?: () => Record<string, unknown> | null;
+  /**
+   * What the space's config (GET /hub/config) carries for the feature, under
+   * `features.<id>`, while it is on: what its UI needs before any page loads
+   * (the Members plugin: whether residents get its page yet). Read for the
+   * space in scope; null says nothing.
+   */
+  hubConfig?: () => Promise<Record<string, unknown> | null>;
   /** A runner for each job its manifest declares, by job id. */
   jobs?: Readonly<Record<string, JobRunner>>;
   consoleSections?: readonly FeatureConsoleSection[];

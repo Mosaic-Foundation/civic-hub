@@ -250,6 +250,12 @@ export type { AdminWindow, DigestDetail, DigestLine, DigestLineId } from "../mod
 export { search } from "../services/kernelSearch.js";
 export type { SearchQuery, SearchResultPage, SearchHit, SearchSort, SearchTypeKey } from "../modules/civic.search/index.js";
 
+// --- The kernel's membership (kernel step 4, Members) --------------------------------------
+// Who has joined the space in scope, never an address; what residents see of
+// it is the Members plugin's.
+export { membership } from "../services/members.js";
+export type { Member, MemberSummary, MembersPage, AdminMember } from "../services/members.js";
+
 // --- What a package checks and serves for a submission (kernel step 1, Conversations) -----
 export { codeOfConduct } from "../services/kernelCodeOfConduct.js";
 export type { CodeOfConductFinding } from "../services/kernelCodeOfConduct.js";

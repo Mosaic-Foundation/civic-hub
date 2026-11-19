@@ -1,7 +1,8 @@
-// GET /api/aside, GET /api/feed/closing and the three-column settings (layout
-// session, 2026-11-07; ADR-019; Events 4, 2026-11-09). The right column's
-// facts are announcements and About: Coming up reads the calendar, and closing
-// dates are the feed's "closing soon" cards. GET /api/feed/closing is an open
+// GET /api/feed/closing and the three-column settings (layout session,
+// 2026-11-07; ADR-019; Events 4, 2026-11-09). The right column has no facts
+// of the kernel's own now (kernel step 4): Coming up reads the calendar,
+// Pinned the Pinning plugin, the About card's count the Members plugin, and
+// closing dates are the feed's "closing soon" cards. GET /api/feed/closing is an open
 // process closing within 48 hours, earliest first; not one further out, under
 // review, already past, or another hub's. No account, name or ballot in either. The settings: nav.layout takes
 // "three_columns", and nav.aside_cards is a list of { id, shown }, refused
@@ -101,20 +102,8 @@ describe("the hub's reminder window (feed.closing_reminder_hours)", () => {
 });
 
 describe("GET /api/aside", () => {
-  it("has no closing dates: Coming up is the calendar's (Events 4)", async () => {
-    const res = await call("GET", "/api/aside", FLOYD);
-    expect(res.status).toBe(200);
-    expect(res.body.deadlines).toBeUndefined();
-  });
-
-  it("serves the same to a signed-out reader, and no account or name", async () => {
-    const res = await call("GET", "/api/aside", FLOYD);
-    // The Pinned card is the Pinning plugin's own read (GET /pins, kernel step 4).
-    expect(Object.keys(res.body).sort()).toEqual(["about"]);
-    const count = (res.body.about as { member_count: number | null }).member_count;
-    // The Members plugin's own rule: the count when GET /members/summary shows it, else null.
-    const summary = await call("GET", "/members/summary", FLOYD);
-    expect(count).toBe(summary.status === 200 && summary.body.shown ? summary.body.count : null);
+  it("is gone: the About card's count is the Members plugin's (kernel step 4)", async () => {
+    expect((await call("GET", "/api/aside", FLOYD)).status).toBe(404);
   });
 });
 

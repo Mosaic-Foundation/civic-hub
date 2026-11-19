@@ -376,6 +376,13 @@ feature with an inbox of its own, name its queue (`FeatureServer.queues`): the k
 admin on your admin tab (`adminTab.queue` in your UI module) and adds a line to the admin digest. A page for everyone
 (a form, say) can ask for the same links Feedback has, in the top bar, sidebar, menu and footer (`spaceLink`).
 
+### Members (nothing to do)
+
+The member count, the faces on the home page and the Members page are a plugin of their own (`features/members`, kernel
+step 4). Who has joined a space is the kernel's: a plugin that needs it reads `membership` (`count()`, `summary()`,
+`list(offset)`; never an address). A feature with a page of its own in the navigation declares it in its manifest
+(`section`), and its UI module can say who sees it yet and the number beside it (`section.shown`, `section.count`).
+
 ### Member information (districts and demographics)
 
 A hub can ask its members which district they live in, their year of birth and, if the hub chooses, their race or
