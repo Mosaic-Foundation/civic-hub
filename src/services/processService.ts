@@ -771,6 +771,12 @@ export async function getProcessState(
   const isOwner = !!actor && typeof model.created_by === "string" && model.created_by === actor;
   const enriched = await enrichProcessCreator(model, opts);
   enriched.is_owner = isOwner;
+  // Every read model carries `id`, whatever else a type calls it: the
+  // kernel's /process/:id link (ui/src/pages/ProcessLink.tsx) sends a reader
+  // on to the type's own page by it. A conversation's names it `process_id`
+  // only, and its link went to /deliberation/undefined (release checks,
+  // 2026-11-24). Here, so an action's `view` reads the same.
+  if (enriched.id === undefined) enriched.id = process.id;
   // Closed early (any type with a deadline): the record and the line the
   // page shows, in the hub's time zone.
   enriched.closed_early = closedEarlyView(process.state);

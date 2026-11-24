@@ -225,9 +225,5 @@ export const handleGetProcessState = route(async (req, res) => {
     anonNumbers: caller ? undefined : await buildProcessAnonNumbers(id),
   });
   if (!state) throw new NotFoundError("Process not found");
-  // Every type's read model carries `id`: the kernel's /process/:id link
-  // (ui/src/pages/ProcessLink.tsx) sends a reader on to the type's own page
-  // by it. A conversation's names it `process_id` only, and its link went to
-  // /deliberation/undefined (release checks, 2026-11-24).
-  res.json({ id, ...state });
+  res.json(state);
 });

@@ -15,8 +15,8 @@ Branch `kernel-release-checks`. No migrations, no package changes, no catalog en
   still needs a person (console approvals, News items, Polis voting, real email, how it looks).
 - **Bug the tests found (also on main):** `/process/:id` for a conversation went to `/deliberation/undefined`
   ("Conversation not found"): a conversation's read model names its id `process_id`, and the vote page and the
-  kernel's `ProcessLink` send a reader on by `process.id`. Fixed in the kernel: `GET /process/:id/state` always
-  carries `id` (`handleGetProcessState`).
+  kernel's `ProcessLink` send a reader on by `process.id`. Fixed in the kernel: every read model `getProcessState`
+  answers carries `id` (so `GET /process/:id/state` and an action's `view` stay equal, as conformance step 4 checks).
 - Local: `releaseChecks` 7/7 on the preview build; API `processes`, `leakHarness`, `hubCreatedReads`,
   `sampleContent` pass except the two known local `sampleContent` hub-token failures.
 
