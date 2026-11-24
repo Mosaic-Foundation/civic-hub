@@ -4,6 +4,22 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Release checks as browser tests; a conversation's /process/:id link fixed — 2026-11-24
+
+Branch `kernel-release-checks`. No migrations, no package changes, no catalog entries.
+
+- **`tests/e2e/releaseChecks.spec.ts`** (7 tests): what Adam was asked to walk through on dev after the kernel
+  merge, on a new demo hub with samples: every type opens from `/process/:id` at desktop and phone width; a resident
+  takes part in each type; the feed's filter pills; a new person's sign-up (no About you card); Pinning, Search,
+  Feedback, Members and Admin digest off and on in Plugins; the urgent pin's line. `docs/RELEASE-CHECKS.md` lists what
+  still needs a person (console approvals, News items, Polis voting, real email, how it looks).
+- **Bug the tests found (also on main):** `/process/:id` for a conversation went to `/deliberation/undefined`
+  ("Conversation not found"): a conversation's read model names its id `process_id`, and the vote page and the
+  kernel's `ProcessLink` send a reader on by `process.id`. Fixed in the kernel: `GET /process/:id/state` always
+  carries `id` (`handleGetProcessState`).
+- Local: `releaseChecks` 7/7 on the preview build; API `processes`, `leakHarness`, `hubCreatedReads`,
+  `sampleContent` pass except the two known local `sampleContent` hub-token failures.
+
 ## Going live needs the platform's approval — 2026-11-19
 
 On dev, unpushed. **One migration** (20261119000000), so release with `./scripts/release.sh dev`. The console
