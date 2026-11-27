@@ -49,3 +49,54 @@ config/jurisdictions/sources/
 
 # Private idea list, kept locally and not in the repo (removed 2026-11-18)
 IDEAS.md
+
+# The Mosaic Space Kernel (split trial, step 4): scripts/kernel-sync.mjs lays
+# these down from the commit kernel.json pins. Change them in
+# Mosaic-Foundation/mosaic-kernel, never here. See docs/KERNEL-SPLIT.md.
+/.kernel/
+/.env.example
+/.npmrc
+/.nvmrc
+/RUN-ANYWHERE.md
+/RUNBOOK-operations.md
+/TESTING.md
+/eslint.config.js
+/package.json
+/package-lock.json
+/playwright.config.ts
+/playwright.smoke.config.ts
+/tsconfig.json
+/tsconfig.check.json
+/vitest.config.ts
+/examples/
+/features/
+/kit/
+/packages/
+/ui/
+/docs/*
+!/docs/RELEASE-CHECKS.md
+!/docs/KERNEL-SPLIT.md
+/src/*
+!/src/hosting/
+/supabase/*
+!/supabase/config.toml
+/tests/*
+!/tests/unit/
+/tests/unit/*
+!/tests/unit/releaseCatalogGuard.test.ts
+/scripts/*
+!/scripts/kernel-sync.mjs
+!/scripts/cleanupProdLegacyTables.ts
+!/scripts/cleanupProdProcesses.ts
+!/scripts/db-push.sh
+!/scripts/dev-refresh-from-dump.sh
+!/scripts/dev-refresh-reseed.ts
+!/scripts/exportProdProcesses.ts
+!/scripts/fetch-jurisdiction-sources.sh
+!/scripts/release.config
+!/scripts/release.sh
+!/scripts/seedProdConversation.ts
+!/scripts/seedProdDemo.ts
+!/scripts/seedProdWordcloud.ts
+!/scripts/vercel-deploy.sh
+!/scripts/vercel-env-sync.sh

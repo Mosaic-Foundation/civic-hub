@@ -10,7 +10,7 @@ name: E2E
 
 on:
   push:
-    branches: [dev]
+    branches: [dev, kernel-split-trial]
     paths-ignore:
       - "**/*.md"
       - "docs/**"
@@ -32,6 +32,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
+
+      - name: Lay down the kernel (split trial, kernel.json)
+        run: node scripts/kernel-sync.mjs
 
       - name: npm 12
         run: npm install -g npm@12.2.0

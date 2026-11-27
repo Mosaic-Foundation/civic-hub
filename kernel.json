@@ -1,0 +1,27 @@
+{
+  "$comment": "The Mosaic Space Kernel this hub runs on (split trial, step 4). scripts/kernel-sync.mjs lays the kernel's files at this commit into the working tree, then npm ci runs as before. Everything the kernel lays down is git-ignored here; change kernel code in Mosaic-Foundation/mosaic-kernel and move this pin. The deployment slots are the paths this repository owns: the kernel reads or imports them at fixed paths and never overwrites them.",
+  "repo": "Mosaic-Foundation/mosaic-kernel",
+  "commit": "b3c3d1022e8e76805699d44d0faf28e4a3dd32af",
+  "deploymentSlots": [
+    "config/",
+    "spaces/civic/",
+    "src/hosting/",
+    "api/",
+    "supabase/config.toml",
+    "vercel.json",
+    ".github/",
+    ".claude/",
+    ".gitignore",
+    "LICENSE",
+    "LICENSING.md"
+  ],
+  "kernelOnly": [
+    "README.md",
+    "docs/ARCHITECTURE.md",
+    "docs/IDENTITY.md",
+    "docs/PLUGINS.md",
+    "docs/RULES.md",
+    "docs/SPLIT-TRIAL.md",
+    "docs/VERSIONING.md"
+  ]
+}
