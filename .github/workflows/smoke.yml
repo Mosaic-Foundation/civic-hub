@@ -69,6 +69,10 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Lay down the kernel (split trial, kernel.json)
+        if: steps.config.outputs.skip != 'true'
+        run: node scripts/kernel-sync.mjs
+
       - name: npm 12
         if: steps.config.outputs.skip != 'true'
         run: npm install -g npm@12.2.0
